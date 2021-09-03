@@ -22,8 +22,8 @@ def population_likelihood(params, data):
         return -jnp.inf
 
 true_param = [0,1]
-data = random.normal(key,shape=(100,))*true_param[1]+true_param[0]
-#data = jnp.append(data,10)
+data = random.normal(key,shape=(1000,))*true_param[1]+true_param[0]
+data = jnp.append(data,10)
 
 dLdlambda = grad(population_likelihood)([0.,1.],data)
 dLdtheta = grad(population_likelihood,argnums=1)([0.,1.],data)
