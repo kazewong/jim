@@ -20,7 +20,7 @@ def truncated_power_law(x,alpha,xmin,xmax):
 	output = index_update(output,((x<xmin)+(x>xmax)),0)
 	return output
 
-truncated_power_law = jit(truncated_power_law)
+#truncated_power_law = jit(truncated_power_law)
 
 @jit
 def gaussian(x,mean,sigma):
