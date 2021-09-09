@@ -25,13 +25,13 @@ def population_likelihood(params,data):
 
 @jit
 def population_likelihood_event(point,params,obs_std,data):
-	return -jnp.sum(jnp.log(gaussian(point[:,None],data,obs_std)*gaussian(data,params[0],params[1])))
+	return -jnp.sum(jnp.log(gaussian(data,point[:,None],obs_std)*gaussian(point[:,None],params[0],params[1])))
 
 
-N_obs = 10000
-N_subpop = 0#1000
-true_param = jnp.array([0.,5])
-obs_std = 0.05
+N_obs = 1000
+N_subpop = 1000
+true_param = jnp.array([0.,1])
+obs_std = 0.1
 true_data = (random.normal(sub_keys[0],shape=(N_obs,))*true_param[1]+true_param[0])
 true_data = jnp.append(true_data,(random.normal(sub_keys[1],shape=(N_subpop,))*0.1-5))
 obs_data = true_data[:,None]+random.normal(sub_keys[2],shape=(N_obs+N_subpop,100))*obs_std
