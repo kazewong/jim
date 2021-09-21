@@ -3,10 +3,11 @@ import jax.numpy as jnp
 import copy
 import astropy.units as u
 import h5py
-from jax import random, grad, jit, vmap
+from jax import random, grad, jit, vmap, value_and_grad
 from jax.ops import index_update
 from astropy.cosmology import Planck15
 from scipy.interpolate import interp1d
+from jax.experimental.optimizers import adam
 
 key = random.PRNGKey(42)
 
@@ -140,4 +141,21 @@ def compute_dLdt(alpha,beta,xmin,xmax,mixing,mean,sigma,kappa=0.):
 	dLdlambda = jnp.stack(list(grad(population_likelihood)(param,posterior,prior).values()))
 	dLdtheta = grad(population_likelihood,argnums=1)(param,posterior,prior)
 	return L, dLdtheta[None]/dLdlambda.reshape(-1,1,1,1)
+
+
+learning_rate = 1e-1
+opt_init, opt_update, get_params = adam(learning_rate)
+opt_state = opt_init((true_param))
+
+def step(step, opt_state):
+    params = get_params(opt_state)
+    value, grads = value_and_grad(population_likelihood)(params, posterior, prior)
+    opt_state = opt_update(step, grads, opt_state)
+    return value, opt_state
+
+for i in range(200):
+    value, opt_state = step(i, opt_state)
+    if jnp.isnan(value):
+        break
+    print(value,get_params(opt_state))
 
