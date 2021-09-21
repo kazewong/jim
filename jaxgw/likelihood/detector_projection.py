@@ -53,7 +53,7 @@ def get_polarization_tensor(ra, dec, time, psi, mode):
         raise ValueError("{} not a polarization mode!".format(mode))
 
 def antenna_response(detector_tensor, ra, dec, time, psi, mode):
-    polarization_tensor = gwutils.get_polarization_tensor(ra, dec, time, psi, mode)
+    polarization_tensor = get_polarization_tensor(ra, dec, time, psi, mode)
     return jnp.einsum('ij,ij->', detector_tensor, polarization_tensor)
 
 def get_detector_response(self, waveform_polarizations, parameters):

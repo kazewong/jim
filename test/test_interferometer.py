@@ -1,4 +1,4 @@
-from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor
+from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response
 
 
 H1_lat = 46 + 27. / 60 + 18.528 / 3600
@@ -23,3 +23,5 @@ L1_arm2 = construct_arm(L1_long, L1_lat, L1_yarm_tilt, L1_yarm_azimuth)
 
 H1 = detector_tensor(H1_arm1, H1_arm2)
 L1 = detector_tensor(L1_arm1, L1_arm2)
+
+H1_proj = antenna_response(H1, 1, 1, 0, 1,'plus')
