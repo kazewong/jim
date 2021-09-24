@@ -56,10 +56,11 @@ def antenna_response(detector_tensor, ra, dec, time, psi, mode):
     polarization_tensor = get_polarization_tensor(ra, dec, time, psi, mode)
     return jnp.einsum('ij,ij->', detector_tensor, polarization_tensor)
 
-def get_detector_response(self, waveform_polarizations, parameters):
+def get_detector_response(waveform_polarizations, parameters, detector_tensor):
     signal = {}
     for mode in waveform_polarizations.keys():
-        det_response = self.antenna_response(
+        det_response = antenna_response(
+            detector_tensor,
             parameters['ra'],
             parameters['dec'],
             parameters['geocent_time'],
@@ -68,22 +69,18 @@ def get_detector_response(self, waveform_polarizations, parameters):
         signal[mode] = waveform_polarizations[mode] * det_response
     signal_ifo = sum(signal.values())
 
-    signal_ifo *= self.strain_data.frequency_mask
-
-    time_shift = self.time_delay_from_geocenter(
-        parameters['ra'], parameters['dec'], parameters['geocent_time'])
-
-    # Be careful to first subtract the two GPS times which are ~1e9 sec.
-    # And then add the time_shift which varies at ~1e-5 sec
-    dt_geocent = parameters['geocent_time'] - self.strain_data.start_time
-    dt = dt_geocent + time_shift
-
-    signal_ifo[self.strain_data.frequency_mask] = signal_ifo[self.strain_data.frequency_mask] * jnp.exp(
-        -1j * 2 * jnp.pi * dt * self.strain_data.frequency_array[self.strain_data.frequency_mask])
-
-    signal_ifo[self.strain_data.frequency_mask] *= self.calibration_model.get_calibration_factor(
-        self.strain_data.frequency_array[self.strain_data.frequency_mask],
-        prefix='recalib_{}_'.format(self.name), **parameters)
+#    signal_ifo *= self.strain_data.frequency_mask
+#
+#    time_shift = self.time_delay_from_geocenter(
+#        parameters['ra'], parameters['dec'], parameters['geocent_time'])
+#
+#    # Be careful to first subtract the two GPS times which are ~1e9 sec.
+#    # And then add the time_shift which varies at ~1e-5 sec
+#    dt_geocent = parameters['geocent_time'] - self.strain_data.start_time
+#    dt = dt_geocent + time_shift
+#
+#    signal_ifo[self.strain_data.frequency_mask] = signal_ifo[self.strain_data.frequency_mask] * jnp.exp(
+#        -1j * 2 * jnp.pi * dt * self.strain_data.frequency_array[self.strain_data.frequency_mask])
 
     return signal_ifo
 
