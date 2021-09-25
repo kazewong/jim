@@ -66,12 +66,19 @@ snr_bilby = likelihood.calculate_snrs(waveform_generator.frequency_domain_strain
 
 waveform = waveform_generator.frequency_domain_strain()
 waveform_frequency = waveform_generator.frequency_array
+
 psd = ifos[0].power_spectral_density_array
 psd_frequency = ifos[0].frequency_array
 
+waveform_frequency = waveform_frequency[jnp.isfinite(psd)]
+psd_frequency = psd_frequency[jnp.isfinite(psd)]
+psd = psd[jnp.isfinite(psd)]
+
 from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
 from jaxgw.likelihood.utils import inner_product
+from jaxgw.waveform.TaylorF2 import TaylorF2
 
+waveform = TaylorF2(waveform_frequency, injection_parameters)
 H1_lat = 46 + 27. / 60 + 18.528 / 3600
 H1_long = -(119 + 24. / 60 + 27.5657 / 3600)
 H1_xarm_azimuth = 125.9994
@@ -84,6 +91,14 @@ H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
 
 H1 = detector_tensor(H1_arm1, H1_arm2)
 
-strain = get_detector_response(waveform,injection_parameters,H1)[jnp.isfinite(psd)]
-jaxgw_snr = inner_product(strain, strain, waveform_frequency[jnp.isfinite(psd)], psd[jnp.isfinite(psd)], psd_frequency[jnp.isfinite(psd)])
-d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency[jnp.isfinite(psd)], psd[jnp.isfinite(psd)], psd_frequency[jnp.isfinite(psd)])
+strain = get_detector_response(waveform,injection_parameters,H1)
+jaxgw_snr = inner_product(strain, strain, waveform_frequency, psd, psd_frequency)
+d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency, psd, psd_frequency)
+
+def jax_likelihood(params, data, data_f, PSD, PSD_f):
+	waveform = TaylorF2(data_f, params)
+	waveform = get_detector_response(waveform, params, H1)
+	output = inner_product(waveform, data, data_f, PSD, PSD_f)
+	return output
+
+dlikelihood = grad(jax_likelihood)(injection_parameters, strain, waveform_frequency, psd, psd_frequency)
