@@ -11,7 +11,7 @@ euler_gamma = 0.577215664901532860606512090082
 def Lorentzian(x, x0, gamma):
     return (gamma**2/((x-x0)**2+gamma**2/4))
 
-
+@jit
 def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2):
 
     f = f[:,None]
