@@ -12,9 +12,16 @@ def Lorentzian(x, x0, gamma):
     return (gamma**2/((x-x0)**2+gamma**2/4))
 
 @jit
-def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2):
+def smoothing_plus(f,f0,d):
+    return (1+jnp.tanh(4*(f-f0)/d))/2
 
-    f = f[:,None]
+@jit
+def smoothing_minus(f,f0,d):
+    return (1-jnp.tanh(4*(f-f0)/d))/2
+
+@jit
+def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2,t0,phase0):
+
     x = (jnp.pi*f)**(2./3) # I assume in the m in 3.12 is the m from harmonics instead of mass
 
     eta = m1*m2/(m1+m2)**2
@@ -50,7 +57,7 @@ def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2):
                12.*jnp.pi*chi_eff**2 - chi_eff**3*(150.5/2.4 + eta/8.) +\
                chi_eff*chi1*chi2*(10.1*eta/2.4 + 3.*eta**2/8.))])
 
-
+# Taylor T4 amplitude coefficient from A5
     T4_A = 8.*eta*jnp.sqrt(jnp.pi/5.)*x*jnp.array([x**0,\
 
            x * ((-107. + 55.*eta)/42.),\
@@ -97,80 +104,80 @@ def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2):
              chi_eff**3*(945.55/1.68 - 85.*eta) + chi_eff*chi1*chi2*(396.65*eta/1.68 + 255.*eta**2))])
 
 
-    return T4_alpha, T4_A, F2_alpha
+    amplitude = jnp.sum(T4_A,axis=0)*jnp.sqrt(jnp.pi/jnp.sum(T4_alpha,axis=0))
+    phase = 2*jnp.pi*f*t0 - phase0 - jnp.pi/4 + jnp.sum(F2_alpha,axis=0)
 
-   
+    return amplitude, phase
+
+
+alpha_coef = jnp.array([[-2.417 * 1e-3, -1.093 * 1e-3, -1.917 * 1e-2, 7.267 * 1e-2, -2.504 * 1e-1],\
+                        [5.962 * 1e-1, -5.6 * 1e-2, 1.52 * 1e-1, -2.97, 1.312 * 1e1],\
+                        [-3.283 * 1e1, 8.859, 2.931 * 1e1, 7.954 * 1e1, -4.349 * 1e2],\
+                        [1.619 * 1e2, -4.702 * 1e1, -1.751 * 1e2, -3.225 * 1e2, 1.587 * 1e3],\
+                        [-6.32 * 1e2, 2.463 * 1e2, 1.048 * 1e3, 3.355 * 1e2, -5.115 * 1e3],\
+                        [-4.809 * 1e1, -3.643 * 1e2, -5.215 * 1e2, 1.87 * 1e3, 7.354 * 1e2]])
+
+gamma_coef = jnp.array([4.149, -4.07, -8.752 * 1e1, -4.897 * 1e1, 6.665 * 1e2])
+
+delta_coef = jnp.array([[-5.472 * 1e-2, 2.094 * 1e-2, 3.554 * 1e-1, 1.151 * 1e-1, 9.64 * 1e-1], \
+                    [-1.235, 3.423*1e-1, 6.062, 5.949, -1.069*1e1]])
+
 
 
 @jit
-def getPhenomCoef(M, eta, chi):
- 
-    alpha_coef = jnp.array([[-2.417 * 1e-3, -1.093 * 1e-3, -1.917 * 1e-2, 7.267 * 1e-2, -2.504 * 1e-1],\
-                            [5.962 * 1e-1, -5.6 * 1e-2, 1.52 * 1e-1, -2.97, 1.312 * 1e1],\
-                            [-3.283 * 1e1, 8.859, 2.931 * 1e1, 7.954 * 1e1, -4.349 * 1e2],\
-                            [1.619 * 1e2, -4.702 * 1e1, -1.751 * 1e2, -3.225 * 1e2, 1.587 * 1e3],\
-                            [-6.32 * 1e2, 2.463 * 1e2, 1.048 * 1e3, 3.355 * 1e2, -5.115 * 1e3],\
-                            [-4.809 * 1e1, -3.643 * 1e2, -5.215 * 1e2, 1.87 * 1e3, 7.354 * 1e2]])
+def getPhenomCoef(eta, chi):
+    eta_chi = jnp.array([chi,chi**2,eta*chi,eta,eta**2])
+    alpha = jnp.sum(alpha_coef*eta_chi,axis=1)
+    gamma = jnp.sum(gamma_coef*eta_chi)
+    delta = jnp.sum(delta_coef*eta_chi,axis=1)
+    return alpha, gamma, delta 
+
+def getFinalSpin(m1,m2,a1,a2):
+    return 0.7
+
+@jit
+def IMRPhenomC(f,params):
+
+    f = f[:,None]
+
+    local_m1 = params['mass_1']*Msun
+    local_m2 = params['mass_2']*Msun
+    local_d = params['luminosity_distance']*Mpc
+    local_spin1 = params['a_1']
+    local_spin2 = params['a_2']
+
+    M_tot = local_m1+local_m2
+    eta = local_m1*local_m2/(local_m1+local_m2)**2
+    chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
     
-    gamma_coef = jnp.array([4.149, -4.07, -8.752 * 1e1, -4.897 * 1e1, 6.665 * 1e2])
-    
-    delta_coef = jnp.array([[-5.472 * 1e-2, 2.094 * 1e-2, 3.554 * 1e-1, 1.151 * 1e-1, 9.64 * 1e-1], \
-                        [-1.235, 3.423*1e-1, 6.062, 5.949, -1.069*1e1]])
+    final_spin = getFinalSpin(local_m1, local_m2, local_spin1, local_spin2)
+    f_rd = 1.//(2*jnp.pi*(M_tot))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
+    decay_time = 0.7 + 1.4187*(1-final_spin)**(-0.499) # Q in the paper
+
+# Constructing phase of the waveform
+
+    A_PN, phase_PN = PNAmplitudeAndPhasing(f,local_m1,local_m2,local_spin1,local_spin2,params['geocent_time'],params['phase'])
+    alpha, gamma, delta = getPhenomCoef(eta,chi_eff)
 
 
+    phase_PM = 1./eta*jnp.sum(alpha*f**jnp.array([-5./3,-3./3,-1./3,0,2./3,1]),axis=1)
 
-    return psi, f1, f2, sigma, f3
+    beta_1 = 1./eta*jnp.sum(alpha*f_rd**jnp.array([-5./3,-3./3,-1./3,0,2./3,1]))
+    beta_2 = 1./eta*jnp.sum(jnp.array([-5./3,-3./3,-1./3,2./3,1])*alpha[jnp.array([0,1,2,4,5])]*f_rd**jnp.array([-8./3,-6./3,-4./3,-1./3,0]))
+    phase_RD = beta_1 + beta_2*f
 
-#return p;
-# }
-#
-#@jit
-#def IMRPhenomB(f,params):
-#
-#
-#    f = f[:,None]
-#
-#    local_m1 = params['mass_1']*Msun
-#    local_m2 = params['mass_2']*Msun
-#    local_d = params['luminosity_distance']*Mpc
-#    local_spin1 = params['a_1']
-#    local_spin2 = params['a_2']
-#
-#    M_tot = local_m1+local_m2
-#    eta = local_m1*local_m2/(local_m1+local_m2)**2
-#    chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
-#    M_chirp = eta**(3./5)*M_tot
-#    PNcoef = (jnp.pi*M_tot*f)**(1./3)
-#
-#    epsilon1 = 1.4547*chi_eff - 1.8897
-#    epsilon2 = -1.8153*chi_eff + 1.6557
-#    alpha2 = -323./224 + 451.*eta/168
-#    alpha3 = (27./8 - 11.*eta/6)*chi_eff
-#
-#    psi, f1, f2, sigma, f3 = getPhenomCoef(M_tot, eta, chi_eff)
-#
-#    Afactor_inspiral = (1 + alpha2*PNcoef**2+ alpha3*PNcoef**3)
-#    Afactor_merger = (1 + epsilon1*PNcoef+ epsilon2*PNcoef**2)
-#    omega_merger = Afactor_inspiral/Afactor_merger
-#    omega_ringdown = Afactor_merger/Lorentzian(f2,f2,sigma)
-#
-#
-#    phase = 2*jnp.pi*f*params['geocent_time'] - params['phase']
-#    phase += 3./(128*eta*PNcoef**5) * (1+ jnp.sum(psi*PNcoef**jnp.array([2,3,4,6,7]),axis=1)[:,None])
-#
-#    A_overall = M_chirp**(5./6)/local_d*f1**(-7./6)
-#    A_inspiral = (f/f1)**(-7./6) * Afactor_inspiral 
-#    A_merger =  omega_merger * (f/f1)**(-2./3) * Afactor_merger
-#    A_ringdown = omega_ringdown * Lorentzian(f, f2, sigma)
-#
-#    amplitude = A_overall * (A_inspiral * jnp.heaviside(f1-f,0) \
-#                          +  A_merger * jnp.heaviside(f-f1,1) * jnp.heaviside(f2-f,0) \
-#                          +  A_ringdown * jnp.heaviside(f-f2,1))# * jnp.heaviside(f3-f,0))
-#
-#
-#
-#    totalh = amplitude*jnp.exp(-1j*phase)
-#    hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
-#    hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
-#
-#    return {'plus':hp,'cross':hc}
+    phase = phase_PN*smoothing_minus(f,0.1*f_rd,0.005) + phase_PN*smoothing_plus(f,0.1*f_rd,0.005)*smoothing_minus(f,f_rd,0.005) + phase_PN*smoothing_plus(f,f_rd,0.005)
+
+# Constructing amplitude of the waveform
+
+    A_PM = A_PN + gamma*f**(5./6)
+
+    A_RD = delta[1]*Lorentzian(f,f_rd,delta[2]*decay_time)*f**(-7./6)
+
+    amplitude = A_PM *smoothing_minus(f,0.98*f_rd,0.015) + A_RD*smoothing_plus(f,0.98*f_rd,0.015)
+
+    totalh = amplitude*jnp.exp(-1j*phase)
+    hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
+    hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
+
+    return {'plus':hp,'cross':hc}
