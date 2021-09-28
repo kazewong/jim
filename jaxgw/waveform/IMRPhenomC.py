@@ -151,8 +151,9 @@ def IMRPhenomC(f,params):
     chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
     
     final_spin = getFinalSpin(local_m1, local_m2, local_spin1, local_spin2)
-    f_rd = 1.//(2*jnp.pi*(M_tot))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
+    f_rd = 1./(2*jnp.pi*(M_tot/Msun))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
     decay_time = 0.7 + 1.4187*(1-final_spin)**(-0.499) # Q in the paper
+    print(f_rd)
 
 # Constructing phase of the waveform
 
