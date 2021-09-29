@@ -6,6 +6,8 @@ from jax import jit
 from jaxgw.utils import *
 
 euler_gamma = 0.577215664901532860606512090082
+MR_sun = 1.476625061404649406193430731479084713e3
+
 
 @jit
 def Lorentzian(x, x0, gamma):
@@ -140,6 +142,9 @@ def getFinalSpin(eta,chi_eff):
 
 @jit
 def IMRPhenomC(f,params):
+    """
+    The amplitude and phase are generated first in unitless Mf space, then scaled with total mass and distance.
+    """
 
     f = f[:,None]
 
@@ -154,10 +159,10 @@ def IMRPhenomC(f,params):
     eta = local_m1*local_m2/(local_m1+local_m2)**2
     M_chirp = M_tot*eta**(3./5)
     chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
-    f = f*M_tot    
+    f = f*Msun
 
     final_spin = getFinalSpin(eta,chi_eff)
-    f_rd = 1./(2*jnp.pi*(M_tot))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
+    f_rd = 1./(2*jnp.pi*(Msun))*(1.5251 - 1.1568*(1-final_spin)**0.1292)*Msun
     decay_time = 0.7 + 1.4187*(1-final_spin)**(-0.499) # Q in the paper
     
 # Constructing phase of the waveform
@@ -178,13 +183,12 @@ def IMRPhenomC(f,params):
 
     A_PM = A_PN + gamma*(f)**(5./6)
 
-    A_RD = delta[0]*Lorentzian(f,f_rd*M_tot,delta[1]*f_rd*M_tot/decay_time)*f**(-7./6)
+    A_RD = delta[0]*Lorentzian(f,f_rd,delta[1]*f_rd/decay_time)*f**(-7./6)
 
-    amplitude = A_PM *smoothing_minus(f,0.98*f_rd*M_tot,0.015) + A_RD*smoothing_plus(f,0.98*f_rd*M_tot,0.015)
-    #amplitude =  A_RD*smoothing_plus(f,0.98*f_rd,0.015)
+    amplitude = A_PM *smoothing_minus(f,0.98*f_rd,0.015) + A_RD*smoothing_plus(f,0.98*f_rd,0.015)
 
     amplitude_factor = 2. * jnp.sqrt(5. / (64.*jnp.pi)) * M_tot**2 / local_d
-    totalh = amplitude*jnp.exp(-1j*phase)* amplitude_factor
+    totalh = amplitude*amplitude_factor#*jnp.exp(-1j*phase)#* amplitude_factor
     hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
     hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
