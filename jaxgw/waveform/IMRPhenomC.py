@@ -104,7 +104,7 @@ def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2,t0,phase0):
              chi_eff**3*(945.55/1.68 - 85.*eta) + chi_eff*chi1*chi2*(396.65*eta/1.68 + 255.*eta**2))])
 
 
-    amplitude = jnp.sum(T4_A,axis=0)*jnp.sqrt(jnp.pi/jnp.sum(T4_alpha,axis=0))
+    amplitude = jnp.sum(T4_A,axis=0)*jnp.sqrt(jnp.pi/(3./2*jnp.sqrt(x)*jnp.sum(T4_alpha,axis=0)))
     phase = 2*jnp.pi*f*t0 - phase0 - jnp.pi/4 + jnp.sum(F2_alpha,axis=0)
 
     return amplitude, phase
@@ -135,7 +135,6 @@ def getPhenomCoef(eta, chi):
 def getFinalSpin(m1,m2,a1,a2):
     return 0.7
 
-@jit
 def IMRPhenomC(f,params):
 
     f = f[:,None]
@@ -146,13 +145,16 @@ def IMRPhenomC(f,params):
     local_spin1 = params['a_1']
     local_spin2 = params['a_2']
 
+
     M_tot = local_m1+local_m2
     eta = local_m1*local_m2/(local_m1+local_m2)**2
     chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
-    
+    f = f*M_tot    
+
     final_spin = getFinalSpin(local_m1, local_m2, local_spin1, local_spin2)
-    f_rd = 1./(2*jnp.pi*(M_tot/Msun))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
+    f_rd = 1./(2*jnp.pi*(M_tot))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
     decay_time = 0.7 + 1.4187*(1-final_spin)**(-0.499) # Q in the paper
+    
     print(f_rd)
 
 # Constructing phase of the waveform
@@ -171,13 +173,14 @@ def IMRPhenomC(f,params):
 
 # Constructing amplitude of the waveform
 
-    A_PM = A_PN + gamma*f**(5./6)
+    A_PM = A_PN + gamma*(f)**(5./6)
 
-    A_RD = delta[1]*Lorentzian(f,f_rd,delta[2]*decay_time)*f**(-7./6)
+    A_RD = delta[0]*Lorentzian(f,f_rd*M_tot,delta[1]*f_rd*M_tot/decay_time)*f**(-7./6)
 
-    amplitude = A_PM *smoothing_minus(f,0.98*f_rd,0.015) + A_RD*smoothing_plus(f,0.98*f_rd,0.015)
+    amplitude = A_PM *smoothing_minus(f,0.98*f_rd*M_tot,0.015) + A_RD*smoothing_plus(f,0.98*f_rd*M_tot,0.015)
+    #amplitude =  A_RD*smoothing_plus(f,0.98*f_rd,0.015)
 
-    totalh = amplitude*jnp.exp(-1j*phase)
+    totalh = amplitude*jnp.exp(-1j*phase)/local_d
     hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
     hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
