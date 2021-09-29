@@ -3,7 +3,7 @@ import bilby
 import jax.numpy as jnp
 
 from jax.config import config
-from jax import grad
+from jax import grad, jit
 config.update("jax_enable_x64", True)
 
 # Set the duration and sampling frequency of the data segment that we're
@@ -25,12 +25,12 @@ np.random.seed(88170235)
 # parameters, including masses of the two black holes (mass_1, mass_2),
 # spins of both black holes (a, tilt, phi), etc.
 injection_parameters = dict(
-    mass_1=36., mass_2=29., a_1=0.4, a_2=0.3, tilt_1=0., tilt_2=0.,
-    phi_12=0., phi_jl=0., luminosity_distance=2000., theta_jn=0.4, psi=2.659,
+    mass_1=36., mass_2=29., a_1=0., a_2=0., tilt_1=0., tilt_2=0.,
+    phi_12=0., phi_jl=0., luminosity_distance=410., theta_jn=0.4, psi=2.659,
     phase=1.3, geocent_time=1126259642.413, ra=1.375, dec=-1.2108)
 
 # Fixed arguments passed into the source model
-waveform_arguments = dict(waveform_approximant='IMRPhenomB',
+waveform_arguments = dict(waveform_approximant='IMRPhenomC',
                           reference_frequency=50.,
                           minimum_frequency=minimum_frequency)
 
@@ -70,9 +70,10 @@ from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor,
 from jaxgw.likelihood.utils import inner_product
 from jaxgw.waveform.TaylorF2 import TaylorF2
 from jaxgw.waveform.IMRPhenomB import IMRPhenomB, getPhenomCoef, Lorentzian
+from jaxgw.waveform.IMRPhenomC import IMRPhenomC
 
 
-waveform = IMRPhenomB(waveform_frequency, injection_parameters)
+waveform = IMRPhenomC(waveform_frequency, injection_parameters)
 H1_lat = 46 + 27. / 60 + 18.528 / 3600
 H1_long = -(119 + 24. / 60 + 27.5657 / 3600)
 H1_xarm_azimuth = 125.9994
@@ -85,16 +86,19 @@ H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
 
 H1 = detector_tensor(H1_arm1, H1_arm2)
 
+psd_interp = jnp.interp(waveform_frequency, psd_frequency, psd)
 strain = get_detector_response(waveform,injection_parameters,H1)
-jaxgw_snr = inner_product(strain, strain, waveform_frequency, psd, psd_frequency)
-d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency, psd, psd_frequency)
+jaxgw_snr = inner_product(strain, strain, waveform_frequency, psd_interp)
+d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency, psd_interp)
 
-def jax_likelihood(params, data, data_f, PSD, PSD_f):
-	waveform = IMRPhenomB(data_f, params)
+@jit
+def jax_likelihood(params, data, data_f, PSD):
+	waveform = IMRPhenomC(data_f, params)
 	waveform = get_detector_response(waveform, params, H1)
-	output = inner_product(waveform, data, data_f, PSD, PSD_f)
+	output = inner_product(waveform, data, data_f, PSD)
 	return output
 
-dlikelihood = grad(jax_likelihood)(injection_parameters, strain, waveform_frequency, psd, psd_frequency)
+
+dlikelihood = grad(jax_likelihood)(injection_parameters, strain, waveform_frequency, psd_interp)
 
 
