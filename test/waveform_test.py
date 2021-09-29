@@ -87,14 +87,14 @@ H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
 H1 = detector_tensor(H1_arm1, H1_arm2)
 
 psd_interp = jnp.interp(waveform_frequency, psd_frequency, psd)
-strain = get_detector_response(waveform,injection_parameters,H1)
+strain = get_detector_response(waveform,injection_parameters,H1).T[0]
 jaxgw_snr = inner_product(strain, strain, waveform_frequency, psd_interp)
 d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency, psd_interp)
 
 @jit
 def jax_likelihood(params, data, data_f, PSD):
 	waveform = IMRPhenomC(data_f, params)
-	waveform = get_detector_response(waveform, params, H1)
+	waveform = get_detector_response(waveform, params, H1).T[0]
 	output = inner_product(waveform, data, data_f, PSD)
 	return output
 

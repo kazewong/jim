@@ -159,7 +159,7 @@ def IMRPhenomC(f,params):
     eta = local_m1*local_m2/(local_m1+local_m2)**2
     M_chirp = M_tot*eta**(3./5)
     chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
-    f = f*Msun
+    f = f*M_tot
 
     final_spin = getFinalSpin(eta,chi_eff)
     f_rd = 1./(2*jnp.pi*(Msun))*(1.5251 - 1.1568*(1-final_spin)**0.1292)*Msun
