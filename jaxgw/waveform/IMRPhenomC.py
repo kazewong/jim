@@ -132,9 +132,13 @@ def getPhenomCoef(eta, chi):
     delta = jnp.sum(delta_coef*eta_chi,axis=1)
     return alpha, gamma, delta 
 
-def getFinalSpin(m1,m2,a1,a2):
-    return 0.7
 
+def getFinalSpin(eta,chi_eff):
+    finspin = chi_eff - 0.129*chi_eff**2*eta -0.384*eta**2*chi_eff -2.686*eta*chi_eff \
+             + 2.*jnp.sqrt(3.)*eta  -3.454*eta**2 + 2.353*eta**3
+    return finspin
+
+@jit
 def IMRPhenomC(f,params):
 
     f = f[:,None]
@@ -148,15 +152,14 @@ def IMRPhenomC(f,params):
 
     M_tot = local_m1+local_m2
     eta = local_m1*local_m2/(local_m1+local_m2)**2
+    M_chirp = M_tot*eta**(3./5)
     chi_eff = (local_spin1*local_m1 + local_spin2*local_m2)/M_tot
     f = f*M_tot    
 
-    final_spin = getFinalSpin(local_m1, local_m2, local_spin1, local_spin2)
+    final_spin = getFinalSpin(eta,chi_eff)
     f_rd = 1./(2*jnp.pi*(M_tot))*(1.5251 - 1.1568*(1-final_spin)**0.1292)
     decay_time = 0.7 + 1.4187*(1-final_spin)**(-0.499) # Q in the paper
     
-    print(f_rd)
-
 # Constructing phase of the waveform
 
     A_PN, phase_PN = PNAmplitudeAndPhasing(f,local_m1,local_m2,local_spin1,local_spin2,params['geocent_time'],params['phase'])
@@ -180,7 +183,8 @@ def IMRPhenomC(f,params):
     amplitude = A_PM *smoothing_minus(f,0.98*f_rd*M_tot,0.015) + A_RD*smoothing_plus(f,0.98*f_rd*M_tot,0.015)
     #amplitude =  A_RD*smoothing_plus(f,0.98*f_rd,0.015)
 
-    totalh = amplitude*jnp.exp(-1j*phase)/local_d
+    amplitude_factor = 2. * jnp.sqrt(5. / (64.*jnp.pi)) * M_tot**2 / local_d
+    totalh = amplitude*jnp.exp(-1j*phase)* amplitude_factor
     hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
     hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
