@@ -31,10 +31,10 @@ def TaylorF2(f,params):
 
 
 	totalh = jnp.sqrt(5./96)/jnp.pi**(2./3)*amplitude*f**(-7./6)*jnp.exp(1j*phase)
-	#hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
-	#hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
+	hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
+	hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
-	return totalh#{'plus':hp,'cross':hc}
+	return {'plus':hp,'cross':hc}
 
 def flso(M):
 	return (6**3./2*jnp.pi*M)**-1
