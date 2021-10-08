@@ -188,8 +188,8 @@ def IMRPhenomC(f,params):
     amplitude = A_PM *smoothing_minus(f,0.98*f_rd,0.015) + A_RD*smoothing_plus(f,0.98*f_rd,0.015)
 
     amplitude_factor = 2. * jnp.sqrt(5. / (64.*jnp.pi)) * M_tot**2 / local_d
-    totalh = amplitude*amplitude_factor*jnp.exp(-1j*phase)#* amplitude_factor
-    hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
-    hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
+    totalh = (amplitude*amplitude_factor*jnp.exp(-1j*phase))[:,0]#* amplitude_factor
+#    hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
+#    hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
-    return {'plus':hp,'cross':hc}
+    return totalh#{'plus':hp.T[0],'cross':hc.T[0]}
