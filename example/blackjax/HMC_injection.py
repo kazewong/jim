@@ -16,7 +16,7 @@ from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad
 
 true_m1 = 3.
 true_m2 = 3.
-true_ld = 320
+true_ld = 1000
 
 
 injection_parameters = dict(
@@ -46,8 +46,8 @@ psd_frequency = ifos[0].frequency_array
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-#waveform = IMRPhenomC(psd_frequency, injection_parameters)
-waveform = TaylorF2(psd_frequency, injection_parameters)
+waveform = IMRPhenomC(psd_frequency, injection_parameters)
+#waveform = TaylorF2(psd_frequency, injection_parameters)
 H1_lat = 46 + 27. / 60 + 18.528 / 3600
 H1_long = -(119 + 24. / 60 + 27.5657 / 3600)
 H1_xarm_azimuth = 125.9994
@@ -59,13 +59,16 @@ H1_arm1 = construct_arm(H1_long, H1_lat, H1_xarm_tilt, H1_xarm_azimuth)
 H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
 
 H1 = detector_tensor(H1_arm1, H1_arm2)
-strain = get_detector_response(waveform,injection_parameters,H1)
+strain = waveform#get_detector_response(waveform,injection_parameters,H1)
+#strain = get_detector_response(waveform,injection_parameters,H1)
+
+print('SNR of the event: '+str(np.sqrt(inner_product(strain,strain,psd_frequency,psd))))
 
 @jit
 def jax_likelihood(params, data, data_f, PSD):
-#	waveform = IMRPhenomC(data_f, params)
-	waveform = TaylorF2(data_f, params)
-	waveform = get_detector_response(waveform, params, H1)
+	waveform = IMRPhenomC(data_f, params)
+#	waveform = TaylorF2(data_f, params)
+#	waveform = get_detector_response(waveform, params, H1)
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
 	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
@@ -96,8 +99,8 @@ log_prob = lambda x: logprob_wrap(**x)
 # Test with Emcee to make sure likelihood looks fine
 ################################################################
 
-import emcee 
-
+#import emcee 
+#
 #nwalkers = 32
 #ndim = 2
 #p0 = np.random.rand(nwalkers, ndim) + [true_m1,true_m2]
@@ -106,9 +109,9 @@ import emcee
 #sampler.reset()
 #sampler.run_mcmc(state, 10000)
 
-################################################################
+###############################################################
 # BlackJax section
-################################################################
+###############################################################
 
 import blackjax.hmc as hmc
 import blackjax.nuts as nuts
@@ -122,18 +125,21 @@ print('Finding step size and mass matrix')
 
 time1 = time.time()
 kernel_generator = lambda step_size, inverse_mass_matrix: hmc.kernel(
-    log_prob, step_size, inverse_mass_matrix, 100
+    log_prob, step_size, inverse_mass_matrix, 60
 )
 
 final_state, (step_size, inverse_mass_matrix), info = stan_warmup.run(
     key,
     kernel_generator,
     initial_state,
-    300,
+    1000,
+    is_mass_matrix_diagonal=False
 )
 
 print("Finding inverse mass matrix takes: "+str(time.time()-time1)+" seconds")
-num_integration_steps = 100
+print("Stepsize: "+str(step_size))
+print("Mass_matrix: "+str(inverse_mass_matrix))
+num_integration_steps = 60
 
 hmc_kernel = hmc.kernel(log_prob, step_size, inverse_mass_matrix, num_integration_steps)
 hmc_kernel = jit(hmc_kernel)
