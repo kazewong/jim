@@ -14,23 +14,39 @@ from jaxgw.waveform.TaylorF2 import TaylorF2
 from jaxgw.waveform.IMRPhenomC import IMRPhenomC
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
+
+@jit
+def m1m2_to_Mq(m1,m2):
+	M_tot = jnp.log(m1+m2)
+	q = jnp.log(m2/m1)-jnp.log(1-m2/m1)
+	return M_tot, q
+
+@jit
+def Mq_to_m1m2(trans_M_tot,trans_q):
+	M_tot = jnp.exp(trans_M_tot)
+	q = 1./(1+jnp.exp(-trans_q))
+	m1 = M_tot/(1+q)
+	m2 = m1*q
+#	Jac_det = M_tot/(1+q)**2*jnp.exp(trans_M_tot-trans_q)/(1+jnp.exp(-trans_q))**2
+	return m1, m2#, Jac_det
+
+
+
 true_m1 = 3.
 true_m2 = 2.99
-true_ld = 300
-
-
+true_ld = 600
+true_phase = 0.
+true_gt = 0.
+trans_M_tot, trans_q = m1m2_to_Mq(true_m1,true_m2)
 
 injection_parameters = dict(
     mass_1=true_m1, mass_2=true_m2, a_1=0.0, a_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
-    phase=0, geocent_time=0, ra=1.375, dec=-1.2108)
+    phase=true_phase, geocent_time=true_gt, ra=1.375, dec=-1.2108)
 
+#guess_parameters = dict(trans_M_tot=trans_M_tot, trans_q=trans_q, phase=true_phase, geocent_time=true_gt,)
+guess_parameters = dict(m1=true_m1, m2=true_m2, phase=true_phase, geocent_time=true_gt,)
 
-guess_parameters = dict(
-    trans_M_tot=true_m1, trans_q=true_m2)#, luminosity_distance=400.)#, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
-
-#guess_parameters = dict(trans_M_tot=jnp.log(true_m1+true_m2), trans_q=jnp.log(true_m2/true_m1)-jnp.log(1-true_m2/true_m1))
-guess_parameters = dict(m1=true_m1, m2=true_m2)
-
+#guess_parameters = dict(m1=true_m1, m2=true_m2)
 
 
 # Set up interferometers.  In this case we'll use two interferometers
@@ -48,7 +64,6 @@ psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
 waveform = IMRPhenomC(psd_frequency, injection_parameters)
-#waveform = TaylorF2(psd_frequency, injection_parameters)
 H1_lat = 46 + 27. / 60 + 18.528 / 3600
 H1_long = -(119 + 24. / 60 + 27.5657 / 3600)
 H1_xarm_azimuth = 125.9994
@@ -60,7 +75,6 @@ H1_arm1 = construct_arm(H1_long, H1_lat, H1_xarm_tilt, H1_xarm_azimuth)
 H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
 
 H1 = detector_tensor(H1_arm1, H1_arm2)
-#strain = waveform#get_detector_response(waveform,injection_parameters,H1)
 strain = get_detector_response(waveform,injection_parameters,H1)
 
 print('SNR of the event: '+str(np.sqrt(inner_product(strain,strain,psd_frequency,psd))))
@@ -73,54 +87,15 @@ def jax_likelihood(params, data, data_f, PSD):
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
 	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
-
 @jit
-def m1m2_to_Mq(m1,m2):
-	M_tot = jnp.log(m1+m2)
-	q = jnp.log(m2/m1)-jnp.log(1-m2/m1)
-	return M_tot, q
+#def logprob_wrap(trans_M_tot, trans_q, geocent_time, phase):
+def logprob_wrap(m1, m2, geocent_time, phase):
 
-@jit
-def Mq_to_m1m2(trans_M_tot,trans_q):
-	M_tot = jnp.exp(trans_M_tot)
-	q = 1./(1+jnp.exp(-trans_q))
-	m1 = M_tot/(1+q)
-	m2 = m1*q
-#	Jac_det = M_tot/(1+q)**2*jnp.exp(trans_M_tot-trans_q)/(1+jnp.exp(-trans_q))**2
-	return m1, m2#, Jac_det
-
-#def logprob_wrap(trans_M_tot, trans_q):#, luminosity_distance):#, theta_jn, psi, ra, dec):
-@jit
-def logprob_wrap(m1, m2):#, luminosity_distance):#, theta_jn, psi, ra, dec):
-#	print(trans_M_tot,trans_q)
-#	m1, m2, Jac_det = Mq_to_m1m2(trans_M_tot, trans_q)
-#	m1, m2 = Mq_to_m1m2(trans_M_tot, trans_q)
-
-	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase=0, geocent_time=0, ra=1.375, dec=-1.2108)
+	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase=phase, geocent_time=geocent_time, ra=1.375, dec=-1.2108)
 	return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
 
 log_prob = lambda x: logprob_wrap(**x)
 log_prob = jit(log_prob)
-
-#def log_prob(param):
-#	if (param[0]<=0) or (param[1]<=0):
-#		return -jnp.inf
-#	params = dict(mass_1=param[0], mass_2=param[1], a_1=0, a_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase=1.3, geocent_time=1126259642.413, ra=1.375, dec=-1.2108)
-#	return jax_likelihood(params, strain, psd_frequency, psd)
-
-################################################################
-# Test with Emcee to make sure likelihood looks fine
-################################################################
-
-#import emcee 
-#
-#nwalkers = 32
-#ndim = 2
-#p0 = np.random.rand(nwalkers, ndim) + [true_m1,true_m2]
-#sampler = emcee.EnsembleSampler(nwalkers, ndim, log_prob)
-#state = sampler.run_mcmc(p0, 100)
-#sampler.reset()
-#sampler.run_mcmc(state, 10000)
 
 ###############################################################
 # BlackJax section
@@ -172,5 +147,5 @@ def inference_loop(rng_key, kernel, initial_state, num_samples):
 
 print("Start sampling")
 time1 = time.time()
-states = inference_loop(subkey, hmc_kernel, initial_state, 1000)
+states = inference_loop(subkey, hmc_kernel, initial_state, 10000)
 print("Sampling takes: "+str(time.time()-time1)+" seconds")
