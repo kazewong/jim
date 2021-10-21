@@ -33,8 +33,8 @@ def Mq_to_m1m2(trans_M_tot,trans_q):
 
 
 true_m1 = 3.
-true_m2 = 2.99
-true_ld = 600
+true_m2 = 2.
+true_ld = 150.
 true_phase = 0.
 true_gt = 0.
 trans_M_tot, trans_q = m1m2_to_Mq(true_m1,true_m2)
@@ -43,10 +43,9 @@ injection_parameters = dict(
     mass_1=true_m1, mass_2=true_m2, a_1=0.0, a_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
     phase=true_phase, geocent_time=true_gt, ra=1.375, dec=-1.2108)
 
-#guess_parameters = dict(trans_M_tot=trans_M_tot, trans_q=trans_q, phase=true_phase, geocent_time=true_gt,)
-guess_parameters = dict(m1=true_m1, m2=true_m2, phase=true_phase, geocent_time=true_gt,)
-
-#guess_parameters = dict(m1=true_m1, m2=true_m2)
+#guess_parameters = dict(m1=true_m1, m2=true_m2, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
+#
+guess_parameters = dict(m1=true_m1, m2=true_m2)
 
 
 # Set up interferometers.  In this case we'll use two interferometers
@@ -54,7 +53,7 @@ guess_parameters = dict(m1=true_m1, m2=true_m2, phase=true_phase, geocent_time=t
 # sensitivity
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 ifos.set_strain_data_from_power_spectral_densities(
-    sampling_frequency=2048, duration=4,
+    sampling_frequency=2048, duration=32,
     start_time=- 3)
 
 psd = ifos[0].power_spectral_density_array
@@ -87,11 +86,15 @@ def jax_likelihood(params, data, data_f, PSD):
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
 	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
-@jit
-#def logprob_wrap(trans_M_tot, trans_q, geocent_time, phase):
-def logprob_wrap(m1, m2, geocent_time, phase):
+#@jit
+##def logprob_wrap(trans_M_tot, trans_q, geocent_time, phase):
+#def logprob_wrap(m1, m2, luminosity_distance, geocent_time, phase, theta_jn, psi, ra, dec):
+#	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=luminosity_distance, theta_jn=theta_jn, psi=psi, phase=phase, geocent_time=geocent_time, ra=ra, dec=dec)
+#	return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
 
-	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase=phase, geocent_time=geocent_time, ra=1.375, dec=-1.2108)
+@jit
+def logprob_wrap(m1, m2):
+	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
 	return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
 
 log_prob = lambda x: logprob_wrap(**x)
@@ -113,21 +116,21 @@ print('Finding step size and mass matrix')
 
 time1 = time.time()
 kernel_generator = lambda step_size, inverse_mass_matrix: hmc.kernel(
-    log_prob, step_size, inverse_mass_matrix, 100
+    log_prob, step_size, inverse_mass_matrix, 30
 )
 
 final_state, (step_size, inverse_mass_matrix), info = stan_warmup.run(
     key,
     kernel_generator,
     initial_state,
-    300,
+    500,
     #is_mass_matrix_diagonal=False
 )
 
 print("Finding inverse mass matrix takes: "+str(time.time()-time1)+" seconds")
 print("Stepsize: "+str(step_size))
 print("Inverse mass matrix: "+str(inverse_mass_matrix))
-num_integration_steps = 60
+num_integration_steps = 30
 
 hmc_kernel = hmc.kernel(log_prob, step_size, inverse_mass_matrix, num_integration_steps)
 hmc_kernel = jit(hmc_kernel)
@@ -147,5 +150,5 @@ def inference_loop(rng_key, kernel, initial_state, num_samples):
 
 print("Start sampling")
 time1 = time.time()
-states = inference_loop(subkey, hmc_kernel, initial_state, 10000)
+states = inference_loop(subkey, hmc_kernel, initial_state, 4000)
 print("Sampling takes: "+str(time.time()-time1)+" seconds")
