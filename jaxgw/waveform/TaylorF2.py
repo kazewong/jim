@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jaxgw.utils import *
+from jaxgw.constants import *
 
 def TaylorF2(f,params):
 	local_m1 = params['mass_1']*Msun
@@ -11,7 +11,6 @@ def TaylorF2(f,params):
 	eta = local_m1*local_m2/(local_m1+local_m2)**2
 	M_chirp = eta**(3./5)*M_tot
 	PNcoef = (jnp.pi*M_tot*f)**(1./3)
-	euler_gamma = 0.57721566490153286060	
 
 	amplitude = M_chirp**(5./6)/local_d
 	
@@ -22,7 +21,7 @@ def TaylorF2(f,params):
 	PN2d5 = jnp.pi*(38645./756-65./9*eta)*(1 + 3*jnp.log(6**(3./2)*jnp.pi*M_tot*f)) * PNcoef**5
 #	PN3 = 11583231236531./4694215680 - 640./3 *jnp.pi**2 - 6868./21*(euler_gamma+jnp.log(4)
 
-	phase = 2*jnp.pi*f*params['geocent_time'] - params['phase'] - jnp.pi/4 + 3./(128*eta*PNcoef**5) * \
+	phase = 2*jnp.pi*f*params['t_c'] - params['phase_c'] - jnp.pi/4 + 3./(128*eta*PNcoef**5) * \
 			(PN0+PN1+PN1d5)#+PN2+PN2d5)
 
 #	phase = - jnp.pi/4 + 3./(128*eta*PNcoef**5) * \

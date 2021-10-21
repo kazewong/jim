@@ -3,10 +3,7 @@ Implementation of IMRPhenomC waveform following 1005.3306
 """
 import jax.numpy as jnp
 from jax import jit
-from jaxgw.utils import *
-
-euler_gamma = 0.577215664901532860606512090082
-MR_sun = 1.476625061404649406193430731479084713e3
+from jaxgw.constants import *
 
 def Lorentzian(x, x0, gamma):
     return (gamma**2/((x-x0)**2+gamma**2/4))
@@ -162,13 +159,18 @@ def getFinalSpin(eta,chi_eff):
 def IMRPhenomC(f,params):
     """
     The amplitude and phase are generated first in unitless Mf space, then scaled with total mass and distance.
+
+	Args
+		f: Frequency array where the waveform is generated
+		params:
+
     """
 
     local_m1 = params['mass_1']*Msun
     local_m2 = params['mass_2']*Msun
     local_d = params['luminosity_distance']*Mpc
-    local_spin1 = params['a_1']
-    local_spin2 = params['a_2']
+    local_spin1 = params['spin_1']
+    local_spin2 = params['spin_2']
 
 
     M_tot = local_m1+local_m2
@@ -183,7 +185,7 @@ def IMRPhenomC(f,params):
     
 # Constructing phase of the waveform
 
-    A_PN, phase_PN = PNAmplitudeAndPhasing(f,local_m1,local_m2,local_spin1,local_spin2,params['geocent_time'],params['phase'])
+    A_PN, phase_PN = PNAmplitudeAndPhasing(f,local_m1,local_m2,local_spin1,local_spin2,params['t_c'],params['phase_c'])
     alpha, gamma, delta = getPhenomCoef(eta,chi_eff)
 
 
@@ -210,3 +212,11 @@ def IMRPhenomC(f,params):
     hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
     return {'plus':hp,'cross':hc}
+
+def IMRPhenomC_dict2list(params):
+	"""
+	"""
+
+	return jnp.array([params['mass_1'], params['mass_2'], params['spin_1'], params['spin_2'],\
+			params['luminosity_distance'], params['phase_c'],params['t_c'],\
+			params['theta_jn'], params['psi'], params['ra'], params['dec']])
