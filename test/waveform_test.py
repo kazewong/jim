@@ -95,10 +95,12 @@ d_jaxgw_snr = grad(inner_product)(strain, strain, waveform_frequency, psd_interp
 def jax_likelihood(params, data, data_f, PSD):
 	waveform = IMRPhenomC(data_f, params)
 	waveform = get_detector_response(waveform, params, H1).T[0]
-	output = inner_product(waveform, data, data_f, PSD)
-	return output
+	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
+	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
+	return (2*match_filter_SNR - optimal_SNR)/2
 
 
+likelihood = jax_likelihood(injection_parameters, strain, waveform_frequency, psd_interp)
 dlikelihood = grad(jax_likelihood)(injection_parameters, strain, waveform_frequency, psd_interp)
 
 
