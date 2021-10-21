@@ -7,12 +7,12 @@ import time
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
+from jaxgw.gw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
 
-from jaxgw.likelihood.utils import inner_product
-from jaxgw.likelihood.detector_preset import get_H1
-from jaxgw.waveform.TaylorF2 import TaylorF2
-from jaxgw.waveform.IMRPhenomC import IMRPhenomC
+from jaxgw.gw.likelihood.utils import inner_product
+from jaxgw.gw.likelihood.detector_preset import get_H1
+from jaxgw.gw.waveform.TaylorF2 import TaylorF2
+from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 
@@ -23,8 +23,8 @@ true_phase = 0.
 true_gt = 0.
 
 injection_parameters = dict(
-	mass_1=true_m1, mass_2=true_m2, a_1=0.0, a_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
-	phase=true_phase, geocent_time=true_gt, ra=1.375, dec=-1.2108)
+	mass_1=true_m1, mass_2=true_m2, spin_1=0.0, spin_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
+	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
 
 #guess_parameters = dict(m1=true_m1, m2=true_m2, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
 #
@@ -67,7 +67,7 @@ def jax_likelihood(params, data, data_f, PSD):
 
 @jit
 def logprob_wrap(m1, m2):
-	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
+	params = dict(mass_1=m1, mass_2=m2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=true_phase, t_c=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
 	return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
 
 log_prob = lambda x: logprob_wrap(**x)
