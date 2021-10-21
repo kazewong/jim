@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jaxgw.constants import *
+from jaxgw.gw.constants import *
 
 def TaylorF2(f,params):
 	local_m1 = params['mass_1']*Msun

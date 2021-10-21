@@ -7,11 +7,11 @@ import time
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
+from jaxgw.gw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
 
-from jaxgw.likelihood.utils import inner_product
-from jaxgw.likelihood.detector_preset import get_H1
-from jaxgw.waveform.IMRPhenomC import IMRPhenomC, IMRPhenomC_dict2list
+from jaxgw.gw.likelihood.utils import inner_product
+from jaxgw.gw.likelihood.detector_preset import get_H1
+from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC, IMRPhenomC_dict2list
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 
