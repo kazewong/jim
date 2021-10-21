@@ -63,7 +63,7 @@ def get_detector_response(waveform_polarizations, parameters, detector_tensor):
             detector_tensor,
             parameters['ra'],
             parameters['dec'],
-            parameters['geocent_time'],
+            parameters['t_c'],
             parameters['psi'], mode)
 
         signal[mode] = waveform_polarizations[mode] * det_response
