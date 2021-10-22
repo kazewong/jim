@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 ##########################################################
-# Construction of detector tensor
+# Construction of arms
 ##########################################################
 
 def construct_arm(longitude, latitude, arm_tilt, arm_azimuth):
@@ -24,9 +24,19 @@ def detector_tensor(arm1, arm2):
 ##########################################################
 
 def get_polarization_tensor(ra, dec, time, psi, mode):
+    """
+    
+    Args:
 
-    #gmst = fmod(greenwich_mean_sidereal_time(time), 2 * jnp.pi)
-    phi = ra #- gmst
+        ra:
+        dec:
+        time: time in greenwich_mean_sidereal_time
+        psi:
+        mode:
+    """
+
+    gmst = jnp.mod(time, 2 * jnp.pi)
+    phi = ra - gmst
     theta = jnp.pi / 2 - dec
 
     u = jnp.array([jnp.cos(phi) * jnp.cos(theta), jnp.cos(theta) * jnp.sin(phi), -jnp.sin(theta)])
