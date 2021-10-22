@@ -35,4 +35,4 @@ def get_L1():
 
 	L1_vertex = get_vertex_position_geocentric(L1_lat, L1_long, L1_elevation)
 	
-	return detector_tensor(L1_arm1, L1_arm2)
+	return detector_tensor(L1_arm1, L1_arm2), L1_vertex

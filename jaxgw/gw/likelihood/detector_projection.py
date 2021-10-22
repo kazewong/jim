@@ -1,6 +1,7 @@
 # Credit some part of the source code from bilby
 
 import jax.numpy as jnp
+from jaxgw.gw.constants import *
 
 ##########################################################
 # Construction of arms
@@ -105,10 +106,10 @@ def time_delay_geocentric(detector1, detector2, ra, dec, time):
     """
     gmst = jnp.mod(time, 2 * jnp.pi)
     phi = ra - gmst
-    theta = np.pi / 2 - dec
+    theta = jnp.pi / 2 - dec
     omega = jnp.array([jnp.sin(theta) * jnp.cos(phi), jnp.sin(theta) * jnp.sin(phi), jnp.cos(theta)])
     delta_d = detector2 - detector1
-    return jnnp.dot(omega, delta_d) / speed_of_light
+    return jnp.dot(omega, delta_d) / speed_of_light
 
 def get_vertex_position_geocentric(latitude, longitude, elevation):
     """
