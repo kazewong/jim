@@ -6,6 +6,16 @@ import jax.numpy as jnp
 degree_to_radian = jnp.pi/180
 
 def get_H1():
+	"""
+	Get the detector response matrix and the vertex position for H1.
+
+	Returns
+	-------
+	H1_detector_response : ndarray
+		The detector response matrix for H1.
+	H1_vertex : ndarray
+		The vertex position for H1.
+	"""
 	H1_lat = (46 + 27. / 60 + 18.528 / 3600) * degree_to_radian
 	H1_long = -(119 + 24. / 60 + 27.5657 / 3600) * degree_to_radian
 	H1_xarm_azimuth = 125.9994 * degree_to_radian
@@ -22,6 +32,17 @@ def get_H1():
 	return detector_tensor(H1_arm1, H1_arm2), H1_vertex
 
 def get_L1():
+	"""
+	Get the detector response matrix and the vertex position for L1.
+
+	Returns
+	-------
+	L1_detector_response : ndarray
+		The detector response matrix for L1.
+	L1_vertex : ndarray
+		The vertex position for L1.
+		
+	"""
 	L1_lat = 30 + 33. / 60 + 46.4196 / 3600 * degree_to_radian
 	L1_long = -(90 + 46. / 60 + 27.2654 / 3600) * degree_to_radian
 	L1_xarm_azimuth = 197.7165 * degree_to_radian

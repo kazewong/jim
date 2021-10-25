@@ -6,23 +6,103 @@ from jax import jit
 from jaxgw.gw.constants import *
 
 def Lorentzian(x, x0, gamma):
+    """
+    Lorentzian function given by:
+    f(x) = gamma / (pi * (x - x0)**2 + gamma**2)
+
+    Parameters
+    ----------
+    x : float
+        Value to evaluate the function at.
+    x0 : float
+        Center of the Lorentzian function.
+    gamma : float
+        Width of the Lorentzian function.
+
+    Returns
+    -------
+    float
+        Value of the Lorentzian function at x.
+    """
     return (gamma**2/((x-x0)**2+gamma**2/4))
 
 def smoothing_plus(f,f0,d):
+    """
+    A smoothing function that is 1 at f0 and 0 at f0+d with a slope of -1/2 at f0+d and 1/2 at f0.
+
+    Parameters
+    ----------
+    f : float
+        Value to evaluate the function at.
+    f0 : float
+        Center of the smoothing function.
+    d : float
+        Width of the smoothing function.
+
+    Returns
+    -------
+    float
+        Value of the smoothing function at f.
+    """
     return (1+jnp.tanh(4*(f-f0)/d))/2
 
 def smoothing_minus(f,f0,d):
+    """
+    A smoothing function that is 1 at f0 and 0 at f0-d with a slope of 1/2 at f0-d and -1/2 at f0.
+
+    Parameters
+    ----------
+    f : float
+        Value to evaluate the function at.
+    f0 : float
+        Center of the smoothing function.
+    d : float
+        Width of the smoothing function.
+
+    Returns
+    -------
+    float
+        Value of the smoothing function at f.
+    """
     return (1-jnp.tanh(4*(f-f0)/d))/2
 
 @jit
 def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2,t0,phase0):
+    """
+    Compute the amplitude and phase of the PN waveform using the TaylorF2 approximant.
+
+    Parameters
+    ----------
+    f : float array
+        Frequency at which to evaluate the waveform.
+    m1 : float
+        Mass of the first component in solar masses.
+    m2 : float
+        Mass of the second component in solar masses.
+    chi1 : float
+        Dimensionless spin of the first component.
+    chi2 : float
+        Dimensionless spin of the second component.
+    t0 : float
+        Time of the peak of the waveform in seconds.
+    phase0 : float
+        Initial phase of the waveform.
+
+    Returns
+    -------
+    float array
+        Amplitude of the waveform.
+    float array
+        Phase of the waveform.
+    """
 
     x = (jnp.pi*f)**(2./3) # I assume in the m in 3.12 is the m from harmonics instead of mass
 
     eta = m1*m2/(m1+m2)**2
     chi_eff = (m1*chi1+m2*chi2)/(m1+m2)
 
-# Taylor T4 expansion coefficient from A3 for 3.6, needed for amplitude in fourier space
+    # Taylor T4 expansion coefficient from A3 for 3.6, needed for amplitude in fourier space
+
 
     T4_alpha_power_index = x[:,None]**(jnp.array([0,2,3,4,5,6,7])/2)
 
@@ -58,7 +138,7 @@ def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2,t0,phase0):
 
     T4_alpha = 64.*eta/5. *x**5* (jnp.sum(T4_alpha_power_index*T4_alpha_coeff,axis=1)+T4_alpha_log)
 
-# Taylor T4 amplitude coefficient from A5
+    # Taylor T4 amplitude coefficient from A5
 
     T4_A_power_index = x[:,None]**(jnp.array([0,2,3,4,5,6])/2)
 
@@ -82,7 +162,7 @@ def PNAmplitudeAndPhasing(f,m1,m2,chi1,chi2,t0,phase0):
 
     T4_A =  8.*eta*jnp.sqrt(jnp.pi/5.)*x*(jnp.sum(T4_A_power_index*T4_A_coeff,axis=1)+T4_A_log)
 
-# Taylor F2 Phasing coefficient from A4
+    # Taylor F2 Phasing coefficient from A4
 
     F2_alpha_power_index = jnp.pi*f[:,None]**(jnp.array([0,2,3,4,5,6,7])/3.)
 
@@ -142,6 +222,27 @@ phase_PM_order = jnp.array([-5./3,-3./3,-1./3,0,2./3,1])
 
 @jit
 def getPhenomCoef(eta, chi):
+    """
+    Calculate the phenomenological coefficients for the IMRPhenomC model.
+
+    Parameters
+    ----------
+    eta : float
+        Symmetric mass ratio
+    chi : float
+        Reduced spin parameter
+
+    Returns
+    -------
+    alpha : float
+        The alpha coefficient
+    beta : float
+        The beta coefficient
+    gamma : float
+        The gamma coefficient
+    delta : float
+        The delta coefficient
+    """
     eta_chi = jnp.array([chi,chi**2,eta*chi,eta,eta**2])
     alpha = jnp.sum(alpha_coef*eta_chi,axis=1)
     gamma = jnp.sum(gamma_coef*eta_chi)
@@ -151,6 +252,21 @@ def getPhenomCoef(eta, chi):
 
 @jit
 def getFinalSpin(eta,chi_eff):
+    """
+    Calculate the final spin of the binary.
+
+    Parameters
+    ----------
+    eta : float
+        Symmetric mass ratio
+    chi_eff : float
+        Effective spin parameter
+
+    Returns
+    -------
+    chi_final : float
+        Final spin of the binary
+    """
     finspin = chi_eff - 0.129*chi_eff**2*eta -0.384*eta**2*chi_eff -2.686*eta*chi_eff \
              + 2.*jnp.sqrt(3.)*eta  -3.454*eta**2 + 2.353*eta**3
     return finspin
@@ -158,6 +274,7 @@ def getFinalSpin(eta,chi_eff):
 @jit
 def IMRPhenomC(f,params):
     """
+    
     The amplitude and phase are generated first in unitless Mf space, then scaled with total mass and distance.
 
 	Args
@@ -215,6 +332,17 @@ def IMRPhenomC(f,params):
 
 def IMRPhenomC_dict2list(params):
 	"""
+    Convert a dictionary of parameters to a list of parameters.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary of parameters
+
+    Returns
+    -------
+    params_list : list
+        List of parameters
 	"""
 
 	return jnp.array([params['mass_1'], params['mass_2'], params['spin_1'], params['spin_2'],\
