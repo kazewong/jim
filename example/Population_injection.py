@@ -2,15 +2,16 @@ import jax.numpy as jnp
 import numpy as np
 import copy
 import bilby
+import jax
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad
 from jax.experimental.optimizers import adam
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-from jaxgw.likelihood.utils import inner_product
-from jaxgw.waveform.IMRPhenomC import IMRPhenomC
-from jaxgw.likelihood.detector_preset import get_H1
-from jaxgw.likelihood.detector_projection import get_detector_response
+from jaxgw.gw.likelihood.utils import inner_product
+from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC
+from jaxgw.gw.likelihood.detector_preset import get_H1,get_L1
+from jaxgw.gw.likelihood.detector_projection import get_detector_response
 
 
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ def power_law_plus_peak(x,params):
 	combine = (1-params['mixing'])*powerlaw+params['mixing']*peak
 	return combine
 
-true_ld = 600
+true_ld = 600.
 true_phase = 0.
 true_gt = 0.
 
@@ -91,34 +92,35 @@ psd_frequency = ifos[0].frequency_array
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-H1 = get_H1()
+H1, H1_vertex = get_H1()
+L1, L1_vertex = get_L1()
 
 def gen_params(m1):
-	params = dict(mass_1=m1, mass_2=m1, a_1=0, a_2=0, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
+	params = dict(mass_1=m1, mass_2=m1, spin_1=0., spin_2=0., luminosity_distance=true_ld, phase_c=true_phase, t_c=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
 	return params
 
-def gen_event(params):	
+def gen_event(params,detector, detector_vertex):	
 	waveform = IMRPhenomC(psd_frequency, params)
-	strain = get_detector_response(waveform, params, H1)
-	return strain
+	waveform = get_detector_response(psd_frequency, waveform, params, detector, detector_vertex)
+	return waveform
 
 @jit
-def jax_likelihood(params, data, data_f, PSD):
-    waveform = IMRPhenomC(data_f, params)
-    waveform = get_detector_response(waveform, params, H1)
-    match_filter_SNR = inner_product(waveform, data, data_f, PSD)
-    optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
-    return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
+def single_detector_likelihood(params, data, data_f, PSD, detector, detector_vertex):
+	waveform = IMRPhenomC(data_f, params)
+	waveform = get_detector_response(data_f, waveform, params, detector, detector_vertex)
+	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
+	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
+	return (-2*match_filter_SNR + optimal_SNR)/2
 
 @jit
-def logprob_wrap(m1):
-    params = dict(mass_1=m1, mass_2=m1, a_1=0, a_2=0, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
-    return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
+def log_prob(m1, strain_H1, strain_L1):
+	params = gen_params(m1)
+	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
 
-log_prob = lambda x: logprob_wrap(**x)
-log_prob = jit(log_prob)
-
-
+@jit
+def log_prob_scan(args,index):
+	result = log_prob(args[0][index],args[1][index],args[2][index])
+	return args, result
 
 ########################################
 # Power law Only
@@ -147,15 +149,15 @@ while m1_sample.shape[0]<N_sample:
 
 m1_sample = m1_sample[:N_sample]
 
-data_array = vmap(gen_event)(vmap(gen_params)(m1_sample))
+H1_data_array = vmap(gen_event,(0, None, None))(vmap(gen_params)(m1_sample), H1, H1_vertex)
+L1_data_array = vmap(gen_event,(0, None, None))(vmap(gen_params)(m1_sample), L1, L1_vertex)
 multi_event_gen_param = jit(vmap(gen_params))
 multi_event_gen_event = jit(vmap(gen_event))
-multi_event_likelihood = jit(vmap(jax_likelihood,(0,0,None,None),0))
+multi_detector_likelihood = jit(vmap(log_prob,(0,0,0),0))
 
 def population_likelihood_powerlaw_peak(point,params):
-	if params['mixing'] < 0:
-		params['mixing'] = 0.
-	return -jnp.sum(multi_event_likelihood(multi_event_gen_param(point),data_array,psd_frequency,psd)*power_law_plus_peak(point[:,None],params))
+	_, single_event_likelihood = jax.lax.scan(log_prob_scan,[point,H1_data_array,L1_data_array],jnp.arange(N_sample))
+	return -jnp.sum(single_event_likelihood*power_law_plus_peak(point[:,None],params))
 
 
 
@@ -177,15 +179,15 @@ def step(step, opt_state):
 	opt_state = opt_update(step, grads, opt_state)
 	return value, opt_state
 
-for i in range(1000):
-	value, opt_state = step(i, opt_state)
-	if jnp.isnan(value):
-		break
-	print(value,get_params(opt_state)[1])
+# for i in range(1000):
+# 	value, opt_state = step(i, opt_state)
+# 	if jnp.isnan(value):
+# 		break
+# 	print(value,get_params(opt_state)[1])
 
 best_x_plpk, best_lambda_plpk = get_params(opt_state)
 
-dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak),argnums=1)(best_x_plpk,best_lambda_plpk)
+dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=0),argnums=1)(best_x_plpk,best_lambda_plpk)
 
 
 #fig,ax = plt.subplots(1,3,figsize=(30,9))
