@@ -113,8 +113,7 @@ def single_detector_likelihood(params, data, data_f, PSD, detector, detector_ver
 	return (-2*match_filter_SNR + optimal_SNR)/2
 
 @jit
-def log_prob(m1, strain_H1, strain_L1):
-	params = gen_params(m1)
+def log_prob(params, strain_H1, strain_L1):
 	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
 
 @jit
@@ -155,6 +154,11 @@ multi_event_gen_param = jit(vmap(gen_params))
 multi_event_gen_event = jit(vmap(gen_event))
 multi_detector_likelihood = jit(vmap(log_prob,(0,0,0),0))
 
+def single_population_likelihood(event_params, pop_params, strain_H1, strain_L1):
+	event_likelihood = log_prob(event_params, strain_H1, strain_L1)
+	return log_prob(event_params, strain_H1, strain_L1) + jnp.log(power_law_plus_peak(jnp.array([event_params['mass_1']]),pop_params)[0])
+
+
 def population_likelihood_powerlaw_peak(point,params):
 	_, single_event_likelihood = jax.lax.scan(log_prob_scan,[point,H1_data_array,L1_data_array],jnp.arange(N_sample))
 	return -jnp.sum(single_event_likelihood*power_law_plus_peak(point[:,None],params))
@@ -187,7 +191,10 @@ def step(step, opt_state):
 
 best_x_plpk, best_lambda_plpk = get_params(opt_state)
 
-dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=0),argnums=1)(best_x_plpk,best_lambda_plpk)
+event_fisher  = jacfwd(jacrev(single_population_likelihood))
+event_hyper_fisher  = jacfwd(jacrev(single_population_likelihood,argnums=1),argnums=0)
+hyper_fisher  = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=1),argnums=1)
+#dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=0),argnums=1)(best_x_plpk,best_lambda_plpk)
 
 
 #fig,ax = plt.subplots(1,3,figsize=(30,9))

@@ -16,9 +16,9 @@ from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 
-true_m1 = 3.
-true_m2 = 2.
-true_ld = 150.
+true_m1 = 15.
+true_m2 = 5.
+true_ld = 600.
 true_phase = 0.
 true_gt = 0.
 
@@ -26,9 +26,13 @@ injection_parameters = dict(
 	mass_1=true_m1, mass_2=true_m2, spin_1=0.0, spin_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
 	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
 
-#guess_parameters = dict(m1=true_m1, m2=true_m2, luminosity_distance=true_ld, phase=true_phase, geocent_time=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
-#
-guess_parameters = dict(m1=true_m1, m2=true_m2)
+
+#guess_parameters = dict(m1=true_m1, m2=true_m2)
+
+guess_parameters = dict(
+	mass_1=true_m1, mass_2=true_m2, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
+	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
+
 
 
 # Set up interferometers.  In this case we'll use two interferometers
@@ -36,7 +40,7 @@ guess_parameters = dict(m1=true_m1, m2=true_m2)
 # sensitivity
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 ifos.set_strain_data_from_power_spectral_densities(
-	sampling_frequency=2048, duration=32,
+	sampling_frequency=2048, duration=1,
 	start_time=- 3)
 
 psd = ifos[0].power_spectral_density_array
@@ -64,14 +68,13 @@ def single_detector_likelihood(params, data, data_f, PSD, detector, detector_ver
 	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
 
 #@jit
-##def logprob_wrap(trans_M_tot, trans_q, geocent_time, phase):
-#def logprob_wrap(m1, m2, luminosity_distance, geocent_time, phase, theta_jn, psi, ra, dec):
-#	params = dict(mass_1=m1, mass_2=m2, a_1=0, a_2=0, luminosity_distance=luminosity_distance, theta_jn=theta_jn, psi=psi, phase=phase, geocent_time=geocent_time, ra=ra, dec=dec)
-#	return jax_likelihood(params, strain, psd_frequency, psd)#*Jac_det
-
+#def logprob_wrap(m1, m2):
+#	params = dict(mass_1=m1, mass_2=m2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=true_phase, t_c=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
+#	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
+#
 @jit
-def logprob_wrap(m1, m2):
-	params = dict(mass_1=m1, mass_2=m2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=true_phase, t_c=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
+def logprob_wrap(mass_1, mass_2, luminosity_distance, phase_c, t_c, theta_jn, psi, ra, dec):
+	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=luminosity_distance, phase_c=phase_c, t_c=t_c, theta_jn=theta_jn, psi=psi, ra=ra, dec=dec)
 	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
 
 log_prob = lambda x: logprob_wrap(**x)
@@ -93,7 +96,7 @@ print('Finding step size and mass matrix')
 
 time1 = time.time()
 kernel_generator = lambda step_size, inverse_mass_matrix: hmc.kernel(
-	log_prob, step_size, inverse_mass_matrix, 30
+	log_prob, step_size, inverse_mass_matrix, 5
 )
 
 final_state, (step_size, inverse_mass_matrix), info = stan_warmup.run(
@@ -107,7 +110,7 @@ final_state, (step_size, inverse_mass_matrix), info = stan_warmup.run(
 print("Finding inverse mass matrix takes: "+str(time.time()-time1)+" seconds")
 print("Stepsize: "+str(step_size))
 print("Inverse mass matrix: "+str(inverse_mass_matrix))
-num_integration_steps = 30
+num_integration_steps = 20
 
 hmc_kernel = hmc.kernel(log_prob, step_size, inverse_mass_matrix, num_integration_steps)
 hmc_kernel = jit(hmc_kernel)
@@ -127,5 +130,5 @@ def inference_loop(rng_key, kernel, initial_state, num_samples):
 
 print("Start sampling")
 time1 = time.time()
-states = inference_loop(subkey, hmc_kernel, initial_state, 100)
+states = inference_loop(subkey, hmc_kernel, initial_state, 10000)
 print("Sampling takes: "+str(time.time()-time1)+" seconds")
