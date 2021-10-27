@@ -84,7 +84,7 @@ true_gt = 0.
 # sensitivity
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 ifos.set_strain_data_from_power_spectral_densities(
-    sampling_frequency=2048, duration=32,
+    sampling_frequency=2048, duration=128,
     start_time=- 3)
 
 psd = ifos[0].power_spectral_density_array
@@ -133,7 +133,7 @@ true_param['mean'] = 33.07
 true_param['sigma'] = 5.69
 true_param['mixing'] = 0.3
 
-N_sample = 50
+N_sample = 500
 obs_std = 0.1
 
 m1_sample = jnp.empty(0)
@@ -159,9 +159,11 @@ def single_population_likelihood(event_params, pop_params, strain_H1, strain_L1)
 	return log_prob(event_params, strain_H1, strain_L1) + jnp.log(power_law_plus_peak(jnp.array([event_params['mass_1']]),pop_params)[0])
 
 
+single_population_likelihood_ = vmap(single_population_likelihood,(0,None,0,0),0)
+
 def population_likelihood_powerlaw_peak(point,params):
-	_, single_event_likelihood = jax.lax.scan(log_prob_scan,[point,H1_data_array,L1_data_array],jnp.arange(N_sample))
-	return -jnp.sum(single_event_likelihood*power_law_plus_peak(point[:,None],params))
+#	_, single_event_likelihood = jax.lax.scan(log_prob_scan,[point,H1_data_array,L1_data_array],jnp.arange(N_sample))
+	return -jnp.sum(single_population_likelihood_(point,params,H1_data_array,L1_data_array))
 
 
 
@@ -192,9 +194,22 @@ def step(step, opt_state):
 best_x_plpk, best_lambda_plpk = get_params(opt_state)
 
 event_fisher  = jacfwd(jacrev(single_population_likelihood))
+#event_fisher = vmap(event_fisher,(0,None,0,0),0)
 event_hyper_fisher  = jacfwd(jacrev(single_population_likelihood,argnums=1),argnums=0)
+#event_hyper_fisher = vmap(event_hyper_fisher,(0,None,0,0),0)
 hyper_fisher  = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=1),argnums=1)
 #dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=0),argnums=1)(best_x_plpk,best_lambda_plpk)
+
+# Loop over event_fisher and event_hyper_fisher over m1_sample
+
+event_fisher_array = []
+event_hyper_fisher_array = []
+
+for i in range(N_sample):
+	print(i)
+	event_fisher_array.append(event_fisher(gen_params(m1_sample[i]),guess_param,H1_data_array[i],L1_data_array[i]))
+	event_hyper_fisher_array.append(event_hyper_fisher(gen_params(m1_sample[i]),guess_param,H1_data_array[i],L1_data_array[i]))
+
 
 
 #fig,ax = plt.subplots(1,3,figsize=(30,9))
@@ -214,6 +229,6 @@ hyper_fisher  = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=1),arg
 #ax[2].plot(dlambdadtheta_plpk['xmin'][jnp.argsort(dlambdadtheta_plpk['xmin'])],label='Power law + peak sorted',lw=3)
 #ax[2].legend(loc='lower right',fontsize=20)
 #ax[2].set_xlabel('Event number')
-#ax[2].set_ylabel(r'$\frac{\partial^2\mathcal{L}}{\partial \theta \partial x_{min}}$')
+#ax[2].set_ylabel(r'$\frac{\partial^2\mathcal{L}	}{\partial \theta \partial x_{min}}$')
 #
 #fig.show()
