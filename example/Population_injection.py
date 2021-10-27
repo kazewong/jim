@@ -175,28 +175,8 @@ guess_param['mean'] = 33.07
 guess_param['sigma'] = 5.69
 guess_param['mixing'] = 0.3
 
-learning_rate = 1e-2
-opt_init, opt_update, get_params = adam(learning_rate)
-opt_state = opt_init((m1_sample,guess_param))
-
-def step(step, opt_state):
-	params = get_params(opt_state)
-	value, grads = value_and_grad(population_likelihood_powerlaw_peak,argnums=(0,1))(params[0], params[1])
-	opt_state = opt_update(step, grads, opt_state)
-	return value, opt_state
-
-# for i in range(1000):
-# 	value, opt_state = step(i, opt_state)
-# 	if jnp.isnan(value):
-# 		break
-# 	print(value,get_params(opt_state)[1])
-
-best_x_plpk, best_lambda_plpk = get_params(opt_state)
-
 event_fisher  = jacfwd(jacrev(single_population_likelihood))
-#event_fisher = vmap(event_fisher,(0,None,0,0),0)
 event_hyper_fisher  = jacfwd(jacrev(single_population_likelihood,argnums=1),argnums=0)
-#event_hyper_fisher = vmap(event_hyper_fisher,(0,None,0,0),0)
 hyper_fisher  = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=1),argnums=1)
 #dlambdadtheta_plpk = jacfwd(jacrev(population_likelihood_powerlaw_peak,argnums=0),argnums=1)(best_x_plpk,best_lambda_plpk)
 
