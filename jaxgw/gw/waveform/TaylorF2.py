@@ -22,7 +22,7 @@ def TaylorF2(f,params):
 #	PN3 = 11583231236531./4694215680 - 640./3 *jnp.pi**2 - 6868./21*(euler_gamma+jnp.log(4)
 
 	phase = 2*jnp.pi*f*params['t_c'] - params['phase_c'] - jnp.pi/4 + 3./(128*eta*PNcoef**5) * \
-			(PN0+PN1+PN1d5)#+PN2+PN2d5)
+			(PN0+PN1+PN1d5+PN2+PN2d5)
 
 #	phase = - jnp.pi/4 + 3./(128*eta*PNcoef**5) * \
 #			(PN0+PN1+PN1d5)#+PN2+PN2d5)
