@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from jax.config import config
 
-from jaxgw.sampler.NF_prposal import nf_metropolis_kernel, nf_metropolis_sampler
+from jaxgw.sampler.NF_proposal import nf_metropolis_kernel, nf_metropolis_sampler
 config.update("jax_enable_x64", True)
 
 from jaxgw.gw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
@@ -27,7 +27,7 @@ import optax                           # Optimizers
 
 true_m1 = 30.
 true_m2 = 30.
-true_ld = 500.
+true_ld = 1000.
 true_phase = 0.
 true_gt = 0.
 
@@ -141,11 +141,11 @@ def sample_nf(model, param, rng_key,n_sample):
 
 n_dim = 9
 n_samples = 1000
-nf_samples = 10
-n_chains = 100
+nf_samples = 100
+n_chains = 200
 learning_rate = 0.01
 momentum = 0.9
-num_epochs = 500
+num_epochs = 300
 batch_size = 10000
 precompiled = False
 
