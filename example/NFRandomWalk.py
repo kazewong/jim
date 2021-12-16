@@ -5,6 +5,8 @@ import jax.numpy as jnp
 
 
 from jax.config import config
+
+from jaxgw.sampler.NF_prposal import nf_metropolis_kernel, nf_metropolis_sampler
 config.update("jax_enable_x64", True)
 
 from jaxgw.gw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
@@ -17,14 +19,15 @@ from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 from jaxgw.sampler.Gaussian_random_walk import rw_metropolis_sampler
 from jaxgw.sampler.maf import MaskedAutoregressiveFlow
+from jaxgw.sampler.realNVP import RealNVP
 from jax.scipy.stats import multivariate_normal
 from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
 
 
 true_m1 = 30.
-true_m2 = 5.
-true_ld = 1000.
+true_m2 = 30.
+true_ld = 500.
 true_phase = 0.
 true_gt = 0.
 
@@ -90,29 +93,21 @@ para_logp = jit(jax.vmap(likelihood))
 
 #### Sampling ####
 
+def train_step(model, state, batch):
+	def loss(params):
+		y, log_det = model.apply({'params': params},batch)
+		mean = jnp.zeros((batch.shape[0],model.n_features))
+		cov = jnp.repeat(jnp.eye(model.n_features)[None,:],batch.shape[0],axis=0)
+		log_det = log_det + multivariate_normal.logpdf(y,mean,cov)
+		return -jnp.mean(log_det)
+	grad_fn = jax.value_and_grad(loss)
+	value, grad = grad_fn(state.params)
+	state = state.apply_gradients(grads=grad)
+	return value,state
+
+train_step = jax.jit(train_step,static_argnums=(0,))
 
 def train_flow(rng, model, state, data):
-
-    @jax.jit
-    def train_step(state, batch):
-        def loss(params):
-            y, log_det = model.apply({'params': params},batch)
-            mean = jnp.zeros((batch.shape[0],model.n_dim))
-            cov = jnp.repeat(jnp.eye(model.n_dim)[None,:],batch.shape[0],axis=0)
-            log_det = log_det + multivariate_normal.logpdf(y,mean,cov)
-            return -jnp.mean(log_det)
-        grad_fn = jax.value_and_grad(loss)
-        value, grad = grad_fn(state.params)
-        state = state.apply_gradients(grads=grad)
-        return value,state
-
-    @jax.jit
-    def eval_step(params, batch):
-        y, log_det = model.apply({'params': params},batch)
-        mean = jnp.zeros((batch.shape[0],model.n_dim))
-        cov = jnp.repeat(jnp.eye(model.n_dim)[None,:],batch.shape[0],axis=0)
-        log_det = log_det + multivariate_normal.logpdf(y,mean,cov)
-        return -jnp.mean(log_det)
 
     def train_epoch(state, train_ds, batch_size, epoch, rng):
         """Train for a single epoch."""
@@ -124,7 +119,7 @@ def train_flow(rng, model, state, data):
         perms = perms.reshape((steps_per_epoch, batch_size))
         for perm in perms:
             batch = train_ds[perm, ...]
-            value, state = train_step(state, batch)
+            value, state = train_step(model, state, batch)
 
         return value, state
 
@@ -145,12 +140,12 @@ def sample_nf(model, param, rng_key,n_sample):
     return rng_key,samples
 
 n_dim = 9
-n_samples = 100
-nf_samples = 100
+n_samples = 1000
+nf_samples = 10
 n_chains = 100
 learning_rate = 0.01
 momentum = 0.9
-num_epochs = 100
+num_epochs = 500
 batch_size = 10000
 precompiled = False
 
@@ -165,7 +160,8 @@ print("Initializing MCMC model and normalizing flow model.")
 
 initial_position = (jnp.zeros((9, n_chains)).T + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
 
-model = MaskedAutoregressiveFlow(n_dim,64,4)
+#model = MaskedAutoregressiveFlow(n_dim,64,4)
+model = RealNVP(10,n_dim,64, 1)
 params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
 
 run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
@@ -176,28 +172,22 @@ state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx
 
 
 def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
-    rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-    flat_chain = positions.reshape(-1,n_dim)
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
+	flat_chain = positions.reshape(-1,n_dim)	
+	rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)	
+	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , para_logp, positions[:,-1])
 
-    rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)
-
-    rng_keys_nf, samples = sample_nf(model, state.params, rng_keys_nf, n_chains*nf_samples)
-    rng_keys_nf, subkey = jax.random.split(rng_keys_nf)
-    log_pdf_nfsample = log_prob(samples).reshape(nf_samples,n_chains)
-    log_uniform = jnp.log(jax.random.uniform(subkey,(nf_samples,n_chains)))
-    do_accept = log_uniform < log_pdf_nfsample - log_prob
-
-    accept_index = jnp.argmax(do_accept>0 , axis=0)*n_chains + jnp.arange(n_chains)
-    accept_nf_sample = samples[accept_index]
-    accept_nf_log_prob = log_pdf_nfsample.flatten()[accept_index] 
-    return rng_keys_nf, rng_keys_mcmc, state, accept_nf_sample, accept_nf_log_prob, positions
+	positions = jnp.concatenate((positions,nf_chain),axis=1)
+	return rng_keys_nf, rng_keys_mcmc, state, positions
 
 last_step = initial_position
 chains = []
 for i in range(5):
-    rng_keys_nf, rng_keys_mcmc, state, last_step, accept_nf_log_prob, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
-    last_step = last_step.T
-    chains.append(positions)
+	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
+	last_step = positions[:,-1].T
+	# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
+	# last_step = last_step.T
+	chains.append(positions)
 
 chains = np.concatenate(chains,axis=1)
 nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)

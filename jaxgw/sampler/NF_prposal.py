@@ -45,4 +45,5 @@ def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, in
     rng_key, all_positions, log_prob, log_prob_nf = jax.lax.fori_loop(1, n_samples, 
                                                  mh_update_sol2, 
                                                  initial_state)
+    all_positions = all_positions.swapaxes(0,1)
     return rng_key, all_positions, log_prob, log_prob_nf
