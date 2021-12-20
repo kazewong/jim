@@ -130,3 +130,4 @@ dmypy.json
 .vscode/launch.json
 .
 data
+.vscode/settings.json
