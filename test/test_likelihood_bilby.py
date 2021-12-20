@@ -1,6 +1,9 @@
 import bilby
 from gwpy.timeseries import TimeSeries
 from bilby.gw.utils import greenwich_mean_sidereal_time
+import numpy as np
+
+np.random.seed(1)
 
 logger = bilby.core.utils.logger
 outdir = 'outdir'
@@ -97,3 +100,7 @@ L1, L1_vertex = get_L1()
 strain_H1 = get_detector_response(frequency_array, waveform, likelihood.parameters, H1, H1_vertex)
 strain_L1 = get_detector_response(frequency_array, waveform, likelihood.parameters, L1, L1_vertex)
 
+jaxgw_H1_SNR = inner_product(ifo_list[0].strain_data.frequency_domain_strain, strain_H1, frequency_array, ifo_list[0].power_spectral_density_array)
+bilby_H1_SNR = ifo_list[0].inner_product(strain_H1)
+
+print(jaxgw_H1_SNR, bilby_H1_SNR) 
