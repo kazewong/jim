@@ -26,8 +26,8 @@ import optax                           # Optimizers
 
 
 true_m1 = 30.
-true_m2 = 30.
-true_ld = 1000.
+true_m2 = 20.
+true_ld = 300.
 true_phase = 0.
 true_gt = 0.
 
@@ -58,8 +58,8 @@ psd_frequency = ifos[0].frequency_array
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-#waveform = IMRPhenomC(psd_frequency, injection_parameters)
-waveform = TaylorF2(psd_frequency, injection_parameters)
+waveform = IMRPhenomC(psd_frequency, injection_parameters)
+#waveform = TaylorF2(psd_frequency, injection_parameters)
 H1, H1_vertex = get_H1()
 L1, L1_vertex = get_L1()
 strain_H1 = get_detector_response(psd_frequency, waveform, injection_parameters, H1, H1_vertex)
@@ -70,8 +70,8 @@ print('SNR of the event in L1: '+str(np.sqrt(inner_product(strain_L1,strain_L1,p
 
 @jit
 def single_detector_likelihood(params, data, data_f, PSD, detector, detector_vertex):
-#	waveform = IMRPhenomC(data_f, params)
-	waveform = TaylorF2(data_f, params)
+	waveform = IMRPhenomC(data_f, params)
+#	waveform = TaylorF2(data_f, params)
 	waveform = get_detector_response(data_f, waveform, params, detector, detector_vertex)
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
@@ -140,9 +140,9 @@ def sample_nf(model, param, rng_key,n_sample):
     return rng_key,samples
 
 n_dim = 9
-n_samples = 1000
+n_samples = 100000
 nf_samples = 100
-n_chains = 200
+n_chains = 20
 learning_rate = 0.01
 momentum = 0.9
 num_epochs = 300
@@ -174,7 +174,6 @@ state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx
 def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
 	flat_chain = positions.reshape(-1,n_dim)	
-	rng_keys_nf, state = train_flow(rng_key_nf, model, state, flat_chain)	
 	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , para_logp, positions[:,-1])
 
 	positions = jnp.concatenate((positions,nf_chain),axis=1)
@@ -182,11 +181,13 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(5):
-	rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
-	last_step = positions[:,-1].T
-	# rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-	# last_step = last_step.T
+for i in range(15):
+	# rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
+	# last_step = positions[:,-1].T
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
+	last_step = last_step.T
+	# if i%5 == 0:
+		# rng_keys_nf, state = train_flow(rng_key_nf, model, state, positions.reshape(-1,n_dim))
 	chains.append(positions)
 
 chains = np.concatenate(chains,axis=1)
