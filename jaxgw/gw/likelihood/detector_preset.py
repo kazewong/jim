@@ -24,8 +24,8 @@ def get_H1():
 	H1_yarm_tilt = 1.25e-5
 	H1_elevation = 142.554
 	
-	H1_arm1 = construct_arm(H1_long, H1_lat, H1_xarm_tilt, H1_xarm_azimuth)
-	H1_arm2 = construct_arm(H1_long, H1_lat, H1_yarm_tilt, H1_yarm_azimuth)
+	H1_arm1 = construct_arm(H1_lat, H1_long, H1_xarm_tilt, H1_xarm_azimuth)
+	H1_arm2 = construct_arm(H1_lat, H1_long, H1_yarm_tilt, H1_yarm_azimuth)
 
 	H1_vertex = get_vertex_position_geocentric(H1_lat, H1_long, H1_elevation)
 	
@@ -43,7 +43,7 @@ def get_L1():
 		The vertex position for L1.
 		
 	"""
-	L1_lat = 30 + 33. / 60 + 46.4196 / 3600 * degree_to_radian
+	L1_lat = (30 + 33. / 60 + 46.4196 / 3600) * degree_to_radian
 	L1_long = -(90 + 46. / 60 + 27.2654 / 3600) * degree_to_radian
 	L1_xarm_azimuth = 197.7165 * degree_to_radian
 	L1_yarm_azimuth = 287.7165 * degree_to_radian
@@ -51,8 +51,8 @@ def get_L1():
 	L1_yarm_tilt = 0
 	L1_elevation = -6.574
 	
-	L1_arm1 = construct_arm(L1_long, L1_lat, L1_xarm_tilt, L1_xarm_azimuth)
-	L1_arm2 = construct_arm(L1_long, L1_lat, L1_yarm_tilt, L1_yarm_azimuth)
+	L1_arm1 = construct_arm(L1_lat, L1_long, L1_xarm_tilt, L1_xarm_azimuth)
+	L1_arm2 = construct_arm(L1_lat, L1_long, L1_yarm_tilt, L1_yarm_azimuth)
 
 	L1_vertex = get_vertex_position_geocentric(L1_lat, L1_long, L1_elevation)
 	
