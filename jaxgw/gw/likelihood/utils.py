@@ -38,6 +38,6 @@ def Mq_to_m1m2(trans_M_tot,trans_q):
 
 def ra_dec_to_theta_phi(ra, dec, gmst):
     phi = ra - gmst
-    theta = np.pi / 2 - dec
+    theta = jnp.pi / 2 - dec
     return theta, phi
 
