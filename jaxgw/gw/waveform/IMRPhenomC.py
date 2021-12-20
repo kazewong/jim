@@ -308,8 +308,9 @@ def IMRPhenomC(f,params):
 
     phase_PM = 1./eta*jnp.sum(alpha*f[:,None]**phase_PM_order,axis=1)
 
-    beta_1 = 1./eta*jnp.sum(alpha*f_rd**phase_PM_order)
+
     beta_2 = 1./eta*jnp.sum(jnp.array([-5./3,-3./3,-1./3,2./3,1])*alpha[jnp.array([0,1,2,4,5])]*f_rd**jnp.array([-8./3,-6./3,-4./3,-1./3,0]))
+    beta_1 = 1./eta*jnp.sum(alpha*f_rd**phase_PM_order) - beta_2*f_rd
     phase_RD = beta_1 + beta_2*f
 
     phase = phase_PN*smoothing_minus(f,0.1*f_rd,0.005) + phase_PM*smoothing_plus(f,0.1*f_rd,0.005)*smoothing_minus(f,f_rd,0.005) + phase_RD*smoothing_plus(f,f_rd,0.005)
