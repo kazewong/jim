@@ -40,7 +40,7 @@ guess_parameters = dict(
 # sensitivity
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 ifos.set_strain_data_from_power_spectral_densities(
-	sampling_frequency=2048, duration=1,
+	sampling_frequency=2048, duration=30,
 	start_time=- 3)
 
 psd = ifos[0].power_spectral_density_array
@@ -81,12 +81,12 @@ def log_prob(params):
 ## BlackJax section
 ################################################################
 
-import emcee 
-
-nwalkers = 32
-ndim = 9
-p0 = np.random.rand(nwalkers, ndim) + list(guess_parameters.values())
-sampler = emcee.EnsembleSampler(nwalkers, ndim, log_prob)
-state = sampler.run_mcmc(p0, 100)
-sampler.reset()
-sampler.run_mcmc(state, 5000)
+#import emcee 
+#
+#nwalkers = 32
+#ndim = 9
+#p0 = np.random.rand(nwalkers, ndim) + list(guess_parameters.values())
+#sampler = emcee.EnsembleSampler(nwalkers, ndim, log_prob)
+#state = sampler.run_mcmc(p0, 100)
+#sampler.reset()
+#sampler.run_mcmc(state, 5000)

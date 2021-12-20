@@ -148,6 +148,8 @@ while m1_sample.shape[0]<N_sample:
 
 m1_sample = m1_sample[:N_sample]
 
+m1_sample = jnp.append(m1_sample,jnp.ones(10)*100)
+
 H1_data_array = vmap(gen_event,(0, None, None))(vmap(gen_params)(m1_sample), H1, H1_vertex)
 L1_data_array = vmap(gen_event,(0, None, None))(vmap(gen_params)(m1_sample), L1, L1_vertex)
 multi_event_gen_param = jit(vmap(gen_params))

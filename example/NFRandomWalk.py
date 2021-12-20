@@ -181,14 +181,14 @@ def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
 
 last_step = initial_position
 chains = []
-for i in range(15):
+#for i in range(15):
 	# rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
 	# last_step = positions[:,-1].T
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-	last_step = last_step.T
+#	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
+#	last_step = last_step.T
 	# if i%5 == 0:
 		# rng_keys_nf, state = train_flow(rng_key_nf, model, state, positions.reshape(-1,n_dim))
-	chains.append(positions)
+#	chains.append(positions)
 
 chains = np.concatenate(chains,axis=1)
 nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)

@@ -94,7 +94,7 @@ true_param['sigma'] = 5.69
 true_param['mixing'] = 0.3
 
 N_sample = 1000
-obs_std = 0.1
+obs_std = 0.01
 
 m1_sample = jnp.empty(0)
 

@@ -16,9 +16,9 @@ from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 
-true_m1 = 15.
+true_m1 = 5.
 true_m2 = 5.
-true_ld = 600.
+true_ld = 1000.
 true_phase = 0.
 true_gt = 0.
 
@@ -30,7 +30,7 @@ injection_parameters = dict(
 #guess_parameters = dict(m1=true_m1, m2=true_m2)
 
 guess_parameters = dict(
-	mass_1=true_m1, mass_2=true_m2, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
+	mass_1=true_m1*0.99, mass_2=true_m2*1.01, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
 	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
 
 
@@ -50,6 +50,7 @@ psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
 waveform = IMRPhenomC(psd_frequency, injection_parameters)
+#waveform = TaylorF2(psd_frequency, injection_parameters)
 H1, H1_vertex = get_H1()
 L1, L1_vertex = get_L1()
 strain_H1 = get_detector_response(psd_frequency, waveform, injection_parameters, H1, H1_vertex)
@@ -103,14 +104,14 @@ final_state, (step_size, inverse_mass_matrix), info = stan_warmup.run(
 	key,
 	kernel_generator,
 	initial_state,
-	500,
+	100,
 	#is_mass_matrix_diagonal=False
 )
 
 print("Finding inverse mass matrix takes: "+str(time.time()-time1)+" seconds")
 print("Stepsize: "+str(step_size))
 print("Inverse mass matrix: "+str(inverse_mass_matrix))
-num_integration_steps = 20
+num_integration_steps = 5
 
 hmc_kernel = hmc.kernel(log_prob, step_size, inverse_mass_matrix, num_integration_steps)
 hmc_kernel = jit(hmc_kernel)
@@ -130,5 +131,5 @@ def inference_loop(rng_key, kernel, initial_state, num_samples):
 
 print("Start sampling")
 time1 = time.time()
-states = inference_loop(subkey, hmc_kernel, initial_state, 10000)
+states = inference_loop(subkey, hmc_kernel, initial_state, 1000)
 print("Sampling takes: "+str(time.time()-time1)+" seconds")
