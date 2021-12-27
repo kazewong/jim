@@ -62,7 +62,7 @@ priors = bilby.gw.prior.BBHPriorDict(filename='GW150914.prior')
 waveform_generator = bilby.gw.WaveformGenerator(
     frequency_domain_source_model=bilby.gw.source.lal_binary_black_hole,
     parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
-    waveform_arguments={'waveform_approximant': 'IMRPhenomPv2',
+    waveform_arguments={'waveform_approximant': 'IMRPhenomC',
                         'reference_frequency': 50})
 
 # In this step, we define the likelihood. Here we use the standard likelihood
@@ -75,6 +75,26 @@ priors['geocent_time'] = float(likelihood.interferometers.start_time)
 
 likelihood.parameters = priors.sample()
 likelihood.parameters['t_c'] = greenwich_mean_sidereal_time(likelihood.parameters['geocent_time'])
+likelihood.parameters['a_1'] = 0
+likelihood.parameters['a_2'] = 0
+likelihood.parameters['tilt_1'] = 0
+likelihood.parameters['tilt_2'] = 0
+likelihood.parameters['phi_12'] = 0
+likelihood.parameters['phi_jl'] = 0
+params = {}
+q = likelihood.parameters['mass_ratio']
+params['mass_1'] = likelihood.parameters['chirp_mass']/((q/(1+q)**2)**(3./5)*(1+q))
+params['mass_2'] = q*params['mass_1']
+params['spin_1'] = likelihood.parameters['a_1']
+params['spin_2'] = likelihood.parameters['a_2']
+params['luminosity_distance'] = likelihood.parameters['luminosity_distance']
+params['theta_jn'] = likelihood.parameters['theta_jn']
+params['psi'] = likelihood.parameters['psi']
+params['ra'] = likelihood.parameters['ra']
+params['dec'] = likelihood.parameters['dec']
+params['phase_c'] = likelihood.parameters['phase']
+params['t_c'] = likelihood.parameters['t_c']
+
 waveform = likelihood.waveform_generator.frequency_domain_strain(likelihood.parameters)
 frequency_array  = ifo_list[0].frequency_array
 
