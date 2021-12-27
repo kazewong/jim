@@ -48,7 +48,7 @@ def TaylorF2(f,params):
 	PN_phasing = 3./(128*eta*PNcoef**5) * \
 			(Ph_PN0 + Ph_PN1 * PNcoef**2 + Ph_PN1d5 * PNcoef**3 + Ph_PN2 * PNcoef**4 + Ph_PN2d5 * PNcoef**5 + Ph_PN2d5_log * PNcoef**5 * jnp.log(PNcoef) + Ph_PN3 * PNcoef**6 + Ph_PN3_log * PNcoef**6 * jnp.log(PNcoef) + Ph_PN3d5 * PNcoef**7)
 
-	
+
 	PN_phasing_ref = 3./(128*eta*PNcoef_ref**5) * \
 			(Ph_PN0 + Ph_PN1 * PNcoef_ref**2 + Ph_PN1d5 * PNcoef_ref**3 + Ph_PN2 * PNcoef_ref**4 + Ph_PN2d5 * PNcoef_ref**5 + Ph_PN2d5_log * PNcoef_ref**5 * jnp.log(PNcoef_ref) + Ph_PN3 * PNcoef_ref**6 + Ph_PN3_log * PNcoef_ref**6 * jnp.log(PNcoef_ref) + Ph_PN3d5 * PNcoef_ref**7)
 
@@ -58,7 +58,7 @@ def TaylorF2(f,params):
 	hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
 	hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
-	return totalh#{'plus':hp,'cross':hc}
+	return {'plus':hp,'cross':hc}
 
 def flso(M):
 	return (6**3./2*jnp.pi*M)**-1
