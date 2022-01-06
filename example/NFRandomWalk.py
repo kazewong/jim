@@ -25,22 +25,22 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
 
 
-true_m1 = 30.
-true_m2 = 20.
-true_ld = 300.
+true_m1 = 10.
+true_m2 = 5
+true_ld = 500.
 true_phase = 0.
 true_gt = 0.
 
 injection_parameters = dict(
 	mass_1=true_m1, mass_2=true_m2, spin_1=0.0, spin_2=0.0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
-	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
+	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108, f_ref=50)
 
 
 #guess_parameters = dict(m1=true_m1, m2=true_m2)
 
 guess_parameters = dict(
-	mass_1=true_m1*0.99, mass_2=true_m2*1.01, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659,
-	phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
+	mass_1=true_m1*0.99, mass_2=true_m2*1.01,  theta_jn=0.4, psi=2.659,
+	phase_c=true_phase, ra=1.375, dec=-1.2108)
 
 
 
@@ -49,7 +49,7 @@ guess_parameters = dict(
 # sensitivity
 ifos = bilby.gw.detector.InterferometerList(['H1'])
 ifos.set_strain_data_from_power_spectral_densities(
-	sampling_frequency=2048, duration=1,
+	sampling_frequency=2048, duration=4,
 	start_time=- 3)
 
 psd = ifos[0].power_spectral_density_array
@@ -58,8 +58,8 @@ psd_frequency = ifos[0].frequency_array
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-waveform = IMRPhenomC(psd_frequency, injection_parameters)
-#waveform = TaylorF2(psd_frequency, injection_parameters)
+#waveform = IMRPhenomC(psd_frequency, injection_parameters)
+waveform = TaylorF2(psd_frequency, injection_parameters)
 H1, H1_vertex = get_H1()
 L1, L1_vertex = get_L1()
 strain_H1 = get_detector_response(psd_frequency, waveform, injection_parameters, H1, H1_vertex)
@@ -70,21 +70,16 @@ print('SNR of the event in L1: '+str(np.sqrt(inner_product(strain_L1,strain_L1,p
 
 @jit
 def single_detector_likelihood(params, data, data_f, PSD, detector, detector_vertex):
-	waveform = IMRPhenomC(data_f, params)
-#	waveform = TaylorF2(data_f, params)
+#	waveform = IMRPhenomC(data_f, params)
+	waveform = TaylorF2(data_f, params)
 	waveform = get_detector_response(data_f, waveform, params, detector, detector_vertex)
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
-	return -(-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
+	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
 
-#@jit
-#def logprob_wrap(m1, m2):
-#	params = dict(mass_1=m1, mass_2=m2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=true_phase, t_c=true_gt, theta_jn=0.4, psi=2.659, ra=1.375, dec=-1.2108)
-#	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
-#
 @jit
-def logprob_wrap(mass_1, mass_2, luminosity_distance, phase_c, t_c, theta_jn, psi, ra, dec):
-	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=phase_c, t_c=t_c, theta_jn=theta_jn, psi=psi, ra=ra, dec=dec)
+def logprob_wrap(mass_1, mass_2,  phase_c,  theta_jn, psi, ra, dec):
+	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=true_ld, phase_c=phase_c, t_c=true_gt, theta_jn=theta_jn, psi=psi, ra=ra, dec=dec, f_ref=50)
 #	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
 	return single_detector_likelihood(params, strain_H1, psd_frequency, psd, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd, L1, L1_vertex)
 
@@ -136,29 +131,47 @@ def train_flow(rng, model, state, data):
 def sample_nf(model, param, rng_key,n_sample):
     rng_key, subkey = random.split(rng_key)
     samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
-    samples = jnp.flip(samples[0],axis=1)
     return rng_key,samples
 
-n_dim = 9
-n_samples = 100000
+n_dim = 7
+n_samples = 100
 nf_samples = 100
-n_chains = 20
+n_chains = 100
 learning_rate = 0.01
 momentum = 0.9
 num_epochs = 300
 batch_size = 10000
+look_back_epoch = 10
+train_epoch = 25
+nf_sample_epoch = 25
+total_epoch = 1000
 precompiled = False
 
 print("Preparing RNG keys")
 rng_key = jax.random.PRNGKey(42)
-rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,2)
+rng_key_ic, rng_key_mcmc, rng_key_nf = jax.random.split(rng_key,3)
 
 rng_keys_mcmc = jax.random.split(rng_key_mcmc, n_chains)  # (nchains,)
 rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = (jnp.zeros((9, n_chains)).T + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
+# prior_range = []
+# prior_range.append([1.0,15.0])
+# prior_range.append([1.0,15.0])
+# prior_range.append([np.log10(0.1),np.log10(3000.0)])
+# prior_range.append([0.,2*jnp.pi])
+# prior_range.append([0.,jnp.pi])
+# prior_range.append([0.,jnp.pi])
+# prior_range.append([0.,2*jnp.pi])
+# prior_range.append([0.,jnp.pi])
+# prior_range = jnp.array(prior_range)
+
+# initial_position = jax.random.uniform(rng_key_ic,(n_chains,n_dim)) #(n_dim, n_chains)
+# initial_position = (initial_position*(prior_range[:,1]-prior_range[:,0])+prior_range[:,0]).T
+
+initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.05 + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
+
 
 #model = MaskedAutoregressiveFlow(n_dim,64,4)
 model = RealNVP(10,n_dim,64, 1)
@@ -171,24 +184,29 @@ tx = optax.adam(learning_rate, momentum)
 state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
 
-def sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, initial_position):
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-	flat_chain = positions.reshape(-1,n_dim)	
-	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, nf_samples, model, state.params , para_logp, positions[:,-1])
+def sample(rng_key, params):
+	return model.apply({'params': params}, rng_key, n_samples*n_chains, params, method=model.sample)[0]
 
-	positions = jnp.concatenate((positions,nf_chain),axis=1)
-	return rng_keys_nf, rng_keys_mcmc, state, positions
+def log_prob_nf_function(params, location):
+	return model.apply({'params': params}, location, method=model.log_prob)
 
+sample = jax.jit(sample)
+log_prob_nf_function = jax.jit(log_prob_nf_function)
+
+trained = False
 last_step = initial_position
 chains = []
-#for i in range(15):
-	# rng_keys_nf, rng_keys_mcmc, state, positions = sampling_loop(rng_keys_nf, rng_keys_mcmc, model, state, last_step)
-	# last_step = positions[:,-1].T
-#	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, initial_position)
-#	last_step = last_step.T
-	# if i%5 == 0:
-		# rng_keys_nf, state = train_flow(rng_key_nf, model, state, positions.reshape(-1,n_dim))
-#	chains.append(positions)
+for i in range(total_epoch):
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step)
+	last_step = positions[:,-1].T
+	# if i%train_epoch == train_epoch-1:
+	# 	train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
+	# 	rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
+	# 	trained = True
+	# if i%nf_sample_epoch == 0 and trained == True:
+	# 	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
+	# 	positions = jnp.concatenate((positions,nf_chain),axis=1)
+	chains.append(positions)
 
 chains = np.concatenate(chains,axis=1)
 nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
