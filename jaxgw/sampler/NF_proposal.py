@@ -18,7 +18,7 @@ def nf_metropolis_kernel(rng_key, proposal_position, initial_position, proposal_
 
 nf_metropolis_kernel = vmap(jit(nf_metropolis_kernel))
 
-def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, initial_position):
+def nf_metropolis_sampler(rng_key, sample_function, log_prob_function, params, target_pdf, initial_position):
 
     def mh_update_sol2(i, state):
         key, positions, log_prob, log_prob_nf = state
@@ -29,12 +29,14 @@ def nf_metropolis_sampler(rng_key, n_samples, nf_model, nf_param, target_pdf, in
         return (key, positions, new_log_prob, new_log_prob_nf)
 
     rng_key, *subkeys = random.split(rng_key,3)
+    proposal_position = sample_function(subkeys[0], params)
+    n_samples = int(proposal_position.shape[0]/initial_position.shape[0])
     all_positions = jnp.zeros((n_samples,)+initial_position.shape) + initial_position
-    proposal_position = nf_model.apply({'params': nf_param}, subkeys[0], initial_position.shape[0]*n_samples, nf_param, method=nf_model.sample)[0]
+    proposal_position = sample_function(subkeys[0], params)#nf_model.apply({'params': nf_param}, subkeys[0], initial_position.shape[0]*n_samples, nf_param, method=nf_model.sample)[0]
 
 
-    log_pdf_nf_proposal = nf_model.apply({'params': nf_param}, proposal_position, method=nf_model.log_prob)
-    log_pdf_nf_initial = nf_model.apply({'params': nf_param}, initial_position, method=nf_model.log_prob)
+    log_pdf_nf_proposal = log_prob_function(params, proposal_position)#nf_model.apply({'params': nf_param}, proposal_position, method=nf_model.log_prob)
+    log_pdf_nf_initial = log_prob_function(params, initial_position)#nf_model.apply({'params': nf_param}, initial_position, method=nf_model.log_prob)
     log_pdf_proposal = target_pdf(proposal_position)
     log_pdf_initial = target_pdf(initial_position)
 
