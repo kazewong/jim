@@ -177,7 +177,7 @@ initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.5 + jnp.arr
 model = RealNVP(10,n_dim,64, 1)
 params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
 
-run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1),
+run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1, None),
                     out_axes=0)
 
 tx = optax.adam(learning_rate, momentum)
@@ -197,7 +197,7 @@ trained = False
 last_step = initial_position
 chains = []
 for i in range(total_epoch):
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step)
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step,0.001)
 	last_step = positions[:,-1].T
 	if i%train_epoch == train_epoch-1:
 		train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)

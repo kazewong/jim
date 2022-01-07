@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from functools import partial
 
 @partial(jax.jit, static_argnums=(1,))
-def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
+def rw_metropolis_kernel(rng_key, logpdf, position, log_prob, kernal_size=0.1):
     """Moves the chains by one step using the Random Walk Metropolis algorithm.
     Attributes
     ----------
@@ -21,7 +21,7 @@ def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
         The next positions of the chains along with their log probability.
     """
     key1, key2 = jax.random.split(rng_key)
-    move_proposal = jax.random.normal(key1, shape=position.shape) * 0.1
+    move_proposal = jax.random.normal(key1, shape=position.shape) * kernal_size
     proposal = position + move_proposal
     proposal_log_prob = logpdf(proposal)
 
@@ -34,12 +34,12 @@ def rw_metropolis_kernel(rng_key, logpdf, position, log_prob):
 
 
 @partial(jax.jit, static_argnums=(1, 2))
-def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position):
+def rw_metropolis_sampler(rng_key, n_samples, logpdf, initial_position, kernal_size=0.1):
 
     def mh_update_sol2(i, state):
         key, positions, log_prob = state
         _, key = jax.random.split(key)
-        new_position, new_log_prob = rw_metropolis_kernel(key, logpdf, positions[i-1], log_prob)
+        new_position, new_log_prob = rw_metropolis_kernel(key, logpdf, positions[i-1], log_prob, kernal_size)
         positions=positions.at[i].set(new_position)
         return (key, positions, new_log_prob)
 
