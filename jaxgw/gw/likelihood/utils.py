@@ -36,6 +36,14 @@ def Mq_to_m1m2(trans_M_tot,trans_q):
 	m2 = m1*q
 	return m1, m2
 
+@jit
+def Mc_q_to_m1m2(Mc,q):
+	eta = q/(1+q)**2
+	M_tot = Mc/eta**(3./5)
+	m1 = M_tot/(1+q)
+	m2 = m1*q
+	return m1, m2
+
 def ra_dec_to_theta_phi(ra, dec, gmst):
     phi = ra - gmst
     theta = jnp.pi / 2 - dec

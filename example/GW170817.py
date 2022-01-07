@@ -131,7 +131,7 @@ waveform_generator = bilby.gw.WaveformGenerator(
 # Time marginalisation uses FFT.
 # Distance marginalisation uses a look up table calculated at run time.
 # Phase marginalisation is done analytically using a Bessel function.
-likelihood = bilby.gw.likelihood.GravitationalWaveTransient(
+bilby_likelihood = bilby.gw.likelihood.GravitationalWaveTransient(
     ifo_list,
     waveform_generator,
     time_marginalization=False,
@@ -170,14 +170,16 @@ def single_detector_likelihood_bilby(params, data, data_f, PSD, detector, detect
 	return log_l.real
 
 @jit
-def logprob_wrap(mass_1, mass_2,  phase_c,  theta_jn, psi, ra, dec):
-	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=40., phase_c=phase_c, t_c=greenwich_mean_sidereal_time(time_of_event), theta_jn=theta_jn, psi=psi, ra=ra, dec=dec, f_ref=50)
+def logprob_wrap(mass_1, mass_2, luminosity_distance, phase_c, t_c,  theta_jn, psi, ra, dec):
+	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=10**luminosity_distance, phase_c=phase_c, t_c=10**t_c, theta_jn=theta_jn, psi=psi, ra=ra, dec=dec, f_ref=50)
 #	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
 	return single_detector_likelihood_bilby(params, strain_H1, psd_frequency, psd_H1, H1, H1_vertex)+single_detector_likelihood_bilby(params, strain_L1, psd_frequency, psd_L1, L1, L1_vertex)
 
 
 
 likelihood = lambda x: logprob_wrap(*x)
+likelihood = jit(likelihood)
+d_likelihood = jit(grad(likelihood))
 para_logp = jit(jax.vmap(likelihood))
 
 #### Sampling ####
@@ -227,7 +229,7 @@ def sample_nf(model, param, rng_key,n_sample):
     samples = model.apply({'params': param}, subkey, n_sample,param, method=model.sample)
     return rng_key,samples
 
-n_dim = 7
+n_dim = 9
 n_samples = 100
 nf_samples = 10
 n_chains = 100
@@ -253,8 +255,9 @@ print("Finding initial position for chains")
 prior_range = []
 prior_range.append([1.6093862655801942,1.6093862655801943 ])
 prior_range.append([1.1616754457131563,1.1616754457131564])
-#prior_range.append([np.log10(0.1),np.log10(3000.0)])
+prior_range.append([np.log10(0.1),np.log10(3000.0)])
 prior_range.append([0.,2*jnp.pi])
+prior_range.append([np.log10(greenwich_mean_sidereal_time(time_of_event)),np.log10(greenwich_mean_sidereal_time(time_of_event)+1)])
 prior_range.append([0.,jnp.pi])
 prior_range.append([0.,jnp.pi])
 prior_range.append([0.,2*jnp.pi])
@@ -270,7 +273,7 @@ loss = lambda x: -likelihood(x)
 
 initial_position = []
 for i in range(n_chains):
-	res = minimize(loss,initial_guess[i,:],method='L-BFGS-B')
+	res = minimize(loss,initial_guess[i,:],method='Nelder-Mead')
 	initial_position.append(res.x)
 
 initial_position = jnp.array(initial_position).T
@@ -281,41 +284,41 @@ initial_position = jnp.array(initial_position).T
 print("Initializing MCMC model and normalizing flow model.")
 
 #model = MaskedAutoregressiveFlow(n_dim,64,4)
-# model = RealNVP(10,n_dim,64, 1)
-# params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
+model = RealNVP(10,n_dim,64, 1)
+params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
 
-# run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1, None),
-#                     out_axes=0)
+run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1, None),
+                    out_axes=0)
 
-# tx = optax.adam(learning_rate, momentum)
-# state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+tx = optax.adam(learning_rate, momentum)
+state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
 
-# def sample(rng_key, params):
-# 	return model.apply({'params': params}, rng_key, nf_samples*n_chains, params, method=model.sample)[0]
+def sample(rng_key, params):
+	return model.apply({'params': params}, rng_key, nf_samples*n_chains, params, method=model.sample)[0]
 
-# def log_prob_nf_function(params, location):
-# 	return model.apply({'params': params}, location, method=model.log_prob)
+def log_prob_nf_function(params, location):
+	return model.apply({'params': params}, location, method=model.log_prob)
 
-# sample = jax.jit(sample)
-# log_prob_nf_function = jax.jit(log_prob_nf_function)
+sample = jax.jit(sample)
+log_prob_nf_function = jax.jit(log_prob_nf_function)
 
-# print("Starting sampling")
+print("Starting sampling")
 
-# trained = False
-# last_step = initial_position
-# chains = []
-# for i in range(total_epoch):
-# 	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step, 0.001)
-# 	last_step = positions[:,-1].T
-# 	# if i%train_epoch == train_epoch-1:
-# 	# 	train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
-# 	# 	rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
-# 	# 	trained = True
-# 	# if i%nf_sample_epoch == 0 and trained == True:
-# 	# 	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
-# 	# 	positions = jnp.concatenate((positions,nf_chain),axis=1)
-# 	chains.append(positions)
+trained = False
+last_step = initial_position
+chains = []
+for i in range(total_epoch):
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step, 0.01)
+	last_step = positions[:,-1].T
+	if i%train_epoch == train_epoch-1:
+		train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
+		rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
+		trained = True
+	if i%nf_sample_epoch == 0 and trained == True:
+		rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
+		positions = jnp.concatenate((positions,nf_chain),axis=1)
+	chains.append(positions)
 
-# chains = np.concatenate(chains,axis=1)
-# nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+chains = np.concatenate(chains,axis=1)
+nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
