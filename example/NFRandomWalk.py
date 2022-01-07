@@ -25,8 +25,8 @@ from flax.training import train_state  # Useful dataclass to keep train state
 import optax                           # Optimizers
 
 
-true_m1 = 10.
-true_m2 = 5
+true_m1 = 5.
+true_m2 = 5.
 true_ld = 500.
 true_phase = 0.
 true_gt = 0.
@@ -144,7 +144,7 @@ batch_size = 10000
 look_back_epoch = 10
 train_epoch = 25
 nf_sample_epoch = 25
-total_epoch = 1000
+total_epoch = 100
 precompiled = False
 
 print("Preparing RNG keys")
@@ -159,7 +159,7 @@ print("Initializing MCMC model and normalizing flow model.")
 # prior_range = []
 # prior_range.append([1.0,15.0])
 # prior_range.append([1.0,15.0])
-# prior_range.append([np.log10(0.1),np.log10(3000.0)])
+# #prior_range.append([np.log10(0.1),np.log10(3000.0)])
 # prior_range.append([0.,2*jnp.pi])
 # prior_range.append([0.,jnp.pi])
 # prior_range.append([0.,jnp.pi])
@@ -170,7 +170,7 @@ print("Initializing MCMC model and normalizing flow model.")
 # initial_position = jax.random.uniform(rng_key_ic,(n_chains,n_dim)) #(n_dim, n_chains)
 # initial_position = (initial_position*(prior_range[:,1]-prior_range[:,0])+prior_range[:,0]).T
 
-initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.05 + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
+initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.5 + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
 
 
 #model = MaskedAutoregressiveFlow(n_dim,64,4)
@@ -199,13 +199,13 @@ chains = []
 for i in range(total_epoch):
 	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step)
 	last_step = positions[:,-1].T
-	# if i%train_epoch == train_epoch-1:
-	# 	train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
-	# 	rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
-	# 	trained = True
-	# if i%nf_sample_epoch == 0 and trained == True:
-	# 	rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
-	# 	positions = jnp.concatenate((positions,nf_chain),axis=1)
+	if i%train_epoch == train_epoch-1:
+		train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
+		rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
+		trained = True
+	if i%nf_sample_epoch == 0 and trained == True:
+		rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
+		positions = jnp.concatenate((positions,nf_chain),axis=1)
 	chains.append(positions)
 
 chains = np.concatenate(chains,axis=1)
