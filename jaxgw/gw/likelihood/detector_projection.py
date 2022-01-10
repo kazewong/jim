@@ -168,7 +168,8 @@ def get_detector_response(frequency, waveform_polarizations, parameters, detecto
 
     time_shift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]),parameters['ra'], parameters['dec'], parameters['t_c'])
 
-    dt = parameters['t_c'] + time_shift # Note that we always assume the start time of the strain to be 0
+    dt = parameters['geocent_time'] - parameters['start_time']
+    dt = dt + time_shift # Note that we always assume the start time of the strain to be 0
 
     signal_ifo = signal_ifo * jnp.exp(-1j * 2 * jnp.pi * dt * frequency)
 
