@@ -41,16 +41,16 @@ def TaylorF2(f,params):
 	Ph_PN2 = (5.*(3058.673/7.056 + 5429./7.*eta+617.*eta*eta)/72.) 
 	Ph_PN2d5 = 5./9.*(772.9/8.4-13.*eta)*jnp.pi 
 	Ph_PN2d5_log = (5./3.*(772.9/8.4-13.*eta)*jnp.pi)
-	Ph_PN3 = (11583.231236531/4.694215680 - 640./3.*jnp.pi*jnp.pi - 684.8/2.1*euler_gamma + eta*(-15737.765635/3.048192 + 225.5/1.2*jnp.pi*jnp.pi) + eta*eta*76.055/1.728 - eta*eta*eta*127.825/1.296) 
+	Ph_PN3 = (11583.231236531/4.694215680 - 640./3.*jnp.pi*jnp.pi - 684.8/2.1*euler_gamma + eta*(-15737.765635/3.048192 + 225.5/1.2*jnp.pi*jnp.pi) + eta*eta*76.055/1.728 - eta*eta*eta*127.825/1.296 -684.8/2.1 *jnp.log(4))
 	Ph_PN3_log = -684.8/2.1  
 	Ph_PN3d5 = jnp.pi*(770.96675/2.54016 + 378.515/1.512*eta - 740.45/7.56*eta*eta) 
 
 	PN_phasing = 3./(128*eta*PNcoef**5) * \
-			(Ph_PN0 + Ph_PN1 * PNcoef**2 + Ph_PN1d5 * PNcoef**3 + Ph_PN2 * PNcoef**4 + Ph_PN2d5 * PNcoef**5 + Ph_PN2d5_log * PNcoef**5 * jnp.log(PNcoef) + Ph_PN3 * PNcoef**6 + Ph_PN3_log * PNcoef**6 * jnp.log(PNcoef) + Ph_PN3d5 * PNcoef**7)
+			(Ph_PN0 + Ph_PN1 * PNcoef**2 + Ph_PN1d5 * PNcoef**3 + Ph_PN2 * PNcoef**4 + (Ph_PN2d5 + Ph_PN2d5_log * jnp.log(PNcoef)) * PNcoef**5 + (Ph_PN3 + Ph_PN3_log  * jnp.log(PNcoef)) * PNcoef**6 + Ph_PN3d5 * PNcoef**7)
 
 
 	PN_phasing_ref = 3./(128*eta*PNcoef_ref**5) * \
-			(Ph_PN0 + Ph_PN1 * PNcoef_ref**2 + Ph_PN1d5 * PNcoef_ref**3 + Ph_PN2 * PNcoef_ref**4 + Ph_PN2d5 * PNcoef_ref**5 + Ph_PN2d5_log * PNcoef_ref**5 * jnp.log(PNcoef_ref) + Ph_PN3 * PNcoef_ref**6 + Ph_PN3_log * PNcoef_ref**6 * jnp.log(PNcoef_ref) + Ph_PN3d5 * PNcoef_ref**7)
+			(Ph_PN0 + Ph_PN1 * PNcoef_ref**2 + Ph_PN1d5 * PNcoef_ref**3 + Ph_PN2 * PNcoef_ref**4 + (Ph_PN2d5 + Ph_PN2d5_log * jnp.log(PNcoef_ref))* PNcoef_ref**5 + (Ph_PN3 + Ph_PN3_log * jnp.log(PNcoef_ref)) * PNcoef_ref**6 + Ph_PN3d5 * PNcoef_ref**7)
 
 	phase = 2*jnp.pi*f*params['t_c'] - params['phase_c'] - jnp.pi/4 + PN_phasing - PN_phasing_ref
 
@@ -58,7 +58,9 @@ def TaylorF2(f,params):
 	hp = totalh * (1/2*(1+jnp.cos(params['theta_jn'])**2)*jnp.cos(2*params['psi']))
 	hc = totalh * jnp.cos(params['theta_jn'])*jnp.sin(2*params['psi'])
 
-	return {'plus':hp,'cross':hc}
+
+
+	return totalh#{'plus':hp,'cross':hc}
 
 def flso(M):
 	return (6**3./2*jnp.pi*M)**-1
