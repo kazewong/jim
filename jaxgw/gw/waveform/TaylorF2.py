@@ -60,7 +60,7 @@ def TaylorF2(f,params):
 
 
 
-	return totalh#{'plus':hp,'cross':hc}
+	return {'plus':hp,'cross':hc}
 
 def flso(M):
 	return (6**3./2*jnp.pi*M)**-1
