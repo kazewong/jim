@@ -159,7 +159,7 @@ def single_detector_likelihood(params, data, data_f, PSD, detector, detector_ver
 	waveform = get_detector_response(data_f, waveform, params, detector, detector_vertex)
 	match_filter_SNR = inner_product(waveform, data, data_f, PSD)
 	optimal_SNR = inner_product(waveform, waveform, data_f, PSD)
-	return (-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
+	return -(-2*match_filter_SNR + optimal_SNR)/2#, match_filter_SNR, optimal_SNR
 
 @jit
 def single_detector_likelihood_bilby(params, data, data_f, PSD, detector, detector_vertex):
@@ -171,9 +171,9 @@ def single_detector_likelihood_bilby(params, data, data_f, PSD, detector, detect
 
 @jit
 def logprob_wrap(mass_1, mass_2, luminosity_distance, phase_c, t_c,  theta_jn, psi, ra, dec):
-	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=10**luminosity_distance, phase_c=phase_c, t_c=10**t_c, theta_jn=theta_jn, psi=psi, ra=ra, dec=dec, f_ref=50)
+	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=luminosity_distance, phase_c=phase_c%(2*jnp.pi), t_c=t_c+greenwich_mean_sidereal_time(time_of_event), theta_jn=theta_jn%(jnp.pi), psi=psi%(jnp.pi), ra=ra%(2*jnp.pi), dec=dec%(jnp.pi), f_ref=50)
 #	params = dict(mass_1=mass_1, mass_2=mass_2, spin_1=0, spin_2=0, luminosity_distance=true_ld, theta_jn=0.4, psi=2.659, phase_c=true_phase, t_c=true_gt, ra=1.375, dec=-1.2108)
-	return single_detector_likelihood_bilby(params, strain_H1, psd_frequency, psd_H1, H1, H1_vertex)+single_detector_likelihood_bilby(params, strain_L1, psd_frequency, psd_L1, L1, L1_vertex)
+	return single_detector_likelihood(params, strain_H1, psd_frequency, psd_H1, H1, H1_vertex)+single_detector_likelihood(params, strain_L1, psd_frequency, psd_L1, L1, L1_vertex)
 
 
 
@@ -238,9 +238,10 @@ momentum = 0.9
 num_epochs = 300
 batch_size = 10000
 look_back_epoch = 10
-train_epoch = 25
+start_train_epoch = 100
+train_epoch = 200
 nf_sample_epoch = 25
-total_epoch = 100
+total_epoch = 1000
 precompiled = False
 
 print("Preparing RNG keys")
@@ -255,9 +256,9 @@ print("Finding initial position for chains")
 prior_range = []
 prior_range.append([1.6093862655801942,1.6093862655801943 ])
 prior_range.append([1.1616754457131563,1.1616754457131564])
-prior_range.append([np.log10(0.1),np.log10(3000.0)])
+prior_range.append([0.1,300.0])
 prior_range.append([0.,2*jnp.pi])
-prior_range.append([np.log10(greenwich_mean_sidereal_time(time_of_event)),np.log10(greenwich_mean_sidereal_time(time_of_event)+1)])
+prior_range.append([0,0.1])
 prior_range.append([0.,jnp.pi])
 prior_range.append([0.,jnp.pi])
 prior_range.append([0.,2*jnp.pi])
@@ -305,20 +306,25 @@ log_prob_nf_function = jax.jit(log_prob_nf_function)
 
 print("Starting sampling")
 
-trained = False
-last_step = initial_position
-chains = []
-for i in range(total_epoch):
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step, 0.01)
-	last_step = positions[:,-1].T
-	if i%train_epoch == train_epoch-1:
-		train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
-		rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
-		trained = True
-	if i%nf_sample_epoch == 0 and trained == True:
-		rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
-		positions = jnp.concatenate((positions,nf_chain),axis=1)
-	chains.append(positions)
+# trained = False
+# last_step = initial_position
+# chains = []
+# for i in range(total_epoch):
+# 	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step, 0.1)
+# 	positions = positions.at[:,:,3].set(positions[:,:,3]%(2*jnp.pi))
+# 	positions = positions.at[:,:,5].set(positions[:,:,5]%(jnp.pi))
+# 	positions = positions.at[:,:,6].set(positions[:,:,6]%(jnp.pi))
+# 	positions = positions.at[:,:,7].set(positions[:,:,7]%(2*jnp.pi))
+# 	positions = positions.at[:,:,8].set(positions[:,:,8]%(jnp.pi))
+# 	last_step = positions[:,-1].T
+# 	if (i > start_train_epoch) and (i%train_epoch == train_epoch-1):
+# 		train_sample = np.concatenate(chains[-look_back_epoch:],axis=1).reshape(-1,n_dim)
+# 		rng_keys_nf, state = train_flow(rng_key_nf, model, state, train_sample)
+# 		trained = True
+# 	if i%nf_sample_epoch == 0 and trained == True:
+# 		rng_keys_nf, nf_chain, log_prob, log_prob_nf = nf_metropolis_sampler(rng_keys_nf, sample, log_prob_nf_function, state.params , para_logp, positions[:,-1])
+# 		positions = jnp.concatenate((positions,nf_chain),axis=1)
+# 	chains.append(positions)
 
-chains = np.concatenate(chains,axis=1)
-nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+# chains = np.concatenate(chains,axis=1)
+# nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
