@@ -17,6 +17,7 @@ from jaxgw.gw.waveform.IMRPhenomC import IMRPhenomC
 from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad, pmap
 
 from jaxgw.sampler.Gaussian_random_walk import rw_metropolis_sampler
+from jaxgw.sampler.MALA import mala_sampler
 from jaxgw.sampler.maf import MaskedAutoregressiveFlow
 from jaxgw.sampler.realNVP import RealNVP
 from jax.scipy.stats import multivariate_normal
@@ -47,12 +48,18 @@ np.random.seed(88170235)
 # parameters, including masses of the two black holes (mass_1, mass_2),
 # aligned spins of both black holes (chi_1, chi_2), etc.
 injection_parameters = dict(
-    mass_1=1.5, mass_2=1.3, chi_1=0.0, chi_2=0.0, luminosity_distance=200.,
+    mass_1=10, mass_2=10, chi_1=0.0, chi_2=0.0, luminosity_distance=200.,
     theta_jn=0.4, psi=2.659, phase=1.3, geocent_time=1126259642.413,
     ra=1.375, dec=-1.2108, lambda_1=0, lambda_2=0, spin_1 = 0.0, spin_2 = 0.0,
     f_ref=50., t_c = 0, phase_c = 1.3,
     greenwich_mean_sidereal_time=greenwich_mean_sidereal_time(1126259642.413),
     start_time=1126259642.413)
+
+guess_parameters = dict(
+    mass_1=10, mass_2=10, luminosity_distance=200.,
+    phase_c=1.3, t_c = 0, theta_jn=0.4, psi=2.659,
+    ra=1.375, dec=-1.2108)
+
 
 # Set the duration and sampling frequency of the data segment that we're going
 # to inject the signal into. For the
@@ -120,14 +127,15 @@ true_signal['cross'][0] = 0
 for interferometer in interferometers:
     interferometer.inject_signal_from_waveform_polarizations(injection_parameters,true_signal)
 
-strain_H1 = interferometers[0].frequency_domain_strain[1:]
-strain_L1 = interferometers[1].frequency_domain_strain[1:]
+H1, H1_vertex = get_H1()
+L1, L1_vertex = get_L1()
+
+strain_H1 = get_detector_response(psd_frequency[1:], TaylorF2(psd_frequency[1:], injection_parameters), injection_parameters, H1, H1_vertex)#interferometers[0].frequency_domain_strain[1:]
+strain_L1 = get_detector_response(psd_frequency[1:], TaylorF2(psd_frequency[1:], injection_parameters), injection_parameters, L1, L1_vertex)#interferometers[1].frequency_domain_strain[1:]
 
 psd_H1 = interferometers[0].power_spectral_density_array[1:]
 psd_L1 = interferometers[1].power_spectral_density_array[1:]
 
-H1, H1_vertex = get_H1()
-L1, L1_vertex = get_L1()
 
 duration = waveform_generator.duration
 
@@ -256,10 +264,10 @@ rng_keys_nf, init_rng_keys_nf = jax.random.split(rng_key_nf,2)
 print("Finding initial position for chains")
 
 prior_range = []
-prior_range.append([1.0,2.0])
-prior_range.append([1.0,2.0])
+prior_range.append([1.0,20.0])
+prior_range.append([1.0,20.0])
 prior_range.append([100.0,300.0])
-# prior_range.append([0.5,3.0])
+# prior_range.append([0.5,20.0])
 # prior_range.append([0.1,1.0])
 # prior_range.append([np.log10(100.0),np.log10(300.0)])
 
@@ -279,15 +287,15 @@ from scipy.optimize import minimize
 loss = lambda x: -likelihood(x)
 loss = jit(loss)
 
-initial_position = []
-for i in range(n_chains):
-	res = minimize(loss,initial_guess[i,:],method='Nelder-Mead')
-	initial_position.append(res.x)
+# initial_position = []
+# for i in range(n_chains):
+# 	res = minimize(loss,initial_guess[i,:],method='Nelder-Mead')
+# 	initial_position.append(res.x)
 
-initial_position = jnp.array(initial_position).T
+# initial_position = jnp.array(initial_position).T
 
 
-#initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.5 + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
+initial_position = (jax.random.normal(rng_key_ic,(n_chains,n_dim))*0.5 + jnp.array(list(guess_parameters.values()))).T #(n_dim, n_chains)
 
 print("Initializing MCMC model and normalizing flow model.")
 
@@ -295,7 +303,7 @@ print("Initializing MCMC model and normalizing flow model.")
 model = RealNVP(10,n_dim,64, 1)
 params = model.init(init_rng_keys_nf, jnp.ones((1,n_dim)))['params']
 
-run_mcmc = jax.vmap(rw_metropolis_sampler, in_axes=(0, None, None, 1, None),
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 1, None),
                     out_axes=0)
 
 tx = optax.adam(learning_rate, momentum)
@@ -317,7 +325,7 @@ trained = False
 last_step = initial_position
 chains = []
 for i in range(total_epoch):
-	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, last_step, 0.1)
+	rng_keys_mcmc, positions, log_prob = run_mcmc(rng_keys_mcmc, n_samples, likelihood, d_likelihood, last_step, 0.0001)
 	positions = positions.at[:,:,3].set(positions[:,:,3]%(2*jnp.pi))
 	positions = positions.at[:,:,5].set(positions[:,:,5]%(jnp.pi))
 	positions = positions.at[:,:,6].set(positions[:,:,6]%(jnp.pi))
@@ -335,3 +343,8 @@ for i in range(total_epoch):
 
 chains = np.concatenate(chains,axis=1)
 nf_samples = sample_nf(model, state.params, rng_keys_nf, 10000)
+
+def chain_to_param(chain):
+    return dict(chirp_mass=chain[0], mass_ratio=chain[1], luminosity_distance=10**chain[2],
+                phase=chain[3], geocent_time=chain[4], theta_jn=chain[5], psi=chain[6],
+                ra=chain[7], dec=chain[8],a_1=0,a_2=0,tilt_1=0,tilt_2=0,phi_12=0,phi_jl=0)
