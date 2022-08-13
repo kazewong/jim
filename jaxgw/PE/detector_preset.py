@@ -1,4 +1,4 @@
-from jaxgw.gw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response, get_vertex_position_geocentric
+from jaxgw.PE.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response, get_vertex_position_geocentric
 import jax.numpy as jnp
 
 # See https://git.ligo.org/lscsoft/bilby/-/tree/master/bilby/gw/detector/detectors for detector parameters.

@@ -1,7 +1,7 @@
 # Credit some part of the source code from bilby
 
 import jax.numpy as jnp
-from jaxgw.gw.constants import *
+from jaxgw.PE.constants import *
 
 ##########################################################
 # Construction of arms
