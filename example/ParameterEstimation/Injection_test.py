@@ -84,7 +84,7 @@ dec = 0.5
 detector_presets = {'H1': get_H1()}
 
 theta_ripple = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
-theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],1000,axis=0)*np.random.normal(loc=1,scale=0.001,size=(1000,9)))
+theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],1000,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(1000,9)))
 theta_ripple_vec[theta_ripple_vec[:,1]>0.25,1] = 0.25
 
 f_list = freqs[freqs>fmin]
@@ -109,7 +109,7 @@ def LogLikelihood(theta):
     optimal_SNR = 4*jnp.sum((jnp.conj(h_test[0])*h_test[0])/noise_psd*df).real
     return (-match_filter_SNR+optimal_SNR/2)
 
-theta_ref = jnp.array([Mc, 0.23, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
+theta_ref = jnp.array([Mc, 0.138, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
 
 h_function = lambda f,theta:gen_IMRPhenomD_polar(f,theta)[0]
 
