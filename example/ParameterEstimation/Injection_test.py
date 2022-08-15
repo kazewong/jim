@@ -113,7 +113,7 @@ theta_ref = jnp.array([Mc, 0.23, chi1, chi2, dist_mpc, tc, phic, inclination, po
 
 h_function = lambda f,theta:gen_IMRPhenomD_polar(f,theta)[0]
 
-logL = make_heterodyne_likelihood(data, h_function, theta_ref, noise_psd, f_list, 1001)
+logL = make_heterodyne_likelihood(data, h_function, theta_ref, noise_psd, f_list, 101)
 
 L1 = jax.vmap(LogLikelihood)(theta_ripple_vec)
 L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
