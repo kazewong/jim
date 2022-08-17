@@ -15,7 +15,7 @@ from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
 
 
 from flowMC.nfmodel.realNVP import RealNVP
-from flowMC.sampler.MALA import mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
@@ -131,9 +131,9 @@ L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
 # Samples the likelihood with flowMC
 
 n_dim = 9
-n_chains = 10
+n_chains = 1000
 n_loop = 5
-n_local_steps = 100
+n_local_steps = 1000
 n_global_steps = 0
 stepsize = 0.01
 
@@ -154,16 +154,18 @@ initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.p
 initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi )
 
 model = RealNVP(10, n_dim, 64, 1)
-run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
+# run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
 
 print("Initializing sampler class")
 
 logL = jax.jit(logL)
 dlogL = jax.jit(jax.grad(logL)) # compiling each of these function first should improve the performance by a lot
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+local_sampler = make_mala_sampler(n_local_steps,logL, dlogL, initial_position)
+
+nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     logL,
-                    d_likelihood=jax.grad(logL),
+                    d_likelihood=dlogL,
                     n_loop=n_loop,
                     n_local_steps=n_local_steps,
                     n_global_steps=n_global_steps,
