@@ -13,6 +13,13 @@ from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from jaxgw.PE.detector_preset import * 
 from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
 
+
+from flowMC.nfmodel.realNVP import RealNVP
+from flowMC.sampler.MALA import mala_sampler
+from flowMC.sampler.Sampler import Sampler
+from flowMC.utils.PRNG_keys import initialize_rng_keys
+from flowMC.nfmodel.utils import *
+
 import matplotlib.pyplot as plt
 
 psd_func_dict = {
@@ -84,7 +91,7 @@ dec = 0.5
 detector_presets = {'H1': get_H1()}
 
 theta_ripple = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
-theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],1000,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(1000,9)))
+theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],10000,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(10000,9)))
 theta_ripple_vec[theta_ripple_vec[:,1]>0.25,1] = 0.25
 
 f_list = freqs[freqs>fmin]
@@ -122,3 +129,44 @@ L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
 # Create likelihood object
 
 # Samples the likelihood with flowMC
+
+n_dim = 9
+n_chains = 10
+n_loop = 5
+n_local_steps = 100
+n_global_steps = 0
+stepsize = 0.01
+
+print("Preparing RNG keys")
+rng_key_set = initialize_rng_keys(n_chains, seed=42)
+
+print("Initializing MCMC model and normalizing flow model.")
+
+initial_position = jax.random.uniform(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+initial_position = initial_position.at[:,0].set(initial_position[:,0]*20 + 10)
+initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
+initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
+initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
+initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
+initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
+initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
+initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
+initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi )
+
+model = RealNVP(10, n_dim, 64, 1)
+run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
+
+print("Initializing sampler class")
+
+logL = jax.jit(logL)
+dlogL = jax.jit(jax.grad(logL)) # compiling each of these function first should improve the performance by a lot
+
+nf_sampler = Sampler(n_dim, rng_key_set, model, run_mcmc,
+                    logL,
+                    d_likelihood=jax.grad(logL),
+                    n_loop=n_loop,
+                    n_local_steps=n_local_steps,
+                    n_global_steps=n_global_steps,
+                    n_chains=n_chains,
+                    stepsize=stepsize,
+                    use_global=False,)
