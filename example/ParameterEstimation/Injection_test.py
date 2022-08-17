@@ -131,7 +131,7 @@ L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
 # Samples the likelihood with flowMC
 
 n_dim = 9
-n_chains = 100
+n_chains = 1000
 n_loop = 5
 n_local_steps = 1000
 n_global_steps = 0
@@ -173,4 +173,4 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     stepsize=stepsize,
                     use_global=False,)
 
-local_sampler = make_mala_sampler(logL, dlogL)
+local_sampler(rng_key_set[1], n_local_steps, logL, dlogL, initial_position)
