@@ -131,9 +131,9 @@ L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
 # Samples the likelihood with flowMC
 
 n_dim = 9
-n_chains = 1000
+n_chains = 100
 n_loop = 5
-n_local_steps = 1000
+n_local_steps = 100
 n_global_steps = 0
 stepsize = 0.01
 
@@ -161,7 +161,7 @@ print("Initializing sampler class")
 logL = jax.jit(logL)
 dlogL = jax.jit(jax.grad(logL)) # compiling each of these function first should improve the performance by a lot
 
-local_sampler = make_mala_sampler(logL, dlogL,1e-4)
+local_sampler = make_mala_sampler(logL, dlogL,1e-5)
 
 nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     logL,
