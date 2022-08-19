@@ -61,6 +61,6 @@ def make_heterodyne_likelihood(data, h_function, ref_theta, psd, freqs, n_bins=1
         match_filter_SNR = jnp.sum(A0*r0.conj() + A1*r1.conj())
         optimal_SNR = jnp.sum(B0*jnp.abs(r0)**2 + 2*B1*(r0*r1.conj()).real)
 
-        return (- match_filter_SNR + optimal_SNR/2).real
+        return (match_filter_SNR - optimal_SNR/2).real
 
     return heterodyne_likelihood
