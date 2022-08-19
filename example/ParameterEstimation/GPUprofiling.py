@@ -149,5 +149,6 @@ def mala_update(rng_key, position, logpdf, n_steps=100):
     y = jax.lax.scan(mala_kernel, carry, jax.random.split(rng_key,n_steps))
     return y
 
-mala_update = jax.jit(jax.vmap(mala_update))
-result = mala_update(jax.random.split(jax.random.PRNGKey(1),100), theta_ripple_vec, jax.vmap(logpdf)(theta_ripple_vec))
+with jax.profiler.trace("./", create_perfetto_link=True):
+    mala_update = jax.jit(jax.vmap(mala_update))
+    result = mala_update(jax.random.split(jax.random.PRNGKey(1),100), theta_ripple_vec, jax.vmap(logpdf)(theta_ripple_vec))
