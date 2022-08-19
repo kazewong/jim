@@ -88,23 +88,28 @@ polarization_angle = np.pi/2
 ra = 0.3
 dec = 0.5
 
+n_dim = 9
+n_chains = 1000
+n_loop = 3
+n_local_steps = 1000
+n_global_steps = 1000
+learning_rate = 0.01
+max_samples = 50000
+momentum = 0.9
+num_epochs = 1000
+batch_size = 10000
+stepsize = 0.01
+
 detector_presets = {'H1': get_H1()}
 
 theta_ripple = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
-theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],100,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(100,9)))
+theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],n_chains,axis=0)*np.random.normal(loc=1,scale=0.01,size=(n_chains,9)))
 theta_ripple_vec[theta_ripple_vec[:,1]>0.25,1] = 0.25
 
 f_list = freqs[freqs>fmin]
 hp = gen_IMRPhenomD_polar(f_list, theta_ripple)
 noise_psd = psd[freqs>fmin]
 data = noise_psd + hp[0]
-
-
-# def top_hat(x, low_lim, high_lim):
-#     return jnp.heaviside(x-low_lim,1)*(1-jnp.heaviside(x-high_lim,1))
-
-# def LogPrior(theta):
-    
 
 
 @jax.jit
@@ -129,17 +134,7 @@ L2 = jax.vmap(jax.jit(logL))(theta_ripple_vec)
 
 # Samples the likelihood with flowMC
 
-n_dim = 9
-n_chains = 100
-n_loop = 5
-n_local_steps = 100
-n_global_steps = 1000
-learning_rate = 0.1
-max_samples = 50000
-momentum = 0.9
-num_epochs = 100
-batch_size = 10000
-stepsize = 0.01
+
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
@@ -167,7 +162,7 @@ print("Initializing sampler class")
 logL = jax.jit(logL)
 dlogL = jax.jit(jax.grad(logL)) # compiling each of these function first should improve the performance by a lot
 
-local_sampler = make_mala_sampler(logL, dlogL,1e-7)
+local_sampler = make_mala_sampler(logL, dlogL,5e-7)
 
 nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     logL,
