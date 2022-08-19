@@ -80,7 +80,7 @@ m2 = 10.0
 Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
 chi1 = 0.4
 chi2 = -0.3
-dist_mpc = 400.0
+dist_mpc = 1000.0
 tc = 2.0
 phic = 0.0
 inclination = np.pi
@@ -91,7 +91,7 @@ dec = 0.5
 detector_presets = {'H1': get_H1()}
 
 theta_ripple = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle])
-theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],10000,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(10000,9)))
+theta_ripple_vec = np.array(jnp.repeat(theta_ripple[None,:],100,axis=0)*np.random.normal(loc=1,scale=0.0001,size=(100,9)))
 theta_ripple_vec[theta_ripple_vec[:,1]>0.25,1] = 0.25
 
 f_list = freqs[freqs>fmin]
@@ -100,13 +100,12 @@ noise_psd = psd[freqs>fmin]
 data = noise_psd + hp[0]
 
 
-# plt.figure(figsize=(15,5))
-# plt.loglog(f_list, np.abs(data), label="Signal", alpha=0.3)
-# plt.loglog(f_list, np.abs(noise_fd_dict["H1"][freqs>fmin]), label="H1 noise", alpha=0.3)
-# plt.loglog(f_list, np.abs(hp[0]), label="H1 waveform", alpha=0.3)
-# plt.ylim(1e-25, 1e-21)
-# plt.legend()
-# plt.show()
+# def top_hat(x, low_lim, high_lim):
+#     return jnp.heaviside(x-low_lim,1)*(1-jnp.heaviside(x-high_lim,1))
+
+# def LogPrior(theta):
+    
+
 
 @jax.jit
 def LogLikelihood(theta):
@@ -134,7 +133,12 @@ n_dim = 9
 n_chains = 100
 n_loop = 5
 n_local_steps = 100
-n_global_steps = 0
+n_global_steps = 1000
+learning_rate = 0.1
+max_samples = 50000
+momentum = 0.9
+num_epochs = 100
+batch_size = 10000
 stepsize = 0.01
 
 print("Preparing RNG keys")
@@ -142,16 +146,18 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-initial_position = jax.random.uniform(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-initial_position = initial_position.at[:,0].set(initial_position[:,0]*20 + 10)
-initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
-initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
-initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
-initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
-initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
-initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
-initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
-initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi )
+initial_position = theta_ripple_vec
+# initial_position = jax.random.uniform(rng_key_set[0], shape=(n_chains, n_dim)) * 1
+# initial_position = initial_position.at[:,0].set(initial_position[:,0]*20 + 10)
+# initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
+# initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
+# initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
+# initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
+# initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
+# initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
+# initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
+# initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi )
+
 
 model = RealNVP(10, n_dim, 64, 1)
 # run_mcmc = jax.vmap(mala_sampler, in_axes=(0, None, None, None, 0, None), out_axes=0)
@@ -161,7 +167,7 @@ print("Initializing sampler class")
 logL = jax.jit(logL)
 dlogL = jax.jit(jax.grad(logL)) # compiling each of these function first should improve the performance by a lot
 
-local_sampler = make_mala_sampler(logL, dlogL,1e-5)
+local_sampler = make_mala_sampler(logL, dlogL,1e-7)
 
 nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     logL,
@@ -171,6 +177,13 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     n_global_steps=n_global_steps,
                     n_chains=n_chains,
                     stepsize=stepsize,
-                    use_global=False,)
+                    n_nf_samples=100,
+                    learning_rate=learning_rate,
+                    n_epochs= num_epochs,
+                    max_samples = max_samples,
+                    momentum=momentum,
+                    batch_size=batch_size,
+                    use_global=True,)
 
-local_sampler(rng_key_set[1], n_local_steps, logL, dlogL, initial_position)
+nf_sampler.sample(initial_position)
+# state = local_sampler(rng_key_set[1], n_local_steps, logL, dlogL, initial_position)
