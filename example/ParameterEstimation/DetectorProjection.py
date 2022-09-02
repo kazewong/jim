@@ -49,5 +49,5 @@ H1 = get_H1()
 L1 = get_L1()
 H1_response = make_detector_response(H1[0], H1[1])
 L1_response = make_detector_response(L1[0], L1[1])
-H1_response(fs,hp_ripple, hc_ripple, 0.2, 0.3, 0.,0.5)
+H1_response(fs, hp_ripple, hc_ripple, 0.2, 0.3, 0.,0.5)
 
