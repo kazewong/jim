@@ -73,10 +73,10 @@ m2 = 30.0
 Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
 chi1 = 0.4
 chi2 = -0.3
-dist_mpc = 1000.0
+dist_mpc = 300.0
 tc = 2.0
 phic = np.pi/4
-inclination = 3.27*np.pi/4
+inclination = 1.57*np.pi/4
 polarization_angle = 1.2*np.pi/8
 ra = 0.3
 dec = 0.5
@@ -144,21 +144,27 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi]])
+prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
 
-# initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
-# initial_position = initial_position.at[:,0].set(initial_position[:,0]*60 + 10)
-# initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
-# initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
-# initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
-# initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
-# initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
-# initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
-# initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
-# initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi)
+initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
+initial_position = initial_position.at[:,0].set(initial_position[:,0]*60 + 10)
+initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
+initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
+initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
+initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
+initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
+initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
+initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
+initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi)
+initial_position = initial_position.at[:,9].set(initial_position[:,9]*2*np.pi)
+initial_position = initial_position.at[:,10].set(initial_position[:,10]*np.pi)
 # initial_position = jnp.append(initial_position, guess_param, axis=0)
 
-initial_position = guess_param
+initial_position = initial_position.at[:,0].set(guess_param[:,0])
+initial_position = initial_position.at[:,1].set(guess_param[:,1])
+initial_position = initial_position.at[:,2].set(guess_param[:,2])
+initial_position = initial_position.at[:,3].set(guess_param[:,3])
+
 
 model = RealNVP(10, n_dim, 64, 1)
 
