@@ -2,7 +2,6 @@
 
 import jax.numpy as jnp
 from jaxgw.PE.constants import *
-from jaxgw.PE.detector_projection import antenna_response
 
 
 def make_detector_response(detector_tensor, detector_vertex):
