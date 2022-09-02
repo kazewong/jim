@@ -32,7 +32,7 @@ ifos = list(psd_func_dict.keys())
 tgps_geo = 1126259462.423
 
 # define sampling rate and duration
-fsamp = 1024
+fsamp = 2048
 duration = 4
 
 delta_t = 1/fsamp
