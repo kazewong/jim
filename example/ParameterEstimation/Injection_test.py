@@ -76,7 +76,7 @@ chi2 = -0.3
 dist_mpc = 300.0
 tc = 2.0
 phic = np.pi/4
-inclination = 1.57*np.pi/4
+inclination = 1.57*np.pi/8
 polarization_angle = 1.2*np.pi/8
 ra = 0.3
 dec = 0.5
@@ -85,46 +85,54 @@ dec = 0.5
 
 H1 = get_H1()
 H1_response = make_detector_response(H1[0], H1[1])
+L1 = get_L1()
+L1_response = make_detector_response(L1[0], L1[1])
 
 
-def gen_waveform(f, theta):
+def gen_waveform_H1(f, theta):
     theta_waveform = theta[:9]
     ra = theta[9]
     dec = theta[10]
     hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
     return H1_response(f, hp, hc, ra, dec, theta[5], theta[8])
 
-
+def gen_waveform_L1(f, theta):
+    theta_waveform = theta[:9]
+    ra = theta[9]
+    dec = theta[10]
+    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
+    return L1_response(f, hp, hc, ra, dec, theta[5], theta[8])
 
 true_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
 
 f_list = freqs[freqs>fmin]
-signal = gen_waveform(f_list, true_param)
-noise_psd = psd[freqs>fmin]
-data = noise_psd + signal
+H1_signal = gen_waveform_H1(f_list, true_param)
+H1_noise_psd = noise_fd_dict['H1'][freqs>fmin]
+H1_data = H1_noise_psd + H1_signal
+
+L1_signal = gen_waveform_L1(f_list, true_param)
+L1_noise_psd = noise_fd_dict['L1'][freqs>fmin]
+L1_data = L1_noise_psd + L1_signal
 
 
-@jax.jit
-def LogLikelihood(theta):
-    h_test = gen_waveform(f_list,theta)
-    df = f_list[1] - f_list[0]
-    match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*data)/noise_psd*df).real
-    optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/noise_psd*df).real
-    return (match_filter_SNR-optimal_SNR/2)
+# @jax.jit
+# def LogLikelihood(theta):
+#     h_test = gen_waveform(f_list,theta)
+#     df = f_list[1] - f_list[0]
+#     match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*data)/noise_psd*df).real
+#     optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/noise_psd*df).real
+#     return (match_filter_SNR-optimal_SNR/2)
 
 ref_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
-logL = make_heterodyne_likelihood(data, gen_waveform, ref_param, noise_psd, f_list, 101)
-
-# L1 = jax.vmap(LogLikelihood)(guess_param)
-# L2 = jax.vmap(jax.jit(logL))(guess_param)
-
+H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, psd_dict['H1'], f_list, 101)
+L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, psd_dict['L1'], f_list, 101)
 
 n_dim = 11
-n_chains = 1000
+n_chains = 100
 n_loop = 5
-n_local_steps = 2000
+n_local_steps = 1000
 n_global_steps = 1000
 learning_rate = 0.01
 max_samples = 50000
@@ -147,30 +155,13 @@ print("Initializing MCMC model and normalizing flow model.")
 prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
-initial_position = initial_position.at[:,0].set(initial_position[:,0]*60 + 10)
-initial_position = initial_position.at[:,1].set(initial_position[:,1]*0.25)
-initial_position = initial_position.at[:,2].set(initial_position[:,2]*2 - 1)
-initial_position = initial_position.at[:,3].set(initial_position[:,3]*2 - 1)
-initial_position = initial_position.at[:,4].set(initial_position[:,4]*2000)
-initial_position = initial_position.at[:,5].set(initial_position[:,5]*10-5)
-initial_position = initial_position.at[:,6].set(initial_position[:,6]*np.pi-np.pi/2)
-initial_position = initial_position.at[:,7].set(initial_position[:,7]*np.pi-np.pi/2)
-initial_position = initial_position.at[:,8].set(initial_position[:,8]*2*np.pi)
-initial_position = initial_position.at[:,9].set(initial_position[:,9]*2*np.pi)
-initial_position = initial_position.at[:,10].set(initial_position[:,10]*np.pi)
-# initial_position = jnp.append(initial_position, guess_param, axis=0)
+for i in range(n_dim):
+    initial_position = initial_position.at[:,i].set(initial_position[:,i]*(prior_range[i,1]-prior_range[i,0])+prior_range[i,0])
 
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
 initial_position = initial_position.at[:,1].set(guess_param[:,1])
 initial_position = initial_position.at[:,2].set(guess_param[:,2])
 initial_position = initial_position.at[:,3].set(guess_param[:,3])
-
-
-model = RealNVP(10, n_dim, 64, 1)
-
-print("Initializing sampler class")
-
-likelihood = logL
 
 def top_hat(x):
     output = 0.
@@ -181,7 +172,19 @@ def top_hat(x):
 
 def posterior(theta):
     prior = top_hat(theta)
-    return likelihood(theta) + prior
+    return jnp.sqrt(H1_logL(theta)**2 + L1_logL(theta)**2) + prior
+
+
+# # L1 = jax.vmap(LogLikelihood)(guess_param)
+# # L2 = jax.vmap(jax.jit(logL))(guess_param)
+
+
+
+
+
+model = RealNVP(10, n_dim, 64, 1)
+
+print("Initializing sampler class")
 
 posterior = jax.jit(posterior)
 dposterior = jax.jit(jax.grad(posterior))
@@ -205,6 +208,6 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     max_samples = max_samples,
                     momentum=momentum,
                     batch_size=batch_size,
-                    use_global=True,)
+                    use_global=False,)
 
 nf_sampler.sample(initial_position)
