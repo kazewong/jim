@@ -73,7 +73,7 @@ m2 = 30.0
 Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
 chi1 = 0.4
 chi2 = -0.3
-dist_mpc = 300.0
+dist_mpc = 1000.0
 tc = 2.0
 phic = np.pi/4
 inclination = 1.57*np.pi/8
@@ -130,19 +130,19 @@ H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, psd_di
 L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, psd_dict['L1'], f_list, 101)
 
 n_dim = 11
-n_chains = 100
+n_chains = 1000
 n_loop = 5
 n_local_steps = 1000
 n_global_steps = 1000
 learning_rate = 0.01
 max_samples = 50000
 momentum = 0.9
-num_epochs = 300
+num_epochs = 1000
 batch_size = 50000
 stepsize = 0.01
 
-guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
-guess_param[guess_param[:,1]>0.25,1] = 0.25
+guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.01,size=(int(n_chains),n_dim)))
+guess_param[guess_param[:,1]>0.25,1] = 0.249
 guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
 guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
 
@@ -160,8 +160,10 @@ for i in range(n_dim):
 
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
 initial_position = initial_position.at[:,1].set(guess_param[:,1])
-initial_position = initial_position.at[:,2].set(guess_param[:,2])
-initial_position = initial_position.at[:,3].set(guess_param[:,3])
+for i in range(2,11):
+    initial_position = initial_position.at[:int(n_chains/10),i].set(guess_param[:int(n_chains/10),i])
+
+initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
 def top_hat(x):
     output = 0.
@@ -172,7 +174,7 @@ def top_hat(x):
 
 def posterior(theta):
     prior = top_hat(theta)
-    return jnp.sqrt(H1_logL(theta)**2 + L1_logL(theta)**2) + prior
+    return H1_logL(theta) + L1_logL(theta) + prior
 
 
 # # L1 = jax.vmap(LogLikelihood)(guess_param)
@@ -186,13 +188,25 @@ model = RealNVP(10, n_dim, 64, 1)
 
 print("Initializing sampler class")
 
-posterior = jax.jit(posterior)
-dposterior = jax.jit(jax.grad(posterior))
+posterior = posterior
+dposterior = jax.grad(posterior)
 
 mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
+mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
-local_sampler,updater, kernel,logp,dlogp = make_mala_sampler(posterior, dposterior,1e-3, jit=True, M=mass_matrix)
+local_sampler,updater, kernel, logp, dlogp = make_mala_sampler(posterior, dposterior,5e-3, jit=True, M=mass_matrix)
+
+# print("Precompling")
+# from time import time
+
+# current_time = time()
+# logp(initial_position)
+# dlogp(initial_position)
+# kernel(rng_key_set[1], initial_position, logp(initial_position))
+# print("Precompling time: ", time()-current_time)
+
+print("Running sampler")
 
 nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     posterior,
@@ -208,6 +222,6 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     max_samples = max_samples,
                     momentum=momentum,
                     batch_size=batch_size,
-                    use_global=False,)
+                    use_global=True,)
 
 nf_sampler.sample(initial_position)
