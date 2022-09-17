@@ -1,3 +1,4 @@
+import wave
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -64,3 +65,50 @@ def make_heterodyne_likelihood(data, h_function, ref_theta, psd, freqs, n_bins=1
         return (match_filter_SNR - optimal_SNR/2).real
 
     return heterodyne_likelihood
+
+def make_heterodyne_likelihood_mutliple_detector(data_array, psd_list, respose_list, h_function, ref_theta, freqs, n_bins=101):
+
+    num_detector = len(data_array)
+
+    f_bins, f_bins_center = make_binning_scheme(freqs, n_bins)
+    raw_hp, raw_hc = h_function(freqs, ref_theta[:9])
+    ra, dec = ref_theta[9], ref_theta[10]
+    h_ref = []
+    h_ref_low = []
+    h_ref_bincenter = []
+    for i in range(num_detector):
+        h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
+        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
+        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
+    
+    A0_array = []
+    A1_array = []
+    B0_array = []
+    B1_array = []
+
+    for i in range(num_detector):
+        A0, A1, B0, B1 = compute_coefficients(data_array[i], h_ref[i], psd_list[i], freqs, f_bins, f_bins_center)
+        A0_array.append(A0)
+        A1_array.append(A1)
+        B0_array.append(B0)
+        B1_array.append(B1)
+        
+    def hetrodyne_likelihood(params):
+        raw_hc, raw_hp = h_function(freqs, params[:9])
+        ra, dec = params[9], params[10]
+
+        output_SNR = 0
+
+        for i in range(num_detector):
+            waveform_low = respose_list[i](f_bins[:-1], raw_hp, raw_hc, ra, dec, params[5], params[8])
+            waveform_center = respose_list[i](f_bins_center, raw_hp, raw_hc, ra, dec, params[5], params[8])
+
+            r0 = waveform_center/h_ref_bincenter[i]
+            r1 = (waveform_low/h_ref_low[i] - r0)/(f_bins[:-1]-f_bins_center)
+
+            match_filter_SNR = jnp.sum(A0_array[i]*r0.conj() + A1_array[i]*r1.conj())
+            optimal_SNR = jnp.sum(B0_array[i]*jnp.abs(r0)**2 + 2*B1_array[i]*(r0*r1.conj()).real)
+
+            output_SNR += (match_filter_SNR - optimal_SNR/2).real
+        
+        return output_SNR
