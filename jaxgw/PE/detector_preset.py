@@ -57,3 +57,29 @@ def get_L1():
 	L1_vertex = get_vertex_position_geocentric(L1_lat, L1_long, L1_elevation)
 	
 	return detector_tensor(L1_arm1, L1_arm2), L1_vertex
+
+def get_V1():
+	"""
+	Get the detector response matrix and the vertex position for V1.
+
+	Returns
+	-------
+	V1_detector_response : ndarray
+		The detector response matrix for V1.
+	V1_vertex : ndarray
+		The vertex position for V1.
+	"""
+	V1_lat = (43 + 37. / 60 + 53.0921 / 3600) * degree_to_radian
+	V1_long = (10 + 30. / 60 + 16.1878 / 3600) * degree_to_radian
+	V1_xarm_azimuth = 70.5674 * degree_to_radian
+	V1_yarm_azimuth = 160.5674 * degree_to_radian
+	V1_xarm_tilt = 0
+	V1_yarm_tilt = 0
+	V1_elevation = 51.884
+	
+	V1_arm1 = construct_arm(V1_lat, V1_long, V1_xarm_tilt, V1_xarm_azimuth)
+	V1_arm2 = construct_arm(V1_lat, V1_long, V1_yarm_tilt, V1_yarm_azimuth)
+
+	V1_vertex = get_vertex_position_geocentric(V1_lat, V1_long, V1_elevation)
+	
+	return detector_tensor(V1_arm1, V1_arm2), V1_vertex
