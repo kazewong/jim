@@ -95,6 +95,7 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         B0_array.append(B0)
         B1_array.append(B1)
         
+        
     def hetrodyne_likelihood(params):
         ra, dec = params[9], params[10]
         output_SNR = 0

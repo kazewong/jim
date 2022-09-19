@@ -68,12 +68,16 @@ ref_param = jnp.array([ 3.41096639e+01,  2.42240502e-01,  7.03845904e-02,
 ref_param = ref_param.at[-1].set(ref_param[-1]%(jnp.pi))
 ref_param = ref_param.at[6].set((ref_param[6]+jnp.pi/2)%(jnp.pi)-jnp.pi/2)
 
-
 H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, H1_psd, H1_frequency, 101)
 L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, L1_psd, L1_frequency, 101)
 
-# H1_logL = H1_LogLikelihood
-# L1_logL = L1_LogLikelihood
+from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+
+data_list = [H1_data, L1_data]
+psd_list = [H1_psd, L1_psd]
+response_list = [H1_response, L1_response]
+
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, 101)
 
 
 n_dim = 11

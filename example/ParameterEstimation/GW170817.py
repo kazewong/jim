@@ -39,6 +39,15 @@ L1_response = make_detector_response(L1[0], L1[1])
 V1 = get_V1()
 V1_response = make_detector_response(V1[0], V1[1])
 
+def gen_data(theta):
+    ra = theta[9]
+    dec = theta[10]
+    hp_test, hc_test = gen_IMRPhenomD_polar(H1_frequency, theta[:9])
+    h_test_H1 = H1_response(H1_frequency, hp_test, hc_test, ra, dec, theta[5], theta[8])
+    h_test_L1 = L1_response(L1_frequency, hp_test, hc_test, ra, dec, theta[5], theta[8])
+    h_test_V1 = V1_response(V1_frequency, hp_test, hc_test, ra, dec, theta[5], theta[8])
+    return h_test_H1, h_test_L1, h_test_V1
+
 def LogLikelihood(theta):
     ra = theta[9]
     dec = theta[10]
@@ -71,32 +80,32 @@ response_list = [H1_response, L1_response, V1_response]
 logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, 101)
 
 
-# n_dim = 11
-# n_chains = 1000
-# n_loop = 10
-# n_local_steps = 1000
-# n_global_steps = 1000
-# learning_rate = 0.001
-# max_samples = 50000
-# momentum = 0.9
-# num_epochs = 300
-# batch_size = 50000
-# stepsize = 0.01
+n_dim = 11
+n_chains = 1000
+n_loop = 10
+n_local_steps = 1000
+n_global_steps = 1000
+learning_rate = 0.001
+max_samples = 50000
+momentum = 0.9
+num_epochs = 300
+batch_size = 50000
+stepsize = 0.01
 
-# guess_param = ref_param
+guess_param = ref_param
 
-# guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
-# guess_param[guess_param[:,1]>0.25,1] = 0.249
-# guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
-# guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
+guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
+guess_param[guess_param[:,1]>0.25,1] = 0.249
+guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
+guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
 
 
-# print("Preparing RNG keys")
-# rng_key_set = initialize_rng_keys(n_chains, seed=42)
+print("Preparing RNG keys")
+rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
-# print("Initializing MCMC model and normalizing flow model.")
+print("Initializing MCMC model and normalizing flow model.")
 
-# prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[1.2,2.5],[0.1,0.25],[-1,1],[-1,1],[0,200],[-60,60],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,np.pi],[0,2*np.pi],[0,np.pi]])
 
 # initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 # for i in range(n_dim):
