@@ -3,6 +3,17 @@
 import jax.numpy as jnp
 from jaxgw.PE.constants import *
 
+
+def make_detector_response(detector_tensor, detector_vertex):
+    antenna_response_plus = make_antenna_response(detector_tensor,'plus')
+    antenna_response_cross = make_antenna_response(detector_tensor, 'cross')
+    def detector_response(f, hp, hc, ra, dec, time, psi):
+        output = antenna_response_plus(ra, dec, time, psi)*hp + antenna_response_cross(ra, dec, time, psi)*hc
+        timeshift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]), ra, dec, time)
+        output = output * jnp.exp(-1j * 2 * jnp.pi * f * timeshift)
+        return output
+    return detector_response
+        
 ##########################################################
 # Construction of arms
 ##########################################################
@@ -37,48 +48,62 @@ def detector_tensor(arm1, arm2):
 # Construction of detector tensor
 ##########################################################
 
-def get_polarization_tensor(ra, dec, time, psi, mode):
+def make_get_polarization_tensor(mode):
+
     """
-    
+
+    Since most of the application will only use specific modes,
+    this function hoist the if-else loop out from the actual kernel to save time from compiling the kernel.
+
     Args:
+        mode: string
 
-        ra:
-        dec:
-        time: Greenwich Mean Sidereal Time in geocentric frame
-        psi:
-        mode:
     """
-
-    gmst = jnp.mod(time, 2 * jnp.pi)
-    phi = ra - gmst
-    theta = jnp.pi / 2 - dec
-
-    u = jnp.array([jnp.cos(phi) * jnp.cos(theta), jnp.cos(theta) * jnp.sin(phi), -jnp.sin(theta)])
-    v = jnp.array([-jnp.sin(phi), jnp.cos(phi), 0])
-    m = -u * jnp.sin(psi) - v * jnp.cos(psi)
-    n = -u * jnp.cos(psi) + v * jnp.sin(psi)
 
     if mode.lower() == 'plus':
-        return jnp.einsum('i,j->ij', m, m) - jnp.einsum('i,j->ij', n, n)
+        kernel = lambda m,n: jnp.einsum('i,j->ij', m, m) - jnp.einsum('i,j->ij', n, n)
     elif mode.lower() == 'cross':
-        return jnp.einsum('i,j->ij', m, n) + jnp.einsum('i,j->ij', n, m)
+        kernel = lambda m,n: jnp.einsum('i,j->ij', m, n) + jnp.einsum('i,j->ij', n, m)
     elif mode.lower() == 'breathing':
-        return jnp.einsum('i,j->ij', m, m) + jnp.einsum('i,j->ij', n, n)
+        kernel = lambda m,n: jnp.einsum('i,j->ij', m, m) + jnp.einsum('i,j->ij', n, n)
 
-    # Calculating omega here to avoid calculation when model in [plus, cross, breathing]
-    omega = jnp.cross(m, n)
-    if mode.lower() == 'longitudinal':
-        return jnp.einsum('i,j->ij', omega, omega)
-    elif mode.lower() == 'x':
-        return jnp.einsum('i,j->ij', m, omega) + jnp.einsum('i,j->ij', omega, m)
-    elif mode.lower() == 'y':
-        return jnp.einsum('i,j->ij', n, omega) + jnp.einsum('i,j->ij', omega, n)
-    else:
-        raise ValueError("{} not a polarization mode!".format(mode))
+        # Calculating omega here to avoid calculation when model in [plus, cross, breathing]
+        if mode.lower() == 'longitudinal':
+            def kernel(m,n):
+                omega = jnp.cross(m, n)
+                return jnp.einsum('i,j->ij', omega, omega)
+        elif mode.lower() == 'x':
+            def kernel(m,n):
+                omega = jnp.cross(m, n)
+                return jnp.einsum('i,j->ij', m, omega) + jnp.einsum('i,j->ij', omega, m)
+        elif mode.lower() == 'y':
+            def kernel(m,n):
+                omega = jnp.cross(m, n)
+                return jnp.einsum('i,j->ij', n, omega) + jnp.einsum('i,j->ij', omega, n)
+        else:
+            raise ValueError("{} not a polarization mode!".format(mode))
 
-def antenna_response(detector_tensor, ra, dec, time, psi, mode):
-    polarization_tensor = get_polarization_tensor(ra, dec, time, psi, mode)
-    return jnp.einsum('ij,ij->', detector_tensor, polarization_tensor)
+    def get_polarization_tensor(ra, dec, time, psi):
+        gmst = jnp.mod(time, 2 * jnp.pi)
+        phi = ra - gmst
+        theta = jnp.pi / 2 - dec
+
+        u = jnp.array([jnp.cos(phi) * jnp.cos(theta), jnp.cos(theta) * jnp.sin(phi), -jnp.sin(theta)])
+        v = jnp.array([-jnp.sin(phi), jnp.cos(phi), 0])
+        m = -u * jnp.sin(psi) - v * jnp.cos(psi)
+        n = -u * jnp.cos(psi) + v * jnp.sin(psi)
+
+        return kernel(m, n)
+    
+    return get_polarization_tensor
+
+    
+def make_antenna_response(detector_tensor, mode):
+    kernel = make_get_polarization_tensor(mode)
+    def antenna_response(ra, dec, time, psi):
+        polarization_tensor = kernel(ra, dec, time, psi)
+        return jnp.einsum('ij,ij->', detector_tensor, polarization_tensor)
+    return antenna_response
 
 def time_delay_geocentric(detector1, detector2, ra, dec, time):
     """
@@ -142,37 +167,5 @@ def get_vertex_position_geocentric(latitude, longitude, elevation):
     return jnp.array([x_comp, y_comp, z_comp])
 
 
-def get_detector_response(frequency, waveform_polarizations, parameters, detector_tensor, detector_vertex):
-    """
-
-     Args:
-
-        ra: Right Ascension in radian
-        dec:Right Ascension in radian
-        time: Greenwich Mean Sidereal Time in geocentric frame
-        psi:
-        mode:
-   
-    """
-    signal = {}
-    for mode in waveform_polarizations.keys():
-        det_response = antenna_response(
-            detector_tensor,
-            parameters['ra'],
-            parameters['dec'],
-            parameters['greenwich_mean_sidereal_time'],
-            parameters['psi'], mode)
-
-        signal[mode] = waveform_polarizations[mode] * det_response
-    signal_ifo = sum(signal.values())
-
-    time_shift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]),parameters['ra'], parameters['dec'], parameters['greenwich_mean_sidereal_time'])
-
-    dt = parameters['geocent_time'] - parameters['start_time']
-    dt = dt + time_shift # Note that we always assume the start time of the strain to be 0
-
-    signal_ifo = signal_ifo * jnp.exp(-1j * 2 * jnp.pi * dt * frequency)
-
-    return signal_ifo
 
 
