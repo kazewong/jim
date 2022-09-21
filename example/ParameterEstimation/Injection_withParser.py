@@ -233,17 +233,17 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     use_global=True,
                     keep_quantile=0.5)
 
-# nf_sampler.sample(initial_position)
+nf_sampler.sample(initial_position)
 
-# labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'inclination', 'polarization_angle', 'ra', 'dec']
+labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'inclination', 'polarization_angle', 'ra', 'dec']
 
-# print("Saving to output")
+print("Saving to output")
 
-# chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
+chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
 
-# # Fetch output parameters
+# Fetch output parameters
 
-# output_path = args['output_path']
-# downsample_factor = args['downsample_factor']
+output_path = args['output_path']
+downsample_factor = args['downsample_factor']
 
-# np.savez(args['output_path'], chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs, loss_vals=loss_vals, labels=labels)
+np.savez(args['output_path'], chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs, loss_vals=loss_vals, labels=labels)
