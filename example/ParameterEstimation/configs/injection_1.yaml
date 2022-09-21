@@ -1,0 +1,43 @@
+# Book keeping parameters
+
+output_path: /mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/injection_1
+downsample_factor: 10
+
+# Noise parameters
+
+seed: 1234
+f_sampling: 2048
+duration: 4
+fmin: 30
+ifos:
+  - H1
+  - L1
+
+# Injection parameters
+
+m1: 35
+m2: 30
+chi1: 0.3
+chi2: -0.4
+dist_mpc: 400
+tc: 2
+phic: 0.1
+inclination: 0.5
+polarization_angle: 0.2
+ra: 1.2
+dec: 0.3
+heterodyne_bins: 101
+
+# Sampler parameters
+
+n_dim: 11
+n_chains: 1000
+n_loop: 10
+n_local_steps: 1000
+n_global_steps: 1000
+learning_rate: 0.001
+max_samples: 50000
+momentum: 0.9
+num_epochs: 300
+batch_size: 50000
+stepsize: 0.01
