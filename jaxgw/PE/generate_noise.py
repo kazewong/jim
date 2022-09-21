@@ -50,4 +50,4 @@ def generate_noise(seed: int, f_sampling: int = 2048, duration: int = 4, f_min: 
         noise_imag = jax.random.normal(rng_keys[2],shape=(len(psd),))*jnp.sqrt(var)
         noise_fd_dict[ifo] = noise_real + 1j*noise_imag
 
-    return psd_dict, noise_fd_dict
+    return freqs, psd_dict, noise_fd_dict
