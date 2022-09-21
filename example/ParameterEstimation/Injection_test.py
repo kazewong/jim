@@ -28,9 +28,6 @@ psd_func_dict = {
 }
 ifos = list(psd_func_dict.keys())
 
-# define center of time array
-tgps_geo = 1126259462.423
-
 # define sampling rate and duration
 fsamp = 2048
 duration = 4
@@ -120,15 +117,17 @@ ref_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, pol
 H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, psd_dict['H1'], f_list, 101)
 L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, psd_dict['L1'], f_list, 101)
 
+
+
 n_dim = 11
-n_chains = 1000
-n_loop = 5
-n_local_steps = 1000
-n_global_steps = 1000
+n_chains = 100
+n_loop = 50
+n_local_steps = 100
+n_global_steps = 100
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
-num_epochs = 300
+num_epochs = 30
 batch_size = 50000
 stepsize = 0.01
 
@@ -209,3 +208,6 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     keep_quantile=0.5)
 
 nf_sampler.sample(initial_position)
+
+labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'inclination', 'polarization_angle', 'ra', 'dec']
+truths = true_param

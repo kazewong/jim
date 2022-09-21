@@ -65,10 +65,9 @@ def LogLikelihood(theta):
 
     return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2) + (match_filter_SNR_V1-optimal_SNR_V1/2)
 
-ref_param = jnp.array([ 3.41096639e+01,  2.42240502e-01,  7.03845904e-02,
-              1.45055597e-01,  4.00156164e+02, -1.97202379e+00,
-              1.08177416e+00, -6.94499550e-02,  1.95503312e+00,
-              8.60901399e-01,  2.89425087e+00])
+ref_param = jnp.array([ 1.18622027e+00,  1.43466815e-01,  2.36654514e-02,  2.95581081e-02,
+        4.28198717e+01, -3.04432711e+01,  7.16390478e-01,  7.09306354e-01,
+        1.53402146e+00,  5.39492767e+00,  6.05554691e-02])
 
 ref_param = ref_param.at[-1].set(ref_param[-1]%(jnp.pi))
 ref_param = ref_param.at[6].set((ref_param[6]+jnp.pi/2)%(jnp.pi)-jnp.pi/2)
@@ -105,7 +104,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[1.2,2.5],[0.1,0.25],[-1,1],[-1,1],[0,200],[-60,60],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[1.17,1.20],[0.1,0.25],[0,0.85],[0,0.85],[0,200],[-60,60],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 # initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 # for i in range(n_dim):

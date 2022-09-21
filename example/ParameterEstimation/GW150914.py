@@ -81,14 +81,14 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 
 n_dim = 11
-n_chains = 1000
-n_loop = 10
-n_local_steps = 1000
-n_global_steps = 1000
+n_chains = 100
+n_loop = 100
+n_local_steps = 100
+n_global_steps = 100
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
-num_epochs = 300
+num_epochs = 30
 batch_size = 50000
 stepsize = 0.01
 
@@ -105,7 +105,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[10,80],[0.0,0.25],[0,1],[0,1],[0,2000],[-5,5],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
