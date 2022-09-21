@@ -26,11 +26,11 @@ parser = argparse.ArgumentParser(description='Injection test')
 parser.add_argument('--config', type=str, default='config.yaml', help='config file')
 
 # Add noise parameters to parser
-parser.add_argument('--seed', type=int, default=0, help='seed for random number generator')
-parser.add_argument('--f_sampling', type=int, default=2048, help='sampling frequency')
-parser.add_argument('--duration', type=int, default=4, help='duration of the data')
-parser.add_argument('--fmin', type=float, default=30., help='minimum frequency')
-parser.add_argument('--ifos', nargs='+', default=['H1', 'L1'], help='list of detectors')
+parser.add_argument('--seed', type=int, default=None, help='seed for random number generator')
+parser.add_argument('--f_sampling', type=int, default=None, help='sampling frequency')
+parser.add_argument('--duration', type=int, default=None, help='duration of the data')
+parser.add_argument('--fmin', type=float, default=None, help='minimum frequency')
+parser.add_argument('--ifos', nargs='+', default=None, help='list of detectors')
 
 # Add injection parameters to parser
 parser.add_argument('--m1', type=float, default=None, help='mass of the first component')
@@ -60,10 +60,17 @@ parser.add_argument('--num_epochs', type=int, default=None, help='number of epoc
 parser.add_argument('--batch_size', type=int, default=None, help='batch size')
 parser.add_argument('--stepsize', type=float, default=None, help='stepsize for Local sampler')
 
+# Add output parameters to parser
+
+parser.add_argument('--output_path', type=str, default=None, help='output file path')
+parser.add_argument('--downsample_factor', type=int, default=1, help='downsample factor')
+
 # parser
 
 args = parser.parse_args()
-opt = yaml.load(open(args.config,'r'), Loader=yaml.FullLoader)
+opt = vars(args)
+args = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
+opt.update(args)
 args = opt
 
 # Fetch noise parameters 
@@ -71,11 +78,12 @@ args = opt
 print("Constructing detectors")
 print("Making noises")
 
-seed = args.seed
-f_sampling = args.f_sampling
-duration = args.duration
-fmin = args.fmin
-ifos = args.ifos
+seed = args['seed']
+f_sampling = args['f_sampling']
+duration = args['duration']
+fmin = args['fmin']
+ifos = args['ifos']
+
 
 freqs, psd_dict, noise_dict = generate_noise(seed+1234, f_sampling, duration, fmin, ifos)
 
@@ -84,20 +92,21 @@ freqs, psd_dict, noise_dict = generate_noise(seed+1234, f_sampling, duration, fm
 
 print("Injection signals")
 
-m1 = args.m1
-m2 = args.m2
-Mc, eta = ms_to_Mc_eta(m1, m2)
-chi1 = args.chi1
-chi2 = args.chi2
-dist_mpc = args.dist_mpc
-tc = args.tc
-phic = args.phic
-inclination = args.inclination
-polarization_angle = args.polarization_angle
-ra = args.ra
-dec = args.dec
+m1 = args['m1']
+m2 = args['m2']
+chi1 = args['chi1']
+chi2 = args['chi2']
+dist_mpc = args['dist_mpc']
+tc = args['tc']
+phic = args['phic']
+inclination = args['inclination']
+polarization_angle = args['polarization_angle']
+ra = args['ra']
+dec = args['dec']
 
-heterodyne_bins = args.heterodyne_bins
+Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
+
+heterodyne_bins = args['heterodyne_bins']
 
 H1 = get_H1()
 H1_response = make_detector_response(H1[0], H1[1])
@@ -143,19 +152,20 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 print("Making sampler")
 
-n_dim = args.n_dim
-n_chains = args.n_chains
-n_loop = args.n_loop
-n_local_steps = args.n_local_steps
-n_global_steps = args.n_global_steps
-learning_rate = args.learning_rate
-max_samples = args.max_samples
-momentum = args.momentum
-num_epochs = args.num_epochs
-batch_size = args.batch_size
-stepsize = args.stepsize
+n_dim = args['n_dim']
+n_chains = args['n_chains']
+n_loop = args['n_loop']
+n_local_steps = args['n_local_steps']
+n_global_steps = args['n_global_steps']
+learning_rate = args['learning_rate']
+max_samples = args['max_samples']
+momentum = args['momentum']
+num_epochs = args['num_epochs']
+batch_size = args['batch_size']
+stepsize = args['stepsize']
 
-guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.01,size=(int(n_chains),n_dim)))
+
+guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*(1+0.1*jax.random.normal(jax.random.PRNGKey(seed+98127),shape=(int(n_chains),n_dim))))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
 guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
 guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
@@ -231,4 +241,9 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
 
 # chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
 
-# np.savez(args.output, chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs, loss_vals=loss_vals, labels=labels)
+# # Fetch output parameters
+
+# output_path = args['output_path']
+# downsample_factor = args['downsample_factor']
+
+# np.savez(args['output_path'], chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs, loss_vals=loss_vals, labels=labels)
