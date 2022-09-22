@@ -1,7 +1,4 @@
 # Import packages
-
-from xml.sax.handler import property_declaration_handler
-import scipy.signal as ssig
 import lalsimulation as lalsim 
 import numpy as np
 import jax.numpy as jnp
@@ -19,7 +16,6 @@ from flowMC.sampler.MALA import make_mala_sampler
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
-
 
 psd_func_dict = {
     'H1': lalsim.SimNoisePSDaLIGOZeroDetHighPower,
@@ -178,15 +174,6 @@ mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
 local_sampler,updater, kernel, logp, dlogp = make_mala_sampler(posterior, dposterior,2e-3, jit=True, M=mass_matrix)
-
-# print("Precompling")
-# from time import time
-
-# current_time = time()
-# logp(initial_position)
-# dlogp(initial_position)
-# kernel(rng_key_set[1], initial_position, logp(initial_position))
-# print("Precompling time: ", time()-current_time)
 
 print("Running sampler")
 
