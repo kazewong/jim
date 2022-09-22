@@ -131,3 +131,6 @@ dmypy.json
 .
 data
 .vscode/settings.json
+
+slurm_script*
+build*
