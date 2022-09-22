@@ -255,4 +255,4 @@ chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_st
 output_path = args['output_path']
 downsample_factor = args['downsample_factor']
 
-np.savez(args['output_path'], chains=chains[:,::downsample_factor], log_prob=log_prob[:,::downsample_factor], local_accs=local_accs[:,::downsample_factor], global_accs=global_accs[:,::downsample_factor], loss_vals=loss_vals, labels=labels)
+np.savez(args['output_path'], chains=chains[:,::downsample_factor], log_prob=log_prob[:,::downsample_factor], local_accs=local_accs[:,::downsample_factor], global_accs=global_accs[:,::downsample_factor], loss_vals=loss_vals, labels=labels, true_param=true_param)
