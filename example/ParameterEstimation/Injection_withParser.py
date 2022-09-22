@@ -21,6 +21,15 @@ from flowMC.nfmodel.utils import *
 import argparse
 import yaml
 
+from tqdm import tqdm
+from functools import partialmethod
+
+tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+
+
+import sys
+sys.path.append('/mnt/home/wwong/GWProject/JaxGW')
+
 parser = argparse.ArgumentParser(description='Injection test')
 
 parser.add_argument('--config', type=str, default='config.yaml', help='config file')
@@ -231,7 +240,7 @@ nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
                     momentum=momentum,
                     batch_size=batch_size,
                     use_global=True,
-                    keep_quantile=0.5)
+                    keep_quantile=0.)
 
 nf_sampler.sample(initial_position)
 
@@ -246,4 +255,4 @@ chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_st
 output_path = args['output_path']
 downsample_factor = args['downsample_factor']
 
-np.savez(args['output_path'], chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs, loss_vals=loss_vals, labels=labels)
+np.savez(args['output_path'], chains=chains[:,::downsample_factor], log_prob=log_prob[:,::downsample_factor], local_accs=local_accs[:,::downsample_factor], global_accs=global_accs[:,::downsample_factor], loss_vals=loss_vals, labels=labels)
