@@ -8,7 +8,7 @@ from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
 from jaxgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
@@ -81,16 +81,16 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 
 n_dim = 11
-n_chains = 100
-n_loop = 100
-n_local_steps = 100
-n_global_steps = 100
+n_chains = 1000
+n_loop_training = 10
+n_loop_production = 10
+n_local_steps = 1000
+n_global_steps = 1000
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
-num_epochs = 30
+num_epochs = 300
 batch_size = 50000
-stepsize = 0.01
 
 guess_param = ref_param
 
@@ -137,25 +137,28 @@ mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-2)
 
-local_sampler,updater, kernel, logp, dlogp = make_mala_sampler(posterior, dposterior,2e-3, jit=True, M=mass_matrix)
-
+local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
+sampler_params = {'dt':2e-3}
 print("Running sampler")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
-                    posterior,
-                    d_likelihood=dposterior,
-                    n_loop=n_loop,
-                    n_local_steps=n_local_steps,
-                    n_global_steps=n_global_steps,
-                    n_chains=n_chains,
-                    stepsize=stepsize,
-                    n_nf_samples=100,
-                    learning_rate=learning_rate,
-                    n_epochs= num_epochs,
-                    max_samples = max_samples,
-                    momentum=momentum,
-                    batch_size=batch_size,
-                    use_global=True,
-                    keep_quantile=0.)
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    sampler_params,
+    posterior,
+    model,
+    n_loop_training=n_loop_training,
+    n_loop_production = n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    use_global=True,
+    keep_quantile=0.,
+)
 
 nf_sampler.sample(initial_position)
