@@ -81,7 +81,8 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop = 10
+n_loop_training = 10
+n_loop_production = 10
 n_local_steps = 1000
 n_global_steps = 1000
 learning_rate = 0.001
@@ -106,55 +107,57 @@ print("Initializing MCMC model and normalizing flow model.")
 
 prior_range = jnp.array([[1.17,1.20],[0.1,0.25],[0,0.85],[0,0.85],[0,200],[-60,60],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
-# initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
-# for i in range(n_dim):
-#     initial_position = initial_position.at[:,i].set(initial_position[:,i]*(prior_range[i,1]-prior_range[i,0])+prior_range[i,0])
+initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
+for i in range(n_dim):
+    initial_position = initial_position.at[:,i].set(initial_position[:,i]*(prior_range[i,1]-prior_range[i,0])+prior_range[i,0])
 
-# initial_position = initial_position.at[:,0].set(guess_param[:,0])
-# initial_position = initial_position.at[:,1].set(guess_param[:,1])
-# initial_position = initial_position.at[:,5].set(guess_param[:,5])
+initial_position = initial_position.at[:,0].set(guess_param[:,0])
+initial_position = initial_position.at[:,1].set(guess_param[:,1])
+initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
-# def top_hat(x):
-#     output = 0.
-#     for i in range(n_dim):
-#         output = jax.lax.cond(x[i]>=prior_range[i,0], lambda: output, lambda: -jnp.inf)
-#         output = jax.lax.cond(x[i]<=prior_range[i,1], lambda: output, lambda: -jnp.inf)
-#     return output
+def top_hat(x):
+    output = 0.
+    for i in range(n_dim):
+        output = jax.lax.cond(x[i]>=prior_range[i,0], lambda: output, lambda: -jnp.inf)
+        output = jax.lax.cond(x[i]<=prior_range[i,1], lambda: output, lambda: -jnp.inf)
+    return output
 
-# def posterior(theta):
-#     prior = top_hat(theta)
-#     return H1_logL(theta) + L1_logL(theta) + prior
+def posterior(theta):
+    prior = top_hat(theta)
+    return logL(theta) + prior
 
-# model = RQSpline(n_dim, 10, [128,128], 8)
+model = RQSpline(n_dim, 10, [128,128], 8)
 
-# print("Initializing sampler class")
+print("Initializing sampler class")
 
-# posterior = posterior
-# dposterior = jax.grad(posterior)
+posterior = posterior
 
-# mass_matrix = jnp.eye(n_dim)
-# mass_matrix = mass_matrix.at[1,1].set(1e-3)
-# mass_matrix = mass_matrix.at[5,5].set(1e-2)
+mass_matrix = jnp.eye(n_dim)
+mass_matrix = mass_matrix.at[1,1].set(1e-3)
+mass_matrix = mass_matrix.at[5,5].set(1e-2)
 
-# local_sampler,updater, kernel, logp, dlogp = make_mala_sampler(posterior, dposterior,2e-3, jit=True, M=mass_matrix)
+local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
+sampler_params = {'dt':mass_matrix*3e-3}
+print("Running sampler")
 
-# print("Running sampler")
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    sampler_params,
+    posterior,
+    model,
+    n_loop_training=n_loop_training,
+    n_loop_production = n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    use_global=True,
+    keep_quantile=0.,
+)
 
-# nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
-#                     posterior,
-#                     d_likelihood=dposterior,
-#                     n_loop=n_loop,
-#                     n_local_steps=n_local_steps,
-#                     n_global_steps=n_global_steps,
-#                     n_chains=n_chains,
-#                     stepsize=stepsize,
-#                     n_nf_samples=100,
-#                     learning_rate=learning_rate,
-#                     n_epochs= num_epochs,
-#                     max_samples = max_samples,
-#                     momentum=momentum,
-#                     batch_size=batch_size,
-#                     use_global=True,
-#                     keep_quantile=0.)
-
-# nf_sampler.sample(initial_position)
+nf_sampler.sample(initial_position)

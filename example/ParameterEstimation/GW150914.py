@@ -82,14 +82,14 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 10
+n_loop_training = 20
 n_loop_production = 10
 n_local_steps = 1000
 n_global_steps = 1000
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
-num_epochs = 300
+num_epochs = 60
 batch_size = 50000
 
 guess_param = ref_param
@@ -124,21 +124,20 @@ def top_hat(x):
 
 def posterior(theta):
     prior = top_hat(theta)
-    return H1_logL(theta) + L1_logL(theta) + prior
+    return logL(theta) + prior
 
 model = RQSpline(n_dim, 10, [128,128], 8)
 
 print("Initializing sampler class")
 
 posterior = posterior
-dposterior = jax.grad(posterior)
 
 mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-2)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':2e-3}
+sampler_params = {'dt':mass_matrix*3e-3}
 print("Running sampler")
 
 nf_sampler = Sampler(
