@@ -71,16 +71,18 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
     num_detector = len(data_list)
 
     f_bins, f_bins_center = make_binning_scheme(freqs, n_bins)
+    ripple_params = ref_theta[:9]
+    ripple_params = ripple_params.at[5].set(0)
     ra, dec = ref_theta[9], ref_theta[10]
     h_ref = []
     h_ref_low = []
     h_ref_bincenter = []
     for i in range(num_detector):
-        raw_hp, raw_hc = h_function(freqs, ref_theta[:9])
+        raw_hp, raw_hc = h_function(freqs, ripple_params)
         h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
-        raw_hp, raw_hc = h_function(f_bins[:-1], ref_theta[:9])
+        raw_hp, raw_hc = h_function(f_bins[:-1],ripple_params)
         h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp, raw_hc, ra, dec, ref_theta[5], ref_theta[8]))
-        raw_hp, raw_hc = h_function(f_bins_center, ref_theta[:9])
+        raw_hp, raw_hc = h_function(f_bins_center, ripple_params)
         h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
     
     A0_array = []
@@ -98,10 +100,12 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         
     def hetrodyne_likelihood(params):
         ra, dec = params[9], params[10]
+        ripple_params = params[:9]
+        ripple_params = ripple_params.at[5].set(0)
         output_SNR = 0
 
-        raw_hp_edge, raw_hc_edge = h_function(f_bins[:-1], params[:9])
-        raw_hp_center, raw_hc_center = h_function(f_bins_center, params[:9])
+        raw_hp_edge, raw_hc_edge = h_function(f_bins[:-1], ripple_params)
+        raw_hp_center, raw_hc_center = h_function(f_bins_center, ripple_params)
 
         for i in range(num_detector):
             waveform_low = respose_list[i](f_bins[:-1], raw_hp_edge, raw_hc_edge, ra, dec, params[5], params[8])
