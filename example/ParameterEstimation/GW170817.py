@@ -15,7 +15,7 @@ from flowMC.nfmodel.utils import *
 
 data = np.load('./data/GW170817_data.npz',allow_pickle=True)
 
-minimum_frequency = data['minimum_frequency']
+minimum_frequency = 20
 
 H1_frequency = data['frequency']
 H1_data = data['data'].tolist()['H1'][H1_frequency>minimum_frequency]
@@ -65,9 +65,13 @@ def LogLikelihood(theta):
 
     return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2) + (match_filter_SNR_V1-optimal_SNR_V1/2)
 
-ref_param = jnp.array([ 1.18622027e+00,  1.43466815e-01,  2.36654514e-02,  2.95581081e-02,
-        4.28198717e+01, -3.04432711e+01,  7.16390478e-01,  7.09306354e-01,
-        1.53402146e+00,  5.39492767e+00,  6.05554691e-02])
+ref_param = jnp.array([ 1.19787692,  0.23      ,  0.38364522,  0.05033383, 17.03779457,
+       31.5087331 ,  1.54276628,  1.17534099,  1.6750658 ,  5.12657835,
+       -0.40019376])
+
+# ref_param = jnp.array([ 1.17.,  0.249,  0.,  0., 34.19898126,
+#                 31,  4.42730312,  2.56555149,  1.50688411,  2.62855454,
+# 0.1451079 ])
 
 ref_param = ref_param.at[-1].set(ref_param[-1]%(jnp.pi))
 ref_param = ref_param.at[6].set((ref_param[6]+jnp.pi/2)%(jnp.pi)-jnp.pi/2)
@@ -90,11 +94,10 @@ max_samples = 50000
 momentum = 0.9
 num_epochs = 300
 batch_size = 50000
-stepsize = 0.01
 
 guess_param = ref_param
 
-guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
+guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.001,size=(int(n_chains),n_dim)))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
 guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
 guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
@@ -105,7 +108,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[1.17,1.20],[0.1,0.25],[0,0.85],[0,0.85],[0,200],[-60,60],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+prior_range = jnp.array([[1.1,2.5],[0.20,0.25],[0,0.85],[0,0.85],[0,200],[28,35],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -133,8 +136,13 @@ print("Initializing sampler class")
 posterior = posterior
 
 mass_matrix = jnp.eye(n_dim)
-mass_matrix = mass_matrix.at[1,1].set(1e-3)
-mass_matrix = mass_matrix.at[5,5].set(1e-2)
+mass_matrix = mass_matrix.at[0,0].set(1e-5)
+mass_matrix = mass_matrix.at[1,1].set(1e-4)
+mass_matrix = mass_matrix.at[2,2].set(1e-3)
+mass_matrix = mass_matrix.at[2,2].set(1e-3)
+mass_matrix = mass_matrix.at[5,5].set(1e-5)
+mass_matrix = mass_matrix.at[9,9].set(1e-2)
+mass_matrix = mass_matrix.at[10,10].set(1e-2)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 sampler_params = {'dt':mass_matrix*3e-3}

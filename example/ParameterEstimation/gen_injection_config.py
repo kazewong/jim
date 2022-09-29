@@ -2,7 +2,7 @@ import numpy as np
 
 prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-2,2],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
 
-N_config = 96
+N_config = 960
 
 m1 = np.random.uniform(prior_range[0,0],prior_range[0,1],N_config)
 m2 = np.random.uniform(prior_range[1,0],prior_range[1,1],N_config)
