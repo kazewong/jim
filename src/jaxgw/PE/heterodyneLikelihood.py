@@ -70,18 +70,26 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
 
     num_detector = len(data_list)
 
+    raw_hp, raw_hc = h_function(freqs, ref_theta[:9])
+    index = jnp.where((jnp.abs(raw_hc)+jnp.abs(raw_hp)) > 0)
+    freqs = freqs[index]
+    raw_hp = raw_hp[index]
+    raw_hc = raw_hc[index]
+    for i in range(num_detector):
+        data_list[i] = data_list[i][index]
+        psd_list[i] = psd_list[i][index]
+
     f_bins, f_bins_center = make_binning_scheme(freqs, n_bins)
     ra, dec = ref_theta[9], ref_theta[10]
     h_ref = []
     h_ref_low = []
     h_ref_bincenter = []
+    raw_hp_bin, raw_hc_bin = h_function(f_bins[:-1], ref_theta[:9])
+    raw_hp_bincenter, raw_hc_bincenter = h_function(f_bins_center, ref_theta[:9])
     for i in range(num_detector):
-        raw_hp, raw_hc = h_function(freqs, ref_theta[:9])
         h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
-        raw_hp, raw_hc = h_function(f_bins[:-1], ref_theta[:9])
-        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp, raw_hc, ra, dec, ref_theta[5], ref_theta[8]))
-        raw_hp, raw_hc = h_function(f_bins_center, ref_theta[:9])
-        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
+        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp_bin, raw_hc_bin, ra, dec, ref_theta[5], ref_theta[8]))
+        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp_bincenter, raw_hc_bincenter, ra, dec, ref_theta[5],ref_theta[8]))
     
     A0_array = []
     A1_array = []
@@ -109,12 +117,11 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
 
             r0 = waveform_center/h_ref_bincenter[i]
             r1 = (waveform_low/h_ref_low[i] - r0)/(f_bins[:-1]-f_bins_center)
-            print(r0,r1)
-            match_filter_SNR = jnp.nansum(A0_array[i]*r0.conj() + A1_array[i]*r1.conj())
-            optimal_SNR = jnp.nansum(B0_array[i]*jnp.abs(r0)**2 + 2*B1_array[i]*(r0*r1.conj()).real)
+            match_filter_SNR = jnp.sum(A0_array[i]*r0.conj() + A1_array[i]*r1.conj())
+            optimal_SNR = jnp.sum(B0_array[i]*jnp.abs(r0)**2 + 2*B1_array[i]*(r0*r1.conj()).real)
 
             output_SNR += (match_filter_SNR - optimal_SNR/2).real
         
-        return output_SNR, raw_hc_center, raw_hp_center, raw_hc_edge, raw_hp_edge
+        return output_SNR
     
     return hetrodyne_likelihood
