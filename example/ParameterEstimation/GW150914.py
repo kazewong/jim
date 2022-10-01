@@ -60,16 +60,10 @@ def L1_LogLikelihood(theta):
     optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/L1_psd*df).real
     return (match_filter_SNR-optimal_SNR/2)
 
-ref_param = jnp.array([ 3.41096639e+01,  2.42240502e-01,  7.03845904e-02,
-              1.45055597e-01,  4.00156164e+02, -1.97202379e+00,
-              1.08177416e+00, -6.94499550e-02,  1.95503312e+00,
-              8.60901399e-01,  2.89425087e+00])
+ref_param = jnp.array([ 3.16158455e+01,  2.49059583e-01,  1.62840606e-02,  1.74049295e-02,
+        4.43372352e+02,  2.01511565e+00,  1.64269305e+00,  6.83397730e-01,
+        5.40140193e-01,  1.32292500e+00, -1.18695991e+00])
 
-ref_param = ref_param.at[-1].set(ref_param[-1]%(jnp.pi))
-ref_param = ref_param.at[6].set((ref_param[6]+jnp.pi/2)%(jnp.pi)-jnp.pi/2)
-
-H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, H1_psd, H1_frequency, 101)
-L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, L1_psd, L1_frequency, 101)
 
 from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
 
@@ -96,8 +90,10 @@ guess_param = ref_param
 
 guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
-guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
-guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
+guess_param[:,6] = (guess_param[:,6]%(2*jnp.pi))
+guess_param[:,7] = (guess_param[:,7]%(jnp.pi))
+guess_param[:,8] = (guess_param[:,8]%(jnp.pi))
+guess_param[:,9] = (guess_param[:,9]%(2*jnp.pi))
 
 
 print("Preparing RNG keys")
@@ -105,7 +101,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.0,0.25],[0,1],[0,1],[0,2000],[-5,5],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+prior_range = jnp.array([[10,80],[0.0,0.25],[0,1],[0,1],[0,2000],[1.9,2.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -134,7 +130,7 @@ posterior = posterior
 
 mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
-mass_matrix = mass_matrix.at[5,5].set(1e-2)
+mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
 sampler_params = {'dt':mass_matrix*3e-3}
