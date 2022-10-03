@@ -7,9 +7,9 @@ from jaxgw.PE.constants import *
 def make_detector_response(detector_tensor, detector_vertex):
     antenna_response_plus = make_antenna_response(detector_tensor,'plus')
     antenna_response_cross = make_antenna_response(detector_tensor, 'cross')
-    def detector_response(f, hp, hc, ra, dec, time, psi):
-        output = antenna_response_plus(ra, dec, time, psi)*hp + antenna_response_cross(ra, dec, time, psi)*hc
-        timeshift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]), ra, dec, time)
+    def detector_response(f, hp, hc, ra, dec, gmst, psi):
+        output = antenna_response_plus(ra, dec, gmst, psi)*hp + antenna_response_cross(ra, dec, gmst, psi)*hc
+        timeshift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]), ra, dec, gmst)
         output = output * jnp.exp(-1j * 2 * jnp.pi * f * timeshift)
         return output
     return detector_response
@@ -83,8 +83,8 @@ def make_get_polarization_tensor(mode):
         else:
             raise ValueError("{} not a polarization mode!".format(mode))
 
-    def get_polarization_tensor(ra, dec, time, psi):
-        gmst = jnp.mod(time, 2 * jnp.pi)
+    def get_polarization_tensor(ra, dec, gmst, psi):
+        gmst = jnp.mod(gmst, 2 * jnp.pi)
         phi = ra - gmst
         theta = jnp.pi / 2 - dec
 
@@ -100,12 +100,12 @@ def make_get_polarization_tensor(mode):
     
 def make_antenna_response(detector_tensor, mode):
     kernel = make_get_polarization_tensor(mode)
-    def antenna_response(ra, dec, time, psi):
-        polarization_tensor = kernel(ra, dec, time, psi)
+    def antenna_response(ra, dec, gmst, psi):
+        polarization_tensor = kernel(ra, dec, gmst, psi)
         return jnp.einsum('ij,ij->', detector_tensor, polarization_tensor)
     return antenna_response
 
-def time_delay_geocentric(detector1, detector2, ra, dec, time):
+def time_delay_geocentric(detector1, detector2, ra, dec, gmst):
     """
     Calculate time delay between two detectors in geocentric coordinates based on XLALArrivaTimeDiff in TimeDelay.c
 
@@ -121,15 +121,15 @@ def time_delay_geocentric(detector1, detector2, ra, dec, time):
         Right ascension of the source in radians
     dec: float
         Declination of the source in radians
-    time: float
-        GPS time in the geocentric frame
+    gmst: float
+        Greenwich mean sidereal time in radians
 
     Returns
     =======
     float: Time delay between the two detectors in the geocentric frame
 
     """
-    gmst = jnp.mod(time, 2 * jnp.pi)
+    gmst = jnp.mod(gmst, 2 * jnp.pi)
     phi = ra - gmst
     theta = jnp.pi / 2 - dec
     omega = jnp.array([jnp.sin(theta) * jnp.cos(phi), jnp.sin(theta) * jnp.sin(phi), jnp.cos(theta)])
