@@ -1,6 +1,7 @@
 import numpy as np
 import jax.numpy as jnp
 import jax
+from lal import GreenwichMeanSiderealTime
 
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from jaxgw.PE.detector_preset import * 
@@ -32,37 +33,46 @@ H1_response = make_detector_response(H1[0], H1[1])
 L1 = get_L1()
 L1_response = make_detector_response(L1[0], L1[1])
 
-def gen_waveform_H1(f, theta):
-    theta_waveform = theta[:9]
-    ra = theta[9]
-    dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
-    return H1_response(f, hp, hc, ra, dec, theta[5], theta[8])
+trigger_time = 1126259462.4
+duration = 4 
+post_trigger_duration = 2
+epoch = duration - post_trigger_duration
+gmst = GreenwichMeanSiderealTime(trigger_time)
+f_ref = 20
 
-def gen_waveform_L1(f, theta):
-    theta_waveform = theta[:9]
+def gen_waveform_H1(f, theta, epoch, gmst, f_ref):
+    theta_waveform = theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
     dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
-    return L1_response(f, hp, hc, ra, dec, theta[5], theta[8])
+    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+    return H1_response(f, hp, hc, ra, dec, gmst , theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
+
+def gen_waveform_L1(f, theta, epoch, gmst, f_ref):
+    theta_waveform = theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
+    ra = theta[9]
+    dec = theta[10]
+    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+    return L1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
 def H1_LogLikelihood(theta):
-    h_test = gen_waveform_H1(H1_frequency,theta)
+    h_test = gen_waveform_H1(H1_frequency, theta, epoch, gmst, f_ref)
     df = H1_frequency[1] - H1_frequency[0] 
     match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*H1_data)/H1_psd*df).real
     optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/H1_psd*df).real
     return (match_filter_SNR-optimal_SNR/2)
 
 def L1_LogLikelihood(theta):
-    h_test = gen_waveform_L1(L1_frequency,theta)
+    h_test = gen_waveform_L1(L1_frequency, theta, epoch, gmst, f_ref)
     df = L1_frequency[1] - L1_frequency[0] 
     match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*L1_data)/L1_psd*df).real
     optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/L1_psd*df).real
     return (match_filter_SNR-optimal_SNR/2)
 
-ref_param = jnp.array([ 3.16158455e+01,  2.49059583e-01,  1.62840606e-02,  1.74049295e-02,
-        4.43372352e+02,  2.01511565e+00,  1.64269305e+00,  6.83397730e-01,
-        5.40140193e-01,  1.32292500e+00, -1.18695991e+00])
+ref_param = jnp.array([ 3.14562104e+01,  2.49863038e-01,  3.01633871e-02,  1.44865987e-02,
+        5.41706887e+02, -1.42249470e-02,  1.90571654e+00,  3.02521496e+00,
+        1.13895265e+00,  1.80359165e+00, -1.28078777e+00])
 
 
 from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
@@ -71,15 +81,15 @@ data_list = [H1_data, L1_data]
 psd_list = [H1_psd, L1_psd]
 response_list = [H1_response, L1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, 101)
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 101)
 
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 20
-n_loop_production = 10
-n_local_steps = 1000
-n_global_steps = 1000
+n_loop_training = 100
+n_loop_production = 50
+n_local_steps = 200
+n_global_steps = 200
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
@@ -101,7 +111,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.0,0.25],[0,1],[0,1],[0,2000],[1.9,2.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
+prior_range = jnp.array([[10,80],[0.10,0.25],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -109,7 +119,6 @@ for i in range(n_dim):
 
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
 initial_position = initial_position.at[:,1].set(guess_param[:,1])
-initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
 def top_hat(x):
     output = 0.
