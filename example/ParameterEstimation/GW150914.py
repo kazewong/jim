@@ -70,9 +70,9 @@ def L1_LogLikelihood(theta):
     optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/L1_psd*df).real
     return (match_filter_SNR-optimal_SNR/2)
 
-ref_param = jnp.array([ 3.14562104e+01,  2.49863038e-01,  3.01633871e-02,  1.44865987e-02,
-        5.41706887e+02, -1.42249470e-02,  1.90571654e+00,  3.02521496e+00,
-        1.13895265e+00,  1.80359165e+00, -1.28078777e+00])
+ref_param = jnp.array([ 3.13857132e+01,  2.49301122e-01,  1.31593299e-02,  2.61342217e-03,
+        5.37766606e+02,  1.18679090e-02,  1.26153956e+00,  2.61240760e+00,
+        1.33131339e+00,  2.33978644e+00, -1.20993116e+00])
 
 
 from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
@@ -86,8 +86,8 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 100
-n_loop_production = 50
+n_loop_training = 20
+n_loop_production = 10
 n_local_steps = 200
 n_global_steps = 200
 learning_rate = 0.001
@@ -111,25 +111,44 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.10,0.25],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
+# prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
     initial_position = initial_position.at[:,i].set(initial_position[:,i]*(prior_range[i,1]-prior_range[i,0])+prior_range[i,0])
 
+from ripple import Mc_eta_to_ms
+m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
+q = m2/m1
+
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
-initial_position = initial_position.at[:,1].set(guess_param[:,1])
+# initial_position = initial_position.at[:,1].set(guess_param[:,1])
+initial_position = initial_position.at[:,1].set(q)
+
+from astropy.cosmology import Planck18 as cosmo
+
+z = np.linspace(0.0002,0.02,1000)
+dL = cosmo.luminosity_distance(z).value
+dVdz = cosmo.differential_comoving_volume(z).value
 
 def top_hat(x):
     output = 0.
     for i in range(n_dim):
         output = jax.lax.cond(x[i]>=prior_range[i,0], lambda: output, lambda: -jnp.inf)
         output = jax.lax.cond(x[i]<=prior_range[i,1], lambda: output, lambda: -jnp.inf)
-    return output
+    return output+jnp.log(jnp.interp(x[4],dL,dVdz))
 
 def posterior(theta):
+    q = theta[1]
+    iota = jnp.arccos(theta[7])
+    dec = jnp.arccos(theta[10])
     prior = top_hat(theta)
-    return logL(theta) + prior
+    theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
+    theta = theta.at[7].set(iota) # convert cos iota to iota
+    theta = theta.at[10].set(dec) # convert cos dec to dec
+    jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3) - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
+    return logL(theta) + prior + jacobian
 
 model = RQSpline(n_dim, 10, [128,128], 8)
 

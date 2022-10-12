@@ -3,6 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 import jax.numpy as jnp
+from xarray import align
 
 
 def max_phase_diff(f, f_low, f_high, chi=1):
@@ -33,10 +34,10 @@ def compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center):
     self_prod = np.array(h_ref*h_ref.conj())
     for i in range(len(f_bins)-1):
         f_index = np.where((freqs >= f_bins[i]) & (freqs < f_bins[i+1]))[0]
-        A0_array.append(4*np.sum(data_prod[f_index]/psd[f_index]*df))
-        A1_array.append(4*np.sum(data_prod[f_index]/psd[f_index]*df*(freqs[f_index]-f_bins_center[i])))
-        B0_array.append(4*np.sum(self_prod[f_index]/psd[f_index]*df))
-        B1_array.append(4*np.sum(self_prod[f_index]/psd[f_index]*df*(freqs[f_index]-f_bins_center[i])))
+        A0_array.append(4*np.sum(data_prod[f_index]/psd[f_index])*df)
+        A1_array.append(4*np.sum(data_prod[f_index]/psd[f_index]*(freqs[f_index]-f_bins_center[i]))*df)
+        B0_array.append(4*np.sum(self_prod[f_index]/psd[f_index])*df)
+        B1_array.append(4*np.sum(self_prod[f_index]/psd[f_index]*(freqs[f_index]-f_bins_center[i]))*df)
 
     A0_array = jnp.array(A0_array)
     A1_array = jnp.array(A1_array)
@@ -66,11 +67,12 @@ def make_heterodyne_likelihood(data, h_function, ref_theta, psd, freqs, n_bins=1
 
     return heterodyne_likelihood
 
-def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_list, h_function, ref_theta, freqs, n_bins=101):
+def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_list, h_function, ref_theta, freqs, gmst, epoch, f_ref, n_bins=101):
 
     num_detector = len(data_list)
-
-    raw_hp, raw_hc = h_function(freqs, ref_theta[:9])
+    theta_waveform = ref_theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
+    raw_hp, raw_hc = h_function(freqs, theta_waveform, f_ref)
     index = jnp.where((jnp.abs(raw_hc)+jnp.abs(raw_hp)) > 0)
     freqs = freqs[index]
     raw_hp = raw_hp[index]
@@ -84,12 +86,12 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
     h_ref = []
     h_ref_low = []
     h_ref_bincenter = []
-    raw_hp_bin, raw_hc_bin = h_function(f_bins[:-1], ref_theta[:9])
-    raw_hp_bincenter, raw_hc_bincenter = h_function(f_bins_center, ref_theta[:9])
+    raw_hp_bin, raw_hc_bin = h_function(f_bins[:-1], theta_waveform, f_ref)
+    raw_hp_bincenter, raw_hc_bincenter = h_function(f_bins_center, theta_waveform, f_ref)
     for i in range(num_detector):
-        h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, ref_theta[5],ref_theta[8]))
-        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp_bin, raw_hc_bin, ra, dec, ref_theta[5], ref_theta[8]))
-        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp_bincenter, raw_hc_bincenter, ra, dec, ref_theta[5],ref_theta[8]))
+        h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*freqs*(epoch+ref_theta[5])))
+        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp_bin, raw_hc_bin, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+ref_theta[5])))
+        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp_bincenter, raw_hc_bincenter, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+ref_theta[5])))
     
     A0_array = []
     A1_array = []
@@ -105,15 +107,18 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         
         
     def hetrodyne_likelihood(params):
+        theta_waveform = params[:8]
+        theta_waveform = theta_waveform.at[5].set(0)
         ra, dec = params[9], params[10]
+
         output_SNR = 0
 
-        raw_hp_edge, raw_hc_edge = h_function(f_bins[:-1], params[:9])
-        raw_hp_center, raw_hc_center = h_function(f_bins_center, params[:9])
+        raw_hp_edge, raw_hc_edge = h_function(f_bins[:-1], theta_waveform, f_ref)
+        raw_hp_center, raw_hc_center = h_function(f_bins_center, theta_waveform, f_ref)
 
         for i in range(num_detector):
-            waveform_low = respose_list[i](f_bins[:-1], raw_hp_edge, raw_hc_edge, ra, dec, params[5], params[8])
-            waveform_center = respose_list[i](f_bins_center, raw_hp_center, raw_hc_center, ra, dec, params[5], params[8])
+            waveform_low = respose_list[i](f_bins[:-1], raw_hp_edge, raw_hc_edge, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+params[5]))
+            waveform_center = respose_list[i](f_bins_center, raw_hp_center, raw_hc_center, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+params[5]))
 
             r0 = waveform_center/h_ref_bincenter[i]
             r1 = (waveform_low/h_ref_low[i] - r0)/(f_bins[:-1]-f_bins_center)
