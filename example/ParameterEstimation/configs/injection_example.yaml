@@ -20,24 +20,25 @@ m2: 30
 chi1: 0.3
 chi2: -0.4
 dist_mpc: 400
-tc: 2
+tc: 0.02
 phic: 0.1
 inclination: 0.5
 polarization_angle: 0.2
 ra: 1.2
 dec: 0.3
-heterodyne_bins: 101
+heterodyne_bins: 201
 
 # Sampler parameters
 
 n_dim: 11
 n_chains: 1000
-n_loop: 10
-n_local_steps: 1000
-n_global_steps: 1000
+n_loop_training: 20
+n_loop_production: 10
+n_local_steps: 200
+n_global_steps: 200
 learning_rate: 0.001
 max_samples: 50000
 momentum: 0.9
-num_epochs: 300
+num_epochs: 60
 batch_size: 50000
 stepsize: 0.01

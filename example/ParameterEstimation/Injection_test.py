@@ -9,7 +9,8 @@ import jax
 from ripple import ms_to_Mc_eta
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from jaxgw.PE.detector_preset import * 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
+from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+
 from jaxgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
@@ -62,8 +63,8 @@ for ifo, psd in psd_dict.items():
     noise_fd_dict[ifo] = noise_real + 1j*noise_imag
 
 # These are the parameters of the injected signal
-m1 = 10.0
-m2 = 10.0
+m1 = 30.0
+m2 = 30.0
 Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
 chi1 = 0.4
 chi2 = -0.3
@@ -111,25 +112,28 @@ L1_data = L1_noise_psd + L1_signal
 
 ref_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
-H1_logL = make_heterodyne_likelihood(H1_data, gen_waveform_H1, ref_param, psd_dict['H1'], f_list, 101)
-L1_logL = make_heterodyne_likelihood(L1_data, gen_waveform_L1, ref_param, psd_dict['L1'], f_list, 101)
 
+
+data_list = [H1_data, L1_data]
+psd_list = [psd_dict['H1'], psd_dict['L1']]
+response_list = [H1_response, L1_response]
+
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, 101)
 
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 10
-n_loop_production = 30
-n_local_steps = 1000
-n_global_steps = 1000
+n_loop_training = 100
+n_loop_production = 10
+n_local_steps = 100
+n_global_steps = 100
 learning_rate = 0.001
 max_samples = 50000
 momentum = 0.9
 num_epochs = 30
 batch_size = 50000
-stepsize = 0.01
 
-guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.01,size=(int(n_chains),n_dim)))
+guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
 guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
 guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
@@ -159,7 +163,7 @@ def top_hat(x):
 
 def posterior(theta):
     prior = top_hat(theta)
-    return H1_logL(theta) + L1_logL(theta) + prior
+    return logL(theta) + prior
 
 
 # model = RealNVP(10, n_dim, 64, 1)
@@ -176,7 +180,7 @@ mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-
+sampler_params = {'dt':mass_matrix*5e-3}
 print("Running sampler")
 
 
@@ -185,7 +189,7 @@ nf_sampler = Sampler(
     n_dim,
     rng_key_set,
     local_sampler_caller,
-    {'dt':2e-3},
+    sampler_params,
     posterior,
     model,
     n_loop_training=n_loop_training,
@@ -194,14 +198,13 @@ nf_sampler = Sampler(
     n_global_steps=n_global_steps,
     n_chains=n_chains,
     n_epochs=num_epochs,
-    n_nf_samples=100,
     learning_rate=learning_rate,
     momentum=momentum,
     batch_size=batch_size,
     use_global=True,
-    local_autotune=mala_sampler_autotune,
-    keep_quantile=0.5,
+    keep_quantile=0.,
 )
+
 
 
 nf_sampler.sample(initial_position)

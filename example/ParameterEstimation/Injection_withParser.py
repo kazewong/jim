@@ -3,6 +3,8 @@ import lalsimulation as lalsim
 import numpy as np
 import jax.numpy as jnp
 import jax
+from lal import GreenwichMeanSiderealTime
+
 
 # from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from ripple import ms_to_Mc_eta
@@ -59,7 +61,8 @@ parser.add_argument('--heterodyne_bins', type=int, default=101, help='number of 
 
 parser.add_argument('--n_dim', type=int, default=None, help='number of parameters')
 parser.add_argument('--n_chains', type=int, default=None, help='number of chains')
-parser.add_argument('--n_loop', type=int, default=None, help='number of loops')
+parser.add_argument('--n_loop_training', type=int, default=None, help='number of training loops')
+parser.add_argument('--n_loop_production', type=int, default=None, help='number of production loops')
 parser.add_argument('--n_local_steps', type=int, default=None, help='number of local steps')
 parser.add_argument('--n_global_steps', type=int, default=None, help='number of global steps')
 parser.add_argument('--learning_rate', type=float, default=None, help='learning rate')
@@ -122,20 +125,29 @@ H1_response = make_detector_response(H1[0], H1[1])
 L1 = get_L1()
 L1_response = make_detector_response(L1[0], L1[1])
 
+f_ref = 20.0
+trigger_time = 1126259462.4
+duration = 16
+post_trigger_duration = 2
+epoch = duration - post_trigger_duration
+gmst = GreenwichMeanSiderealTime(trigger_time)
+
 
 def gen_waveform_H1(f, theta):
-    theta_waveform = theta[:9]
+    theta_waveform = theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
     dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
-    return H1_response(f, hp, hc, ra, dec, theta[5], theta[8])
+    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+    return H1_response(f, hp, hc, ra, dec, gmst , theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
 def gen_waveform_L1(f, theta):
-    theta_waveform = theta[:9]
+    theta_waveform = theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
     dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform)
-    return L1_response(f, hp, hc, ra, dec, theta[5], theta[8])
+    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+    return L1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
 true_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
@@ -155,7 +167,7 @@ data_list = [H1_data, L1_data]
 psd_list = [psd_dict['H1'], psd_dict['L1']]
 response_list = [H1_response, L1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, heterodyne_bins)
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, gmst, epoch, f_ref, 101)
 
 # Fetch sampler parameters, construct sampler and initial guess
 
@@ -163,7 +175,8 @@ print("Making sampler")
 
 n_dim = args['n_dim']
 n_chains = args['n_chains']
-n_loop = args['n_loop']
+n_loop_training = args['n_loop_training']
+n_loop_production = args['n_loop_production']
 n_local_steps = args['n_local_steps']
 n_global_steps = args['n_global_steps']
 learning_rate = args['learning_rate']
@@ -176,37 +189,52 @@ stepsize = args['stepsize']
 
 guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*(1+0.1*jax.random.normal(jax.random.PRNGKey(seed+98127),shape=(int(n_chains),n_dim))))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
-guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
-guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
-guess_param[:,8] = (guess_param[:,8]%(2*np.pi))
-guess_param[:,9] = (guess_param[:,9]%(2*np.pi))
-guess_param[:,10] = (guess_param[:,10]%(np.pi))
+guess_param[:,6] = (guess_param[:,6]%(2*jnp.pi))
+guess_param[:,7] = (guess_param[:,7]%(jnp.pi))
+guess_param[:,8] = (guess_param[:,8]%(jnp.pi))
+guess_param[:,9] = (guess_param[:,9]%(2*jnp.pi))
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=seed)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,70],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-5,5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
     initial_position = initial_position.at[:,i].set(initial_position[:,i]*(prior_range[i,1]-prior_range[i,0])+prior_range[i,0])
 
-initial_position = initial_position.at[:,0].set(guess_param[:,0])
-initial_position = initial_position.at[:,1].set(guess_param[:,1])
-initial_position = initial_position.at[:,5].set(guess_param[:,5])
+from ripple import Mc_eta_to_ms
+m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
+q = m2/m1
+# initial_position = initial_position.at[:,0].set(guess_param[:,0])
+# initial_position = initial_position.at[:,1].set(guess_param[:,1])
+# initial_position = initial_position.at[:,5].set(guess_param[:,5])
+
+from astropy.cosmology import Planck18 as cosmo
+
+z = np.linspace(0.0002,0.02,1000)
+dL = cosmo.luminosity_distance(z).value
+dVdz = cosmo.differential_comoving_volume(z).value
 
 def top_hat(x):
     output = 0.
     for i in range(n_dim):
         output = jax.lax.cond(x[i]>=prior_range[i,0], lambda: output, lambda: -jnp.inf)
         output = jax.lax.cond(x[i]<=prior_range[i,1], lambda: output, lambda: -jnp.inf)
-    return output
+    return output+jnp.log(jnp.interp(x[4],dL,dVdz))
 
 def posterior(theta):
+    q = theta[1]
+    # iota = jnp.arccos(theta[7])
+    # dec = jnp.arccos(theta[10])
     prior = top_hat(theta)
-    return logL(theta) + prior
+    theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
+    # theta = theta.at[7].set(iota) # convert cos iota to iota
+    # theta = theta.at[10].set(dec) # convert cos dec to dec
+    jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3)# - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
+    return logL(theta) + prior + jacobian
 
 
 model = RQSpline(n_dim, 10, [128,128], 8)
@@ -221,26 +249,29 @@ mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
-local_sampler,updater, kernel, logp, dlogp = make_mala_sampler(posterior, dposterior,2e-3, jit=True, M=mass_matrix)
-
+local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
+sampler_params = {'dt':mass_matrix*3e-3}
 print("Running sampler")
 
-nf_sampler = Sampler(n_dim, rng_key_set, model, local_sampler,
-                    posterior,
-                    d_likelihood=dposterior,
-                    n_loop=n_loop,
-                    n_local_steps=n_local_steps,
-                    n_global_steps=n_global_steps,
-                    n_chains=n_chains,
-                    stepsize=stepsize,
-                    n_nf_samples=100,
-                    learning_rate=learning_rate,
-                    n_epochs= num_epochs,
-                    max_samples = max_samples,
-                    momentum=momentum,
-                    batch_size=batch_size,
-                    use_global=True,
-                    keep_quantile=0.)
+nf_sampler = Sampler(
+    n_dim,
+    rng_key_set,
+    local_sampler_caller,
+    sampler_params,
+    posterior,
+    model,
+    n_loop_training=n_loop_training,
+    n_loop_production = n_loop_production,
+    n_local_steps=n_local_steps,
+    n_global_steps=n_global_steps,
+    n_chains=n_chains,
+    n_epochs=num_epochs,
+    learning_rate=learning_rate,
+    momentum=momentum,
+    batch_size=batch_size,
+    use_global=True,
+    keep_quantile=0.,
+)
 
 nf_sampler.sample(initial_position)
 
@@ -248,7 +279,8 @@ labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'inclination', 
 
 print("Saving to output")
 
-chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state()
+chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state(training=True).values()
+chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
 
 # Fetch output parameters
 

@@ -46,13 +46,14 @@ for i in range(N_config):
 
     f.write("n_dim: 11\n")
     f.write("n_chains: 1000\n")
-    f.write("n_loop: 10\n")
-    f.write("n_local_steps: 1000\n")
-    f.write("n_global_steps: 1000\n")
+    f.write("n_loop_training: 20\n")
+    f.write("n_loop_production: 10\n")
+    f.write("n_local_steps: 200\n")
+    f.write("n_global_steps: 200\n")
     f.write("learning_rate: 0.001\n")
     f.write("max_samples: 50000\n")
     f.write("momentum: 0.9\n")
-    f.write("num_epochs: 300\n")
+    f.write("num_epochs: 60\n")
     f.write("batch_size: 50000\n")
     f.write("stepsize: 0.01\n")
 
