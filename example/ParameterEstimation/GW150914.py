@@ -81,7 +81,7 @@ data_list = [H1_data, L1_data]
 psd_list = [H1_psd, L1_psd]
 response_list = [H1_response, L1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 101)
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 301)
 
 
 n_dim = 11
@@ -111,8 +111,10 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-# prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
-prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+# prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+#prior_range = jnp.array([[10,80],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -124,11 +126,11 @@ q = m2/m1
 
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
 # initial_position = initial_position.at[:,1].set(guess_param[:,1])
-initial_position = initial_position.at[:,1].set(q)
+# initial_position = initial_position.at[:,1].set(q)
 
 from astropy.cosmology import Planck18 as cosmo
 
-z = np.linspace(0.0002,0.02,1000)
+z = np.linspace(0.002,3,10000)
 dL = cosmo.luminosity_distance(z).value
 dVdz = cosmo.differential_comoving_volume(z).value
 
@@ -142,13 +144,13 @@ def top_hat(x):
 def posterior(theta):
     q = theta[1]
     iota = jnp.arccos(theta[7])
-    dec = jnp.arccos(theta[10])
+    dec = jnp.arcsin(theta[10])
     prior = top_hat(theta)
     theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
     theta = theta.at[7].set(iota) # convert cos iota to iota
     theta = theta.at[10].set(dec) # convert cos dec to dec
-    jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3) - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
-    return logL(theta) + prior + jacobian
+    # jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3) - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
+    return logL(theta) + prior #+ jacobian
 
 model = RQSpline(n_dim, 10, [128,128], 8)
 
