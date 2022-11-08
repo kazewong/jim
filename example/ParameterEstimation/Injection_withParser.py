@@ -15,7 +15,7 @@ from jaxgw.PE.detector_projection import make_detector_response
 from jaxgw.PE.generate_noise import generate_noise
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
@@ -125,9 +125,8 @@ H1_response = make_detector_response(H1[0], H1[1])
 L1 = get_L1()
 L1_response = make_detector_response(L1[0], L1[1])
 
-f_ref = 20.0
+f_ref = 30.0
 trigger_time = 1126259462.4
-duration = 16
 post_trigger_duration = 2
 epoch = duration - post_trigger_duration
 gmst = GreenwichMeanSiderealTime(trigger_time)
@@ -167,7 +166,7 @@ data_list = [H1_data, L1_data]
 psd_list = [psd_dict['H1'], psd_dict['L1']]
 response_list = [H1_response, L1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, gmst, epoch, f_ref, 101)
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, gmst, epoch, f_ref, heterodyne_bins)
 
 # Fetch sampler parameters, construct sampler and initial guess
 
@@ -199,7 +198,7 @@ rng_key_set = initialize_rng_keys(n_chains, seed=seed)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.125,1.0],[0,1],[0,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -208,7 +207,7 @@ for i in range(n_dim):
 from ripple import Mc_eta_to_ms
 m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
 q = m2/m1
-# initial_position = initial_position.at[:,0].set(guess_param[:,0])
+initial_position = initial_position.at[:,0].set(guess_param[:,0])
 # initial_position = initial_position.at[:,1].set(guess_param[:,1])
 # initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
@@ -245,12 +244,12 @@ print("Initializing sampler class")
 posterior = posterior
 dposterior = jax.grad(posterior)
 
-mass_matrix = jnp.eye(n_dim)
-mass_matrix = mass_matrix.at[1,1].set(1e-3)
-mass_matrix = mass_matrix.at[5,5].set(1e-3)
+mass_matrix = np.eye(n_dim)
+mass_matrix = np.abs(1./dposterior(true_param))*mass_matrix
+mass_matrix = jnp.array(mass_matrix)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':mass_matrix*3e-3}
+sampler_params = {'dt':mass_matrix*1e-1}
 print("Running sampler")
 
 nf_sampler = Sampler(
@@ -271,6 +270,8 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
     keep_quantile=0.,
+    local_autotune=mala_sampler_autotune,
+    train_thinning = 40
 )
 
 nf_sampler.sample(initial_position)

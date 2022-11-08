@@ -7,7 +7,7 @@ downsample_factor: 10
 
 seed: 1234
 f_sampling: 2048
-duration: 4
+duration: 16
 fmin: 30
 ifos:
   - H1
@@ -26,7 +26,7 @@ inclination: 0.5
 polarization_angle: 0.2
 ra: 1.2
 dec: 0.3
-heterodyne_bins: 201
+heterodyne_bins: 301
 
 # Sampler parameters
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-2,2],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
 
 N_config = 960
 
@@ -26,7 +26,7 @@ for i in range(N_config):
     f.write('downsample_factor: 10\n')
     f.write('seed: '+str(np.random.randint(low=0,high=10000))+'\n')
     f.write('f_sampling: 2048\n')
-    f.write('duration: 4\n')
+    f.write('duration: 16\n')
     f.write('fmin: 30\n')
     f.write('ifos:\n')
     f.write('  - H1\n')
@@ -43,10 +43,11 @@ for i in range(N_config):
     f.write("polarization_angle: "+str(polarization_angle[i])+"\n")
     f.write("ra: "+str(ra[i])+"\n")
     f.write("dec: "+str(dec[i])+"\n")
+    f.write("heterodyne_bins: 301\n")
 
     f.write("n_dim: 11\n")
     f.write("n_chains: 1000\n")
-    f.write("n_loop_training: 20\n")
+    f.write("n_loop_training: 40\n")
     f.write("n_loop_production: 10\n")
     f.write("n_local_steps: 200\n")
     f.write("n_global_steps: 200\n")

@@ -21,44 +21,65 @@ from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
 
 minimum_frequency = 23
-maximum_frequency = 2048
+maximum_frequency = 700
 
 trigger_time = event_gps("GW170817")
 duration = 128
-post_trigger_duration = 2
+post_trigger_duration = 32
 epoch = duration - post_trigger_duration
 gmst = GreenwichMeanSiderealTime(trigger_time)
 f_ref = minimum_frequency
 
-H1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/H-H1_LOSC_CLN_4_V1-1187007040-2048.gwf','H1:LOSC-STRAIN')
-H1_data = H1_data[(H1_data.times.value >= (trigger_time-epoch)) & (H1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(H1_data)
-H1_data = np.fft.rfft(H1_data.value*tukey(n, 0.00625))/4096.
-H1_frequency = np.fft.rfftfreq(n, 1/4096.)
-H1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/h1_psd.txt')
-H1_psd = interp1d(H1_psd[:,0], H1_psd[:,1], fill_value=np.inf,bounds_error=False)(H1_frequency[H1_frequency>minimum_frequency])
-H1_data = H1_data[H1_frequency>minimum_frequency]
-H1_frequency = H1_frequency[H1_frequency>minimum_frequency]
+# H1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/H-H1_LOSC_CLN_4_V1-1187007040-2048.gwf','H1:LOSC-STRAIN')
+# H1_data = H1_data[(H1_data.times.value >= (trigger_time-epoch)) & (H1_data.times.value <= (trigger_time+post_trigger_duration))]
+# n = len(H1_data)
+# dt = H1_data.dt.value
+# H1_data = np.fft.rfft(H1_data.value*tukey(n, 0.2))/4096
+# H1_frequency = np.fft.rfftfreq(n, dt)
+# H1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/h1_psd.txt')
+# H1_psd = interp1d(H1_psd[:,0], H1_psd[:,1], fill_value=np.inf,bounds_error=False)(H1_frequency[H1_frequency>minimum_frequency])
+# H1_data = H1_data[H1_frequency>minimum_frequency]
+# H1_frequency = H1_frequency[H1_frequency>minimum_frequency]
 
-L1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/L-L1_LOSC_CLN_4_V1-1187007040-2048.gwf','L1:LOSC-STRAIN')
-L1_data = L1_data[(L1_data.times.value >= (trigger_time-epoch)) & (L1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(L1_data)
-L1_data = np.fft.rfft(L1_data.value*tukey(n, 0.00625))/4096.
-L1_frequency = np.fft.rfftfreq(n, 1/4096.)
-L1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/l1_psd.txt')
-L1_psd = interp1d(L1_psd[:,0], L1_psd[:,1], fill_value=np.inf,bounds_error=False)(L1_frequency[L1_frequency>minimum_frequency])
-L1_data = L1_data[L1_frequency>minimum_frequency] 
-L1_frequency = L1_frequency[L1_frequency>minimum_frequency]
+# L1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/L-L1_LOSC_CLN_4_V1-1187007040-2048.gwf','L1:LOSC-STRAIN')
+# L1_data = L1_data[(L1_data.times.value >= (trigger_time-epoch)) & (L1_data.times.value <= (trigger_time+post_trigger_duration))]
+# n = len(L1_data)
+# dt = L1_data.dt.value
+# L1_data = np.fft.rfft(L1_data.value*tukey(n, 0.2))/4096
+# L1_frequency = np.fft.rfftfreq(n, dt)
+# L1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/l1_psd.txt')
+# L1_psd = interp1d(L1_psd[:,0], L1_psd[:,1], fill_value=np.inf,bounds_error=False)(L1_frequency[L1_frequency>minimum_frequency])
+# L1_data = L1_data[L1_frequency>minimum_frequency] 
+# L1_frequency = L1_frequency[L1_frequency>minimum_frequency]
 
-V1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/V-V1_LOSC_CLN_4_V1-1187007040-2048.gwf','V1:LOSC-STRAIN')
-V1_data = V1_data[(V1_data.times.value >= (trigger_time-epoch)) & (V1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(V1_data)
-V1_data = np.fft.rfft(V1_data.value*tukey(n, 0.00625))/4096.
-V1_frequency = np.fft.rfftfreq(n, 1/4096.)
-V1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/v1_psd.txt')
-V1_psd = interp1d(V1_psd[:,0], V1_psd[:,1], fill_value=np.inf,bounds_error=False)(V1_frequency[V1_frequency>minimum_frequency])
-V1_data = V1_data[V1_frequency>minimum_frequency]
-V1_frequency = V1_frequency[V1_frequency>minimum_frequency]
+# V1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/V-V1_LOSC_CLN_4_V1-1187007040-2048.gwf','V1:LOSC-STRAIN')
+# V1_data = V1_data[(V1_data.times.value >= (trigger_time-epoch)) & (V1_data.times.value <= (trigger_time+post_trigger_duration))]
+# n = len(V1_data)
+# dt = V1_data.dt.value
+# V1_data = np.fft.rfft(V1_data.value*tukey(n, 0.2))/4096
+# V1_frequency = np.fft.rfftfreq(n, dt)
+# V1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/v1_psd.txt')
+# V1_psd = interp1d(V1_psd[:,0], V1_psd[:,1], fill_value=np.inf,bounds_error=False)(V1_frequency[V1_frequency>minimum_frequency])
+# V1_data = V1_data[V1_frequency>minimum_frequency]
+# V1_frequency = V1_frequency[V1_frequency>minimum_frequency]
+
+data = np.load('./data/GW170817_data.npz',allow_pickle=True)
+
+
+H1_frequency = data['frequency']
+H1_data = data['data_dict'].tolist()['H1'][(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+H1_psd = data['psd_dict'].tolist()['H1'][(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+H1_frequency = H1_frequency[(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+
+L1_frequency = data['frequency']
+L1_data = data['data_dict'].tolist()['L1'][(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+L1_psd = data['psd_dict'].tolist()['L1'][(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+L1_frequency = L1_frequency[(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+
+V1_frequency = data['frequency']
+V1_data = data['data_dict'].tolist()['V1'][(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
+V1_psd = data['psd_dict'].tolist()['V1'][(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
+V1_frequency = V1_frequency[(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
 
 H1 = get_H1()
 H1_response = make_detector_response(H1[0], H1[1])
@@ -98,6 +119,9 @@ def calculate_match_filter_SNR(theta):
 
 
 def LogLikelihood(theta):
+    theta = theta.at[1].set(theta[1]/(1+theta[1])**2) # convert q to eta
+    theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
+    theta = theta.at[10].set(jnp.arcsin(theta[10])) # convert cos dec to dec
     theta_waveform = theta[:8]
     theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
@@ -117,23 +141,16 @@ def LogLikelihood(theta):
 
     return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2) + (match_filter_SNR_V1-optimal_SNR_V1/2)
 
-ref_param = jnp.array([ 1.19783139e+00,  2.21514737e-01,  8.82083121e-02,
-        4.07704961e-02,  5.05850355e+01,  2.71448311e-02,
-        4.01098485e+00,  2.25231636e-01,  6.18294079e-01,
-        3.70645605e+00, -8.95339544e-01])
-
-# ref_param = jnp.array([1.19758795e+00, 2.34077743e-01, 3.55161953e-02,
-#        2.96801981e-02, 3.48498423e+01, 3.88393551e-02,
-#        2.85787399e+00, 2.92447676e+00, 2.82042305e+00,
-#        6.26822961e+00, 3.01767377e+00])
-
+ref_param = jnp.array([ 1.19736744e+00,  0.24985044062115083, -1.18532170e-01,
+        1.02293135e-01,  3.35316272e+01,  3.03494379e-02,
+        1.86495116e+00, 2.37025514,  2.06376050e+00,
+        3.42839234e+00, -0.37789968])
 
 data_list = [H1_data, L1_data, V1_data]
 psd_list = [H1_psd, L1_psd, V1_psd]
 response_list = [H1_response, L1_response, V1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 201)
-
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 301)
 
 n_dim = 11
 n_chains = 1000
@@ -151,8 +168,6 @@ guess_param = ref_param
 
 guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.00001,size=(int(n_chains),n_dim)))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
-# guess_param[:,6] = (guess_param[:,6]+np.pi/2)%(np.pi)-np.pi/2
-# guess_param[:,7] = (guess_param[:,7]+np.pi/2)%(np.pi)-np.pi/2
 
 
 print("Preparing RNG keys")
@@ -160,8 +175,8 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[1.18,1.21],[0.125,1],[0.0,0.3],[0.0,0.3],[1,75],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
-# prior_range = jnp.array([[1.18,1.21],[0.2,0.25],[0.0,0.3],[0.0,0.3],[1,75],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[1.18,1.21],[0.125,1],[-0.3,0.3],[-0.3,0.3],[1,75],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+# prior_range = jnp.array([[1.18,1.21],[0.2,0.25],[0.0,0.3],[0.0,0.3],[1,75],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -185,7 +200,7 @@ initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
 from astropy.cosmology import Planck18 as cosmo
 
-z = np.linspace(0.0002,0.02,1000)
+z = np.linspace(0.0002,0.03,10000)
 dL = cosmo.luminosity_distance(z).value
 dVdz = cosmo.differential_comoving_volume(z).value
 
@@ -198,19 +213,18 @@ def top_hat(x):
 
 def log_likelihood(theta):
     theta = theta.at[1].set(theta[1]/(1+theta[1])**2) # convert q to eta
-    # theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
-    # theta = theta.at[10].set(jnp.arccos(theta[10])) # convert cos dec to dec
+    theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
+    theta = theta.at[10].set(jnp.arcsin(theta[10])) # convert cos dec to dec
     return logL(theta)
 
 def posterior(theta):
     q = theta[1]
     prior = top_hat(theta)
     theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
-    # theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
-    # theta = theta.at[10].set(jnp.arccos(theta[10])) # convert cos dec to dec
-    jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3)# - jnp.log(jnp.abs(-jnp.sin(iota))) - jnp.log(jnp.abs(-jnp.sin(dec)))
+    theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
+    theta = theta.at[10].set(jnp.arcsin(theta[10])) # convert cos dec to dec
 
-    return logL(theta) + prior + jacobian
+    return logL(theta) + prior
 
 model = RQSpline(n_dim, 10, [128,128], 8)
 

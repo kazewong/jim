@@ -86,12 +86,12 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 20
-n_loop_production = 10
+n_loop_training = 40
+n_loop_production = 20
 n_local_steps = 200
 n_global_steps = 200
 learning_rate = 0.001
-max_samples = 50000
+max_samples = 100000
 momentum = 0.9
 num_epochs = 60
 batch_size = 50000
@@ -184,6 +184,8 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
     keep_quantile=0.,
+    train_thinning = 40
+
 )
 
 nf_sampler.sample(initial_position)
