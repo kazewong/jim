@@ -15,7 +15,7 @@ from jaxgw.PE.detector_projection import make_detector_response
 from jaxgw.PE.generate_noise import generate_noise
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
+from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
@@ -25,9 +25,6 @@ import yaml
 
 from tqdm import tqdm
 from functools import partialmethod
-
-tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-
 
 import sys
 sys.path.append('/mnt/home/wwong/GWProject/JaxGW')
@@ -243,15 +240,13 @@ mass_matrix = np.eye(n_dim)
 mass_matrix = np.abs(1./(jax.grad(logL)(true_param)+jax.grad(top_hat)(true_param)))*mass_matrix
 mass_matrix = jnp.array(mass_matrix)
 
-local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':mass_matrix*3e-2}
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-2})
 print("Running sampler")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    sampler_params,
+    local_sampler,
     posterior,
     model,
     n_loop_training=n_loop_training,
@@ -265,7 +260,6 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
     keep_quantile=0.,
-    local_autotune=mala_sampler_autotune,
     train_thinning = 40
 )
 
