@@ -1,6 +1,6 @@
 import numpy as np
 
-prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
 
 N_config = 960
 
@@ -12,10 +12,12 @@ chi2 = np.random.uniform(prior_range[3,0],prior_range[3,1],N_config)
 dist_mpc = np.random.uniform(prior_range[4,0],prior_range[4,1],N_config)
 tc = np.random.uniform(prior_range[5,0],prior_range[5,1],N_config)
 phic = np.random.uniform(prior_range[6,0],prior_range[6,1],N_config)
-inclination = np.random.uniform(prior_range[7,0],prior_range[7,1],N_config)
+cos_inclination = np.random.uniform(prior_range[7,0],prior_range[7,1],N_config)
+inclination = np.arccos(cos_inclination)
 polarization_angle = np.random.uniform(prior_range[8,0],prior_range[8,1],N_config)
 ra = np.random.uniform(prior_range[9,0],prior_range[9,1],N_config)
-dec = np.random.uniform(prior_range[10,0],prior_range[10,1],N_config)
+sin_dec = np.random.uniform(prior_range[10,0],prior_range[10,1],N_config)
+dec = np.arcsin(sin_dec)
 
 directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/configs/'
 
@@ -43,14 +45,14 @@ for i in range(N_config):
     f.write("polarization_angle: "+str(polarization_angle[i])+"\n")
     f.write("ra: "+str(ra[i])+"\n")
     f.write("dec: "+str(dec[i])+"\n")
-    f.write("heterodyne_bins: 301\n")
+    f.write("heterodyne_bins: 1001\n")
 
     f.write("n_dim: 11\n")
     f.write("n_chains: 1000\n")
     f.write("n_loop_training: 40\n")
     f.write("n_loop_production: 10\n")
     f.write("n_local_steps: 200\n")
-    f.write("n_global_steps: 200\n")
+    f.write("n_global_steps: 100\n")
     f.write("learning_rate: 0.001\n")
     f.write("max_samples: 50000\n")
     f.write("momentum: 0.9\n")

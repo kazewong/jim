@@ -188,17 +188,14 @@ stepsize = args['stepsize']
 
 guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*(1+0.1*jax.random.normal(jax.random.PRNGKey(seed+98127),shape=(int(n_chains),n_dim))))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
-guess_param[:,6] = (guess_param[:,6]%(2*jnp.pi))
-guess_param[:,7] = (guess_param[:,7]%(jnp.pi))
-guess_param[:,8] = (guess_param[:,8]%(jnp.pi))
-guess_param[:,9] = (guess_param[:,9]%(2*jnp.pi))
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=seed)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.125,1.0],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[-np.pi/2,np.pi/2],[-np.pi/2,np.pi/2],[0,2*np.pi],[0,2*np.pi],[0,np.pi]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
 for i in range(n_dim):
@@ -208,12 +205,10 @@ from ripple import Mc_eta_to_ms
 m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
 q = m2/m1
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
-# initial_position = initial_position.at[:,1].set(guess_param[:,1])
-# initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
 from astropy.cosmology import Planck18 as cosmo
 
-z = np.linspace(0.0002,0.02,1000)
+z = np.linspace(0.002,3,10000)
 dL = cosmo.luminosity_distance(z).value
 dVdz = cosmo.differential_comoving_volume(z).value
 
@@ -226,14 +221,13 @@ def top_hat(x):
 
 def posterior(theta):
     q = theta[1]
-    # iota = jnp.arccos(theta[7])
-    # dec = jnp.arccos(theta[10])
+    iota = jnp.arccos(theta[7])
+    dec = jnp.arcsin(theta[10])
     prior = top_hat(theta)
     theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
-    # theta = theta.at[7].set(iota) # convert cos iota to iota
-    # theta = theta.at[10].set(dec) # convert cos dec to dec
-    jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3)# - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
-    return logL(theta) + prior + jacobian
+    theta = theta.at[7].set(iota) # convert cos iota to iota
+    theta = theta.at[10].set(dec) # convert cos dec to dec
+    return logL(theta) + prior
 
 
 model = RQSpline(n_dim, 10, [128,128], 8)
@@ -244,12 +238,13 @@ print("Initializing sampler class")
 posterior = posterior
 dposterior = jax.grad(posterior)
 
+
 mass_matrix = np.eye(n_dim)
-mass_matrix = np.abs(1./dposterior(true_param))*mass_matrix
+mass_matrix = np.abs(1./(jax.grad(logL)(true_param)+jax.grad(top_hat)(true_param)))*mass_matrix
 mass_matrix = jnp.array(mass_matrix)
 
 local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':mass_matrix*1e-1}
+sampler_params = {'dt':mass_matrix*3e-2}
 print("Running sampler")
 
 nf_sampler = Sampler(
@@ -276,7 +271,7 @@ nf_sampler = Sampler(
 
 nf_sampler.sample(initial_position)
 
-labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'inclination', 'polarization_angle', 'ra', 'dec']
+labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'cos_inclination', 'polarization_angle', 'ra', 'sin_dec']
 
 print("Saving to output")
 
