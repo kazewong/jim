@@ -40,7 +40,7 @@ def get_all_quantile(filename):
 
     return np.array(result), np.array(result_multimodal), true_param, mean_global_accs, mean_local_accs
 
-directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/balance_1001/'
+directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/2to1/'
 result = []
 result_multimodal = []
 true_param = []
@@ -61,4 +61,4 @@ true_param = np.stack(true_param)
 mean_global_accs = np.stack(mean_global_accs)
 mean_local_accs = np.stack(mean_local_accs)
 
-np.savez('/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/combined_quantile_balance_1001',result=result, result_multimodal=result_multimodal, true_param=true_param, mean_global_accs=mean_global_accs, mean_local_accs= mean_local_accs)
+np.savez('/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/combined_quantile_2to1',result=result, result_multimodal=result_multimodal, true_param=true_param, mean_global_accs=mean_global_accs, mean_local_accs= mean_local_accs)
