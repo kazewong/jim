@@ -240,7 +240,7 @@ mass_matrix = np.eye(n_dim)
 mass_matrix = np.abs(1./(jax.grad(logL)(true_param)+jax.grad(top_hat)(true_param)))*mass_matrix
 mass_matrix = jnp.array(mass_matrix)
 
-local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-2})
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*1e-1})
 print("Running sampler")
 
 nf_sampler = Sampler(
