@@ -202,6 +202,7 @@ from ripple import Mc_eta_to_ms
 m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
 q = m2/m1
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
+initial_position = initial_position.at[:,5].set(guess_param[:,5])
 
 from astropy.cosmology import Planck18 as cosmo
 
@@ -240,7 +241,7 @@ mass_matrix = np.eye(n_dim)
 mass_matrix = np.abs(1./(jax.grad(logL)(true_param)+jax.grad(top_hat)(true_param)))*mass_matrix
 mass_matrix = jnp.array(mass_matrix)
 
-local_sampler = MALA(posterior, True, {"step_size": mass_matrix*1e-1})
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*5e-1})
 print("Running sampler")
 
 nf_sampler = Sampler(
