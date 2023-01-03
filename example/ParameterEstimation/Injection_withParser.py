@@ -147,21 +147,52 @@ def gen_waveform_L1(f, theta):
 
 true_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
+from scipy.interpolate import interp1d
+q_axis = np.linspace(0.1, 1.0, 10000)
+eta_axis = q_axis/(1+q_axis)**2
+true_q = interp1d(eta_axis, q_axis)(eta)
+cos_inclination = np.cos(inclination)
+sin_dec = np.sin(dec)
+true_param_trans = jnp.array([Mc, true_q, chi1, chi2, dist_mpc, tc, phic, cos_inclination, polarization_angle, ra, sin_dec])
 
 f_list = freqs[freqs>fmin]
 H1_signal = gen_waveform_H1(f_list, true_param)
 H1_noise_psd = noise_dict['H1'][freqs>fmin]
+H1_psd = psd_dict['H1'][freqs>fmin]
 H1_data = H1_noise_psd + H1_signal
 
 L1_signal = gen_waveform_L1(f_list, true_param)
 L1_noise_psd = noise_dict['L1'][freqs>fmin]
+L1_psd = psd_dict['L1'][freqs>fmin]
 L1_data = L1_noise_psd + L1_signal
 
 ref_param = jnp.array([Mc, eta, chi1, chi2, dist_mpc, tc, phic, inclination, polarization_angle, ra, dec])
 
 data_list = [H1_data, L1_data]
-psd_list = [psd_dict['H1'], psd_dict['L1']]
+psd_list = [H1_psd, L1_psd]
 response_list = [H1_response, L1_response]
+
+def LogLikelihood(theta):
+    theta = jnp.array(theta)
+    # theta = theta.at[1].set(theta[1]/(1+theta[1])**2) # convert q to eta
+    # theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
+    # theta = theta.at[10].set(jnp.arcsin(theta[10])) # convert cos dec to dec
+    theta_waveform = theta[:8]
+    theta_waveform = theta_waveform.at[5].set(0)
+    ra = theta[9]
+    dec = theta[10]
+    hp_test, hc_test = gen_IMRPhenomD_polar(f_list, theta_waveform, f_ref)
+    align_time = jnp.exp(-1j*2*jnp.pi*f_list*(epoch+theta[5]))
+    h_test_H1 = H1_response(f_list, hp_test, hc_test, ra, dec, gmst, theta[8]) * align_time
+    h_test_L1 = L1_response(f_list, hp_test, hc_test, ra, dec, gmst, theta[8]) * align_time
+    df = f_list[1] - f_list[0]
+    match_filter_SNR_H1 = 4*jnp.sum((jnp.conj(h_test_H1)*H1_data)/H1_psd*df).real
+    match_filter_SNR_L1 = 4*jnp.sum((jnp.conj(h_test_L1)*L1_data)/L1_psd*df).real
+    optimal_SNR_H1 = 4*jnp.sum((jnp.conj(h_test_H1)*h_test_H1)/H1_psd*df).real
+    optimal_SNR_L1 = 4*jnp.sum((jnp.conj(h_test_L1)*h_test_L1)/L1_psd*df).real
+
+    return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2)
+
 
 logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, f_list, gmst, epoch, f_ref, heterodyne_bins)
 
@@ -183,15 +214,15 @@ batch_size = args['batch_size']
 stepsize = args['stepsize']
 
 
-guess_param = np.array(jnp.repeat(true_param[None,:],int(n_chains),axis=0)*(1+0.1*jax.random.normal(jax.random.PRNGKey(seed+98127),shape=(int(n_chains),n_dim))))
-guess_param[guess_param[:,1]>0.25,1] = 0.249
+guess_param = np.array(jnp.repeat(true_param_trans[None,:],int(n_chains),axis=0)*(1+0.1*jax.random.normal(jax.random.PRNGKey(seed+98127),shape=(int(n_chains),n_dim))))
+guess_param[guess_param[:,1]>1,1] = 1
 
 print("Preparing RNG keys")
 rng_key_set = initialize_rng_keys(n_chains, seed=seed)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.125,1.0],[-0.5,0.5],[-0.5,0.5],[0,2000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[-0.5,0.5],[-0.5,0.5],[100,2000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
 
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
