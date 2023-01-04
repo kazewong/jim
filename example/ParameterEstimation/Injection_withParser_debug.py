@@ -264,7 +264,7 @@ def top_hat(x):
     for i in range(n_dim):
         output = jax.lax.cond(x[i]>=prior_range[i,0], lambda: output, lambda: -jnp.inf)
         output = jax.lax.cond(x[i]<=prior_range[i,1], lambda: output, lambda: -jnp.inf)
-    return output#+jnp.log(jnp.interp(x[4],dL,dVdz))
+    return output+jnp.log(jnp.interp(x[4],dL,dVdz))
 
 def posterior(theta):
     q = theta[1]
@@ -290,7 +290,7 @@ mass_matrix = np.eye(n_dim)
 mass_matrix = np.abs(1./(jax.grad(logL)(true_param)+jax.grad(top_hat)(true_param)))*mass_matrix
 mass_matrix = jnp.array(mass_matrix)
 
-local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-3})
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-1})
 print("Running sampler")
 
 nf_sampler = Sampler(

@@ -1,6 +1,6 @@
 import numpy as np
 
-prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.1,0.1],[0.1,2*np.pi-0.1],[-0.8,0.8],[0.1,np.pi-0.1],[0.1,2*np.pi-0.1],[-0.8,0.8]])
 
 N_config = 960
 
@@ -33,6 +33,7 @@ for i in range(N_config):
     f.write('ifos:\n')
     f.write('  - H1\n')
     f.write('  - L1\n')
+    f.write('  - V1\n')
 
     f.write("m1: "+str(m1[i])+"\n")
     f.write("m2: "+str(m2[i])+"\n")
@@ -49,14 +50,14 @@ for i in range(N_config):
 
     f.write("n_dim: 11\n")
     f.write("n_chains: 1000\n")
-    f.write("n_loop_training: 40\n")
-    f.write("n_loop_production: 10\n")
+    f.write("n_loop_training: 5\n")
+    f.write("n_loop_production: 20\n")
     f.write("n_local_steps: 200\n")
-    f.write("n_global_steps: 100\n")
+    f.write("n_global_steps: 200\n")
     f.write("learning_rate: 0.001\n")
     f.write("max_samples: 50000\n")
     f.write("momentum: 0.9\n")
-    f.write("num_epochs: 60\n")
+    f.write("num_epochs: 240\n")
     f.write("batch_size: 50000\n")
     f.write("stepsize: 0.01\n")
 
