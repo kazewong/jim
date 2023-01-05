@@ -277,7 +277,7 @@ def posterior(theta):
     return logL(theta) + prior
 
 
-model = RQSpline(n_dim, 5, [128,128], 8)
+model = RQSpline(n_dim, 10, [128,128], 8)
 
 
 print("Initializing sampler class")

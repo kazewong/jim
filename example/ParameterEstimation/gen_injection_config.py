@@ -1,12 +1,12 @@
 import numpy as np
 
-prior_range = np.array([[20,50],[20,50],[-0.5,0.5],[-0.5,0.5],[400,1000],[-0.1,0.1],[0.1,2*np.pi-0.1],[-0.8,0.8],[0.1,np.pi-0.1],[0.1,2*np.pi-0.1],[-0.8,0.8]])
+prior_range = np.array([[10,80],[0.125,1],[-0.5,0.5],[-0.5,0.5],[300,2000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
 
 N_config = 960
 
 m1 = np.random.uniform(prior_range[0,0],prior_range[0,1],N_config)
-m2 = np.random.uniform(prior_range[1,0],prior_range[1,1],N_config)
-m2,m1 = np.sort([m1,m2],axis=0)
+q = np.random.uniform(prior_range[1,0],prior_range[1,1],N_config)
+m2 = m1*q
 chi1 = np.random.uniform(prior_range[2,0],prior_range[2,1],N_config)
 chi2 = np.random.uniform(prior_range[3,0],prior_range[3,1],N_config)
 dist_mpc = np.random.uniform(prior_range[4,0],prior_range[4,1],N_config)
@@ -50,7 +50,7 @@ for i in range(N_config):
 
     f.write("n_dim: 11\n")
     f.write("n_chains: 1000\n")
-    f.write("n_loop_training: 5\n")
+    f.write("n_loop_training: 20\n")
     f.write("n_loop_production: 20\n")
     f.write("n_local_steps: 200\n")
     f.write("n_global_steps: 200\n")
