@@ -17,9 +17,13 @@ def get_all_quantile(filename):
     true_param[10] = np.sin(true_param[10])
 
     def compute_percentile(value,data):
-        f = lambda x : np.min(np.abs(az.hdi(data, hdi_prob=x)-value))
-        result = minimize_scalar(f,bounds=[0.001,0.99],method='bounded')
-        return result.x
+        return np.where(data<value)[0].shape[0]/data.size
+
+
+    # def compute_percentile(value,data):
+    #     f = lambda x : np.min(np.abs(az.hdi(data, hdi_prob=x)-value))
+    #     result = minimize_scalar(f,bounds=[0.001,0.99],method='bounded')
+    #     return result.x
 
 
     # Multi-modal HDI works only for data that are actuall multi-modal.
@@ -33,20 +37,20 @@ def get_all_quantile(filename):
     result_multimodal = []
     for i in range(11):
         result.append(compute_percentile(true_param[i],chains[:,:,i].reshape(-1)[::10]))
-        result_multimodal.append(compute_percentile_multimodal(true_param[i],chains[:,:,i].reshape(-1)[::10]))
+        result_multimodal.append(1)#compute_percentile_multimodal(true_param[i],chains[:,:,i].reshape(-1)[::10]))
 
     mean_local_accs = data['local_accs'].mean()
     mean_global_accs = data['global_accs'].mean()
 
     return np.array(result), np.array(result_multimodal), true_param, mean_global_accs, mean_local_accs
 
-directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/'#balance_1001/'
+directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/balance_LVK/'
 result = []
 result_multimodal = []
 true_param = []
 mean_global_accs = []
 mean_local_accs = []
-for i in range(192):#960):
+for i in range(3000):
     name = directory+'injection_'+str(i)+'.npz'
     local_result = get_all_quantile(name)
     result.append(local_result[0])

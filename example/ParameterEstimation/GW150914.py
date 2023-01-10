@@ -185,7 +185,6 @@ nf_sampler = Sampler(
     use_global=True,
     keep_quantile=0.,
     train_thinning = 40
-
 )
 
 nf_sampler.sample(initial_position)

@@ -1,12 +1,20 @@
 import numpy as np
 
-prior_range = np.array([[10,80],[0.125,1],[-0.5,0.5],[-0.5,0.5],[300,2000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+def Mc_eta_to_ms(m):
+    Mchirp, eta = m
+    M = Mchirp / (eta ** (3 / 5))
+    m2 = (M - np.sqrt(M ** 2 - 4 * M ** 2 * eta)) / 2
+    m1 = M - m2
+    return m1, m2
 
-N_config = 960
+prior_range = np.array([[10,50],[0.5,1],[-0.5,0.5],[-0.5,0.5],[300,2000],[-0.5,0.5],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
 
-m1 = np.random.uniform(prior_range[0,0],prior_range[0,1],N_config)
+N_config = 3000
+
+mc = np.random.uniform(prior_range[0,0],prior_range[0,1],N_config)
 q = np.random.uniform(prior_range[1,0],prior_range[1,1],N_config)
-m2 = m1*q
+eta = q/(1+q)**2
+m1,m2 = Mc_eta_to_ms(np.stack([mc,eta]))
 chi1 = np.random.uniform(prior_range[2,0],prior_range[2,1],N_config)
 chi2 = np.random.uniform(prior_range[3,0],prior_range[3,1],N_config)
 dist_mpc = np.random.uniform(prior_range[4,0],prior_range[4,1],N_config)
