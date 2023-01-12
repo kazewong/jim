@@ -9,8 +9,8 @@ from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
 from jaxgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler, mala_sampler_autotune
 from flowMC.sampler.Sampler import Sampler
+from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
 
@@ -86,8 +86,8 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 40
-n_loop_production = 20
+n_loop_training = 20
+n_loop_production = 10
 n_local_steps = 200
 n_global_steps = 200
 learning_rate = 0.001
@@ -112,8 +112,6 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 print("Initializing MCMC model and normalizing flow model.")
 
 prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
-# prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
-#prior_range = jnp.array([[10,80],[0.0,0.25],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-np.pi/2,np.pi/2]])
 
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
@@ -125,8 +123,6 @@ m1,m2 = jax.vmap(Mc_eta_to_ms)(guess_param[:,:2])
 q = m2/m1
 
 initial_position = initial_position.at[:,0].set(guess_param[:,0])
-# initial_position = initial_position.at[:,1].set(guess_param[:,1])
-# initial_position = initial_position.at[:,1].set(q)
 
 from astropy.cosmology import Planck18 as cosmo
 
@@ -149,8 +145,7 @@ def posterior(theta):
     theta = theta.at[1].set(q/(1+q)**2) # convert q to eta
     theta = theta.at[7].set(iota) # convert cos iota to iota
     theta = theta.at[10].set(dec) # convert cos dec to dec
-    # jacobian = jnp.log((1/(1+q)**2)-2*q/(1+q)**3) - jnp.log(jnp.sin(iota)) - jnp.log(jnp.sin(dec))
-    return logL(theta) + prior #+ jacobian
+    return logL(theta) + prior
 
 model = RQSpline(n_dim, 10, [128,128], 8)
 
@@ -162,15 +157,13 @@ mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
-local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':mass_matrix*3e-3}
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-3})
 print("Running sampler")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    sampler_params,
+    local_sampler,
     posterior,
     model,
     n_loop_training=n_loop_training,
@@ -188,3 +181,5 @@ nf_sampler = Sampler(
 )
 
 nf_sampler.sample(initial_position)
+chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
+np.savez('/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/GW150914.npz', chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs)

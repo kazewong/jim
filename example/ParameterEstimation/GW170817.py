@@ -15,7 +15,7 @@ from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_de
 from jaxgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
@@ -241,15 +241,13 @@ mass_matrix = mass_matrix.at[5,5].set(1e-5)
 mass_matrix = mass_matrix.at[9,9].set(1e-2)
 mass_matrix = mass_matrix.at[10,10].set(1e-2)
 
-local_sampler_caller = lambda x: make_mala_sampler(x, jit=True)
-sampler_params = {'dt':mass_matrix*3e-2}
+local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-3})
 print("Running sampler")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
-    local_sampler_caller,
-    sampler_params,
+    local_sampler,
     posterior,
     model,
     n_loop_training=n_loop_training,
@@ -267,3 +265,5 @@ nf_sampler = Sampler(
 )
 
 nf_sampler.sample(initial_position)
+chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
+b
