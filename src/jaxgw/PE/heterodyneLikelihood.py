@@ -107,7 +107,7 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         
         
     def hetrodyne_likelihood(params):
-        theta_waveform = params[:8]
+        theta_waveform = params
         theta_waveform = theta_waveform.at[5].set(0)
         ra, dec = params[9], params[10]
 
