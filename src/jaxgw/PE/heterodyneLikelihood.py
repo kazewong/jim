@@ -70,7 +70,7 @@ def make_heterodyne_likelihood(data, h_function, ref_theta, psd, freqs, n_bins=1
 def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_list, h_function, ref_theta, freqs, gmst, epoch, f_ref, n_bins=101):
 
     num_detector = len(data_list)
-    theta_waveform = ref_theta[:8]
+    theta_waveform = ref_theta
     theta_waveform = theta_waveform.at[5].set(0)
     raw_hp, raw_hc = h_function(freqs, theta_waveform, f_ref)
     index = jnp.where((jnp.abs(raw_hc)+jnp.abs(raw_hp)) > 0)
