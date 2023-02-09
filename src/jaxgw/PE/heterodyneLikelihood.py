@@ -3,8 +3,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 import jax.numpy as jnp
-from xarray import align
-
 
 def max_phase_diff(f, f_low, f_high, chi=1):
     gamma = np.arange(-5,6,1)/3.
