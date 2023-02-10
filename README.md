@@ -1,4 +1,4 @@
-# Jim :smoking: - A JAX-based gravitational-wave inference toolkit
+# Jim <img src="https://user-images.githubusercontent.com/4642979/218163532-1c8a58e5-6f36-42de-96d3-f245eee93cf8.png" alt="jim" width="35"/> - A JAX-based gravitational-wave inference toolkit
 
 Jim comprises a set of tools for estimating parameters of gravitational-wave sources thorugh Bayesian inference.
 At its core, Jim relies on the JAX-based sampler [flowMC](https://github.com/kazewong/flowMC),
