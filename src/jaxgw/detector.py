@@ -156,7 +156,7 @@ class Detector(object):
             return jnp.dot(omega, delta_d) / C_SI
         return delay
 
-    def antenna_pattern_constructor(modes='pc'):
+    def antenna_pattern_constructor(self, modes='pc'):
         """Gives function to compute antenna patterns for any sky location,
         polarization angle and GMST.
         
@@ -200,17 +200,15 @@ class Detector(object):
             return antenna_patterns
         aps.__doc__ = aps.__doc__.format(name=self.name, modes=str(modes))
         return antenna_patterns
+
+    def construct_fd_response(self, modes='pc', epoch=0):
+        get_delay = self.delay_from_geocenter_constructor 
+        get_aps = self.antenna_pattern_constructor(modes)
+        def get_det_h(f, polwaveforms, ra, dec, psi, gmst):
+            dt_geo = get_delay(ra, dec, gmst)
+            aps = get_aps(ra, dec, psi, gmst)
+            h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
+            h *= jnp.exp(-2j*jnp.pi*f*(dt_geo + tc - epoch))
+            return h
+        return get_det_h
         
-
-
-def make_detector_response(detector_tensor, detector_vertex):
-    antenna_response_plus = make_antenna_response(detector_tensor,'plus')
-    antenna_response_cross = make_antenna_response(detector_tensor, 'cross')
-    def detector_response(f, hp, hc, ra, dec, gmst, psi):
-        output = antenna_response_plus(ra, dec, gmst, psi)*hp + antenna_response_cross(ra, dec, gmst, psi)*hc
-        timeshift = time_delay_geocentric(detector_vertex, jnp.array([0.,0.,0.]), ra, dec, gmst)
-        output = output * jnp.exp(-1j * 2 * jnp.pi * f * timeshift)
-        return output
-    return detector_response
-        
-
