@@ -201,14 +201,71 @@ class Detector(object):
         aps.__doc__ = aps.__doc__.format(name=self.name, modes=str(modes))
         return antenna_patterns
 
-    def construct_fd_response(self, modes='pc', epoch=0):
+    def construct_fd_response(self, modes='pc', epoch=0.):
+        """Generates a function to return the Fourier-domain projection of an
+        arbitrary gravitational wave onto this detector, starting from FD 
+        polarizations defined at geocenter.
+
+        Arguments
+        ---------
+        modes : str
+            polarizations to include in response, defaults to tensor modes 'pc'
+        epoch : float
+            time corresponding to beginning of segment, def. 0.
+
+        Returns
+        -------
+        get_det_h : func
+            function to produce the detector response for arbitrary input
+            polarizations in the Fourier domain.
+        """
         get_delay = self.delay_from_geocenter_constructor 
         get_aps = self.antenna_pattern_constructor(modes)
-        def get_det_h(f, polwaveforms, ra, dec, psi, gmst):
+        def get_det_h(f, polwaveforms, ra, dec, psi, gmst, tc):
+            """Project Fourier-domain '{p}' polarizations onto {i} detector,
+            taking into account antenna patterns and time of flight from
+            geocenter.
+
+            The response is defined by
+
+            .. math:: h(f) = \\sum_p h_p(f) F_p(\\alpha, \\delta, \\psi) \\exp(2\\pi i \delta t)
+
+            for polarization functions :math:`h_p(f)` delayed apropriately
+            relative to geocenter by a time :math:`\\delta t(\\alpha,\\delta)`,
+            and antenna patterns :math:`F_p(\\alpha, \\delta, \\psi)` for each
+            included polarization :math:`p`.
+
+            Arguments
+            ---------
+            f : array
+                frequency array over which polarizations are evaluated.
+            polwaveforms : list
+                lenght-{n} list of arrays containing '{p}' polarizations, each
+                assumed to be defined at geocenter and evaluated over the
+                frequency grid `f`.
+            ra : float
+                source right ascension in radians.
+            dec : float
+                source declination in radians.
+            psi : float
+                source polarization angle in radians.
+            gmst : float
+                Greenwich mean sidereal time (GMST) in radians.
+            tc : float
+                time of arrival (coalescence) at geocenter in second measured
+                from epoch {t}.
+
+            Returns
+            -------
+            h : array
+                Fourier domain detector response.
+            """
             dt_geo = get_delay(ra, dec, gmst)
             aps = get_aps(ra, dec, psi, gmst)
             h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
             h *= jnp.exp(-2j*jnp.pi*f*(dt_geo + tc - epoch))
             return h
+        get_det_h.__doc__ = get_det_h.__doc__.format(p=str(modes), i=self.name,
+                                                     n=len(modes), t=epoch)
         return get_det_h
         

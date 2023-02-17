@@ -43,29 +43,8 @@ def compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center):
     B1_array = jnp.array(B1_array)
     return A0_array, A1_array, B0_array, B1_array
 
-def make_heterodyne_likelihood(data, h_function, ref_theta, psd, freqs, n_bins=101):
-    f_bins, f_bins_center = make_binning_scheme(freqs, n_bins)
-    h_ref = h_function(freqs, ref_theta)
-    h_ref_low = h_function(f_bins[:-1], ref_theta)
-    h_ref_bincenter = h_function(f_bins_center, ref_theta)
-
-    A0, A1, B0, B1 = compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center)
-
-    def heterodyne_likelihood(params):
-        waveform_low = h_function(f_bins[:-1], params)
-        waveform_center = h_function(f_bins_center, params)
-        
-        r0 = waveform_center/h_ref_bincenter
-        r1 = (waveform_low/h_ref_low - r0)/(f_bins[:-1]-f_bins_center)
-
-        match_filter_SNR = jnp.nansum(A0*r0.conj() + A1*r1.conj())
-        optimal_SNR = jnp.nansum(B0*jnp.abs(r0)**2 + 2*B1*(r0*r1.conj()).real)
-
-        return (match_filter_SNR - optimal_SNR/2).real
-
-    return heterodyne_likelihood
-
-def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_list, h_function, ref_theta, freqs, gmst, epoch, f_ref, n_bins=101):
+def make_heterodyned_likelihood_multiple_detectors(data_list, psd_list,
+    response_list, h_function, ref_theta, freqs, gmst, epoch, f_ref, n_bins=101):
 
     num_detector = len(data_list)
     theta_waveform = ref_theta
@@ -87,9 +66,9 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
     raw_hp_bin, raw_hc_bin = h_function(f_bins[:-1], theta_waveform, f_ref)
     raw_hp_bincenter, raw_hc_bincenter = h_function(f_bins_center, theta_waveform, f_ref)
     for i in range(num_detector):
-        h_ref.append(respose_list[i](freqs, raw_hp, raw_hc, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*freqs*(epoch+ref_theta[5])))
-        h_ref_low.append(respose_list[i](f_bins[:-1], raw_hp_bin, raw_hc_bin, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+ref_theta[5])))
-        h_ref_bincenter.append(respose_list[i](f_bins_center, raw_hp_bincenter, raw_hc_bincenter, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+ref_theta[5])))
+        h_ref.append(response_list[i](freqs, raw_hp, raw_hc, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*freqs*(epoch+ref_theta[5])))
+        h_ref_low.append(response_list[i](f_bins[:-1], raw_hp_bin, raw_hc_bin, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+ref_theta[5])))
+        h_ref_bincenter.append(response_list[i](f_bins_center, raw_hp_bincenter, raw_hc_bincenter, ra, dec, gmst, ref_theta[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+ref_theta[5])))
     
     A0_array = []
     A1_array = []
@@ -104,7 +83,7 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         B1_array.append(B1)
         
         
-    def hetrodyne_likelihood(params):
+    def heterodyned_likelihood(params):
         theta_waveform = params
         theta_waveform = theta_waveform.at[5].set(0)
         ra, dec = params[9], params[10]
@@ -115,8 +94,8 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         raw_hp_center, raw_hc_center = h_function(f_bins_center, theta_waveform, f_ref)
 
         for i in range(num_detector):
-            waveform_low = respose_list[i](f_bins[:-1], raw_hp_edge, raw_hc_edge, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+params[5]))
-            waveform_center = respose_list[i](f_bins_center, raw_hp_center, raw_hc_center, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+params[5]))
+            waveform_low = response_list[i](f_bins[:-1], raw_hp_edge, raw_hc_edge, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins[:-1]*(epoch+params[5]))
+            waveform_center = response_list[i](f_bins_center, raw_hp_center, raw_hc_center, ra, dec, gmst, params[8])*jnp.exp(-1j*2*jnp.pi*f_bins_center*(epoch+params[5]))
 
             r0 = waveform_center/h_ref_bincenter[i]
             r1 = (waveform_low/h_ref_low[i] - r0)/(f_bins[:-1]-f_bins_center)
@@ -127,4 +106,4 @@ def make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respose_li
         
         return output_SNR
     
-    return hetrodyne_likelihood
+    return heterodyned_likelihood
