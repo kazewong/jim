@@ -10,9 +10,9 @@ from scipy.interpolate import interp1d
 
 
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
-from jaxgw.PE.detector_preset import * 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
-from jaxgw.PE.detector_projection import make_detector_response
+from jimgw.PE.detector_preset import * 
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+from jimgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import make_mala_sampler

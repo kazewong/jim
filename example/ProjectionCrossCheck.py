@@ -78,9 +78,9 @@ import lalsimulation as lalsim
 import numpy as np
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from ripple import Mc_eta_to_ms
-from jaxgw.PE.detector_preset import * 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
-from jaxgw.PE.detector_projection import make_detector_response
+from jimgw.PE.detector_preset import * 
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+from jimgw.PE.detector_projection import make_detector_response
 def get_lal_waveform(f,theta):
     Mc, eta, a_1, a_2, distance, t_c, phi_0, theta_jn, psi = theta 
     m1,m2 = Mc_eta_to_ms([Mc,eta])

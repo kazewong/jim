@@ -4,9 +4,9 @@ import jax
 from lal import GreenwichMeanSiderealTime
 
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
-from jaxgw.PE.detector_preset import * 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
-from jaxgw.PE.detector_projection import make_detector_response
+from jimgw.PE.detector_preset import * 
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
+from jimgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.Sampler import Sampler
@@ -75,7 +75,7 @@ ref_param = jnp.array([ 3.13857132e+01,  2.49301122e-01,  1.31593299e-02,  2.613
         1.33131339e+00,  2.33978644e+00, -1.20993116e+00])
 
 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
 
 data_list = [H1_data, L1_data]
 psd_list = [H1_psd, L1_psd]

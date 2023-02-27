@@ -7,10 +7,10 @@ import jax
 # from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from ripple import ms_to_Mc_eta
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
-from jaxgw.PE.detector_preset import * 
-from jaxgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
-from jaxgw.PE.detector_projection import make_detector_response
-from jaxgw.PE.generate_noise import generate_noise
+from jimgw.PE.detector_preset import * 
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+from jimgw.PE.detector_projection import make_detector_response
+from jimgw.PE.generate_noise import generate_noise
 
 from flowMC.nfmodel.rqSpline import RQSpline
 from flowMC.sampler.MALA import make_mala_sampler

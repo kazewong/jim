@@ -1,7 +1,7 @@
 # Credit some part of the source code from bilby
 
 import jax.numpy as jnp
-from jaxgw.PE.constants import *
+from jimgw.PE.constants import *
 
 
 def make_detector_response(detector_tensor, detector_vertex):
