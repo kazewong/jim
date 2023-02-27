@@ -14,7 +14,7 @@ _[Documentatation and examples are a work in progress]_
 
 You may install the latest released version of Jim through pip by doing
 ```
-pip install jaxGW
+pip install jimGW
 ```
 
 You may install the bleeding edge version by cloning this repo, or doing
