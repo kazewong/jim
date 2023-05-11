@@ -15,50 +15,38 @@ from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_de
 from jimgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import make_mala_sampler
+from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
 
 minimum_frequency = 23
-maximum_frequency = 2048
+maximum_frequency = 700
 
 trigger_time = event_gps("GW170817")
 duration = 128
-post_trigger_duration = 2
+post_trigger_duration = 32
 epoch = duration - post_trigger_duration
 gmst = GreenwichMeanSiderealTime(trigger_time)
 f_ref = minimum_frequency
 
-H1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/H-H1_LOSC_CLN_4_V1-1187007040-2048.gwf','H1:LOSC-STRAIN')
-H1_data = H1_data[(H1_data.times.value >= (trigger_time-epoch)) & (H1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(H1_data)
-H1_data = np.fft.rfft(H1_data.value*tukey(n, 0.00625))/4096.
-H1_frequency = np.fft.rfftfreq(n, 1/4096.)
-H1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/h1_psd.txt')
-H1_psd = interp1d(H1_psd[:,0], H1_psd[:,1], fill_value=np.inf,bounds_error=False)(H1_frequency[H1_frequency>minimum_frequency])
-H1_data = H1_data[H1_frequency>minimum_frequency]
-H1_frequency = H1_frequency[H1_frequency>minimum_frequency]
+data = np.load('/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/GW170817_data.npz',allow_pickle=True)
 
-L1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/L-L1_LOSC_CLN_4_V1-1187007040-2048.gwf','L1:LOSC-STRAIN')
-L1_data = L1_data[(L1_data.times.value >= (trigger_time-epoch)) & (L1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(L1_data)
-L1_data = np.fft.rfft(L1_data.value*tukey(n, 0.00625))/4096.
-L1_frequency = np.fft.rfftfreq(n, 1/4096.)
-L1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/l1_psd.txt')
-L1_psd = interp1d(L1_psd[:,0], L1_psd[:,1], fill_value=np.inf,bounds_error=False)(L1_frequency[L1_frequency>minimum_frequency])
-L1_data = L1_data[L1_frequency>minimum_frequency] 
-L1_frequency = L1_frequency[L1_frequency>minimum_frequency]
 
-V1_data = TimeSeries.read('/mnt/home/misi/projects/cbc_birefringence/GW170817/raw_data/V-V1_LOSC_CLN_4_V1-1187007040-2048.gwf','V1:LOSC-STRAIN')
-V1_data = V1_data[(V1_data.times.value >= (trigger_time-epoch)) & (V1_data.times.value <= (trigger_time+post_trigger_duration))]
-n = len(V1_data)
-V1_data = np.fft.rfft(V1_data.value*tukey(n, 0.00625))/4096.
-V1_frequency = np.fft.rfftfreq(n, 1/4096.)
-V1_psd = np.genfromtxt('/mnt/home/misi/projects/cbc_birefringence/GW170817/psd_data/v1_psd.txt')
-V1_psd = interp1d(V1_psd[:,0], V1_psd[:,1], fill_value=np.inf,bounds_error=False)(V1_frequency[V1_frequency>minimum_frequency])
-V1_data = V1_data[V1_frequency>minimum_frequency]
-V1_frequency = V1_frequency[V1_frequency>minimum_frequency]
+H1_frequency = data['frequency']
+H1_data = data['data_dict'].tolist()['H1'][(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+H1_psd = data['psd_dict'].tolist()['H1'][(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+H1_frequency = H1_frequency[(H1_frequency>minimum_frequency)*(H1_frequency<maximum_frequency)]
+
+L1_frequency = data['frequency']
+L1_data = data['data_dict'].tolist()['L1'][(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+L1_psd = data['psd_dict'].tolist()['L1'][(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+L1_frequency = L1_frequency[(L1_frequency>minimum_frequency)*(L1_frequency<maximum_frequency)]
+
+V1_frequency = data['frequency']
+V1_data = data['data_dict'].tolist()['V1'][(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
+V1_psd = data['psd_dict'].tolist()['V1'][(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
+V1_frequency = V1_frequency[(V1_frequency>minimum_frequency)*(V1_frequency<maximum_frequency)]
 
 H1 = get_H1()
 H1_response = make_detector_response(H1[0], H1[1])
@@ -98,6 +86,10 @@ def calculate_match_filter_SNR(theta):
 
 
 def LogLikelihood(theta):
+    print("Compiling")
+    # theta = theta.at[1].set(theta[1]/(1+theta[1])**2) # convert q to eta
+    # theta = theta.at[7].set(jnp.arccos(theta[7])) # convert cos iota to iota
+    # theta = theta.at[10].set(jnp.arcsin(theta[10])) # convert cos dec to dec
     theta_waveform = theta[:8]
     theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
@@ -117,11 +109,46 @@ def LogLikelihood(theta):
 
     return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2) + (match_filter_SNR_V1-optimal_SNR_V1/2)
 
-prior_range = jnp.array([[1.1,1.5],[0.20,0.25],[-0.1,0.1],[-0.1,0.1],[0,200],[-0.1,0.1],[0,2*np.pi],[0,np.pi],[0,np.pi],[0,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
 
-from scipy.optimize import differential_evolution
+def ridge_reg_objective(params):
+    print("Compiling")
+    residuals = params
+    return jnp.mean(residuals ** 2)
 
-f = jax.jit(LogLikelihood)
-y = lambda x: -f(x)
+prior_range = jnp.array([[1.1,1.5],[0.20,0.25],[-0.2,0.2],[-0.1,0.1],[10,200],[-0.029,0.031],[0,2*np.pi],[0.001,np.pi],[0.001,np.pi],[0.001,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
 
-result = differential_evolution(y, prior_range, maxiter=2000)
+
+initial_guess = jax.random.uniform(jax.random.PRNGKey(42), (20,11,), minval=prior_range[:,0], maxval=prior_range[:,1])
+ref_param = jnp.array([ 1.19736744e+00,  0.24985044062115083, -1.18532170e-01,
+        1.02293135e-01,  3.35316272e+01,  3.03494379e-02,
+        1.86495116e+00, 2.37025514,  2.06376050e+00,
+        3.42839234e+00, -0.37789968])
+
+y = lambda x: -LogLikelihood(x)
+y = jax.jit(jax.vmap(y))
+print("Compiling the function")
+y(initial_guess)
+print("Done compiling the function")
+
+import jax
+from evosax import CMA_ES
+
+# Instantiate the search strategy
+rng = jax.random.PRNGKey(0)
+strategy = CMA_ES(popsize=100, num_dims=11, elite_ratio=0.5)
+es_params = strategy.default_params
+es_params = es_params.replace(clip_min=0, clip_max=1)
+state = strategy.initialize(rng, es_params)
+
+# Run ask-eval-tell loop - NOTE: By default minimization!
+for t in range(1000):
+    rng, rng_gen, rng_eval = jax.random.split(rng, 3)
+    x, state = strategy.ask(rng_gen, state, es_params)
+    theta = x*(prior_range[:,1]-prior_range[:,0]) + prior_range[:,0]
+    fitness = y(theta)
+    state = strategy.tell(x, fitness.astype(jnp.float32), state, es_params)
+    if t % 10 == 0:
+        print(f"Generation {t}, best fitness: {state.best_fitness}")
+
+# Get best overall population member & its fitness
+state.best_member, state.best_fitness
