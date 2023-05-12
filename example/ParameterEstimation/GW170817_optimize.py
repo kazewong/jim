@@ -130,25 +130,31 @@ print("Compiling the function")
 y(initial_guess)
 print("Done compiling the function")
 
-import jax
-from evosax import CMA_ES
+from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 
-# Instantiate the search strategy
-rng = jax.random.PRNGKey(0)
-strategy = CMA_ES(popsize=100, num_dims=11, elite_ratio=0.5)
-es_params = strategy.default_params
-es_params = es_params.replace(clip_min=0, clip_max=1)
-state = strategy.initialize(rng, es_params)
+optimizer = EvolutionaryOptimizer(11, verbose = True)
+state = optimizer.optimize(y, prior_range, n_loops=1000)
+best_fit = optimizer.get_result()[0]
 
-# Run ask-eval-tell loop - NOTE: By default minimization!
-for t in range(1000):
-    rng, rng_gen, rng_eval = jax.random.split(rng, 3)
-    x, state = strategy.ask(rng_gen, state, es_params)
-    theta = x*(prior_range[:,1]-prior_range[:,0]) + prior_range[:,0]
-    fitness = y(theta)
-    state = strategy.tell(x, fitness.astype(jnp.float32), state, es_params)
-    if t % 10 == 0:
-        print(f"Generation {t}, best fitness: {state.best_fitness}")
+# import jax
+# from evosax import CMA_ES
 
-# Get best overall population member & its fitness
-state.best_member, state.best_fitness
+# # Instantiate the search strategy
+# rng = jax.random.PRNGKey(0)
+# strategy = CMA_ES(popsize=200, num_dims=11, elite_ratio=0.5)
+# es_params = strategy.default_params
+# es_params = es_params.replace(clip_min=0, clip_max=1)
+# state = strategy.initialize(rng, es_params)
+
+# # Run ask-eval-tell loop - NOTE: By default minimization!
+# for t in range(1000):
+#     rng, rng_gen, rng_eval = jax.random.split(rng, 3)
+#     x, state = strategy.ask(rng_gen, state, es_params)
+#     theta = x*(prior_range[:,1]-prior_range[:,0]) + prior_range[:,0]
+#     fitness = y(theta)
+#     state = strategy.tell(x, fitness.astype(jnp.float32), state, es_params)
+#     if t % 10 == 0:
+#         print(f"Generation {t}, best fitness: {state.best_fitness}")
+
+# # Get best overall population member & its fitness
+# state.best_member, state.best_fitness
