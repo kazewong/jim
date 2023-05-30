@@ -12,11 +12,18 @@ class LogLikelihoodTransientFD(object):
     waveform :
         frequency-domain waveform function, must accept an array of frequencies
         and a set of parameter values, like
-        `waveform(frequencies, [param1, param2, ...])`
+        `waveform(frequencies, [param1, param2, ...])`.
+    heterodyne : bool
+        whether to approximate likelihood through a heteredoyne.   
+    earth_rotation : bool
+        whether to include Earth's rotation in the antenna pattern.
     """
-    def __init__(self, waveform, heterodyne=True):
+    def __init__(self, waveform, heterodyne=False, earth_rotation=False):
         self.waveform = waveform
         self.heterodyne = heterodyne
+        # whether to include Earth's rotation in the antenna pattern
+        # TODO: implement automatic defaults based on IFO names
+        self.earth_rotation = earth_rotation
         self.data = {}
         self.psds = {}
 
@@ -39,9 +46,9 @@ class LogLikelihoodTransientFD(object):
         if isinstance(data, FrequencySeries):
             self.data[ifo] = data
         else:
-            self.data[ifo] - FrequencySeries(data, **kws)
+            self.data[ifo] = FrequencySeries(data, **kws)
 
-    def add_psd(self, ifo, data, **kws):
+    def add_psd(self, ifo, psd, **kws):
         """Add power spectral density (PSD) for the noise of a given detector.
 
         Arguments
@@ -54,5 +61,5 @@ class LogLikelihoodTransientFD(object):
         if isinstance(psd, FrequencySeries):
             self.psd[ifo] = psd
         else:
-            self.psd[ifo] - FrequencySeries(psd, **kws)
+            self.psd[ifo] = FrequencySeries(psd, **kws)
 

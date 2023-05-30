@@ -20,10 +20,10 @@ class Detector(object):
         self._coordinates = coordinates or {}
 
     @property
-    def coordinates(self)
+    def coordinates(self):
         """Coordinates defining a triangular detector (angles in radians).
         """
-        if not self._coordinates
+        if not self._coordinates:
             if self.name == 'H1':
                 # LIGO Hanford
                 self._coordinates = dict(
@@ -61,7 +61,7 @@ class Detector(object):
                 raise ValueError(f"unknown detector {self.name}")
         return self._coordinates
 
-    @static
+    @staticmethod
     def _get_arm(lat, lon, tilt, azimuth):
         """Construct detector-arm vectors in Earth-centric Cartesian coordinates.
 
@@ -91,8 +91,8 @@ class Detector(object):
         """Detector arm vectors (x, y).
         """
         c = self.coordinates
-	x = self._get_arm(c['lat'], c['lon'], c['xarm_tilt'], c['xarm_azimuth'])
-	y = self._get_arm(c['lat'], c['lon'], c['yarm_tilt'], c['yarm_azimuth'])
+        x = self._get_arm(c['lat'], c['lon'], c['xarm_tilt'], c['xarm_azimuth'])
+        y = self._get_arm(c['lat'], c['lon'], c['yarm_tilt'], c['yarm_azimuth'])
         return x, y
 	
     @property
@@ -117,8 +117,8 @@ class Detector(object):
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
         r = major**2*(major**2*jnp.cos(lat)**2 + minor**2*jnp.sin(lat)**2)**(-0.5)
-        x = (radius + h) * jnp.cos(lat) * jnp.cos(lon)
-        y = (radius + h) * jnp.cos(lat) * jnp.sin(lon)
+        x = (r + h) * jnp.cos(lat) * jnp.cos(lon)
+        y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
         z = ((minor / major)**2 * r + h)*jnp.sin(lat)
         return jnp.array([x, y, z])
 
@@ -199,7 +199,7 @@ class Detector(object):
                 antenna_patterns.append(ap)
             return antenna_patterns
         aps.__doc__ = aps.__doc__.format(name=self.name, modes=str(modes))
-        return antenna_patterns
+        return aps
 
     def construct_fd_response(self, modes='pc', epoch=0.):
         """Generates a function to return the Fourier-domain projection of an
@@ -263,6 +263,10 @@ class Detector(object):
             dt_geo = get_delay(ra, dec, gmst)
             aps = get_aps(ra, dec, psi, gmst)
             h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
+            # note, under our sign convention the phase shift below corresponds
+            # to a time shift t -> t - dt_geo - tc + epoch
+            # this makes sense: a waveform tha that peaks at t=0 at geocenter
+            # will peak at t=dt_geo at the detector, so dt is indeed a delay
             h *= jnp.exp(-2j*jnp.pi*f*(dt_geo + tc - epoch))
             return h
         get_det_h.__doc__ = get_det_h.__doc__.format(p=str(modes), i=self.name,
