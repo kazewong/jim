@@ -1,9 +1,17 @@
 import jax.numpy as jnp
 from .constants import *
 from .wave import Polarization
+from scipy.signal.windows import tukey
 
 
 DEG_TO_RAD = jnp.pi/180
+
+def np2(x):
+    """Returns the next power of two as big as or larger than x."""
+    p = 1
+    while p < x:
+        p = p << 1
+    return p
 
 class Detector(object):
     """Defines a ground-based gravitational-wave detector.
@@ -158,12 +166,16 @@ class Detector(object):
 
     def antenna_pattern_constructor(self, modes='pc'):
         """Gives function to compute antenna patterns for any sky location,
-        polarization angle and GMST.
+        polarization angle and GMST. The antenna pattern is defined 
+        instantaneously under the long-wavelength approximation.
         
         Arguments
         ---------
         modes : list,str
             list of polarizations to include, defaults to tensor modes: 'pc'.
+        aps : func
+            function to compute antenna patterns for any sky location, 
+            polarization angle and GMST.
         """
         detector_tensor = self.tensor
         wave_tensor_functions = [Polarization(m).tensor_from_sky_constructor
@@ -201,7 +213,8 @@ class Detector(object):
         aps.__doc__ = aps.__doc__.format(name=self.name, modes=str(modes))
         return aps
 
-    def construct_fd_response(self, modes='pc', epoch=0.):
+    def construct_fd_response(self, modes='pc', epoch=0., earth_rotation=False,
+                              earth_rotation_times=None, data_frequencies=None):
         """Generates a function to return the Fourier-domain projection of an
         arbitrary gravitational wave onto this detector, starting from FD 
         polarizations defined at geocenter.
@@ -212,6 +225,9 @@ class Detector(object):
             polarizations to include in response, defaults to tensor modes 'pc'
         epoch : float
             time corresponding to beginning of segment, def. 0.
+        earth_rotation : bool
+            whether to account for Earth rotation in antenna patterns,
+            def. False.
 
         Returns
         -------
@@ -221,6 +237,28 @@ class Detector(object):
         """
         get_delay = self.delay_from_geocenter_constructor 
         get_aps = self.antenna_pattern_constructor(modes)
+        if earth_rotation:
+            if earth_rotation_times is None:
+                if data_frequencies is None:
+                    raise ValueError("Must provide data frequencies and epch,"
+                                     "or explicit time grid to evaluate antenna "
+                                     "patterns under Earth rotation.")
+                else:
+                    # TODO: move this to likelihood! construct_fd_response 
+                    # should only accept a time grid.
+
+                    # construct time grid on which to evaluate antenna patterns
+                    # the time grid should as long as the data segment implied
+                    # by the provided frequency array, i.e, T = 1/df.
+                    seglen = 1/(data_frequencies[1] - data_frequencies[0])
+                    # the grid spacing should be as coarse as possible while
+                    # still resolving the evolution of the antenna patterns, 
+                    # which has characterisitc frequency of up to 2/(sid_day).
+                    dt_sid = np2(DAYSID_SI)/4
+                    N = len(data_frequencies)
+                    earth_rotation_times = jnp.arange(N)*dt_sid + epoch
+                    w = tukey(N, 0.1) # TODO: do not hard code alpha!
+            
         def get_det_h(f, polwaveforms, ra, dec, psi, gmst, tc):
             """Project Fourier-domain '{p}' polarizations onto {i} detector,
             taking into account antenna patterns and time of flight from
@@ -260,13 +298,28 @@ class Detector(object):
             h : array
                 Fourier domain detector response.
             """
-            dt_geo = get_delay(ra, dec, gmst)
-            aps = get_aps(ra, dec, psi, gmst)
-            h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
-            # note, under our sign convention the phase shift below corresponds
-            # to a time shift t -> t - dt_geo - tc + epoch
+            dt_geo = get_delay(ra, dec, gmst) 
+            if earth_rotation:
+                # antenna patterns are a function of time to be evaluated at
+                # sparsely over a grid of times spanning the data segment
+                # the result will be FFTed and convolved with the waveform
+                aps = jnp.vectorize(get_aps)(ra, dec, psi, earth_rotation_times)
+                delta_t = 0.5 / f[-1]
+                aps_fd = jnp.fft.rfft(aps*w[:,jnp.newaxis], axis=0) * delta_t
+                # TODO: ^do we want to zero pad?
+                # now, we convolve the antenna patterns with the polarizations
+                h = jnp.zeros_like(polwaveforms[0])
+                for p in range(len(modes)):
+                    # TODO: do we want jnp.fftconvolve?
+                    h += jnp.convolve(polwaveforms[p], aps_fd[:,p], mode='same')
+            else:
+                aps = get_aps(ra, dec, psi, gmst)
+                h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
+            # note, under our sign convention for the Fourier transform the 
+            # phase shift below corresponds to a time shift
+            # ``t -> t - dt_geo - tc + epoch``
             # this makes sense: a waveform tha that peaks at t=0 at geocenter
-            # will peak at t=dt_geo at the detector, so dt is indeed a delay
+            # will peak at t=dt_geo at the detector, so dt is indeed a delay.
             h *= jnp.exp(-2j*jnp.pi*f*(dt_geo + tc - epoch))
             return h
         get_det_h.__doc__ = get_det_h.__doc__.format(p=str(modes), i=self.name,

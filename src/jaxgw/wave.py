@@ -1,7 +1,7 @@
 # Credit some part of the source code from bilby
 
 import jax.numpy as jnp
-from jaxgw.PE.constants import *
+from .constants import *
 
 KNOWN_POLS = 'pcxybl'
 
@@ -61,7 +61,7 @@ class Polarization(object):
                 z = jnp.cross(x, y)
                 return jnp.einsum('i,j->ij', z, z)
         else:
-            raise ValueError(f"unrecognized polarization {self.name}"
+            raise ValueError(f"unrecognized polarization {self.name}")
         return kernel
 
     @property
