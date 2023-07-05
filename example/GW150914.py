@@ -1,32 +1,96 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import time
 import jax.numpy as jnp
 import jax
 from lal import GreenwichMeanSiderealTime
 
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from jimgw.PE.detector_preset import * 
-from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood
+from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
 from jimgw.PE.detector_projection import make_detector_response
 
-from flowMC.nfmodel.rqSpline import RQSpline
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
+from flowMC.nfmodel.common import Gaussian
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
+from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 
-data = np.load('./data/GW150914_data.npz',allow_pickle=True)
+# We only use this to grab the data
+from gwpy.timeseries import TimeSeries
+from scipy.signal.windows import tukey
 
-minimum_frequency = data['minimum_frequency']
+###########################################
+########## First we grab data #############
+###########################################
 
-H1_frequency = data['frequency'].tolist()['H1']
-H1_data = data['data'].tolist()['H1'][H1_frequency>minimum_frequency]
-H1_psd = data['psd'].tolist()['H1'][H1_frequency>minimum_frequency]
-H1_frequency = H1_frequency[H1_frequency>minimum_frequency]
+total_time_start = time.time()
 
-L1_frequency = data['frequency'].tolist()['L1']
-L1_data = data['data'].tolist()['L1'][L1_frequency>minimum_frequency]
-L1_psd = data['psd'].tolist()['L1'][L1_frequency>minimum_frequency]
-L1_frequency = L1_frequency[L1_frequency>minimum_frequency]
+# first, fetch a 4s segment centered on GW150914
+gps = 1126259462.4
+start = gps - 2
+end = gps + 2
+fmin = 20
+fmax = 1024
+
+ifos = ['H1', 'L1']
+
+print("Fetching data...")
+data_td_dict = {ifo: TimeSeries.fetch_open_data(ifo, start, end) for ifo in ifos}
+print("Finished fetching data.")
+
+# GWpy normalizes the FFT like an instrumentalist would, which is not what we 
+# want for the likelihoood, so fix this manually
+n = len(data_td_dict[ifos[0]])
+delta_t = data_td_dict[ifos[0]].dt.value
+
+print("Computing the FFTs...")
+# For BNS 0.00625 is a good choice for the tukey window
+# For BBH 0.2 is a good choice for the tukey window
+data_fd_dict = {i: np.fft.rfft(np.array(d)*tukey(n, 0.2))*delta_t 
+                   for i, d in data_td_dict.items()}
+
+freq = np.fft.rfftfreq(n, delta_t)
+
+# # We take a bit of extra data to compute PSDs
+start_psd = int(gps) - 16
+end_psd = int(gps) + 16
+
+print("Fetching PSD data...")
+psd_data_td_dict = {ifo: TimeSeries.fetch_open_data(ifo, start_psd, end_psd) for ifo in ifos}
+psd_dict = {i: d.psd(fftlength=4) for i, d in psd_data_td_dict.items()}
+print("Finished generating data.")
+
+H1_frequency = np.array(freq[(freq>fmin)&(freq<fmax)])
+H1_data = np.array(data_fd_dict['H1'].data)[(freq>fmin)&(freq<fmax)]
+H1_psd = np.array(psd_dict['H1'].data)[(freq>fmin)&(freq<fmax)]
+
+L1_frequency = np.array(freq[(freq>fmin)&(freq<fmax)])
+L1_data = np.array(data_fd_dict['L1'].data)[(freq>fmin)&(freq<fmax)]
+L1_psd = np.array(psd_dict['L1'].data)[(freq>fmin)&(freq<fmax)]
+
+# If you want to plot the whitened data
+# for i, d_fd in data_fd_dict.items():
+#     # whiten (missing prop constants)
+#     wd_fd = d_fd / np.sqrt(psd_dict[i])
+#     # do some brute-force bandpassing
+#     wd_fd[freq < 30.] = 0
+#     wd_fd[freq > 300.] = 0
+#     # go back to time domain and plot
+#     wd_td = np.fft.irfft(wd_fd.data)
+#     plt.plot(data_td_dict[i].times, wd_td, label=i)
+
+# plt.xlim(gps-0.1, gps+0.1)
+# plt.xlabel('GPS time (s)')
+# plt.ylabel('whitened strain')
+# plt.legend()
+# plt.show()
+
+###########################################
+######## Set up the likelihood ############
+###########################################
 
 H1 = get_H1()
 H1_response = make_detector_response(H1[0], H1[1])
@@ -40,63 +104,79 @@ epoch = duration - post_trigger_duration
 gmst = GreenwichMeanSiderealTime(trigger_time)
 f_ref = 20
 
-def gen_waveform_H1(f, theta, epoch, gmst, f_ref):
+def LogLikelihood(theta):
     theta_waveform = theta[:8]
     theta_waveform = theta_waveform.at[5].set(0)
     ra = theta[9]
     dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
-    return H1_response(f, hp, hc, ra, dec, gmst , theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
+    hp_test, hc_test = gen_IMRPhenomD_polar(H1_frequency, theta_waveform, f_ref)
+    align_time = jnp.exp(-1j*2*jnp.pi*H1_frequency*(epoch+theta[5]))
+    h_test_H1 = H1_response(H1_frequency, hp_test, hc_test, ra, dec, gmst, theta[8]) * align_time
+    h_test_L1 = L1_response(L1_frequency, hp_test, hc_test, ra, dec, gmst, theta[8]) * align_time
+    df = H1_frequency[1] - H1_frequency[0]
+    match_filter_SNR_H1 = 4*jnp.sum((jnp.conj(h_test_H1)*H1_data)/H1_psd*df).real
+    match_filter_SNR_L1 = 4*jnp.sum((jnp.conj(h_test_L1)*L1_data)/L1_psd*df).real
+    optimal_SNR_H1 = 4*jnp.sum((jnp.conj(h_test_H1)*h_test_H1)/H1_psd*df).real
+    optimal_SNR_L1 = 4*jnp.sum((jnp.conj(h_test_L1)*h_test_L1)/L1_psd*df).real
 
-def gen_waveform_L1(f, theta, epoch, gmst, f_ref):
-    theta_waveform = theta[:8]
-    theta_waveform = theta_waveform.at[5].set(0)
-    ra = theta[9]
-    dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
-    return L1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
+    return (match_filter_SNR_H1-optimal_SNR_H1/2) + (match_filter_SNR_L1-optimal_SNR_L1/2)
 
-def H1_LogLikelihood(theta):
-    h_test = gen_waveform_H1(H1_frequency, theta, epoch, gmst, f_ref)
-    df = H1_frequency[1] - H1_frequency[0] 
-    match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*H1_data)/H1_psd*df).real
-    optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/H1_psd*df).real
-    return (match_filter_SNR-optimal_SNR/2)
-
-def L1_LogLikelihood(theta):
-    h_test = gen_waveform_L1(L1_frequency, theta, epoch, gmst, f_ref)
-    df = L1_frequency[1] - L1_frequency[0] 
-    match_filter_SNR = 4*jnp.sum((jnp.conj(h_test)*L1_data)/L1_psd*df).real
-    optimal_SNR = 4*jnp.sum((jnp.conj(h_test)*h_test)/L1_psd*df).real
-    return (match_filter_SNR-optimal_SNR/2)
-
-ref_param = jnp.array([ 3.13857132e+01,  2.49301122e-01,  1.31593299e-02,  2.61342217e-03,
-        5.37766606e+02,  1.18679090e-02,  1.26153956e+00,  2.61240760e+00,
-        1.33131339e+00,  2.33978644e+00, -1.20993116e+00])
+# prior on the waveform parameters
+# these are Mc, eta, s1, s2, dist, tc, phic, ra, dec, psi
+prior_range = jnp.array([[20.,50.],[0.20,0.25],[-0.9,0.9],
+                         [-0.9,0.9],[100,3000],[-1.0,1.0],
+                         [0,2*np.pi],[0.001,np.pi],[0.001,np.pi],
+                         [0.001,2*np.pi],[-jnp.pi/2,jnp.pi/2]])
 
 
-from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
+###########################################
+##### Optimize to find high L point #######
+###########################################
+
+set_nwalkers = 100
+initial_guess = jax.random.uniform(jax.random.PRNGKey(42), (set_nwalkers,11,),
+                                    minval=prior_range[:,0], maxval=prior_range[:,1])
+
+y = lambda x: -LogLikelihood(x)
+y = jax.jit(jax.vmap(y))
+print("Compiling likelihood function")
+y(initial_guess)
+print("Done compiling")
+
+print("Starting the optimizer")
+optimizer = EvolutionaryOptimizer(11, verbose = True)
+state = optimizer.optimize(y, prior_range, n_loops=2000)
+best_fit = optimizer.get_result()[0]
+
+print(best_fit)
 
 data_list = [H1_data, L1_data]
 psd_list = [H1_psd, L1_psd]
 response_list = [H1_response, L1_response]
 
-logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar, ref_param, H1_frequency, gmst, epoch, f_ref, 301)
 
+print("Constructing the heterodyned likelihood function")
+logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, response_list, gen_IMRPhenomD_polar,
+                                                    best_fit, H1_frequency, gmst, epoch, f_ref, 301)
+
+
+###########################################
+####### Finally, we can sample! ###########
+###########################################
 
 n_dim = 11
-n_chains = 1000
-n_loop_training = 20
+n_chains = 500
+n_loop_training = 10
 n_loop_production = 10
 n_local_steps = 200
 n_global_steps = 200
 learning_rate = 0.001
 max_samples = 100000
 momentum = 0.9
-num_epochs = 60
+num_epochs = 200
 batch_size = 50000
 
-guess_param = ref_param
+guess_param = best_fit
 
 guess_param = np.array(jnp.repeat(guess_param[None,:],int(n_chains),axis=0)*np.random.normal(loc=1,scale=0.1,size=(int(n_chains),n_dim)))
 guess_param[guess_param[:,1]>0.25,1] = 0.249
@@ -111,7 +191,9 @@ rng_key_set = initialize_rng_keys(n_chains, seed=42)
 
 print("Initializing MCMC model and normalizing flow model.")
 
-prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],[0,2000],[-0.1,0.1],[0,2*np.pi],[-1,1],[0,np.pi],[0,2*np.pi],[-1,1]])
+prior_range = jnp.array([[10,80],[0.125,1.0],[-1,1],[-1,1],
+                        [0,2000],[-0.05,0.05],[0,2*np.pi],[-1,1],
+                        [0,np.pi],[0,2*np.pi],[-1,1]])
 
 
 initial_position = jax.random.uniform(rng_key_set[0], shape=(int(n_chains), n_dim)) * 1
@@ -139,6 +221,8 @@ def top_hat(x):
 
 def posterior(theta):
     q = theta[1]
+    theta = theta.at[7].set(jnp.arcsin(jnp.sin(theta[7]/2*jnp.pi))*2/jnp.pi)
+    theta = theta.at[10].set(jnp.arcsin(jnp.sin(theta[10]/2*jnp.pi))*2/jnp.pi)
     iota = jnp.arccos(theta[7])
     dec = jnp.arcsin(theta[10])
     prior = top_hat(theta)
@@ -147,24 +231,24 @@ def posterior(theta):
     theta = theta.at[10].set(dec) # convert cos dec to dec
     return logL(theta) + prior
 
-model = RQSpline(n_dim, 10, [128,128], 8)
+posterior_new = lambda theta, data: posterior(theta)
+
+model = MaskedCouplingRQSpline(n_dim, 10, [128,128], 8, jax.random.PRNGKey(10))
 
 print("Initializing sampler class")
-
-posterior = posterior
 
 mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
 
-local_sampler = MALA(posterior, True, {"step_size": mass_matrix*3e-3})
+local_sampler = MALA(posterior_new, True, {"step_size": mass_matrix*3e-3})
 print("Running sampler")
 
 nf_sampler = Sampler(
     n_dim,
     rng_key_set,
+    None,
     local_sampler,
-    posterior,
     model,
     n_loop_training=n_loop_training,
     n_loop_production = n_loop_production,
@@ -177,9 +261,10 @@ nf_sampler = Sampler(
     batch_size=batch_size,
     use_global=True,
     keep_quantile=0.,
-    train_thinning = 40
+    train_thinning = 40,
 )
 
-nf_sampler.sample(initial_position)
+nf_sampler.sample(initial_position, None)
 chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
-np.savez('/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/GW150914.npz', chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs)
+print("Script complete and took: {} minutes".format((time.time()-total_time_start)/60))
+# np.savez('GW150914.npz', chains=chains, log_prob=log_prob, local_accs=local_accs, global_accs=global_accs)
