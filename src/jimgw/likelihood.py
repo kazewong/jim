@@ -2,6 +2,7 @@ from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
 from abc import ABC, abstractmethod
 
+
 class LikelihoodBase(ABC):
     """Base class for likelihoods.
     Note that this likelihood class should work for a somehwat general class of problems.
@@ -10,16 +11,13 @@ class LikelihoodBase(ABC):
 
     """
 
-    def __init__(self, 
-                waveform,
-                detectors,
-                heterodyne: bool = False):
-        self.waveform = waveform
-        self.heterodyne = heterodyne
-        # whether to include Earth's rotation in the antenna pattern
-
     @abstractmethod
-    def 
+    def evalutate(self, params):
+        """Evaluate the likelihood for a given set of parameters.
+        """
+        raise NotImplementedError
+
+    
 
 
 

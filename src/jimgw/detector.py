@@ -4,6 +4,7 @@ from .wave import Polarization
 from scipy.signal.windows import tukey
 from abc import abstractmethod
 import equinox as eqx
+from jaxtyping import Array
 
 
 DEG_TO_RAD = jnp.pi/180
@@ -22,18 +23,17 @@ class Detector(eqx.Module):
     
     """
 
-    
-
     @abstractmethod
-    def fd_response(self, ):
+    def load_data(self, data):
         raise NotImplementedError
 
     @abstractmethod
-    def td_response(self, time: ):
+    def fd_response(self, frequency: Array) -> Array:
         raise NotImplementedError
 
     @abstractmethod
-    
+    def td_response(self, time: Array) -> Array:
+        raise NotImplementedError    
 
 
 class Detector(object):
