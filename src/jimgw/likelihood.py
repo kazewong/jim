@@ -1,9 +1,12 @@
 from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
-from abc import ABC
+from abc import ABC, abstractmethod
 
 class LikelihoodBase(ABC):
     """Base class for likelihoods.
+    Note that this likelihood class should work for a somehwat general class of problems.
+    In light of that, this class would be somewhat abstract, but the idea behind it is this
+    handles two main components of a likelihood: the data and the model.
 
     """
 
@@ -14,6 +17,9 @@ class LikelihoodBase(ABC):
         self.waveform = waveform
         self.heterodyne = heterodyne
         # whether to include Earth's rotation in the antenna pattern
+
+    @abstractmethod
+    def 
 
 
 

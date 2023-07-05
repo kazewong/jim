@@ -150,14 +150,14 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 1000
-n_loop_training = 20
+n_loop_training = 10
 n_loop_production = 10
 n_local_steps = 100
 n_global_steps = 100
 learning_rate = 0.001
 max_samples = 100000
 momentum = 0.9
-num_epochs = 50
+num_epochs = 100
 batch_size = 50000
 
 guess_param = best_fit

@@ -15,15 +15,25 @@ def np2(x):
         p = p << 1
     return p
 
-class Detector(ABC):
+class Detector(eqx.Module):
     """ Base class for all detectors.
 
 
     
     """
 
+    
+
     @abstractmethod
-    def fd_response(self, )
+    def fd_response(self, ):
+        raise NotImplementedError
+
+    @abstractmethod
+    def td_response(self, time: ):
+        raise NotImplementedError
+
+    @abstractmethod
+    
 
 
 class Detector(object):
