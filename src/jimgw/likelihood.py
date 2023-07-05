@@ -1,6 +1,9 @@
 from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
 from abc import ABC, abstractmethod
+from typing import Tuple
+from jimgw.waveform import Waveform
+from jimgw.detector import Detector
 
 
 class LikelihoodBase(ABC):
@@ -9,15 +12,45 @@ class LikelihoodBase(ABC):
     In light of that, this class would be somewhat abstract, but the idea behind it is this
     handles two main components of a likelihood: the data and the model.
 
+    It should be able to take the data and model and evaluate the likelihood for a given set of parameters.
+
     """
 
+    @property
+    def model(self):
+        """The model for the likelihood.
+        """
+        return self._model
+
+    @property
+    def data(self):
+        """The data for the likelihood.
+        """
+        return self._data
+
     @abstractmethod
-    def evalutate(self, params):
+    def evalutate(self, params) -> float:
         """Evaluate the likelihood for a given set of parameters.
         """
         raise NotImplementedError
 
-    
+class TransientLikelihoodFD(LikelihoodBase):
+
+    detectors: list[Detector]
+    waveform: Waveform
+
+    def __init__(self,
+        detectors: list[Detector],
+        waveform: Waveform
+    ) -> None:
+        super().__init__()
+        self.detectors = detectors
+        self.waveform = waveform
+
+    def evaluate(self, params) -> float:
+        """Evaluate the likelihood for a given set of parameters.
+        """
+        raise NotImplementedError
 
 
 

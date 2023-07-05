@@ -33,7 +33,7 @@ class Detector(eqx.Module):
 
     @abstractmethod
     def td_response(self, time: Array) -> Array:
-        raise NotImplementedError    
+        raise NotImplementedError
 
 
 class Detector(object):
