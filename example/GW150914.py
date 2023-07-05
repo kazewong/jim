@@ -11,7 +11,6 @@ from jimgw.PE.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_de
 from jimgw.PE.detector_projection import make_detector_response
 
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.nfmodel.common import Gaussian
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
@@ -71,22 +70,6 @@ L1_frequency = np.array(freq[(freq>fmin)&(freq<fmax)])
 L1_data = np.array(data_fd_dict['L1'].data)[(freq>fmin)&(freq<fmax)]
 L1_psd = np.array(psd_dict['L1'].data)[(freq>fmin)&(freq<fmax)]
 
-# If you want to plot the whitened data
-# for i, d_fd in data_fd_dict.items():
-#     # whiten (missing prop constants)
-#     wd_fd = d_fd / np.sqrt(psd_dict[i])
-#     # do some brute-force bandpassing
-#     wd_fd[freq < 30.] = 0
-#     wd_fd[freq > 300.] = 0
-#     # go back to time domain and plot
-#     wd_td = np.fft.irfft(wd_fd.data)
-#     plt.plot(data_td_dict[i].times, wd_td, label=i)
-
-# plt.xlim(gps-0.1, gps+0.1)
-# plt.xlabel('GPS time (s)')
-# plt.ylabel('whitened strain')
-# plt.legend()
-# plt.show()
 
 ###########################################
 ######## Set up the likelihood ############
