@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import time
 import jax.numpy as jnp
 import jax
-from lal import GreenwichMeanSiderealTime
 
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from jimgw.PE.detector_preset import * 
@@ -16,6 +15,8 @@ from flowMC.sampler.MALA import MALA
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.utils import *
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+
+from astropy.time import Time
 
 # We only use this to grab the data
 from gwpy.timeseries import TimeSeries
@@ -84,7 +85,7 @@ trigger_time = 1126259462.4
 duration = 4 
 post_trigger_duration = 2
 epoch = duration - post_trigger_duration
-gmst = GreenwichMeanSiderealTime(trigger_time)
+gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
 f_ref = 20
 
 def LogLikelihood(theta):
@@ -149,10 +150,10 @@ logL = make_heterodyne_likelihood_mutliple_detector(data_list, psd_list, respons
 
 n_dim = 11
 n_chains = 500
-n_loop_training = 10
+n_loop_training = 15
 n_loop_production = 10
-n_local_steps = 200
-n_global_steps = 200
+n_local_steps = 100
+n_global_steps = 100
 learning_rate = 0.001
 max_samples = 100000
 momentum = 0.9
