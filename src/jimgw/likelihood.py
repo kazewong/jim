@@ -1,6 +1,21 @@
-import numpy as np
 from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
+from abc import ABC
+
+class LikelihoodBase(ABC):
+    """Base class for likelihoods.
+
+    """
+
+    def __init__(self, 
+                waveform,
+                detectors,
+                heterodyne: bool = False):
+        self.waveform = waveform
+        self.heterodyne = heterodyne
+        # whether to include Earth's rotation in the antenna pattern
+
+
 
 class LogLikelihoodTransientFD(object):
     """Object to construct a frequency-domain JAX-based log-likelihood function

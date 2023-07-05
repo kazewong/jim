@@ -2,6 +2,8 @@ import jax.numpy as jnp
 from .constants import *
 from .wave import Polarization
 from scipy.signal.windows import tukey
+from abc import abstractmethod
+import equinox as eqx
 
 
 DEG_TO_RAD = jnp.pi/180
@@ -12,6 +14,17 @@ def np2(x):
     while p < x:
         p = p << 1
     return p
+
+class Detector(ABC):
+    """ Base class for all detectors.
+
+
+    
+    """
+
+    @abstractmethod
+    def fd_response(self, )
+
 
 class Detector(object):
     """Defines a ground-based gravitational-wave detector.
