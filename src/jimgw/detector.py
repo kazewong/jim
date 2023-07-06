@@ -32,8 +32,6 @@ class Detector(eqx.Module):
     def td_response(self, time: Array) -> Array:
         raise NotImplementedError
     
-
-
 class GroundBased2G(Detector):
 
     latitude: float
