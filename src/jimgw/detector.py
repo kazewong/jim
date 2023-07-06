@@ -19,8 +19,6 @@ def np2(x):
 class Detector(eqx.Module):
     """ Base class for all detectors.
 
-
-    
     """
 
     @abstractmethod
@@ -35,6 +33,7 @@ class Detector(eqx.Module):
     def td_response(self, time: Array) -> Array:
         raise NotImplementedError
 
+class 
 
 class Detector(object):
     """Defines a ground-based gravitational-wave detector.
