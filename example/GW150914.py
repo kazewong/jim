@@ -14,8 +14,8 @@ total_time_start = time.time()
 gps = 1126259462.4
 start = gps - 2
 end = gps + 2
-fmin = 20
-fmax = 1024
+fmin = 20.
+fmax = 1024.
 
 ifos = ['H1', 'L1']
 

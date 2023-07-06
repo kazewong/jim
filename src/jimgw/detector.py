@@ -82,8 +82,8 @@ class GroundBased2G(Detector):
         data = jnp.fft.rfft(jnp.array(data_td.value)*tukey(n, tukey_alpha))*delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
-        start_psd = trigger_time - gps_start_pad - psd_pad
-        end_psd = trigger_time + gps_end_pad + psd_pad
+        start_psd = int(trigger_time) - gps_start_pad - psd_pad # What does Int do here?
+        end_psd = int(trigger_time) + gps_end_pad + psd_pad
 
         print("Fetching PSD data...")
         psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd)
