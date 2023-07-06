@@ -48,7 +48,6 @@ class Polarization(eqx.Module):
         else:
             raise ValueError(f"unrecognized polarization {self.name}")
 
-    @property
     def tensor_from_sky(self, ra: float, dec: float, psi: float, gmst: float) -> Array:
         """Computes {name} polarization tensor in celestial
         coordinates from sky location and orientation parameters.

@@ -1,11 +1,10 @@
 import jax.numpy as jnp
-from .constants import *
-from .wave import Polarization
+from jimgw.constants import *
+from jimgw.wave import Polarization
 from scipy.signal.windows import tukey
 from abc import abstractmethod
 import equinox as eqx
 from jaxtyping import Array
-
 
 DEG_TO_RAD = jnp.pi/180
 
@@ -32,65 +31,40 @@ class Detector(eqx.Module):
     @abstractmethod
     def td_response(self, time: Array) -> Array:
         raise NotImplementedError
+    
 
-class 
 
-class Detector(object):
-    """Defines a ground-based gravitational-wave detector.
+class GroundBased2G(Detector):
 
-    Argument
-    --------
-    name : str
-        interferometer name, e.g., 'H1' for LIGO Hanford.
-    coordinates : dict
-        optionally, provide custom detector arm and vertex coordinates.
-    """
-    def __init__(self, name, coordinates=None):
-        self.name = name.upper()
-        self._coordinates = coordinates or {}
+    latitude: float
+    longitude: float
+    elevation: float
+    xarm_azimuth: float
+    yarm_azimuth: float
+    xarm_tilt: float
+    yarm_tilt: float
+    name: str
 
-    @property
-    def coordinates(self):
-        """Coordinates defining a triangular detector (angles in radians).
-        """
-        if not self._coordinates:
-            if self.name == 'H1':
-                # LIGO Hanford
-                self._coordinates = dict(
-                    lat = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,
-                    lon = -(119 + 24. / 60 + 27.5657 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 125.9994 * DEG_TO_RAD,
-                    yarm_azimuth = 215.9994 * DEG_TO_RAD,
-                    xarm_tilt = -6.195e-4,
-                    yarm_tilt = 1.25e-5,
-                    elevation = 142.554,
-                )
-            elif self.name == 'L1':
-                # LIGO Livingston
-                self._coordinates = dict(
-                    lat = (30 + 33. / 60 + 46.4196 / 3600) * DEG_TO_RAD,
-                    lon= -(90 + 46. / 60 + 27.2654 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 197.7165 * DEG_TO_RAD,
-                    yarm_azimuth = 287.7165 * DEG_TO_RAD,
-                    xarm_tilt = 0 ,
-                    yarm_tilt = 0,
-                    elevation = -6.574,
-                )
-            elif self.name == 'V1':
-                # Virgo
-                self._coordinates = dict(
-                    lat = (43 + 37. / 60 + 53.0921 / 3600) * DEG_TO_RAD,
-                    lon = (10 + 30. / 60 + 16.1878 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 70.5674 * DEG_TO_RAD,
-                    yarm_azimuth = 160.5674 * DEG_TO_RAD,
-                    xarm_tilt = 0,
-                    yarm_tilt = 0,
-                    elevation = 51.884,
-                )
-            elif not self._coordinates:
-                raise ValueError(f"unknown detector {self.name}")
-        return self._coordinates
+    def __init__(self, name: str, **kwargs) -> None:
+        self.name = name
+        self.latitude = kwargs.get('latitude', 0)
+        self.longitude = kwargs.get('longitude', 0)
+        self.elevation = kwargs.get('elevation', 0)
+        self.xarm_azimuth = kwargs.get('xarm_azimuth', 0)
+        self.yarm_azimuth = kwargs.get('yarm_azimuth', 0)
+        self.xarm_tilt = kwargs.get('xarm_tilt', 0)
+        self.yarm_tilt = kwargs.get('yarm_tilt', 0)
 
+    def load_data(self, data):
+        pass
+
+    def fd_response(self, frequency: Array) -> Array:
+        pass
+
+    def td_response(self, time: Array) -> Array:
+        pass
+
+    
     @staticmethod
     def _get_arm(lat, lon, tilt, azimuth):
         """Construct detector-arm vectors in Earth-centric Cartesian coordinates.
@@ -153,38 +127,34 @@ class Detector(object):
         return jnp.array([x, y, z])
 
     @property
-    def delay_from_geocenter_constructor(self):
-        """Gives function to compute the delay from geocenter for any sky
-        location and GMST.
+    def delay_from_geocenter_constructor(self, ra: float, dec: float, gmst: float) -> float:
+        """ Calculate time delay between two detectors in geocentric
+        coordinates based on XLALArrivaTimeDiff in TimeDelay.c
+
+        https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
+
+        Arguments
+        ---------
+        ra : float
+            right ascension of the source in rad.
+        dec : float
+            declination of the source in rad.
+        gmst : float
+            Greenwich mean sidereal time in rad.
+
+        Returns
+        -------
+        float: time delay from Earth center.
         """
         delta_d = -self.vertex
-        def delay(ra, dec, gmst):
-            """ Calculate time delay between two detectors in geocentric
-            coordinates based on XLALArrivaTimeDiff in TimeDelay.c
 
-            https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
-    
-            Arguments
-            ---------
-            ra : float
-                right ascension of the source in rad.
-            dec : float
-                declination of the source in rad.
-            gmst : float
-                Greenwich mean sidereal time in rad.
-    
-            Returns
-            -------
-            float: time delay from Earth center.
-            """
-            gmst = jnp.mod(gmst, 2 * jnp.pi)
-            phi = ra - gmst
-            theta = jnp.pi / 2 - dec
-            omega = jnp.array([jnp.sin(theta)*jnp.cos(phi),
-                               jnp.sin(theta)*jnp.sin(phi),
-                               jnp.cos(theta)])
-            return jnp.dot(omega, delta_d) / C_SI
-        return delay
+        gmst = jnp.mod(gmst, 2 * jnp.pi)
+        phi = ra - gmst
+        theta = jnp.pi / 2 - dec
+        omega = jnp.array([jnp.sin(theta)*jnp.cos(phi),
+                            jnp.sin(theta)*jnp.sin(phi),
+                            jnp.cos(theta)])
+        return jnp.dot(omega, delta_d) / C_SI
 
     def antenna_pattern_constructor(self, modes='pc'):
         """Gives function to compute antenna patterns for any sky location,
@@ -348,3 +318,61 @@ class Detector(object):
                                                      n=len(modes), t=epoch)
         return get_det_h
         
+
+
+
+class Detector(object):
+    """Defines a ground-based gravitational-wave detector.
+
+    Argument
+    --------
+    name : str
+        interferometer name, e.g., 'H1' for LIGO Hanford.
+    coordinates : dict
+        optionally, provide custom detector arm and vertex coordinates.
+    """
+    def __init__(self, name, coordinates=None):
+        self.name = name.upper()
+        self._coordinates = coordinates or {}
+
+    @property
+    def coordinates(self):
+        """Coordinates defining a triangular detector (angles in radians).
+        """
+        if not self._coordinates:
+            if self.name == 'H1':
+                # LIGO Hanford
+                self._coordinates = dict(
+                    lat = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,
+                    lon = -(119 + 24. / 60 + 27.5657 / 3600) * DEG_TO_RAD,
+                    xarm_azimuth = 125.9994 * DEG_TO_RAD,
+                    yarm_azimuth = 215.9994 * DEG_TO_RAD,
+                    xarm_tilt = -6.195e-4,
+                    yarm_tilt = 1.25e-5,
+                    elevation = 142.554,
+                )
+            elif self.name == 'L1':
+                # LIGO Livingston
+                self._coordinates = dict(
+                    lat = (30 + 33. / 60 + 46.4196 / 3600) * DEG_TO_RAD,
+                    lon= -(90 + 46. / 60 + 27.2654 / 3600) * DEG_TO_RAD,
+                    xarm_azimuth = 197.7165 * DEG_TO_RAD,
+                    yarm_azimuth = 287.7165 * DEG_TO_RAD,
+                    xarm_tilt = 0 ,
+                    yarm_tilt = 0,
+                    elevation = -6.574,
+                )
+            elif self.name == 'V1':
+                # Virgo
+                self._coordinates = dict(
+                    lat = (43 + 37. / 60 + 53.0921 / 3600) * DEG_TO_RAD,
+                    lon = (10 + 30. / 60 + 16.1878 / 3600) * DEG_TO_RAD,
+                    xarm_azimuth = 70.5674 * DEG_TO_RAD,
+                    yarm_azimuth = 160.5674 * DEG_TO_RAD,
+                    xarm_tilt = 0,
+                    yarm_tilt = 0,
+                    elevation = 51.884,
+                )
+            elif not self._coordinates:
+                raise ValueError(f"unknown detector {self.name}")
+        return self._coordinates
