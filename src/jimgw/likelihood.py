@@ -43,7 +43,6 @@ class TransientLikelihoodFD(LikelihoodBase):
         detectors: list[Detector],
         waveform: Waveform
     ) -> None:
-        super().__init__()
         self.detectors = detectors
         self.waveform = waveform
 

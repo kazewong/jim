@@ -126,8 +126,7 @@ class GroundBased2G(Detector):
         z = ((minor / major)**2 * r + h)*jnp.sin(lat)
         return jnp.array([x, y, z])
 
-    @property
-    def delay_from_geocenter_constructor(self, ra: float, dec: float, gmst: float) -> float:
+    def delay_from_geocenter(self, ra: float, dec: float, gmst: float) -> float:
         """ Calculate time delay between two detectors in geocentric
         coordinates based on XLALArrivaTimeDiff in TimeDelay.c
 
@@ -156,54 +155,40 @@ class GroundBased2G(Detector):
                             jnp.cos(theta)])
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern_constructor(self, modes='pc'):
-        """Gives function to compute antenna patterns for any sky location,
-        polarization angle and GMST. The antenna pattern is defined 
-        instantaneously under the long-wavelength approximation.
-        
+    def antenna_pattern(self, ra:float, dec:float, psi:float, gmst:float, modes: str='pc'):
+        """Computes {name} antenna patterns for {modes} polarizations
+        at the specified sky location, orientation and GMST.
+
+        In the long-wavelength approximation, the antenna pattern for a
+        given polarization is the dyadic product between the detector
+        tensor and the corresponding polarization tensor.
+
         Arguments
         ---------
-        modes : list,str
-            list of polarizations to include, defaults to tensor modes: 'pc'.
-        aps : func
-            function to compute antenna patterns for any sky location, 
-            polarization angle and GMST.
-        """
+        ra : float
+            source right ascension in radians.
+        dec : float
+            source declination in radians.
+        psi : float
+            source polarization angle in radians.
+        gmst : float
+            Greenwich mean sidereal time (GMST) in radians.
+        modes : str
+            string of polarizations to include, defaults to tensor modes: 'pc'.
+        
+        Returns
+        -------
+        result : list
+            antenna pattern values for {modes}.
+        """  
         detector_tensor = self.tensor
-        wave_tensor_functions = [Polarization(m).tensor_from_sky_constructor
+        wave_tensor_functions = [Polarization(m).tensor_from_sky
                                  for m in modes]
-        def aps(ra, dec, psi, gmst):
-            """Computes {name} antenna patterns for {modes} polarizations
-            at the specified sky location, orientation and GMST.
-
-            In the long-wavelength approximation, the antenna pattern for a
-            given polarization is the dyadic product between the detector
-            tensor and the corresponding polarization tensor.
-
-            Arguments
-            ---------
-            ra : float
-                source right ascension in radians.
-            dec : float
-                source declination in radians.
-            psi : float
-                source polarization angle in radians.
-            gmst : float
-                Greenwich mean sidereal time (GMST) in radians.
-            
-            Returns
-            -------
-            Fps : list
-                antenna pattern values for {modes}.
-            """
-            antenna_patterns = []
-            for pol_func in wave_tensor_functions:
-                wave_tensor = pol_func(ra, dec, psi, gmst)
-                ap = jnp.einsum('ij,ij->', detector_tensor, wave_tensor)
-                antenna_patterns.append(ap)
-            return antenna_patterns
-        aps.__doc__ = aps.__doc__.format(name=self.name, modes=str(modes))
-        return aps
+        antenna_patterns = []
+        for pol_func in wave_tensor_functions:
+            wave_tensor = pol_func(ra, dec, psi, gmst)
+            ap = jnp.einsum('ij,ij->', detector_tensor, wave_tensor)
+            antenna_patterns.append(ap)
 
     def construct_fd_response(self, modes='pc', epoch=0., earth_rotation=False,
                               earth_rotation_times=None, data_frequencies=None):
