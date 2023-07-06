@@ -2,9 +2,11 @@ import jax.numpy as jnp
 from jimgw.constants import *
 from jimgw.wave import Polarization
 from scipy.signal.windows import tukey
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import equinox as eqx
 from jaxtyping import Array
+import jax
+from gwpy.timeseries import TimeSeries
 
 DEG_TO_RAD = jnp.pi/180
 
@@ -15,7 +17,7 @@ def np2(x):
         p = p << 1
     return p
 
-class Detector(eqx.Module):
+class Detector(ABC):
     """ Base class for all detectors.
 
     """
@@ -25,26 +27,34 @@ class Detector(eqx.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def fd_response(self, frequency: Array) -> Array:
-        raise NotImplementedError
+    def fd_response(self, frequency: Array, h: Array, params: dict) -> Array:
+        """Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        pass
 
     @abstractmethod
-    def td_response(self, time: Array) -> Array:
-        raise NotImplementedError
+    def td_response(self, time: Array, h: Array, params: dict) -> Array:
+        """Modulate the waveform in the sky frame by the detector response in the time domain."""
+        pass
     
 class GroundBased2G(Detector):
 
-    latitude: float
-    longitude: float
-    elevation: float
-    xarm_azimuth: float
-    yarm_azimuth: float
-    xarm_tilt: float
-    yarm_tilt: float
     name: str
+    polarization_mode: list[Polarization]
+    frequencies: Array = None
+    data : Array = None
+    psd: Array = None
+
+    latitude: float = 0
+    longitude: float = 0
+    xarm_azimuth: float = 0
+    yarm_azimuth: float = 0
+    xarm_tilt: float = 0
+    yarm_tilt: float = 0
+    elevation: float = 0
 
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
+
         self.latitude = kwargs.get('latitude', 0)
         self.longitude = kwargs.get('longitude', 0)
         self.elevation = kwargs.get('elevation', 0)
@@ -52,17 +62,51 @@ class GroundBased2G(Detector):
         self.yarm_azimuth = kwargs.get('yarm_azimuth', 0)
         self.xarm_tilt = kwargs.get('xarm_tilt', 0)
         self.yarm_tilt = kwargs.get('yarm_tilt', 0)
+        modes = kwargs.get('mode', 'pc')
 
-    def load_data(self, data):
+        self.polarization_mode = [Polarization(m) for m in modes]
+
+
+    def load_data(self, trigger_time:float,
+                gps_start_pad: int,
+                gps_end_pad: int,
+                f_min: float,
+                f_max: float,
+                psd_pad: int = 16,
+                tukey_alpha: float = 0.2) -> None:
+        print("Fetching data from {}...".format(self.name))
+        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad)
+        segment_length = data_td.duration.value
+        n = len(data_td)
+        delta_t = data_td.dt.value
+        data = jnp.fft.rfft(jnp.array(data_td.value)*tukey(n, tukey_alpha))*delta_t
+        freq = jnp.fft.rfftfreq(n, delta_t)
+        # TODO: Check if this is the right way to fetch PSD
+        start_psd = trigger_time - gps_start_pad - psd_pad
+        end_psd = trigger_time + gps_end_pad + psd_pad
+
+        print("Fetching PSD data...")
+        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd)
+        psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
+
+        print("Finished generating data.")
+
+        self.frequencies = freq[(freq>f_min)&(freq<f_max)]
+        self.data = data[(freq>f_min)&(freq<f_max)]
+        self.psd = psd[(freq>f_min)&(freq<f_max)]
+
+    def fd_response(self, frequency: Array, h_sky: dict, params: Array) -> Array:
+        """Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
+        antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
+        timeshift = self.delay_from_geocenter(ra, dec, gmst)
+        h_detector = jax.tree_util.tree_map(lambda h, antenna: h * antenna * jnp.exp(-2j * jnp.pi * frequency * timeshift), h_sky, antenna_pattern)
+        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)),axis=0)
+
+    def td_response(self, time: Array, h: Array, params: Array) -> Array:
+        """Modulate the waveform in the sky frame by the detector response in the time domain."""
         pass
 
-    def fd_response(self, frequency: Array) -> Array:
-        pass
-
-    def td_response(self, time: Array) -> Array:
-        pass
-
-    
     @staticmethod
     def _get_arm(lat, lon, tilt, azimuth):
         """Construct detector-arm vectors in Earth-centric Cartesian coordinates.
@@ -92,9 +136,8 @@ class GroundBased2G(Detector):
     def arms(self):
         """Detector arm vectors (x, y).
         """
-        c = self.coordinates
-        x = self._get_arm(c['lat'], c['lon'], c['xarm_tilt'], c['xarm_azimuth'])
-        y = self._get_arm(c['lat'], c['lon'], c['yarm_tilt'], c['yarm_azimuth'])
+        x = self._get_arm(self.latitude, self.longitude, self.xarm_tilt, self.xarm_azimuth)
+        y = self._get_arm(self.latitude, self.longitude, self.yarm_tilt, self.yarm_azimuth)
         return x, y
 	
     @property
@@ -113,9 +156,9 @@ class GroundBased2G(Detector):
         definition of the local radius; see Section 2.1 of LIGO-T980044-10.
         """
         # get detector and Earth parameters
-        lat = self.coordinates['lat']
-        lon = self.coordinates['lon']
-        h = self.coordinates['elevation']
+        lat = self.latitude
+        lon = self.longitude
+        h = self.elevation
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
         r = major**2*(major**2*jnp.cos(lat)**2 + minor**2*jnp.sin(lat)**2)**(-0.5)
@@ -144,7 +187,6 @@ class GroundBased2G(Detector):
         float: time delay from Earth center.
         """
         delta_d = -self.vertex
-
         gmst = jnp.mod(gmst, 2 * jnp.pi)
         phi = ra - gmst
         theta = jnp.pi / 2 - dec
@@ -153,7 +195,7 @@ class GroundBased2G(Detector):
                             jnp.cos(theta)])
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern(self, ra:float, dec:float, psi:float, gmst:float, modes: str='pc'):
+    def antenna_pattern(self, ra:float, dec:float, psi:float, gmst:float) -> dict:
         """Computes {name} antenna patterns for {modes} polarizations
         at the specified sky location, orientation and GMST.
 
@@ -180,182 +222,40 @@ class GroundBased2G(Detector):
             antenna pattern values for {modes}.
         """  
         detector_tensor = self.tensor
-        wave_tensor_functions = [Polarization(m).tensor_from_sky
-                                 for m in modes]
-        antenna_patterns = []
-        for pol_func in wave_tensor_functions:
-            wave_tensor = pol_func(ra, dec, psi, gmst)
-            ap = jnp.einsum('ij,ij->', detector_tensor, wave_tensor)
-            antenna_patterns.append(ap)
 
-    def construct_fd_response(self, modes='pc', epoch=0., earth_rotation=False,
-                              earth_rotation_times=None, data_frequencies=None):
-        """Generates a function to return the Fourier-domain projection of an
-        arbitrary gravitational wave onto this detector, starting from FD 
-        polarizations defined at geocenter.
+        antenna_patterns = {}
+        for polarization in self.polarization_mode:
+            wave_tensor = polarization.tensor_from_sky(ra, dec, psi, gmst)
+            antenna_patterns[polarization.name] = jnp.einsum('ij,ij->', detector_tensor, wave_tensor)
 
-        Arguments
-        ---------
-        modes : str
-            polarizations to include in response, defaults to tensor modes 'pc'
-        epoch : float
-            time corresponding to beginning of segment, def. 0.
-        earth_rotation : bool
-            whether to account for Earth rotation in antenna patterns,
-            def. False.
+        return antenna_patterns
 
-        Returns
-        -------
-        get_det_h : func
-            function to produce the detector response for arbitrary input
-            polarizations in the Fourier domain.
-        """
-        get_delay = self.delay_from_geocenter_constructor 
-        get_aps = self.antenna_pattern_constructor(modes)
-        if earth_rotation:
-            if earth_rotation_times is None:
-                if data_frequencies is None:
-                    raise ValueError("Must provide data frequencies and epch,"
-                                     "or explicit time grid to evaluate antenna "
-                                     "patterns under Earth rotation.")
-                else:
-                    # TODO: move this to likelihood! construct_fd_response 
-                    # should only accept a time grid.
+H1 = GroundBased2G('H1',
+latitude = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,
+longitude = -(119 + 24. / 60 + 27.5657 / 3600) * DEG_TO_RAD,
+xarm_azimuth = 125.9994 * DEG_TO_RAD,
+yarm_azimuth = 215.9994 * DEG_TO_RAD,
+xarm_tilt = -6.195e-4,
+yarm_tilt = 1.25e-5,
+elevation = 142.554,
+mode='pc')
 
-                    # construct time grid on which to evaluate antenna patterns
-                    # the time grid should as long as the data segment implied
-                    # by the provided frequency array, i.e, T = 1/df.
-                    seglen = 1/(data_frequencies[1] - data_frequencies[0])
-                    # the grid spacing should be as coarse as possible while
-                    # still resolving the evolution of the antenna patterns, 
-                    # which has characterisitc frequency of up to 2/(sid_day).
-                    dt_sid = np2(DAYSID_SI)/4
-                    N = len(data_frequencies)
-                    earth_rotation_times = jnp.arange(N)*dt_sid + epoch
-                    w = tukey(N, 0.1) # TODO: do not hard code alpha!
-            
-        def get_det_h(f, polwaveforms, ra, dec, psi, gmst, tc):
-            """Project Fourier-domain '{p}' polarizations onto {i} detector,
-            taking into account antenna patterns and time of flight from
-            geocenter.
+L1 = GroundBased2G('L1',
+latitude = (30 + 33. / 60 + 46.4196 / 3600) * DEG_TO_RAD,
+longitude = -(90 + 46. / 60 + 27.2654 / 3600) * DEG_TO_RAD,
+xarm_azimuth = 197.7165 * DEG_TO_RAD,
+yarm_azimuth = 287.7165 * DEG_TO_RAD,
+xarm_tilt = 0 ,
+yarm_tilt = 0,
+elevation = -6.574,
+mode='pc')
 
-            The response is defined by
-
-            .. math:: h(f) = \\sum_p h_p(f) F_p(\\alpha, \\delta, \\psi) \\exp(2\\pi i \delta t)
-
-            for polarization functions :math:`h_p(f)` delayed apropriately
-            relative to geocenter by a time :math:`\\delta t(\\alpha,\\delta)`,
-            and antenna patterns :math:`F_p(\\alpha, \\delta, \\psi)` for each
-            included polarization :math:`p`.
-
-            Arguments
-            ---------
-            f : array
-                frequency array over which polarizations are evaluated.
-            polwaveforms : list
-                lenght-{n} list of arrays containing '{p}' polarizations, each
-                assumed to be defined at geocenter and evaluated over the
-                frequency grid `f`.
-            ra : float
-                source right ascension in radians.
-            dec : float
-                source declination in radians.
-            psi : float
-                source polarization angle in radians.
-            gmst : float
-                Greenwich mean sidereal time (GMST) in radians.
-            tc : float
-                time of arrival (coalescence) at geocenter in second measured
-                from epoch {t}.
-
-            Returns
-            -------
-            h : array
-                Fourier domain detector response.
-            """
-            dt_geo = get_delay(ra, dec, gmst) 
-            if earth_rotation:
-                # antenna patterns are a function of time to be evaluated at
-                # sparsely over a grid of times spanning the data segment
-                # the result will be FFTed and convolved with the waveform
-                aps = jnp.vectorize(get_aps)(ra, dec, psi, earth_rotation_times)
-                delta_t = 0.5 / f[-1]
-                aps_fd = jnp.fft.rfft(aps*w[:,jnp.newaxis], axis=0) * delta_t
-                # TODO: ^do we want to zero pad?
-                # now, we convolve the antenna patterns with the polarizations
-                h = jnp.zeros_like(polwaveforms[0])
-                for p in range(len(modes)):
-                    # TODO: do we want jnp.fftconvolve?
-                    h += jnp.convolve(polwaveforms[p], aps_fd[:,p], mode='same')
-            else:
-                aps = get_aps(ra, dec, psi, gmst)
-                h = jnp.sum([aps[i]*polwaveforms[i] for i in len(aps)], axis=0)
-            # note, under our sign convention for the Fourier transform the 
-            # phase shift below corresponds to a time shift
-            # ``t -> t - dt_geo - tc + epoch``
-            # this makes sense: a waveform tha that peaks at t=0 at geocenter
-            # will peak at t=dt_geo at the detector, so dt is indeed a delay.
-            h *= jnp.exp(-2j*jnp.pi*f*(dt_geo + tc - epoch))
-            return h
-        get_det_h.__doc__ = get_det_h.__doc__.format(p=str(modes), i=self.name,
-                                                     n=len(modes), t=epoch)
-        return get_det_h
-        
-
-
-
-class Detector(object):
-    """Defines a ground-based gravitational-wave detector.
-
-    Argument
-    --------
-    name : str
-        interferometer name, e.g., 'H1' for LIGO Hanford.
-    coordinates : dict
-        optionally, provide custom detector arm and vertex coordinates.
-    """
-    def __init__(self, name, coordinates=None):
-        self.name = name.upper()
-        self._coordinates = coordinates or {}
-
-    @property
-    def coordinates(self):
-        """Coordinates defining a triangular detector (angles in radians).
-        """
-        if not self._coordinates:
-            if self.name == 'H1':
-                # LIGO Hanford
-                self._coordinates = dict(
-                    lat = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,
-                    lon = -(119 + 24. / 60 + 27.5657 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 125.9994 * DEG_TO_RAD,
-                    yarm_azimuth = 215.9994 * DEG_TO_RAD,
-                    xarm_tilt = -6.195e-4,
-                    yarm_tilt = 1.25e-5,
-                    elevation = 142.554,
-                )
-            elif self.name == 'L1':
-                # LIGO Livingston
-                self._coordinates = dict(
-                    lat = (30 + 33. / 60 + 46.4196 / 3600) * DEG_TO_RAD,
-                    lon= -(90 + 46. / 60 + 27.2654 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 197.7165 * DEG_TO_RAD,
-                    yarm_azimuth = 287.7165 * DEG_TO_RAD,
-                    xarm_tilt = 0 ,
-                    yarm_tilt = 0,
-                    elevation = -6.574,
-                )
-            elif self.name == 'V1':
-                # Virgo
-                self._coordinates = dict(
-                    lat = (43 + 37. / 60 + 53.0921 / 3600) * DEG_TO_RAD,
-                    lon = (10 + 30. / 60 + 16.1878 / 3600) * DEG_TO_RAD,
-                    xarm_azimuth = 70.5674 * DEG_TO_RAD,
-                    yarm_azimuth = 160.5674 * DEG_TO_RAD,
-                    xarm_tilt = 0,
-                    yarm_tilt = 0,
-                    elevation = 51.884,
-                )
-            elif not self._coordinates:
-                raise ValueError(f"unknown detector {self.name}")
-        return self._coordinates
+V1 = GroundBased2G('V1',
+latitude = (43 + 37. / 60 + 53.0921 / 3600) * DEG_TO_RAD,
+longitude = (10 + 30. / 60 + 16.1887 / 3600) * DEG_TO_RAD,
+xarm_azimuth = 243. * DEG_TO_RAD,
+yarm_azimuth = 333. * DEG_TO_RAD,
+xarm_tilt = 0 ,
+yarm_tilt = 0,
+elevation = 51.884,
+mode='pc')

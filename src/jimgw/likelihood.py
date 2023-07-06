@@ -2,8 +2,11 @@ from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
 from abc import ABC, abstractmethod
 from typing import Tuple
+from jaxtyping import Array
 from jimgw.waveform import Waveform
 from jimgw.detector import Detector
+import jax.numpy as jnp
+from astropy.time import Time
 
 
 class LikelihoodBase(ABC):
@@ -29,7 +32,7 @@ class LikelihoodBase(ABC):
         return self._data
 
     @abstractmethod
-    def evalutate(self, params) -> float:
+    def evaluate(self, params) -> float:
         """Evaluate the likelihood for a given set of parameters.
         """
         raise NotImplementedError
@@ -41,76 +44,45 @@ class TransientLikelihoodFD(LikelihoodBase):
 
     def __init__(self,
         detectors: list[Detector],
-        waveform: Waveform
+        waveform: Waveform,
+        trigger_time:float = 0,
+        duration: float = 4,
+        post_trigger_duration: float = 2,
     ) -> None:
         self.detectors = detectors
         self.waveform = waveform
+        self.trigger_time = trigger_time
+        self.gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
 
-    def evaluate(self, params) -> float:
-        """Evaluate the likelihood for a given set of parameters.
+        self.trigger_time = trigger_time
+        self.duration = duration
+        self.post_trigger_duration = post_trigger_duration
+
+    @property
+    def epoch(self):
+        """The epoch of the data.
         """
-        raise NotImplementedError
-
-
-
-class LogLikelihoodTransientFD(object):
-    """Object to construct a frequency-domain JAX-based log-likelihood function
-    for transient gravitational-wave signals detected by ground-based
-    detectors with stationary Gaussian noise.
-
-    Arguments
-    ---------
-    waveform :
-        frequency-domain waveform function, must accept an array of frequencies
-        and a set of parameter values, like
-        `waveform(frequencies, [param1, param2, ...])`.
-    heterodyne : bool
-        whether to approximate likelihood through a heteredoyne.   
-    earth_rotation : bool
-        whether to include Earth's rotation in the antenna pattern.
-    """
-    def __init__(self, waveform, heterodyne=False, earth_rotation=False):
-        self.waveform = waveform
-        self.heterodyne = heterodyne
-        # whether to include Earth's rotation in the antenna pattern
-        # TODO: implement automatic defaults based on IFO names
-        self.earth_rotation = earth_rotation
-        self.data = {}
-        self.psds = {}
+        return self.trigger_time - self.duration
 
     @property
     def ifos(self):
-        """Names of interferometers to analyze.
+        """The interferometers for the likelihood.
         """
-        return list(self.data.keys())
+        return [detector.name for detector in self.detectors]
 
-    def add_data(self, ifo, data, **kws):
-        """Add frequency-domain strain data for a given detector.
-
-        Arguments
-        ---------
-        ifo : str
-            interferometer name, e.g., 'H1' for LIGO Hanford.
-        data : array,FrequencySeries
-            frequency-domain strain data.
+    def evaluate(self, params: Array) -> float:
+        """Evaluate the likelihood for a given set of parameters.
         """
-        if isinstance(data, FrequencySeries):
-            self.data[ifo] = data
-        else:
-            self.data[ifo] = FrequencySeries(data, **kws)
-
-    def add_psd(self, ifo, psd, **kws):
-        """Add power spectral density (PSD) for the noise of a given detector.
-
-        Arguments
-        ---------
-        ifo : str
-            interferometer name, e.g., 'H1' for LIGO Hanford.
-        psd : array,FrequencySeries
-            power spectrum data.
-        """
-        if isinstance(psd, FrequencySeries):
-            self.psd[ifo] = psd
-        else:
-            self.psd[ifo] = FrequencySeries(psd, **kws)
-
+        log_likelihood = 0
+        frequencies = self.detectors[0].frequencies
+        df = frequencies[1] - frequencies[0]
+        source_params = {"Mc": params[0], "eta": params[1], "s1z": params[2], "s2z": params[3], "distance": params[4], "tc": params[5], "phic": params[6], "incl": params[7], "psi": params[8], "ra": params[9], "dec": params[10]}
+        detector_params = {"ra": params[9], "dec": params[10], "psi": params[8], "gmst": self.gmst}
+        waveform_sky = self.waveform(frequencies, source_params)
+        align_time = jnp.exp(-2j*jnp.pi*frequencies*(self.epoch+params[5]))
+        for detector in self.detectors:
+            waveform_dec = detector.fd_response(frequencies, waveform_sky, detector_params) * align_time
+            match_filter_SNR = 4 * jnp.sum(jnp.conj(waveform_dec)*detector.data/detector.psd*df).real
+            optimal_SNR = 4 * jnp.sum(jnp.conj(waveform_dec)*waveform_dec/detector.psd*df).real
+            log_likelihood += match_filter_SNR - optimal_SNR/2
+        return log_likelihood
