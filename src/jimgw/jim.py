@@ -11,3 +11,11 @@ class Jim(object):
     def __init__(self, Sampler: Sampler, Likelihood: LikelihoodBase, **kwargs):
         pass
 
+    def maximize_likleihood(self):
+        pass
+
+    def sample(self):
+        pass
+
+    def plot(self):
+        pass
