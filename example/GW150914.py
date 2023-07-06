@@ -24,8 +24,6 @@ L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 likelihood = TransientLikelihoodFD([H1, L1], RippleIMRPhenomD(), gps, 4, 2)
 
-data = jnp.array([30,0.249,0.,0., 400., 5., 6., 1., 2., 3.,4.])
-print(likelihood.evaluate(data))
 ###########################################
 ######## Set up the likelihood ############
 ###########################################

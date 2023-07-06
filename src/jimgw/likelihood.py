@@ -62,7 +62,7 @@ class TransientLikelihoodFD(LikelihoodBase):
     def epoch(self):
         """The epoch of the data.
         """
-        return self.trigger_time - self.duration
+        return self.duration - self.post_trigger_duration
 
     @property
     def ifos(self):
@@ -79,10 +79,10 @@ class TransientLikelihoodFD(LikelihoodBase):
         source_params = {"Mc": params[0], "eta": params[1], "s1z": params[2], "s2z": params[3], "distance": params[4], "tc": params[5], "phic": params[6], "incl": params[7], "psi": params[8], "ra": params[9], "dec": params[10]}
         detector_params = {"ra": params[9], "dec": params[10], "psi": params[8], "gmst": self.gmst}
         waveform_sky = self.waveform(frequencies, source_params)
-        align_time = jnp.exp(-2j*jnp.pi*frequencies*(self.epoch+params[5]))
+        align_time = jnp.exp(-1j*2*jnp.pi*frequencies*(self.epoch+params[5]))
         for detector in self.detectors:
             waveform_dec = detector.fd_response(frequencies, waveform_sky, detector_params) * align_time
-            match_filter_SNR = 4 * jnp.sum(jnp.conj(waveform_dec)*detector.data/detector.psd*df).real
+            match_filter_SNR = 4 * jnp.sum((jnp.conj(waveform_dec)*detector.data)/detector.psd*df).real
             optimal_SNR = 4 * jnp.sum(jnp.conj(waveform_dec)*waveform_dec/detector.psd*df).real
             log_likelihood += match_filter_SNR - optimal_SNR/2
         return log_likelihood
