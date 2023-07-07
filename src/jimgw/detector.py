@@ -74,6 +74,27 @@ class GroundBased2G(Detector):
                 f_max: float,
                 psd_pad: int = 16,
                 tukey_alpha: float = 0.2) -> None:
+        """Load data from the detector.
+
+        Parameters
+        ----------
+        trigger_time : float
+            The GPS time of the trigger.
+        gps_start_pad : int
+            The amount of time before the trigger to fetch data.
+        gps_end_pad : int
+            The amount of time after the trigger to fetch data.
+        f_min : float
+            The minimum frequency to fetch data.
+        f_max : float
+            The maximum frequency to fetch data.
+        psd_pad : int
+            The amount of time to pad the PSD data.
+        tukey_alpha : float
+            The alpha parameter for the Tukey window.
+
+        """
+
         print("Fetching data from {}...".format(self.name))
         data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, cache=True)
         segment_length = data_td.duration.value

@@ -75,6 +75,8 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
+    def posterior(self, params: Array):
+        return self.Likelihood.evaluate(params) + self.Prior.log_prob(params)
 
     def sample(self, key: jax.random.PRNGKey,
                initial_guess: Array = None):

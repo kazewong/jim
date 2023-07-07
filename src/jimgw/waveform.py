@@ -27,3 +27,5 @@ class RippleIMRPhenomD(Waveform):
         output['p'] = hp
         output['c'] = hc
         return output
+
+
