@@ -70,7 +70,7 @@ class TransientLikelihoodFD(LikelihoodBase):
         """
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, params: Array) -> float:
+    def evaluate(self, params: Array, data: dict) -> float:
         """Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0

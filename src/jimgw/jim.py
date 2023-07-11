@@ -1,10 +1,11 @@
 from jimgw.likelihood import LikelihoodBase
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
-from flowMC.nfmodel.base import Distribution
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+from jimgw.prior import Prior
+from jaxtyping import Array
 import jax
 
 class Jim(object):
@@ -12,7 +13,7 @@ class Jim(object):
     
     """
 
-    def __init__(self, likelihood: LikelihoodBase, prior: Distribution, sampler_kwargs: dict, **kwargs):
+    def __init__(self, likelihood: LikelihoodBase, prior: Prior, sampler_kwargs: dict, **kwargs):
         self.Likelihood = likelihood
         self.Prior = prior
         seed = sampler_kwargs.get("seed", 0)
@@ -22,7 +23,13 @@ class Jim(object):
         hidden_size = sampler_kwargs.get("hidden_size", [128,128])
         num_bins = sampler_kwargs.get("hidden_size", 8)
 
-        local_sampler = MALA(self.Likelihood.evaluate, True, 1e-2) # Remember to add routine to find automated mass matrix
+        def posterior(x: Array, data:dict):
+            prior = self.Prior.log_prob(x)
+            x = self.Prior.transform(x)
+            return self.Likelihood.evaluate(x) + prior
+
+
+        local_sampler = MALA(posterior, True, 1e-2) # Remember to add routine to find automated mass matrix
 
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins)
         self.Sampler = Sampler(
