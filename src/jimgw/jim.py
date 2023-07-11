@@ -13,15 +13,15 @@ class Jim(object):
     
     """
 
-    def __init__(self, likelihood: LikelihoodBase, prior: Prior, sampler_kwargs: dict, **kwargs):
+    def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
         self.Likelihood = likelihood
         self.Prior = prior
-        seed = sampler_kwargs.get("seed", 0)
+        seed = kwargs.get("seed", 0)
 
         rng_key_set = initialize_rng_keys(seed)
-        num_layers = sampler_kwargs.get("num_layers", 10)
-        hidden_size = sampler_kwargs.get("hidden_size", [128,128])
-        num_bins = sampler_kwargs.get("hidden_size", 8)
+        num_layers = kwargs.get("num_layers", 10)
+        hidden_size = kwargs.get("hidden_size", [128,128])
+        num_bins = kwargs.get("hidden_size", 8)
 
         def posterior(x: Array, data:dict):
             prior = self.Prior.log_prob(x)
@@ -38,7 +38,7 @@ class Jim(object):
             None,
             local_sampler,
             model,
-            **sampler_kwargs)
+            **kwargs)
         
         #     n_loop_training=n_loop_training,
         #     n_loop_production = n_loop_production,

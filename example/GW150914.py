@@ -1,4 +1,5 @@
 import time
+from jaxgw.jim import Jim
 from jimgw.detector import H1, L1
 from jimgw.likelihood import TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD
@@ -29,6 +30,13 @@ prior = Uniform(
     xmax = [80., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
     naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "iota", "psi", "ra", "dec"]
 )
+
+jim = Jim(likelihood, 
+          prior,
+          n_loop_training = 10
+          )
+
+jim
 
 ###########################################
 ######## Set up the likelihood ############
