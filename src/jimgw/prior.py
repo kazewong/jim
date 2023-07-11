@@ -1,4 +1,5 @@
 import jax
+import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float
 from typing import Callable
@@ -34,5 +35,4 @@ class Uniform(Prior):
         return samples # TODO: remember to cast this to a named array
 
     def log_prob(self, x: Array) -> Float:
-        return 1./(self.xmax-self.xmin)
-    
+        return jnp.log(1./(self.xmax-self.xmin)) 

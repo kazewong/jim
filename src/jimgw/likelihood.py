@@ -70,7 +70,7 @@ class TransientLikelihoodFD(LikelihoodBase):
         """
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, params: Array, data: dict) -> float:
+    def evaluate(self, params: Array, data: dict) -> float: # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0

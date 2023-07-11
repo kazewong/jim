@@ -26,7 +26,7 @@ class Jim(object):
         def posterior(x: Array, data:dict):
             prior = self.Prior.log_prob(x)
             x = self.Prior.transform(x)
-            return self.Likelihood.evaluate(x) + prior
+            return self.Likelihood.evaluate(x, data) + prior
 
 
         local_sampler = MALA(posterior, True, 1e-2) # Remember to add routine to find automated mass matrix
