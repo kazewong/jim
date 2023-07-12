@@ -7,6 +7,7 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jimgw.prior import Prior
 from jaxtyping import Array
 import jax
+import jax.numpy as jnp
 
 class Jim(object):
     """ Master class for interfacing with flowMC
@@ -28,6 +29,7 @@ class Jim(object):
             x = self.Prior.transform(x)
             return self.Likelihood.evaluate(x, data) + prior
 
+        self.posterior = posterior
 
         local_sampler = MALA(posterior, True, {"step_size": 1e-2}) # Remember to add routine to find automated mass matrix
 
@@ -54,11 +56,13 @@ class Jim(object):
         #     train_thinning = 40,
         # )
 
-    def maximize_likleihood(self, bounds: tuple[float,float],set_nwalkers: int = 100, n_loops: int = 2000):
+    def maximize_likleihood(self, bounds: tuple[Array,Array],set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
+        bounds = jnp.array(bounds).T
+        key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
-        initial_guess = self.Prior.sample(set_nwalkers)
+        initial_guess = self.Prior.sample(key, set_nwalkers)
 
-        y = lambda x: -self.Likelihood(x)
+        y = lambda x: -self.posterior(x, None)
         y = jax.jit(jax.vmap(y))
         print("Compiling likelihood function")
         y(initial_guess)

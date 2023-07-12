@@ -37,7 +37,7 @@ class Uniform(Prior):
         self.xmin = jnp.array(xmin)
     
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        samples = jax.random.uniform(rng_key, n_samples, minval=self.xmin, maxval=self.xmax)
+        samples = jax.random.uniform(rng_key, (n_samples,self.n_dim), minval=self.xmin, maxval=self.xmax)
         return samples # TODO: remember to cast this to a named array
 
     def log_prob(self, x: Array) -> Float:

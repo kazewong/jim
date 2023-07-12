@@ -36,7 +36,7 @@ jim = Jim(likelihood,
           n_loop_training = 10
           )
 
-jim
+jim.maximize_likleihood([prior.xmin, prior.xmax])
 
 ###########################################
 ######## Set up the likelihood ############
