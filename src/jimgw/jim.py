@@ -29,9 +29,9 @@ class Jim(object):
             return self.Likelihood.evaluate(x, data) + prior
 
 
-        local_sampler = MALA(posterior, True, 1e-2) # Remember to add routine to find automated mass matrix
+        local_sampler = MALA(posterior, True, {"step_size": 1e-2}) # Remember to add routine to find automated mass matrix
 
-        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins)
+        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
         self.Sampler = Sampler(
             self.Prior.n_dim,
             rng_key_set,

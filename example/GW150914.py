@@ -1,5 +1,5 @@
 import time
-from jaxgw.jim import Jim
+from jimgw.jim import Jim
 from jimgw.detector import H1, L1
 from jimgw.likelihood import TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD

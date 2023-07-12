@@ -75,7 +75,7 @@ class GroundBased2G(Detector):
                 psd_pad: int = 16,
                 tukey_alpha: float = 0.2) -> None:
         print("Fetching data from {}...".format(self.name))
-        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad)
+        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, cache=True)
         segment_length = data_td.duration.value
         n = len(data_td)
         delta_t = data_td.dt.value
@@ -86,7 +86,7 @@ class GroundBased2G(Detector):
         end_psd = int(trigger_time) + gps_end_pad + psd_pad
 
         print("Fetching PSD data...")
-        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd)
+        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, cache=True)
         psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
 
         print("Finished generating data.")
