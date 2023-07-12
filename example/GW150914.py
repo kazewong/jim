@@ -5,6 +5,7 @@ from jimgw.likelihood import TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD
 from jimgw.prior import Uniform
 import jax.numpy as jnp
+import jax
 
 ###########################################
 ########## First we grab data #############
@@ -37,6 +38,7 @@ jim = Jim(likelihood,
           )
 
 jim.maximize_likleihood([prior.xmin, prior.xmax])
+jim.sample(jax.random.PRNGKey(42))
 
 ###########################################
 ######## Set up the likelihood ############

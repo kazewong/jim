@@ -18,8 +18,9 @@ class Jim(object):
         self.Likelihood = likelihood
         self.Prior = prior
         seed = kwargs.get("seed", 0)
+        n_chains = kwargs.get("n_chains", 20)
 
-        rng_key_set = initialize_rng_keys(seed)
+        rng_key_set = initialize_rng_keys(n_chains, seed=seed)
         num_layers = kwargs.get("num_layers", 10)
         hidden_size = kwargs.get("hidden_size", [128,128])
         num_bins = kwargs.get("hidden_size", 8)
@@ -75,8 +76,11 @@ class Jim(object):
         return best_fit
 
 
-    def sample(self):
-        self.Sampler.sample(self.Prior.sample())
+    def sample(self, key: jax.random.PRNGKey,
+               initial_guess: Array = None):
+        if initial_guess is None:
+            initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
+        self.Sampler.sample(initial_guess, None)
 
     def plot(self):
         pass
