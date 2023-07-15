@@ -47,6 +47,11 @@ plugins:
     - autorefs  # Cross-links to headings
     - mkdocs-jupyter: # Jupyter notebook support
         # show_input: False
+    - gen-files:
+        scripts:
+        - docs/gen_ref_pages.py
+    - literate-nav:
+        nav_file: SUMMARY.md
     - mkdocstrings:
         handlers:
             python:
@@ -70,6 +75,7 @@ plugins:
 nav:
     - Home: index.md
     - GW150914: examples/GW150914.py
+    - Code Reference: reference/
     # Getting Started:
     #     - Installation: installation.md
     #     - Tutorial: tutorial.md
