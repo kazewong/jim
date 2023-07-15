@@ -7,8 +7,8 @@ repo_name: kazewong/jim
 theme:
     name: material
     features:
-        - navigation.sections  # Sections are included in the navigation on the left.
-        - toc.integrate  # Table of contents is integrated on the left; does not appear separately on the right.
+        - navigation  # Sections are included in the navigation on the left.
+        - toc  # Table of contents is integrated on the left; does not appear separately on the right.
         - header.autohide  # header disappears as you scroll
     palette:
         # Light mode / dark mode
@@ -73,5 +73,8 @@ plugins:
 
 nav:
     - Home: index.md
-    - GW150914: examples/GW150914.py
+    - Gotchas: gotchas.md
+    - Jax: jax.md
+    - Tutorial: tutorials/
+    - Examples: examples/
     - API: reference/
