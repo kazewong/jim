@@ -1,5 +1,5 @@
-mkdocs==1.4.3            # Main documentation generator.
-mkdocs-material==9.1.18   # Theme
-pymdown-extensions==10.1  # Markdown extensions e.g. to handle LaTeX.
-mkdocstrings==0.22.0     # Autogenerate documentation from docstrings.
-mknotebooks==0.7.1       # Turn Jupyter Lab notebooks into webpages.
+mkdocs==1.4.3               # Main documentation generator.
+mkdocs-material==9.1.18     # Theme
+pymdown-extensions==10.1    # Markdown extensions e.g. to handle LaTeX.
+mkdocstrings==0.22.0        # Autogenerate documentation from docstrings.
+mkdocs-jupyter-0.24.2       # Turn Jupyter Lab notebooks into webpages.

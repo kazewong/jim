@@ -45,7 +45,8 @@ markdown_extensions:
 plugins:
     - search  # default search plugin; needs manually re-enabling when using any other plugins
     - autorefs  # Cross-links to headings
-    # - mknotebooks  # Jupyter notebooks
+    - mkdocs-jupyter: # Jupyter notebook support
+        # show_input: False
     - mkdocstrings:
         handlers:
             python:
@@ -68,6 +69,7 @@ plugins:
 
 nav:
     - Home: index.md
+    - GW150914: examples/GW150914.py
     # Getting Started:
     #     - Installation: installation.md
     #     - Tutorial: tutorial.md
