@@ -32,10 +32,27 @@ prior = Uniform(
     naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "iota", "psi", "ra", "dec"]
 )
 
+mass_matrix = jnp.eye(11)
+mass_matrix = mass_matrix.at[1,1].set(1e-3)
+mass_matrix = mass_matrix.at[5,5].set(1e-3)
+local_sampler_arg = {"step_size": mass_matrix*3e-3}
+
 jim = Jim(likelihood, 
-          prior,
-          n_loop_training = 10
-          )
+        prior,
+        n_loop_training=10,
+        n_loop_production = 10,
+        n_local_steps=200,
+        n_global_steps=200,
+        n_chains=1000,
+        n_epochs=200,
+        learning_rate = 0.001,
+        momentum = 0.9,
+        batch_size = 50000,
+        use_global=True,
+        keep_quantile=0.,
+        train_thinning = 40,
+        local_sampler_arg = local_sampler_arg,
+        )
 
 jim.maximize_likleihood([prior.xmin, prior.xmax])
 jim.sample(jax.random.PRNGKey(42))

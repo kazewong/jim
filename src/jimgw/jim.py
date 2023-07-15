@@ -32,7 +32,9 @@ class Jim(object):
 
         self.posterior = posterior
 
-        local_sampler = MALA(posterior, True, {"step_size": 1e-2}) # Remember to add routine to find automated mass matrix
+        local_sampler_arg = kwargs.get("local_sampler_arg", {})
+
+        local_sampler = MALA(posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
 
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
         self.Sampler = Sampler(
