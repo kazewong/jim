@@ -81,13 +81,13 @@ class Jim(object):
         train_summary = self.Sampler.get_sampler_state(training=True)
         production_summary = self.Sampler.get_sampler_state(training=False)
 
-        training_chain: Array = train_summary["chain"]
+        training_chain: Array = train_summary["chains"]
         training_log_prob: Array = train_summary["log_prob"]
         training_local_acceptance: Array = train_summary["local_accs"]
         training_global_acceptance: Array = train_summary["global_accs"]
-        training_loss: Array = train_summary["loss"]
+        training_loss: Array = train_summary["loss_vals"]
 
-        production_chain: Array = production_summary["chain"]
+        production_chain: Array = production_summary["chains"]
         production_log_prob: Array = production_summary["log_prob"]
         production_local_acceptance: Array = production_summary["local_accs"]
         production_global_acceptance: Array = production_summary["global_accs"]

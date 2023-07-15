@@ -29,7 +29,10 @@ likelihood = TransientLikelihoodFD([H1, L1], RippleIMRPhenomD(), gps, 4, 2)
 prior = Uniform(
     xmin = [10, 0.125, -1., -1., 0., -0.05, 0., -1, 0., 0.,-1.],
     xmax = [80., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
-    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "iota", "psi", "ra", "dec"]
+    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "iota", "psi", "ra", "dec"],
+    transforms = {"q": lambda q: q/(1+q)**2,
+                 "iota": lambda iota: jnp.arccos(iota),
+                 "dec": lambda dec: jnp.arcsin(dec)}
 )
 
 mass_matrix = jnp.eye(11)
@@ -39,7 +42,7 @@ local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
 jim = Jim(likelihood, 
         prior,
-        n_loop_training=10,
+        n_loop_training=15,
         n_loop_production = 10,
         n_local_steps=200,
         n_global_steps=200,

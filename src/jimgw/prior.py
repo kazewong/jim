@@ -12,17 +12,24 @@ class Prior(Distribution):
     """
 
     naming: list[str]
-    transforms: list[Callable] = field(default_factory=list)
+    transforms: list[Callable] = field(default_factory=dict)
 
     @property
     def n_dim(self):
         return len(self.naming)
 
-    def __init__(self, naming: list[str], transforms: list[Callable] = []):
+    def __init__(self, naming: list[str], transforms: dict[Callable] = {}):
         self.naming = naming
-        self.transforms = transforms
+        self.transforms = []
+        for name in naming:
+            if name in transforms:
+                self.transforms.append(transforms[name])
+            else:
+                self.transforms.append(lambda x: x)
 
-    def transform(self, x: Array):
+    def transform(self, x: Array) -> Array:
+        for i,transform in enumerate(self.transforms):
+            x = x.at[i].set(transform(x[i]))
         return x
 
 
@@ -31,8 +38,8 @@ class Uniform(Prior):
     xmin: Array
     xmax: Array
 
-    def __init__(self, xmin: Union[float,Array], xmax: Union[float,Array], naming: list[str]):
-        super().__init__(naming)
+    def __init__(self, xmin: Union[float,Array], xmax: Union[float,Array], **kwargs):
+        super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
         self.xmax = jnp.array(xmax)
         self.xmin = jnp.array(xmin)
     
