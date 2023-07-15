@@ -11,14 +11,16 @@ from gwpy.timeseries import TimeSeries
 DEG_TO_RAD = jnp.pi/180
 
 def np2(x):
-    """Returns the next power of two as big as or larger than x."""
+    """
+    Returns the next power of two as big as or larger than x."""
     p = 1
     while p < x:
         p = p << 1
     return p
 
 class Detector(ABC):
-    """ Base class for all detectors.
+    """ 
+    Base class for all detectors.
 
     """
 
@@ -28,12 +30,14 @@ class Detector(ABC):
 
     @abstractmethod
     def fd_response(self, frequency: Array, h: Array, params: dict) -> Array:
-        """Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        """
+        Modulate the waveform in the sky frame by the detector response in the frequency domain."""
         pass
 
     @abstractmethod
     def td_response(self, time: Array, h: Array, params: dict) -> Array:
-        """Modulate the waveform in the sky frame by the detector response in the time domain."""
+        """
+        Modulate the waveform in the sky frame by the detector response in the time domain."""
         pass
     
 class GroundBased2G(Detector):
@@ -74,7 +78,8 @@ class GroundBased2G(Detector):
                 f_max: float,
                 psd_pad: int = 16,
                 tukey_alpha: float = 0.2) -> None:
-        """Load data from the detector.
+        """
+        Load data from the detector.
 
         Parameters
         ----------
@@ -117,7 +122,8 @@ class GroundBased2G(Detector):
         self.psd = psd[(freq>f_min)&(freq<f_max)]
 
     def fd_response(self, frequency: Array, h_sky: dict, params: Array) -> Array:
-        """Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        """
+        Modulate the waveform in the sky frame by the detector response in the frequency domain."""
         ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
@@ -125,12 +131,14 @@ class GroundBased2G(Detector):
         return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)),axis=0)
 
     def td_response(self, time: Array, h: Array, params: Array) -> Array:
-        """Modulate the waveform in the sky frame by the detector response in the time domain."""
+        """
+        Modulate the waveform in the sky frame by the detector response in the time domain."""
         pass
 
     @staticmethod
     def _get_arm(lat, lon, tilt, azimuth):
-        """Construct detector-arm vectors in Earth-centric Cartesian coordinates.
+        """
+        Construct detector-arm vectors in Earth-centric Cartesian coordinates.
 
         Arguments
         ---------
@@ -155,7 +163,8 @@ class GroundBased2G(Detector):
 
     @property
     def arms(self):
-        """Detector arm vectors (x, y).
+        """
+        Detector arm vectors (x, y).
         """
         x = self._get_arm(self.latitude, self.longitude, self.xarm_tilt, self.xarm_azimuth)
         y = self._get_arm(self.latitude, self.longitude, self.yarm_tilt, self.yarm_azimuth)
@@ -163,7 +172,8 @@ class GroundBased2G(Detector):
 	
     @property
     def tensor(self):
-        """Detector tensor defining the strain measurement.
+        """
+        Detector tensor defining the strain measurement.
         """
         #TODO: this could easily be generalized for other detector geometries
         arm1, arm2 = self.arms
@@ -172,7 +182,8 @@ class GroundBased2G(Detector):
 
     @property
     def vertex(self):
-        """Detector vertex coordinates in the reference celestial frame. Based
+        """
+        Detector vertex coordinates in the reference celestial frame. Based
         on arXiv:gr-qc/0008066 Eqs. (B11-B13) except for a typo in the
         definition of the local radius; see Section 2.1 of LIGO-T980044-10.
         """
@@ -189,7 +200,8 @@ class GroundBased2G(Detector):
         return jnp.array([x, y, z])
 
     def delay_from_geocenter(self, ra: float, dec: float, gmst: float) -> float:
-        """ Calculate time delay between two detectors in geocentric
+        """ 
+        Calculate time delay between two detectors in geocentric
         coordinates based on XLALArrivaTimeDiff in TimeDelay.c
 
         https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
@@ -217,7 +229,8 @@ class GroundBased2G(Detector):
         return jnp.dot(omega, delta_d) / C_SI
 
     def antenna_pattern(self, ra:float, dec:float, psi:float, gmst:float) -> dict:
-        """Computes {name} antenna patterns for {modes} polarizations
+        """
+        Computes {name} antenna patterns for {modes} polarizations
         at the specified sky location, orientation and GMST.
 
         In the long-wavelength approximation, the antenna pattern for a

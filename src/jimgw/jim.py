@@ -10,7 +10,8 @@ import jax
 import jax.numpy as jnp
 
 class Jim(object):
-    """ Master class for interfacing with flowMC
+    """
+    Master class for interfacing with flowMC
     
     """
 
@@ -74,7 +75,8 @@ class Jim(object):
         self.Sampler.sample(initial_guess, None)
 
     def print_summary(self):
-        r""" Generate summary of the run
+        """
+        Generate summary of the run
 
         """
 

@@ -6,7 +6,8 @@ from typing import Callable, Union
 from dataclasses import field
 
 class Prior(Distribution):
-    r"""A thin wrapper build on top of flowMC distributions to do book keeping.
+    """
+    A thin wrapper build on top of flowMC distributions to do book keeping.
 
     Should not be used directly since it does not implement any of the real method.
     """

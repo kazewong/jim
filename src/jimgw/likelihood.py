@@ -9,7 +9,8 @@ import jax.numpy as jnp
 from astropy.time import Time
 
 class LikelihoodBase(ABC):
-    """Base class for likelihoods.
+    """
+    Base class for likelihoods.
     Note that this likelihood class should work for a somehwat general class of problems.
     In light of that, this class would be somewhat abstract, but the idea behind it is this
     handles two main components of a likelihood: the data and the model.
@@ -20,19 +21,22 @@ class LikelihoodBase(ABC):
 
     @property
     def model(self):
-        """The model for the likelihood.
+        """
+        The model for the likelihood.
         """
         return self._model
 
     @property
     def data(self):
-        """The data for the likelihood.
+        """
+        The data for the likelihood.
         """
         return self._data
 
     @abstractmethod
     def evaluate(self, params) -> float:
-        """Evaluate the likelihood for a given set of parameters.
+        """
+        Evaluate the likelihood for a given set of parameters.
         """
         raise NotImplementedError
 
@@ -59,18 +63,21 @@ class TransientLikelihoodFD(LikelihoodBase):
 
     @property
     def epoch(self):
-        """The epoch of the data.
+        """
+        The epoch of the data.
         """
         return self.duration - self.post_trigger_duration
 
     @property
     def ifos(self):
-        """The interferometers for the likelihood.
+        """
+        The interferometers for the likelihood.
         """
         return [detector.name for detector in self.detectors]
 
     def evaluate(self, params: Array, data: dict) -> float: # TODO: Test whether we need to pass data in or with class changes is fine.
-        """Evaluate the likelihood for a given set of parameters.
+        """
+        Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0
         frequencies = self.detectors[0].frequencies
