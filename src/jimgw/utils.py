@@ -12,7 +12,7 @@ def inner_product(h1, h2, frequency, PSD):
 	return 4. * jnp.real(jnp.trapz(integrand,dx=df))
 
 @jit
-def m1m2_to_Mq(m1,m2):
+def m1m2_to_Mq(m1: float,m2: float):
 	"""
 	Transforming the primary mass m1 and secondary mass m2 to the Total mass M
 	and mass ratio q.

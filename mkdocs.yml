@@ -61,9 +61,8 @@ plugins:
                     - import jaxtyping
                     - jaxtyping.set_array_name_format("array")
 
-                selection:
+                optional:
                     inherited_members: true  # Allow looking up inherited methods
-                rendering:
                     show_root_heading: true  # actually display anything at all...
                     show_root_full_path: true  # display "diffrax.asdf" not just "asdf"
                     show_if_no_docstring: true
@@ -75,12 +74,4 @@ plugins:
 nav:
     - Home: index.md
     - GW150914: examples/GW150914.py
-    - Code Reference: reference/
-    # Getting Started:
-    #     - Installation: installation.md
-    #     - Tutorial: tutorial.md
-    #     - Examples: examples.md
-    # API:
-    #     - Reference: reference.md
-    #     - Modules: modules.md
-    #     - Glossary: glossary.md
+    - API: reference/
