@@ -8,7 +8,6 @@ from jimgw.detector import Detector
 import jax.numpy as jnp
 from astropy.time import Time
 
-
 class LikelihoodBase(ABC):
     """Base class for likelihoods.
     Note that this likelihood class should work for a somehwat general class of problems.

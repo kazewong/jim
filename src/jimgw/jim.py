@@ -45,19 +45,6 @@ class Jim(object):
             model,
             **kwargs)
         
-        #     n_loop_training=n_loop_training,
-        #     n_loop_production = n_loop_production,
-        #     n_local_steps=n_local_steps,
-        #     n_global_steps=n_global_steps,
-        #     n_chains=n_chains,
-        #     n_epochs=num_epochs,
-        #     learning_rate=learning_rate,
-        #     momentum=momentum,
-        #     batch_size=batch_size,
-        #     use_global=True,
-        #     keep_quantile=0.,
-        #     train_thinning = 40,
-        # )
 
     def maximize_likleihood(self, bounds: tuple[Array,Array],set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
         bounds = jnp.array(bounds).T
@@ -85,6 +72,42 @@ class Jim(object):
         if initial_guess is None:
             initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
         self.Sampler.sample(initial_guess, None)
+
+    def print_summary(self):
+        r""" Generate summary of the run
+
+        """
+
+        train_summary = self.Sampler.get_sampler_state(training=True)
+        production_summary = self.Sampler.get_sampler_state(training=False)
+
+        training_chain: Array = train_summary["chain"]
+        training_log_prob: Array = train_summary["log_prob"]
+        training_local_acceptance: Array = train_summary["local_accs"]
+        training_global_acceptance: Array = train_summary["global_accs"]
+        training_loss: Array = train_summary["loss"]
+
+        production_chain: Array = production_summary["chain"]
+        production_log_prob: Array = production_summary["log_prob"]
+        production_local_acceptance: Array = production_summary["local_accs"]
+        production_global_acceptance: Array = production_summary["global_accs"]
+
+        print("Training summary")
+        print('=' * 10)
+        for index in range(self.Prior.naming.shape[0]):
+            print(f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}")
+        print(f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}") 
+        print(f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}")
+        print(f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}")
+        print(f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}")
+
+        print("Production summary")
+        print('=' * 10)
+        for index in range(self.Prior.naming.shape[0]):
+            print(f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}")
+        print(f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}")
+        print(f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}")
+        print(f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}")
 
     def plot(self):
         pass
