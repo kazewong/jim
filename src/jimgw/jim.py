@@ -24,7 +24,7 @@ class Jim(object):
         rng_key_set = initialize_rng_keys(n_chains, seed=seed)
         num_layers = kwargs.get("num_layers", 10)
         hidden_size = kwargs.get("hidden_size", [128,128])
-        num_bins = kwargs.get("hidden_size", 8)
+        num_bins = kwargs.get("num_bins", 8)
 
         def posterior(x: Array, data:dict):
             prior = self.Prior.log_prob(x)
@@ -96,7 +96,7 @@ class Jim(object):
 
         print("Training summary")
         print('=' * 10)
-        for index in range(self.Prior.naming.shape[0]):
+        for index in range(len(self.Prior.naming)):
             print(f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}")
         print(f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}") 
         print(f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}")
@@ -105,7 +105,7 @@ class Jim(object):
 
         print("Production summary")
         print('=' * 10)
-        for index in range(self.Prior.naming.shape[0]):
+        for index in range(len(self.Prior.naming)):
             print(f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}")
         print(f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}")
         print(f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}")
