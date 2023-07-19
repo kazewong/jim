@@ -18,8 +18,16 @@ class Prior(Distribution):
     @property
     def n_dim(self):
         return len(self.naming)
-
+    
     def __init__(self, naming: list[str], transforms: dict[Callable] = {}):
+        """
+        Parameters
+        ----------
+        naming : list[str]
+            A list of names for the parameters of the prior.
+        transforms : dict[Callable]
+            A dictionary of transforms to apply to the parameters.
+        """
         self.naming = naming
         self.transforms = []
         for name in naming:
@@ -45,6 +53,22 @@ class Uniform(Prior):
         self.xmin = jnp.array(xmin)
     
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        """
+        Sample from a uniform distribution.
+
+        Parameters
+        ----------
+        rng_key : jax.random.PRNGKey
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : Array
+            An array of shape (n_samples, n_dim) containing the samples.
+        
+        """
         samples = jax.random.uniform(rng_key, (n_samples,self.n_dim), minval=self.xmin, maxval=self.xmax)
         return samples # TODO: remember to cast this to a named array
 
