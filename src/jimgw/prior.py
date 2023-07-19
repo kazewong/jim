@@ -37,6 +37,19 @@ class Prior(Distribution):
                 self.transforms.append(lambda x: x)
 
     def transform(self, x: Array) -> Array:
+        """
+        Apply the transforms to the parameters.
+
+        Parameters
+        ----------
+        x : Array
+            The parameters to transform.
+
+        Returns
+        -------
+        x : Array
+            The transformed parameters.
+        """
         for i,transform in enumerate(self.transforms):
             x = x.at[i].set(transform(x[i]))
         return x
