@@ -14,35 +14,50 @@ def generate_LVK_PSDdict(ifos: List[str] = ["H1", "L1", "V1"]):
     psd_dict = {}
     for ifo in ifos:
         if ifo == "H1":
-            print("Grabbing GWTC-2 PSD for H1")
-            url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-H1-C01_CLEAN_SUB60HZ-1251752040.0_sensitivity_strain_asd.txt"
-            data = requests.get(url)
-            open("H1.txt", "wb").write(data.content)
-            f, asd_vals = np.loadtxt("H1.txt", unpack=True)
+            try:
+                f, asd_vals = np.loadtxt("H1.txt", unpack=True)
+            except:
+                print("Grabbing GWTC-2 PSD for H1")
+                url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-H1-C01_CLEAN_SUB60HZ-1251752040.0_sensitivity_strain_asd.txt"
+                data = requests.get(url)
+                open("H1.txt", "wb").write(data.content)
+                f, asd_vals = np.loadtxt("H1.txt", unpack=True)
             psd_vals = asd_vals**2
             psd_dict[ifo] = interpolate.interp1d(
                 f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1])
             )
+            continue
         if ifo == "L1":
-            print("Grabbing GWTC-2 PSD for L1")
-            url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-L1-C01_CLEAN_SUB60HZ-1240573680.0_sensitivity_strain_asd.txt"
-            data = requests.get(url)
-            open("L1.txt", "wb").write(data.content)
-            f, asd_vals = np.loadtxt("L1.txt", unpack=True)
+            try:
+                f, asd_vals = np.loadtxt("L1.txt", unpack=True)
+            except:
+                print("Grabbing GWTC-2 PSD for L1")
+                url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-L1-C01_CLEAN_SUB60HZ-1240573680.0_sensitivity_strain_asd.txt"
+                data = requests.get(url)
+                open("L1.txt", "wb").write(data.content)
+                f, asd_vals = np.loadtxt("L1.txt", unpack=True)
             psd_vals = asd_vals**2
             psd_dict[ifo] = interpolate.interp1d(
                 f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1])
             )
+            continue
         if ifo == "V1":
-            print("Grabbing GWTC-2 PSD for V1")
-            url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt"
-            data = requests.get(url)
-            open("V1.txt", "wb").write(data.content)
-            f, asd_vals = np.loadtxt("V1.txt", unpack=True)
+            try:
+                f, asd_vals = np.loadtxt("V1.txt", unpack=True)
+            except:
+                print("Grabbing GWTC-2 PSD for V1")
+                url = "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt"
+                data = requests.get(url)
+                open("V1.txt", "wb").write(data.content)
+                f, asd_vals = np.loadtxt("V1.txt", unpack=True)
+
             psd_vals = asd_vals**2
             psd_dict[ifo] = interpolate.interp1d(
                 f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1])
             )
+            continue
+        else:
+            raise ValueError("IFO not supported")
     return psd_dict
 
 
@@ -58,6 +73,9 @@ def generate_fd_noise(
     """
     Generate frequency domain noise for a given set of detectors or specific PSD.
     """
+    for ifo in psd_funcs.keys():
+        assert psd_funcs[ifo] is not None, "Need a PSD function for each detector."
+
     # define sampling rate and duration
     delta_t = 1 / f_sampling
     tlen = int(round(duration / delta_t))
@@ -108,6 +126,8 @@ def generate_td_noise(
     """
     Generate time domain noise for a given set of detectors or specific PSD.
     """
+    for ifo in psd_funcs.keys():
+        assert psd_funcs[ifo] is not None, "Need a PSD function for each detector."
 
     delta_t = 1 / f_sampling
     tlen = int(round(duration / delta_t))
