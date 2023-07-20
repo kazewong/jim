@@ -6,9 +6,6 @@ import numpy as np
 import requests
 import scipy.interpolate as interpolate
 
-
-# import urllib2  # the lib that handles the url stuff
-
 # This is needed for the noise generation to have enough precision to work
 jax.config.update("jax_enable_x64", True)
 
