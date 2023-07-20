@@ -138,6 +138,8 @@ def generate_td_noise(
     )
 
     noise_td_dict = {}
+    # FIXME: We still need to add filtering to the frequency domain data
+    # to ensure that the time domain data behaves correctly
     for ifo, psd in noise_fd_dict.items():
         noise_td_dict[ifo] = jnp.fft.irfft(noise_fd_dict[ifo]) * f_sampling
 
