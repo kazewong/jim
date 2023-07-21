@@ -1,1 +1,1 @@
-## This folder is used to hold posterior samples data file
+## This subfolder is used to hold posterior samples data file
