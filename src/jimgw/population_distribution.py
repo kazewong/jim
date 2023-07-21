@@ -1,25 +1,26 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import pandas as pd
+import h5py
 import json # to read JSON file
 import requests # to download data file via URL
 import os.path
 
-
+# It bookmarks functions that fetch the data, store the data, and format the data
 class PosteriorSampleData:
     # Constructor
     def __init__(self) -> None:
+        self.posterior_samples = None
+        self.data_file = None
         pass
     
-    # download the .h5 data into a directory
-    def fetch(self, directory):
+    # download the .h5 posterior samples data into a directory
+    def fetch(self, directory = "data/"):
+        self.data_file = directory
         # opening JSON file
-        print(os.path.join(os.path.dirname(__file__),"event_list.json"))
-        event_list_file = open(os.path.join(os.path.dirname(__file__),"event_list.json"), "r")
-
+        event_list_file = open("event_list.json", "r")
         # return "files" element in JSON object as a dictionary
         event_list = (json.load(event_list_file))['files']
-
+        # Download the posterior samples via url for each event listed in event_list.json
         for event in event_list[:5]:
             if event['type'] == 'h5': # Check if the event links to a H5 file
                 if (event['key'][-14:]) == 'mixed_cosmo.h5': # We only want cosmological reweighted data
@@ -33,16 +34,36 @@ class PosteriorSampleData:
                     else: # if the already exist
                         print(filename + ' exists')
     
-    def get_posterior_samples(self, directory, data_type = "Mixed"):
+    def read_file(self, directory=None, data_type = "C01:Mixed"):
+        if (directory == None):
+            directory = self.data_file
+            if (directory == None):
+                print("There is no posterior sample data downloaded. Use fetch() to download the data first. ")
         posterior_samples = []
         for file in os.listdir(directory): # loop through files in the data folder
-            posterior_samples.append(pd.read_hdf(directory+file, key="C01:"+data_type+"/posterior_samples")) # append the address of dataframe to the list
-        return posterior_samples
+            posterior_samples.append(h5py.File(directory+file)[data_type+"/posterior_samples"]) # append the address of dataframe to the list
+        self.posterior_samples = posterior_samples
     
+    # Read the .h5 data from a data folder and copy them into a python list
+    def get_all_posterior_samples(self, directory = None):
+        # If there is no posterior samples stored in this object, get the data from the .h5 file first
+        if self.posterior_samples == None:
+            self.read_file(directory)
+        return self.posterior_samples
+        
+    
+    # Get all the posterior samples of one specific parameters 
+    def get_posterior_samples(self, parameter):
+        if (self.posterior_samples == None):
+            self.read_file()
+        else:
+            return [[events[parameter]] for events in self.posterior_samples]
+        
+        
     
         
         
-
+# It stores the evaluation methods for calculating population model (probability of population parameters given posterior samples)
 class PopulationModelBase:
     # Constructor
     def __init__(self) -> None:
@@ -61,7 +82,6 @@ class PopulationModelBase:
             return -np.infty
         else:
             return 0
-    
     
 class PowerLawModel(PopulationModelBase):
     # Evaluate population likelihood by power law
@@ -92,17 +112,22 @@ class PowerLawModel(PopulationModelBase):
         return output
 
 
-class PopulationDistribution:
-    def __init__(self, model):
-        self.model = model 
 
-    def get_distribution(self, population_params, posterior_samples):
+
+
+# It evaluates the probability of population parameters given data
+class PopulationDistribution:
+    def __init__(self, model, posterior_samples):
+        self.model = model 
+        self.posterior_samples = posterior_samples
+
+    def get_distribution(self, population_params):
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
         # if parameters are ok, do the computation
         log_population_distribution = 0.0 # initialize the value to zero
-        for event in posterior_samples:
+        for event in self.posterior_samples:
             sum = np.sum(self.model.get_population_likelihood(population_params, event))
             log_population_distribution += (population_prior + np.log(sum) - np.log(event.shape[0])) # sum divided by the number of samples                     
         
