@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import jax.numpy as jnp
 import numpy as np
 import h5py
 import json # to read JSON file
@@ -8,9 +9,9 @@ import os.path
 # It bookmarks functions that fetch the data, store the data, and format the data
 class PosteriorSampleData:
     # Constructor
-    def __init__(self) -> None:
+    def __init__(self, data_file):
         self.posterior_samples = None
-        self.data_file = None
+        self.data_file = data_file
         pass
     
     # download the .h5 posterior samples data into a directory
@@ -38,7 +39,8 @@ class PosteriorSampleData:
         if (directory == None):
             directory = self.data_file
             if (directory == None):
-                print("There is no posterior sample data downloaded. Use fetch() to download the data first. ")
+                print("No data file directory specified. ")
+                return None
         posterior_samples = []
         for file in os.listdir(directory): # loop through files in the data folder
             posterior_samples.append(h5py.File(directory+file)[data_type+"/posterior_samples"]) # append the address of dataframe to the list
@@ -53,11 +55,10 @@ class PosteriorSampleData:
         
     
     # Get all the posterior samples of one specific parameters 
-    def get_posterior_samples(self, parameter):
+    def get_posterior_samples(self, params):
         if (self.posterior_samples == None):
             self.read_file()
-        else:
-            return [[events[parameter]] for events in self.posterior_samples]
+        return [[events[param] for param in params] for events in self.posterior_samples]
         
         
     
@@ -67,7 +68,11 @@ class PosteriorSampleData:
 class PopulationModelBase:
     # Constructor
     def __init__(self) -> None:
-        pass
+        self.population_params_list = None
+        
+    @abstractmethod
+    def get_population_params_list(self):
+        return self.population_params_list
     
     @abstractmethod
     def get_population_likelihood(self):
@@ -78,16 +83,21 @@ class PopulationModelBase:
         pass
     
     def log_uniform_prior(self, min, max, x):
-        if (x < min) | (x > max):
-            return -np.infty
-        else:
-            return 0
+        return jnp.where((x < min) | (x > max), -np.infty, 0.0)
+
     
 class PowerLawModel(PopulationModelBase):
+    # Constructor
+    def __init__(self):
+        self.population_params_list = ["mass_1_source", "mass_ratio"]
+    
+    def get_population_params_list(self):
+        return self.population_params_list
+    
     # Evaluate population likelihood by power law
     def get_population_likelihood(self, population_params, posterior_samples):
         alpha, beta, m_min, m_max = population_params[0], population_params[1], population_params[2], population_params[3]
-        m_1, q = posterior_samples['mass_1_source'], posterior_samples['mass_ratio']
+        m_1, q = posterior_samples[0], posterior_samples[1]
         epsilon = 0.001 # a very small number for limit computation
 
         normalization_constant = 1.0
@@ -117,17 +127,17 @@ class PowerLawModel(PopulationModelBase):
 
 # It evaluates the probability of population parameters given data
 class PopulationDistribution:
-    def __init__(self, model, posterior_samples):
-        self.model = model 
-        self.posterior_samples = posterior_samples
-
-    def get_distribution(self, population_params):
+    def __init__(self, model):
+        self.model = model
+        self.posterior_sample = PosteriorSampleData.get_posterior_samples(self.model.get_population_params_list())
+        
+    def get_distribution(self, population_params, posterior_samples):
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
         # if parameters are ok, do the computation
         log_population_distribution = 0.0 # initialize the value to zero
-        for event in self.posterior_samples:
+        for event in posterior_samples:
             sum = np.sum(self.model.get_population_likelihood(population_params, event))
             log_population_distribution += (population_prior + np.log(sum) - np.log(event.shape[0])) # sum divided by the number of samples                     
         
