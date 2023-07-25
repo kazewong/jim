@@ -103,7 +103,7 @@ plt.savefig('figure1.png')
 labels=["$alpha$", "$beta$", "$m_min$", "$m_max$"]
 # Plot all chains
 figure = corner.corner(
-    chains.reshape(-1, n_dim), labels=labels
+    chains.reshape(-1, n_dim), labels=labels, quantiles=(0.16, 0.5, 0.84), show_titles=True, title_fmt = '.2f', use_math_text=True
 )
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize samples")
