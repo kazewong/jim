@@ -8,6 +8,7 @@ from flowMC.sampler.Sampler import Sampler
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
 from jimgw.population_distribution import PosteriorSampleData, PowerLawModel, PopulationDistribution
+from matplotlib import pyplot as plt
 
 ########################## Population model setup ##########################
 data = PosteriorSampleData('data/')
@@ -17,17 +18,17 @@ pop_distribution = PopulationDistribution(model=PowerLawModel(), data=data)
 
 ########################## Hyperparameters to change ##########################
 n_dim = 4
-n_chains = 20
+n_chains = 50
 param_initial_guess = [0.61, 0.92, 6.0, 60.0]
 
 n_layer = 10  # number of coupling layers
 n_hidden = 128  # with of hidden layers in MLPs parametrizing coupling layers
 
-step_size = 1e-1
+step_size = 2e-1
 n_local_steps = 100
-n_global_steps = 10
+n_global_steps = 100
 num_epochs = 10
-learning_rate = 0.005
+learning_rate = 0.001
 batch_size = 5000
 
 ###############################################################################
@@ -97,6 +98,7 @@ plt.plot(global_accs.mean(0))
 plt.xlabel("iteration")
 plt.tight_layout()
 plt.show(block=False)
+plt.savefig('figure1.png')
 
 labels=["$alpha$", "$beta$", "$m_min$", "$m_max$"]
 # Plot all chains
@@ -105,11 +107,13 @@ figure = corner.corner(
 )
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize samples")
+plt.savefig('figure2.png')
 plt.show(block=False)
 
 # Plot Nf samples
 figure = corner.corner(nf_samples, labels=labels)
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize NF samples")
+plt.savefig('figure3.png')
 plt.show()
 
