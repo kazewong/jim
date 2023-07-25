@@ -75,7 +75,7 @@ class TransientLikelihoodFD(LikelihoodBase):
         """
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, params: Array, data: dict, coeffs: Array = jnp.array([])) -> float: # TODO: Test whether we need to pass data in or with class changes is fine.
+    def evaluate(self, params: Array, data: dict) -> float: # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
@@ -84,7 +84,7 @@ class TransientLikelihoodFD(LikelihoodBase):
         df = frequencies[1] - frequencies[0]
         source_params = {"Mc": params[0], "eta": params[1], "s1z": params[2], "s2z": params[3], "distance": params[4], "tc": params[5], "phic": params[6], "incl": params[7], "psi": params[8], "ra": params[9], "dec": params[10]}
         detector_params = {"ra": params[9], "dec": params[10], "psi": params[8], "gmst": self.gmst}
-        waveform_sky = self.waveform(frequencies, source_params, coeffs)
+        waveform_sky = self.waveform(frequencies, source_params, data['coeffs'])
         align_time = jnp.exp(-1j*2*jnp.pi*frequencies*(self.epoch+params[5]))
         for detector in self.detectors:
             waveform_dec = detector.fd_response(frequencies, waveform_sky, detector_params) * align_time

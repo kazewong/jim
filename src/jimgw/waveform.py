@@ -16,20 +16,20 @@ class Waveform(eqx.Module):
 class RippleIMRPhenomD(Waveform):
 
     f_ref: float
+    coeffs: Array
 
-    def __init__(self, f_ref: float = 20.0):
+    def __init__(self, f_ref: float = 20.0, coeffs: Array = jnp.array([])):
         self.f_ref = f_ref
-
-    def __call__(self, frequency: Array, params: dict, coeffs: Array = jnp.array([])) -> Array:
+        self.coeffs = coeffs
+    def __call__(self, frequency: Array, params: dict) -> Array:
         output = {}
         ra = params['ra']
         dec = params['dec']
         theta = [params['Mc'], params['eta'], params['s1z'], params['s2z'], params['distance'], 0, params['phic'], params['incl'], params['psi'], ra, dec]
-        if len(coeffs) == 0:
-            kappa = Mc_eta_to_ms(jnp.array([params['Mc'], params['eta']]))
-            kappa = jnp.concatenate((kappa,theta[2:]))
-            coeffs = get_coeffs(kappa) 
-        hp, hc = gen_IMRPhenomD_polar(frequency, theta, self.f_ref, coeffs)
+        if len(self.coeffs) == 0:
+            kappa = jnp.concatenate(Mc_eta_to_ms(jnp.array([params['Mc'], params['eta']])),theta[2:])
+            self.coeffs = get_coeffs(kappa) 
+        hp, hc = gen_IMRPhenomD_polar(frequency, theta, self.f_ref, self.coeffs)
         output['p'] = hp
         output['c'] = hc
         return output
