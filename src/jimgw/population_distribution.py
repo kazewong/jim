@@ -139,7 +139,7 @@ class PopulationDistribution:
         return NotImplementedError
     
     # Evaluate the population distribution
-    def evaluate(self, population_params) -> float:
+    def evaluate(self, population_params, data) -> float:
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
