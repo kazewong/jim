@@ -103,12 +103,13 @@ class PowerLawModel(PopulationModelBase):
         normalization_constant = 1.0
         normalization_constant *= jnp.where((alpha>(1.0-epsilon))&(alpha<(1.0+epsilon)), jnp.log(m_max/m_min), (m_max**(1.0-alpha)-m_min**(1.0-alpha))/(1.0-alpha))
         
-        if (beta > (-1.0-epsilon)) & (beta<(-1.0+epsilon)):
-            return 0.0 # The normalization constant will be negative infinity, this gives 0
-        else:
-            normalization_constant *= (1.0 / (beta + 1.0))
         
-        return jnp.where((m_1 > m_min) & (m_1 < m_max),
+        # if :
+        #     return 0.0 # The normalization constant will be negative infinity, this gives 0
+        # else:
+        normalization_constant *= (1.0 / (beta + 1.0))
+        
+        return jnp.where(((m_1 > m_min) & (m_1 < m_max))|((beta > (-1.0-epsilon)) & (beta<(-1.0+epsilon))),
                         (m_1 ** (-alpha)) * (q ** beta) / normalization_constant,
                         0.0)
 
@@ -127,22 +128,20 @@ class PopulationDistribution:
     def __init__(self, model, sample_data):
         self.model = model
         self.sample_data = sample_data
-        self.posterior_sample = self.sample_data.get_posterior_samples(self.model.get_population_params_list())
+        self.posterior_samples = self.sample_data.get_posterior_samples(self.model.get_population_params_list())
         
-    def get_distribution(self, population_params, data):
+    def evaluate(self, population_params, posterior_samples) -> float:
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
         # if parameters are ok, do the computation
         log_population_distribution = 0.0 # initialize the value to zero
-        for event in self.posterior_sample:
-            sum = np.sum(self.model.get_population_likelihood(population_params, event))
-            log_population_distribution += (population_prior + np.log(sum) - np.log(event.shape[0])) # sum divided by the number of samples                     
+        for event in self.posterior_samples:
+            sum = jnp.sum(self.model.get_population_likelihood(population_params, event))
+            log_population_distribution += (population_prior + jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples                     
         
-        if np.isfinite(log_population_distribution):
-            return log_population_distribution
-        else:
-            return -np.inf
+        return jnp.where(jnp.isfinite(log_population_distribution), log_population_distribution, -jnp.inf)
+
         
 
 # Import some necessary modules
@@ -151,30 +150,32 @@ from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.nfmodel.realNVP import RealNVP
 from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
+from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
 data = PosteriorSampleData('data/')
 m = PowerLawModel()
 p = PopulationDistribution(model=PowerLawModel(), sample_data=data)
+d = p.posterior_samples
 
 n_dim = 4
 n_chains = 20
 rng_key_set = initialize_rng_keys(n_chains, seed=42)
 initial_position = jax.random.normal(rng_key_set[0], shape=(n_chains, n_dim)) * 1
-param_initial_guess = [2.5, 6.0, 4.5, 80.0]
+param_initial_guess = [0.61, 0.92, 6.0, 60.0]
 for i, param in enumerate(param_initial_guess):
     initial_position = initial_position.at[:, i].add(param)
 
 n_layer = 10  # number of coupling layers
 n_hidden = 128  # with of hidden layers in MLPs parametrizing coupling layers
-model = RealNVP(n_layer, n_dim, n_hidden, jax.random.PRNGKey(21))
+model = MaskedCouplingRQSpline(n_dim, 3, [64, 64], 8, jax.random.PRNGKey(21))
 
 step_size = 1e-1
-MALA_Sampler = MALA(p.get_distribution, True, {"step_size": step_size})
+local_sampler = MALA(p.evaluate, True, {"step_size": step_size})
 local_sampler_caller = lambda x: MALA_Sampler.make_sampler()
 
 
 
-n_loop_training = 20
+n_loop_training = 10
 n_loop_production = 100
 n_local_steps = 100
 n_global_steps = 10
@@ -185,24 +186,73 @@ momentum = 0.9
 batch_size = 5000
 max_samples = 5000
 
-nf_sampler = Sampler(
-    n_dim,
-    rng_key_set,
-    None,
-    MALA_Sampler,
-    # target_dual_moon,
-    model,
-    n_loop_training=n_loop_training,
-    n_loop_production=n_loop_production,
-    n_local_steps=n_local_steps,
-    n_global_steps=n_global_steps,
-    n_chains=n_chains,
-    n_epochs=num_epochs,
-    learning_rate=learning_rate,
-    momentum=momentum,
-    batch_size=batch_size,
-    use_global=True,
-)
+nf_sampler = Sampler(n_dim,
+                    rng_key_set,
+                    None,
+                    local_sampler,
+                    model,
+                    n_local_steps = 50,
+                    n_global_steps = 50,
+                    n_epochs = 30,
+                    learning_rate = 1e-2,
+                    batch_size = 1000,
+                    n_chains = n_chains)
 
-nf_sampler.sample(initial_position, data=None)
+nf_sampler.sample(initial_position, data=d)
+
+
+out_train = nf_sampler.get_sampler_state(training=True)
+print('Logged during tuning:', out_train.keys())
+
+import corner
+import matplotlib.pyplot as plt
+chains = np.array(out_train['chains'])
+global_accs = np.array(out_train['global_accs'])
+local_accs = np.array(out_train['local_accs'])
+loss_vals = np.array(out_train['loss_vals'])
+nf_samples = np.array(nf_sampler.sample_flow(1000)[1])
+
+
+# Plot 2 chains in the plane of 2 coordinates for first visual check 
+plt.figure(figsize=(6, 6))
+axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
+plt.sca(axs[0])
+plt.title("2d proj of 2 chains")
+
+plt.plot(chains[0, :, 0], chains[0, :, 1], 'o-', alpha=0.5, ms=2)
+plt.plot(chains[1, :, 0], chains[1, :, 1], 'o-', alpha=0.5, ms=2)
+plt.xlabel("$x_1$")
+plt.ylabel("$x_2$")
+
+plt.sca(axs[1])
+plt.title("NF loss")
+plt.plot(loss_vals.reshape(-1))
+plt.xlabel("iteration")
+
+plt.sca(axs[2])
+plt.title("Local Acceptance")
+plt.plot(local_accs.mean(0))
+plt.xlabel("iteration")
+
+plt.sca(axs[3])
+plt.title("Global Acceptance")
+plt.plot(global_accs.mean(0))
+plt.xlabel("iteration")
+plt.tight_layout()
+plt.show(block=False)
+
+labels=["$alpha$", "$beta$", "$m_min$", "$m_max$"]
+# Plot all chains
+figure = corner.corner(
+    chains.reshape(-1, n_dim), labels=labels
+)
+figure.set_size_inches(7, 7)
+figure.suptitle("Visualize samples")
+plt.show(block=False)
+
+# Plot Nf samples
+figure = corner.corner(nf_samples, labels=labels)
+figure.set_size_inches(7, 7)
+figure.suptitle("Visualize NF samples")
+plt.show()
 

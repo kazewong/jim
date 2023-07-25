@@ -35,6 +35,7 @@ class PosteriorSampleData:
                     else: # if the already exist
                         print(filename + ' exists')
     
+    # Get the data from the data folder
     def read_file(self, directory=None, data_type = "C01:Mixed"):
         if (directory == None):
             directory = self.data_file
@@ -43,10 +44,12 @@ class PosteriorSampleData:
                 return None
         posterior_samples = []
         for file in os.listdir(directory): # loop through files in the data folder
-            posterior_samples.append(h5py.File(directory+file)[data_type+"/posterior_samples"]) # append the address of dataframe to the list
+            if file[-2:] == "h5": # only if the file type is h5
+                posterior_samples.append(h5py.File(directory+file)[data_type+"/posterior_samples"]) # append the address of dataframe to the list
         self.posterior_samples = posterior_samples
     
-    # Read the .h5 data from a data folder and copy them into a python list
+    # Read the .h5 data from a data folder and copy them into a python list with the format
+    # [[event 1: [para_ 1 posterior samples], [para_2 posterior samples], ...], ...] 
     def get_all_posterior_samples(self, directory = None):
         # If there is no posterior samples stored in this object, get the data from the .h5 file first
         if self.posterior_samples == None:
@@ -54,7 +57,8 @@ class PosteriorSampleData:
         return self.posterior_samples
         
     
-    # Get all the posterior samples of one specific parameters 
+    # Get the posterior samples of a list of specific parameters and format it into
+    # [[event 1: [para_ 1 posterior samples], [para_2 posterior samples], ...], ...] 
     def get_posterior_samples(self, params):
         if (self.posterior_samples == None):
             self.read_file()
@@ -101,17 +105,15 @@ class PowerLawModel(PopulationModelBase):
         epsilon = 0.001 # a very small number for limit computation
 
         normalization_constant = 1.0
-        if (alpha>(1.0-epsilon))&(alpha<(1.0+epsilon)):
-            normalization_constant *= np.log(m_max/m_min)
-        else:
-            normalization_constant *= (m_max**(1.0-alpha)-m_min**(1.0-alpha))/(1.0-alpha)
+        normalization_constant *= jnp.where((alpha>(1.0-epsilon))&(alpha<(1.0+epsilon)), jnp.log(m_max/m_min), (m_max**(1.0-alpha)-m_min**(1.0-alpha))/(1.0-alpha))
         
-        if (beta > (-1.0-epsilon)) & (beta<(-1.0+epsilon)):
-            return 0.0 # The normalization constant will be negative infinity, this gives 0
-        else:
-            normalization_constant *= (1.0 / (beta + 1.0))
         
-        return np.where((m_1 > m_min) & (m_1 < m_max),
+        # if :
+        #     return 0.0 # The normalization constant will be negative infinity, this gives 0
+        # else:
+        normalization_constant *= (1.0 / (beta + 1.0))
+        
+        return jnp.where(((m_1 > m_min) & (m_1 < m_max))|((beta > (-1.0-epsilon)) & (beta<(-1.0+epsilon))),
                         (m_1 ** (-alpha)) * (q ** beta) / normalization_constant,
                         0.0)
 
@@ -127,23 +129,28 @@ class PowerLawModel(PopulationModelBase):
 
 # It evaluates the probability of population parameters given data
 class PopulationDistribution:
-    def __init__(self, model):
+    def __init__(self, model, data):
         self.model = model
-        self.posterior_sample = PosteriorSampleData.get_posterior_samples(self.model.get_population_params_list())
-        
-    def get_distribution(self, population_params, posterior_samples):
+        self.data = data
+        self.posterior_samples = self.data.get_posterior_samples(self.model.get_population_params_list())
+    
+    @abstractmethod
+    def get_selection_effect(self):
+        return NotImplementedError
+    
+    # Evaluate the population distribution
+    def evaluate(self, population_params) -> float:
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
         # if parameters are ok, do the computation
         log_population_distribution = 0.0 # initialize the value to zero
-        for event in posterior_samples:
-            sum = np.sum(self.model.get_population_likelihood(population_params, event))
-            log_population_distribution += (population_prior + np.log(sum) - np.log(event.shape[0])) # sum divided by the number of samples                     
+        for event in self.posterior_samples:
+            sum = jnp.sum(self.model.get_population_likelihood(population_params, event))
+            log_population_distribution += (population_prior + jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples                     
         
-        if np.isfinite(log_population_distribution):
-            return log_population_distribution
-        else:
-            return -np.inf
+        return jnp.where(jnp.isfinite(log_population_distribution), log_population_distribution, -jnp.inf)
+
+        
 
 
