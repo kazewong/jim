@@ -1,5 +1,5 @@
 # Import packages
-from typing import List, Tuple
+from typing import List, Tuple, Array
 import lalsimulation as lalsim 
 import jax.numpy as jnp
 import jax

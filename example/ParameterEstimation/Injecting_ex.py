@@ -3,7 +3,7 @@ import numpy as np
 import jax
 import ripple
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD
-from jimgw.generate_noise import *
+from jimgw.generate_noise_mod import *
 
 theta_extrinsic = jnp.array([440.0,0,0])
 theta_intrinsic = jnp.array([0.5,0.5,9e-10,1.4e-10])
