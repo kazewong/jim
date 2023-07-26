@@ -1,5 +1,6 @@
 # Import packages
-from typing import List, Tuple, Array
+from ripple.typing import Array
+from typing import List, Tuple
 import lalsimulation as lalsim 
 import jax.numpy as jnp
 import jax
