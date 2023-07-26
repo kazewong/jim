@@ -68,7 +68,6 @@ chains = np.array(out_train['chains'])
 global_accs = np.array(out_train['global_accs'])
 local_accs = np.array(out_train['local_accs'])
 loss_vals = np.array(out_train['loss_vals'])
-nf_samples = np.array(nf_sampler.sample_flow(1000)[1])
 
 
 # Plot 2 chains in the plane of 2 coordinates for first visual check 
@@ -103,17 +102,12 @@ plt.savefig('figure1.png')
 labels=["$alpha$", "$beta$", "$m_min$", "$m_max$"]
 # Plot all chains
 figure = corner.corner(
-    chains.reshape(-1, n_dim), labels=labels, quantiles=(0.16, 0.5, 0.84), show_titles=True, title_fmt = '.2f', use_math_text=True
+    chains.reshape(-1, n_dim), labels=labels, quantiles=(0.16, 0.5, 0.84), show_titles=True, title_fmt = '.2f', use_math_text=True, color='MediumPurple'
 )
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize samples")
 plt.savefig('figure2.png')
 plt.show(block=False)
 
-# Plot Nf samples
-figure = corner.corner(nf_samples, labels=labels)
-figure.set_size_inches(7, 7)
-figure.suptitle("Visualize NF samples")
-plt.savefig('figure3.png')
-plt.show()
+
 
