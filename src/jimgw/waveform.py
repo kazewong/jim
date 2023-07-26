@@ -35,4 +35,3 @@ class RippleIMRPhenomD(Waveform):
         return output
 
 
-reqtUx-qufbi7-popjam
