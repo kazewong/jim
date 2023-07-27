@@ -28,10 +28,7 @@ def generate_noise_freq(seed: int, freqs: Array, ifos: List = ['H1', 'L1'], f_mi
     for ifo in ifos:
         psd = np.zeros(len(freqs))
         for i,f in enumerate(freqs):
-            if f >= f_min:
-                psd[i] = psd_func_dict[ifo](f)
-            else:
-                psd[i] = pad_low_freqs(f, psd_func_dict[ifo](f_min))
+            psd[i] = psd_func_dict[ifo](f)
         psd_dict[ifo] = jnp.array(psd,dtype=jnp.float64)
 
     rng_key = jax.random.PRNGKey(seed)

@@ -123,7 +123,8 @@ class GroundBased2G(Detector):
 
     def fd_response(self, frequency: Array, h_sky: dict, params: Array) -> Array:
         """
-        Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        """
         ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
