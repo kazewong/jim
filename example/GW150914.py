@@ -29,10 +29,10 @@ likelihood = TransientLikelihoodFD([H1, L1], RippleIMRPhenomD(), gps, 4, 2)
 prior = Uniform(
     xmin = [10, 0.125, -1., -1., 0., -0.05, 0., -1, 0., 0.,-1.],
     xmax = [80., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
-    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "iota", "psi", "ra", "dec"],
+    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "cos_iota", "psi", "ra", "sin_dec"],
     transforms = {"q": lambda q: q/(1+q)**2,
-                 "iota": lambda iota: jnp.arccos(iota),
-                 "dec": lambda dec: jnp.arcsin(dec)}
+                 "iota": lambda iota: jnp.arccos(jnp.arcsin(jnp.sin(iota/2*jnp.pi))*2/jnp.pi),
+                 "dec": lambda dec: jnp.arcsin(jnp.arcsin(jnp.sin(dec/2*jnp.pi))*2/jnp.pi)} # sin and arcsin are periodize cos_iota and sin_dec
 )
 
 mass_matrix = jnp.eye(11)
