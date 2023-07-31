@@ -83,32 +83,41 @@ epoch = args.duration - post_trigger_duration
 gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
 
 
+# def gen_waveform_H1(f, theta):
+#     theta_waveform = theta[:8]
+#     theta_waveform = theta_waveform.at[5].set(0)
+#     ra = theta[9]
+#     dec = theta[10]
+#     hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+#     return H1_response(f, hp, hc, ra, dec, gmst , theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
-def gen_waveform_H1(f, theta):
-    theta_waveform = theta[:8]
-    theta_waveform = theta_waveform.at[5].set(0)
-    ra = theta[9]
-    dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
-    return H1_response(f, hp, hc, ra, dec, gmst , theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
+# def gen_waveform_L1(f, theta):
+#     theta_waveform = theta[:8]
+#     theta_waveform = theta_waveform.at[5].set(0)
+#     ra = theta[9]
+#     dec = theta[10]
+#     hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+#     return L1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
-def gen_waveform_L1(f, theta):
-    theta_waveform = theta[:8]
-    theta_waveform = theta_waveform.at[5].set(0)
-    ra = theta[9]
-    dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
-    return L1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
+# def gen_waveform_V1(f, theta):
+#     theta_waveform = theta[:8]
+#     theta_waveform = theta_waveform.at[5].set(0)
+#     ra = theta[9]
+#     dec = theta[10]
+#     hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
+#     return V1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
 
-def gen_waveform_V1(f, theta):
-    theta_waveform = theta[:8]
-    theta_waveform = theta_waveform.at[5].set(0)
-    ra = theta[9]
-    dec = theta[10]
-    hp, hc = gen_IMRPhenomD_polar(f, theta_waveform, f_ref)
-    return V1_response(f, hp, hc, ra, dec, gmst, theta[8]) * jnp.exp(-1j*2*jnp.pi*f*(epoch+theta[5]))
-
+waveform = RippleIMRPhenomD(f_ref=f_ref)
+prior = Uniform(
+    xmin = [10, 0.125, -1., -1., 0., -0.05, 0., -1, 0., 0.,-1.],
+    xmax = [80., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
+    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "cos_iota", "psi", "ra", "sin_dec"],
+    transforms = {"q": lambda q: q/(1+q)**2,
+                 "iota": lambda iota: jnp.arccos(jnp.arcsin(jnp.sin(iota/2*jnp.pi))*2/jnp.pi),
+                 "dec": lambda dec: jnp.arcsin(jnp.arcsin(jnp.sin(dec/2*jnp.pi))*2/jnp.pi)} # sin and arcsin are periodize cos_iota and sin_dec
+)
 true_param = jnp.array([Mc, eta, args.chi1, args.chi2, args.dist_mpc, args.tc, args.phic, args.inclination, args.polarization_angle, args.ra, args.dec])
+
 
 from scipy.interpolate import interp1d
 q_axis = np.linspace(0.1, 1.0, 10000)

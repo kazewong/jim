@@ -1,9 +1,9 @@
-import equinox as eqx
 from jaxtyping import Array
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 import jax.numpy as jnp
+from abc import ABC
 
-class Waveform(eqx.Module):
+class Waveform(ABC):
 
     def __init__(self):
         return NotImplemented
