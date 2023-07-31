@@ -9,20 +9,21 @@ import os.path
 # It bookmarks functions that fetch the data, store the data, and format the data
 class PosteriorSampleData:
     # Constructor
-    def __init__(self, data_file):
+    def __init__(self, data_file, event_list = "event_list.json"):
         self.posterior_samples = None
         self.data_file = data_file
+        self.event_list = event_list
         pass
     
     # download the .h5 posterior samples data into a directory
     def fetch(self, directory = "data/"):
         self.data_file = directory
         # opening JSON file
-        event_list_file = open("event_list.json", "r")
+        event_list_file = open(self.event_list, "r")
         # return "files" element in JSON object as a dictionary
-        event_list = (json.load(event_list_file))['files']
+        events = (json.load(event_list_file))['files']
         # Download the posterior samples via url for each event listed in event_list.json
-        for event in event_list[:5]:
+        for event in events:
             if event['type'] == 'h5': # Check if the event links to a H5 file
                 if (event['key'][-14:]) == 'mixed_cosmo.h5': # We only want cosmological reweighted data
                     url = event['links']['self'] # get the url
@@ -74,7 +75,6 @@ class PopulationModelBase:
     def __init__(self) -> None:
         self.population_params_list = None
         
-    @abstractmethod
     def get_population_params_list(self):
         return self.population_params_list
     
@@ -94,9 +94,6 @@ class PowerLawModel(PopulationModelBase):
     # Constructor
     def __init__(self):
         self.population_params_list = ["mass_1_source", "mass_ratio"]
-    
-    def get_population_params_list(self):
-        return self.population_params_list
     
     # Evaluate population likelihood by power law
     def get_population_likelihood(self, population_params, posterior_samples):
@@ -143,11 +140,10 @@ class PopulationDistribution:
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
-        # if parameters are ok, do the computation
-        log_population_distribution = 0.0 # initialize the value to zero
+        log_population_distribution = population_prior # initialize the value to zero
         for event in self.posterior_samples:
             sum = jnp.sum(self.model.get_population_likelihood(population_params, event))
-            log_population_distribution += (population_prior + jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples                     
+            log_population_distribution += (jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples                     
         
         return jnp.where(jnp.isfinite(log_population_distribution), log_population_distribution, -jnp.inf)
 
