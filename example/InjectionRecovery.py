@@ -1,10 +1,8 @@
-import time
 from jimgw.jim import Jim
 from jimgw.detector import H1, L1, V1
 from jimgw.likelihood import TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD
 from jimgw.prior import Uniform
-from jimgw.generate_noise import generate_fd_noise, generate_LVK_PSDdict
 from ripple import ms_to_Mc_eta
 import jax.numpy as jnp
 import jax
@@ -13,7 +11,6 @@ from astropy.time import Time
 from tap import Tap
 import yaml
 from tqdm import tqdm
-from functools import partialmethod
 
 class InjectionRecoveryParser(Tap):
     config: str 
@@ -72,7 +69,7 @@ print("Making noises")
 
 print("Injection signals")
 
-freqs = jnp.arange(args.fmin, args.f_sampling/2+1./args.f_sampling, 1./args.f_sampling)
+freqs = jnp.linspace(args.fmin, args.f_sampling/2, args.duration*args.f_sampling//2)
 
 Mc, eta = ms_to_Mc_eta(jnp.array([args.m1, args.m2]))
 f_ref = 30.0
@@ -92,7 +89,7 @@ prior = Uniform(
 )
 true_param = jnp.array([Mc, eta, args.chi1, args.chi2, args.dist_mpc, args.tc, args.phic, args.inclination, args.polarization_angle, args.ra, args.dec])
 true_param = prior.add_name(true_param, with_transform=True)
-detector_param = {"ra": args.ra, "dec": args.dec, "gmst": gmst, "psi": args.polarization_angle}
+detector_param = {"ra": args.ra, "dec": args.dec, "gmst": gmst, "psi": args.polarization_angle, "epoch": epoch, "t_c": args.tc}
 h_sky = waveform(freqs, true_param)
 key, subkey = jax.random.split(jax.random.PRNGKey(args.seed+1234))
 H1.inject_signal(subkey, freqs, h_sky, detector_param)
@@ -103,6 +100,8 @@ V1.inject_signal(subkey, freqs, h_sky, detector_param)
 
 likelihood = TransientLikelihoodFD([H1, L1], waveform, trigger_time, args.duration, post_trigger_duration)
 mass_matrix = jnp.eye(11)
+mass_matrix = mass_matrix.at[1,1].set(1e-3)
+mass_matrix = mass_matrix.at[5,5].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
 jim = Jim(likelihood, 
@@ -111,7 +110,7 @@ jim = Jim(likelihood,
         n_loop_production = 10,
         n_local_steps=300,
         n_global_steps=300,
-        n_chains=10,
+        n_chains=500,
         n_epochs=300,
         learning_rate = 0.001,
         momentum = 0.9,
@@ -123,20 +122,7 @@ jim = Jim(likelihood,
         seed = args.seed,
         )
 
-jim.maximize_likleihood([prior.xmin, prior.xmax])
+sample = jim.maximize_likleihood([prior.xmin, prior.xmax], n_loops=2000)
 key, subkey = jax.random.split(key)
 jim.sample(subkey)
-
-# labels = ['Mc', 'eta', 'chi1', 'chi2', 'dist_mpc', 'tc', 'phic', 'cos_inclination', 'polarization_angle', 'ra', 'sin_dec']
-
-# print("Saving to output")
-
-# chains, log_prob, local_accs, global_accs, loss_vals = nf_sampler.get_sampler_state(training=True).values()
-# chains, log_prob, local_accs, global_accs = nf_sampler.get_sampler_state().values()
-
-# # Fetch output parameters
-
-# output_path = args['output_path']
-# downsample_factor = args['downsample_factor']
-
-# np.savez(args['output_path'], chains=chains[:,::downsample_factor], log_prob=log_prob[:,::downsample_factor], local_accs=local_accs[:,::downsample_factor], global_accs=global_accs[:,::downsample_factor], loss_vals=loss_vals, labels=labels, true_param=true_param, true_log_prob=LogLikelihood(true_param))
+samples = jim.get_samples()

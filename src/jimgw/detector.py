@@ -287,10 +287,11 @@ class GroundBased2G(Detector):
         self.frequencies = freqs
         self.psd = self.load_psd(freqs, psd_file)
         key, subkey = jax.random.split(key, 2)
-        vars = self.psd / (freqs[1] - freqs[0])
-        noise_real = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(vars)
-        noise_imag = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(vars)
-        signal = self.fd_response(freqs, h_sky, params)
+        var = self.psd / (4 * (freqs[1] - freqs[0]))
+        noise_real = jax.random.normal(key, shape=freqs.shape)*jnp.sqrt(var)
+        noise_imag = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(var)
+        align_time = jnp.exp(-1j*2*jnp.pi*freqs*(params['epoch']+params['t_c']))
+        signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j*noise_imag
 
     def load_psd(self, freqs: Array, psd_file: str = None) -> None:
