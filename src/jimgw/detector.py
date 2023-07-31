@@ -4,7 +4,7 @@ from jimgw.wave import Polarization
 from scipy.signal.windows import tukey
 from abc import ABC, abstractmethod
 import equinox as eqx
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray
 import jax
 from gwpy.timeseries import TimeSeries
 from typing import Callable
@@ -277,6 +277,7 @@ class GroundBased2G(Detector):
         return antenna_patterns
 
     def inject_signal(self,
+                      key: PRNGKeyArray,
                       freqs: Array,
                       h_sky: dict,
                       params: dict,
@@ -284,8 +285,13 @@ class GroundBased2G(Detector):
         """
         """
         self.frequencies = freqs
-        self.data = self.fd_response(freqs, h_sky, params)
         self.psd = self.load_psd(freqs, psd_file)
+        key, subkey = jax.random.split(key, 2)
+        vars = self.psd / (freqs[1] - freqs[0])
+        noise_real = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(vars)
+        noise_imag = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(vars)
+        signal = self.fd_response(freqs, h_sky, params)
+        self.data = signal + noise_real + 1j*noise_imag
 
     def load_psd(self, freqs: Array, psd_file: str = None) -> None:
         if psd_file is None:
