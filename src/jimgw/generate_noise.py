@@ -87,17 +87,14 @@ def generate_fd_noise(
     # prescription to do so smoothly, but this is not really needed: you
     # could just set all values below `fmin` to a constant.
     def pad_low_freqs(f, psd_ref):
-        return psd_ref + psd_ref * (f_min - f) * jnp.exp(-(f_min - f)) / 3
+        return psd_ref + psd_ref * (f_min - f) * np.exp(-(f_min - f)) / 3
 
     psd_dict = {}
     for ifo in psd_funcs.keys():
         psd = np.zeros(len(freqs))
-        for i, f in enumerate(freqs):
-            if f >= f_min:
-                psd[i] = psd_funcs[ifo](f)
-            else:
-                psd[i] = pad_low_freqs(f, psd_funcs[ifo](f_min))
-        psd_dict[ifo] = jnp.array(psd, dtype=jnp.float64)
+        psd = pad_low_freqs(freqs, psd_funcs[ifo](f_min))
+        psd[freqs>=f_min] = psd_funcs[ifo](freqs[freqs>=f_min])
+        psd_dict[ifo] = np.array(psd, dtype=np.float64)
 
     rng_key = jax.random.PRNGKey(seed)
     rng_keys = jax.random.split(rng_key)

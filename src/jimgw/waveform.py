@@ -18,7 +18,7 @@ class RippleIMRPhenomD(Waveform):
     def __init__(self, f_ref: float = 20.0):
         self.f_ref = f_ref
 
-    def __call__(self, frequency: Array, params: dict) -> Array:
+    def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
         ra = params['ra']
         dec = params['dec']
