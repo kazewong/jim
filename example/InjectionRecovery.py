@@ -5,6 +5,7 @@ from jimgw.detector import H1, L1
 from jimgw.likelihood import TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD
 from jimgw.prior import Uniform
+from jimgw.utils import 
 import jax.numpy as jnp
 import jax
 
@@ -56,43 +57,25 @@ class InjectionRecoveryParser(Tap):
 
 
 args = InjectionRecoveryParser().parse_args()
+
 opt = vars(args)
-args = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
-opt.update(args)
-args = opt
+yaml_var = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
+opt.update(yaml_var)
 
 # Fetch noise parameters 
 
 print("Constructing detectors")
 print("Making noises")
 
-seed = args['seed']
-f_sampling = args['f_sampling']
-duration = args['duration']
-fmin = args['fmin']
-ifos = args['ifos']
-
-
-freqs, psd_dict, noise_dict = generate_noise(seed+1234, f_sampling, duration, fmin, ifos)
+freqs, psd_dict, noise_dict = generate_noise(args.seed+1234, args.f_sampling, args.duration, args.fmin, args.ifos)
 
 
 # Fetch injection parameters and inject signal
 
 print("Injection signals")
 
-m1 = args['m1']
-m2 = args['m2']
-chi1 = args['chi1']
-chi2 = args['chi2']
-dist_mpc = args['dist_mpc']
-tc = args['tc']
-phic = args['phic']
-inclination = args['inclination']
-polarization_angle = args['polarization_angle']
-ra = args['ra']
-dec = args['dec']
 
-Mc, eta = ms_to_Mc_eta(jnp.array([m1, m2]))
+Mc, eta = ms_to_Mc_eta(jnp.array([args.m1, args.m2]))
 
 heterodyne_bins = args['heterodyne_bins']
 
