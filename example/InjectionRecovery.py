@@ -1,79 +1,61 @@
 # Import packages
-import numpy as np
+import time
+from jimgw.jim import Jim
+from jimgw.detector import H1, L1
+from jimgw.likelihood import TransientLikelihoodFD
+from jimgw.waveform import RippleIMRPhenomD
+from jimgw.prior import Uniform
 import jax.numpy as jnp
 import jax
 
-# from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
-from ripple import ms_to_Mc_eta
-from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
-from jimgw.detector_preset import * 
-from jimgw.heterodyneLikelihood import make_heterodyne_likelihood_mutliple_detector
-from jimgw.detector_projection import make_detector_response
-from jimgw.generate_noise import generate_noise
-
-from flowMC.nfmodel.rqSpline import RQSpline
-from flowMC.sampler.MALA import MALA, mala_sampler_autotune
-from flowMC.sampler.Sampler import Sampler
-from flowMC.utils.PRNG_keys import initialize_rng_keys
-from flowMC.nfmodel.utils import *
-
-import argparse
+from tap import Tap
 import yaml
-
 from tqdm import tqdm
 from functools import partialmethod
 
-import sys
-sys.path.append('/mnt/home/wwong/GWProject/JaxGW')
+class InjectionRecoveryParser(Tap):
+    config: str
+    
+    # Noise parameters
+    seed: int
+    f_sampling: int
+    duration: int
+    fmin: float
+    ifos: list[str]
 
-parser = argparse.ArgumentParser(description='Injection test')
+    # Injection parameters
+    m1: float
+    m2: float
+    chi1: float
+    chi2: float
+    dist_mpc: float
+    tc: float
+    phic: float
+    inclination: float
+    polarization_angle: float
+    ra: float
+    dec: float
 
-parser.add_argument('--config', type=str, default='config.yaml', help='config file')
+    # Sampler parameters
+    n_dim: int
+    n_chains: int
+    n_loop_training: int
+    n_loop_production: int
+    n_local_steps: int
+    n_global_steps: int
+    learning_rate: float
+    max_samples: int
+    momentum: float
+    num_epochs: int
+    batch_size: int
+    stepsize: float
 
-# Add noise parameters to parser
-parser.add_argument('--seed', type=int, default=None, help='seed for random number generator')
-parser.add_argument('--f_sampling', type=int, default=None, help='sampling frequency')
-parser.add_argument('--duration', type=int, default=None, help='duration of the data')
-parser.add_argument('--fmin', type=float, default=None, help='minimum frequency')
-parser.add_argument('--ifos', nargs='+', default=None, help='list of detectors')
+    # Output parameters
+    output_path: str
+    downsample_factor: int
 
-# Add injection parameters to parser
-parser.add_argument('--m1', type=float, default=None, help='mass of the first component')
-parser.add_argument('--m2', type=float, default=None, help='mass of the second component')
-parser.add_argument('--chi1', type=float, default=None, help='dimensionless spin of the first component')
-parser.add_argument('--chi2', type=float, default=None, help='dimensionless spin of the second component')
-parser.add_argument('--dist_mpc', type=float, default=None, help='distance in megaparsecs')
-parser.add_argument('--tc', type=float, default=None, help='coalescence time')
-parser.add_argument('--phic', type=float, default=None, help='phase of coalescence')
-parser.add_argument('--inclination', type=float, default=None, help='inclination angle')
-parser.add_argument('--polarization_angle', type=float, default=None, help='polarization angle')
-parser.add_argument('--ra', type=float, default=None, help='right ascension')
-parser.add_argument('--dec', type=float, default=None, help='declination')
-parser.add_argument('--heterodyne_bins', type=int, default=101, help='number of bins for heterodyne likelihood')
 
-# Add sampler parameters to parser
-
-parser.add_argument('--n_dim', type=int, default=None, help='number of parameters')
-parser.add_argument('--n_chains', type=int, default=None, help='number of chains')
-parser.add_argument('--n_loop_training', type=int, default=None, help='number of training loops')
-parser.add_argument('--n_loop_production', type=int, default=None, help='number of production loops')
-parser.add_argument('--n_local_steps', type=int, default=None, help='number of local steps')
-parser.add_argument('--n_global_steps', type=int, default=None, help='number of global steps')
-parser.add_argument('--learning_rate', type=float, default=None, help='learning rate')
-parser.add_argument('--max_samples', type=int, default=None, help='maximum number of samples')
-parser.add_argument('--momentum', type=float, default=None, help='momentum during training')
-parser.add_argument('--num_epochs', type=int, default=None, help='number of epochs')
-parser.add_argument('--batch_size', type=int, default=None, help='batch size')
-parser.add_argument('--stepsize', type=float, default=None, help='stepsize for Local sampler')
-
-# Add output parameters to parser
-
-parser.add_argument('--output_path', type=str, default=None, help='output file path')
-parser.add_argument('--downsample_factor', type=int, default=1, help='downsample factor')
-
-# parser
-
-args = parser.parse_args()
+args = InjectionRecoveryParser().parse_args()
 opt = vars(args)
 args = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
 opt.update(args)
