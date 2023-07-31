@@ -22,7 +22,7 @@ class RippleIMRPhenomD(Waveform):
         output = {}
         ra = params['ra']
         dec = params['dec']
-        theta = [params['Mc'], params['eta'], params['s1z'], params['s2z'], params['distance'], 0, params['phic'], params['incl'], params['psi'], ra, dec]
+        theta = [params['M_c'], params['eta'], params['s1_z'], params['s2_z'], params['d_L'], 0, params['phase_c'], params['iota'], params['psi'], ra, dec]
         hp, hc = gen_IMRPhenomD_polar(frequency, theta, self.f_ref)
         output['p'] = hp
         output['c'] = hc

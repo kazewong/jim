@@ -295,7 +295,7 @@ class GroundBased2G(Detector):
 
     def load_psd(self, freqs: Array, psd_file: str = None) -> None:
         if psd_file is None:
-            print("Grabbing GWTC-2 PSD for H1")
+            print("Grabbing GWTC-2 PSD for "+self.name)
             url = psd_file_dict[self.name]
             data = requests.get(url)
             open(self.name+".txt", "wb").write(data.content)
@@ -303,7 +303,8 @@ class GroundBased2G(Detector):
         else:
             f, asd_vals = np.loadtxt(psd_file, unpack=True)
         psd_vals = asd_vals**2
-        self.psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)
+        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)
+        return psd
 
 H1 = GroundBased2G('H1',
 latitude = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,
