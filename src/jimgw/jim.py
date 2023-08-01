@@ -111,5 +111,20 @@ class Jim(object):
         print(f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}")
         print(f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}")
 
+    def get_samples(self, training: bool = False):
+        """
+        Get the samples from the sampler
+
+        Args:
+            training (bool, optional): If True, return the training samples. Defaults to False.
+
+        Returns:
+            Array: Samples
+        """
+        if training:
+            return self.Sampler.get_sampler_state(training=True)["chains"]
+        else:
+            return self.Sampler.get_sampler_state(training=False)["chains"]
+
     def plot(self):
         pass

@@ -4,11 +4,22 @@ from jimgw.wave import Polarization
 from scipy.signal.windows import tukey
 from abc import ABC, abstractmethod
 import equinox as eqx
-from jaxtyping import Array
+from jaxtyping import Array, PRNGKeyArray
 import jax
 from gwpy.timeseries import TimeSeries
+from typing import Callable
+import requests
+import numpy as np
+from scipy.interpolate import interp1d
 
 DEG_TO_RAD = jnp.pi/180
+
+# TODO: Need to expand this list. Currently it is only O3.
+psd_file_dict= {
+    "H1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-H1-C01_CLEAN_SUB60HZ-1251752040.0_sensitivity_strain_asd.txt",
+    "L1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-L1-C01_CLEAN_SUB60HZ-1240573680.0_sensitivity_strain_asd.txt",
+    "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
+}
 
 def np2(x):
     """
@@ -69,72 +80,6 @@ class GroundBased2G(Detector):
         modes = kwargs.get('mode', 'pc')
 
         self.polarization_mode = [Polarization(m) for m in modes]
-
-
-    def load_data(self, trigger_time:float,
-                gps_start_pad: int,
-                gps_end_pad: int,
-                f_min: float,
-                f_max: float,
-                psd_pad: int = 16,
-                tukey_alpha: float = 0.2) -> None:
-        """
-        Load data from the detector.
-
-        Parameters
-        ----------
-        trigger_time : float
-            The GPS time of the trigger.
-        gps_start_pad : int
-            The amount of time before the trigger to fetch data.
-        gps_end_pad : int
-            The amount of time after the trigger to fetch data.
-        f_min : float
-            The minimum frequency to fetch data.
-        f_max : float
-            The maximum frequency to fetch data.
-        psd_pad : int
-            The amount of time to pad the PSD data.
-        tukey_alpha : float
-            The alpha parameter for the Tukey window.
-
-        """
-
-        print("Fetching data from {}...".format(self.name))
-        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, cache=True)
-        segment_length = data_td.duration.value
-        n = len(data_td)
-        delta_t = data_td.dt.value
-        data = jnp.fft.rfft(jnp.array(data_td.value)*tukey(n, tukey_alpha))*delta_t
-        freq = jnp.fft.rfftfreq(n, delta_t)
-        # TODO: Check if this is the right way to fetch PSD
-        start_psd = int(trigger_time) - gps_start_pad - psd_pad # What does Int do here?
-        end_psd = int(trigger_time) + gps_end_pad + psd_pad
-
-        print("Fetching PSD data...")
-        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, cache=True)
-        psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
-
-        print("Finished generating data.")
-
-        self.frequencies = freq[(freq>f_min)&(freq<f_max)]
-        self.data = data[(freq>f_min)&(freq<f_max)]
-        self.psd = psd[(freq>f_min)&(freq<f_max)]
-
-    def fd_response(self, frequency: Array, h_sky: dict, params: Array) -> Array:
-        """
-        Modulate the waveform in the sky frame by the detector response in the frequency domain.
-        """
-        ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
-        antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
-        timeshift = self.delay_from_geocenter(ra, dec, gmst)
-        h_detector = jax.tree_util.tree_map(lambda h, antenna: h * antenna * jnp.exp(-2j * jnp.pi * frequency * timeshift), h_sky, antenna_pattern)
-        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)),axis=0)
-
-    def td_response(self, time: Array, h: Array, params: Array) -> Array:
-        """
-        Modulate the waveform in the sky frame by the detector response in the time domain."""
-        pass
 
     @staticmethod
     def _get_arm(lat, lon, tilt, azimuth):
@@ -200,6 +145,73 @@ class GroundBased2G(Detector):
         z = ((minor / major)**2 * r + h)*jnp.sin(lat)
         return jnp.array([x, y, z])
 
+    def load_data(self, trigger_time:float,
+                gps_start_pad: int,
+                gps_end_pad: int,
+                f_min: float,
+                f_max: float,
+                psd_pad: int = 16,
+                tukey_alpha: float = 0.2) -> None:
+        """
+        Load data from the detector.
+
+        Parameters
+        ----------
+        trigger_time : float
+            The GPS time of the trigger.
+        gps_start_pad : int
+            The amount of time before the trigger to fetch data.
+        gps_end_pad : int
+            The amount of time after the trigger to fetch data.
+        f_min : float
+            The minimum frequency to fetch data.
+        f_max : float
+            The maximum frequency to fetch data.
+        psd_pad : int
+            The amount of time to pad the PSD data.
+        tukey_alpha : float
+            The alpha parameter for the Tukey window.
+
+        """
+
+        print("Fetching data from {}...".format(self.name))
+        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, cache=True)
+        segment_length = data_td.duration.value
+        n = len(data_td)
+        delta_t = data_td.dt.value
+        data = jnp.fft.rfft(jnp.array(data_td.value)*tukey(n, tukey_alpha))*delta_t
+        freq = jnp.fft.rfftfreq(n, delta_t)
+        # TODO: Check if this is the right way to fetch PSD
+        start_psd = int(trigger_time) - gps_start_pad - psd_pad # What does Int do here?
+        end_psd = int(trigger_time) + gps_end_pad + psd_pad
+
+        print("Fetching PSD data...")
+        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, cache=True)
+        psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
+
+        print("Finished generating data.")
+
+        self.frequencies = freq[(freq>f_min)&(freq<f_max)]
+        self.data = data[(freq>f_min)&(freq<f_max)]
+        self.psd = psd[(freq>f_min)&(freq<f_max)]
+
+    def fd_response(self, frequency: Array, h_sky: dict, params: dict) -> Array:
+        """
+        Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        """
+        ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
+        antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
+        timeshift = self.delay_from_geocenter(ra, dec, gmst)
+        h_detector = jax.tree_util.tree_map(lambda h, antenna: h * antenna * jnp.exp(-2j * jnp.pi * frequency * timeshift), h_sky, antenna_pattern)
+        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)),axis=0)
+
+    def td_response(self, time: Array, h: Array, params: Array) -> Array:
+        """
+        Modulate the waveform in the sky frame by the detector response in the time domain."""
+        pass
+
+
+
     def delay_from_geocenter(self, ra: float, dec: float, gmst: float) -> float:
         """ 
         Calculate time delay between two detectors in geocentric
@@ -264,6 +276,37 @@ class GroundBased2G(Detector):
             antenna_patterns[polarization.name] = jnp.einsum('ij,ij->', detector_tensor, wave_tensor)
 
         return antenna_patterns
+
+    def inject_signal(self,
+                      key: PRNGKeyArray,
+                      freqs: Array,
+                      h_sky: dict,
+                      params: dict,
+                      psd_file: str = None) -> None:
+        """
+        """
+        self.frequencies = freqs
+        self.psd = self.load_psd(freqs, psd_file)
+        key, subkey = jax.random.split(key, 2)
+        var = self.psd / (4 * (freqs[1] - freqs[0]))
+        noise_real = jax.random.normal(key, shape=freqs.shape)*jnp.sqrt(var)
+        noise_imag = jax.random.normal(subkey, shape=freqs.shape)*jnp.sqrt(var)
+        align_time = jnp.exp(-1j*2*jnp.pi*freqs*(params['epoch']+params['t_c']))
+        signal = self.fd_response(freqs, h_sky, params) * align_time
+        self.data = signal + noise_real + 1j*noise_imag
+
+    def load_psd(self, freqs: Array, psd_file: str = None) -> None:
+        if psd_file is None:
+            print("Grabbing GWTC-2 PSD for "+self.name)
+            url = psd_file_dict[self.name]
+            data = requests.get(url)
+            open(self.name+".txt", "wb").write(data.content)
+            f, asd_vals = np.loadtxt(self.name+".txt", unpack=True)
+        else:
+            f, asd_vals = np.loadtxt(psd_file, unpack=True)
+        psd_vals = asd_vals**2
+        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)
+        return psd
 
 H1 = GroundBased2G('H1',
 latitude = (46 + 27. / 60 + 18.528 / 3600) * DEG_TO_RAD,

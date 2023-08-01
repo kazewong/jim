@@ -1,11 +1,11 @@
-import equinox as eqx
 from jaxtyping import Array
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 from ripple.waveforms.IMRPhenomD_utils import get_coeffs
 from ripple import Mc_eta_to_ms
 import jax.numpy as jnp
+from abc import ABC
 
-class Waveform(eqx.Module):
+class Waveform(ABC):
 
     def __init__(self):
         return NotImplemented
@@ -20,16 +20,13 @@ class RippleIMRPhenomD(Waveform):
 
     def __init__(self, f_ref: float = 20.0, coeffs: Array = jnp.array([])):
         self.f_ref = f_ref
-        self.coeffs = coeffs
-    def __call__(self, frequency: Array, params: dict) -> Array:
+
+    def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
         ra = params['ra']
         dec = params['dec']
-        theta = [params['Mc'], params['eta'], params['s1z'], params['s2z'], params['distance'], 0, params['phic'], params['incl'], params['psi'], ra, dec]
-        if len(self.coeffs) == 0:
-            kappa = jnp.concatenate(Mc_eta_to_ms(jnp.array([params['Mc'], params['eta']])),theta[2:])
-            self.coeffs = get_coeffs(kappa) 
-        hp, hc = gen_IMRPhenomD_polar(frequency, theta, self.f_ref, self.coeffs)
+        theta = [params['M_c'], params['eta'], params['s1_z'], params['s2_z'], params['d_L'], 0, params['phase_c'], params['iota'], params['psi'], ra, dec]
+        hp, hc = gen_IMRPhenomD_polar(frequency, theta, self.f_ref)
         output['p'] = hp
         output['c'] = hc
         return output

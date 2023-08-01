@@ -13,20 +13,22 @@ class Prior(Distribution):
     """
 
     naming: list[str]
-    transforms: list[Callable] = field(default_factory=dict)
+    transforms: dict[tuple[str,Callable]] = field(default_factory=dict)
 
     @property
     def n_dim(self):
         return len(self.naming)
     
-    def __init__(self, naming: list[str], transforms: dict[Callable] = {}):
+    def __init__(self, naming: list[str], transforms: dict[tuple[str,Callable]] = {}):
         """
         Parameters
         ----------
         naming : list[str]
             A list of names for the parameters of the prior.
-        transforms : dict[Callable]
-            A dictionary of transforms to apply to the parameters.
+        transforms : dict[tuple[str,Callable]]
+            A dictionary of transforms to apply to the parameters. The keys are
+            the names of the parameters and the values are a tuple of the name
+            of the transform and the transform itself.
         """
         self.naming = naming
         self.transforms = []
@@ -34,7 +36,7 @@ class Prior(Distribution):
             if name in transforms:
                 self.transforms.append(transforms[name])
             else:
-                self.transforms.append(lambda x: x)
+                self.transforms.append((name,lambda x: x))
 
     def transform(self, x: Array) -> Array:
         """
@@ -51,8 +53,20 @@ class Prior(Distribution):
             The transformed parameters.
         """
         for i,transform in enumerate(self.transforms):
-            x = x.at[i].set(transform(x[i]))
+            x = x.at[i].set(transform[1](x[i]))
         return x
+
+    def add_name(self, x: Array, with_transform: bool = False) -> dict:
+        """
+        Turn an array into a dictionary
+        """
+        if with_transform:
+            naming = []
+            for i,transform in enumerate(self.transforms):
+                naming.append(transform[0])
+        else:
+            naming = self.naming
+        return dict(zip(naming, x))
 
 
 class Uniform(Prior):
