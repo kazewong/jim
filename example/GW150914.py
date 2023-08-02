@@ -57,5 +57,5 @@ jim = Jim(likelihood,
         local_sampler_arg = local_sampler_arg,
         )
 
-jim.maximize_likleihood([prior.xmin, prior.xmax])
+jim.maximize_likelihood([prior.xmin, prior.xmax])
 jim.sample(jax.random.PRNGKey(42))

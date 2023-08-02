@@ -122,7 +122,7 @@ jim = Jim(likelihood,
         seed = args.seed,
         )
 
-sample = jim.maximize_likleihood([prior.xmin, prior.xmax], n_loops=2000)
+sample = jim.maximize_likelihood([prior.xmin, prior.xmax], n_loops=2000)
 key, subkey = jax.random.split(key)
 jim.sample(subkey)
 samples = jim.get_samples()

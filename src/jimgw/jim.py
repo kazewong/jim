@@ -47,7 +47,7 @@ class Jim(object):
             **kwargs)
         
 
-    def maximize_likleihood(self, bounds: tuple[Array,Array],set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
+    def maximize_likelihood(self, bounds: tuple[Array,Array],set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
         bounds = jnp.array(bounds).T
         key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
