@@ -144,6 +144,29 @@ class GroundBased2G(Detector):
         y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
         z = ((minor / major)**2 * r + h)*jnp.sin(lat)
         return jnp.array([x, y, z])
+    
+    
+    def set_data(self, freqs: Array, data: Array, psd: Array) -> None:
+        self.frequencies = freqs
+        self.data = data
+        self.psd = psd
+
+        """
+        Set the detector data.
+
+        Parameters
+        ----------
+        freqs : array
+            The frequency array.
+        data : array
+            The data array.
+        psd : array
+            The PSD array.
+
+        """
+        self.frequencies = freqs
+        self.data = data
+        self.psd = psd
 
     def load_data(self, trigger_time:float,
                 gps_start_pad: int,

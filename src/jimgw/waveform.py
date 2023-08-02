@@ -18,7 +18,7 @@ class RippleIMRPhenomD(Waveform):
     f_ref: float
     coeffs: Array
 
-    def __init__(self, f_ref: float = 20.0, coeffs: Array = jnp.array([])):
+    def __init__(self, f_ref: float = 20.0):
         self.f_ref = f_ref
 
     def __call__(self, frequency: Array, params: dict) -> dict:
