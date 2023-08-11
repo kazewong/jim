@@ -144,6 +144,27 @@ class GroundBased2G(Detector):
         y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
         z = ((minor / major)**2 * r + h)*jnp.sin(lat)
         return jnp.array([x, y, z])
+    
+    
+    def set_data(self, freqs: Array, data: Array, psd: Array) -> None:
+        self.frequencies = freqs
+        self.data = data
+        self.psd = psd
+
+        """
+        Set the detector data.
+
+        Parameters
+        ----------
+        freqs : array
+            The frequency array.
+        data : array
+            The data array.
+        psd : array
+            The PSD array.
+
+        """
+
 
     def load_data(self, trigger_time:float,
                 gps_start_pad: int,
@@ -197,7 +218,8 @@ class GroundBased2G(Detector):
 
     def fd_response(self, frequency: Array, h_sky: dict, params: dict) -> Array:
         """
-        Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        """
         ra, dec, psi, gmst = params['ra'], params['dec'], params['psi'], params['gmst']
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
