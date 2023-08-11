@@ -105,4 +105,4 @@ class Uniform(Prior):
         for i in range(n_dim):
             output = jax.lax.cond(x[i]>=self.xmax, lambda: output, lambda: -jnp.inf)
             output = jax.lax.cond(x[i]<=self.xmin, lambda: output, lambda: -jnp.inf)
-        return jnp.sum(jnp.log(1./(self.xmax-self.xmin))) 
+        return output + jnp.sum(jnp.log(1./(self.xmax-self.xmin))) 
