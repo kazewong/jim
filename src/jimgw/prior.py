@@ -100,4 +100,9 @@ class Uniform(Prior):
         return samples # TODO: remember to cast this to a named array
 
     def log_prob(self, x: Array) -> Float:
+        output = 0.
+        n_dim = jnp.shape(x)[0]
+        for i in range(n_dim):
+            output = jax.lax.cond(x[i]>=self.xmax, lambda: output, lambda: -jnp.inf)
+            output = jax.lax.cond(x[i]<=self.xmin, lambda: output, lambda: -jnp.inf)
         return jnp.sum(jnp.log(1./(self.xmax-self.xmin))) 
