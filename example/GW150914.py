@@ -74,3 +74,5 @@ if True:
         figure.suptitle("Visualize PE run", fontsize = 33)
         plt.show(block=False)
         plt.savefig("/mnt/home/averhaeghe/jim/example/First_run_GW150914.png")
+jim.maximize_likelihood([prior.xmin, prior.xmax])
+jim.sample(jax.random.PRNGKey(42))
