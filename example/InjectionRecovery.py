@@ -7,7 +7,12 @@ from ripple import ms_to_Mc_eta
 import jax.numpy as jnp
 import jax
 from astropy.time import Time
+from ripple.waveforms import IMRPhenomD
+jax.config.update('jax_enable_x64', True)
 
+from corner import corner
+import numpy as np
+import matplotlib.pyplot as plt
 from tap import Tap
 import yaml
 from tqdm import tqdm
@@ -56,9 +61,7 @@ class InjectionRecoveryParser(Tap):
 
 args = InjectionRecoveryParser().parse_args()
 
-# opt = vars(args)
-# yaml_var = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
-# opt.update(yaml_var)
+
 
 # Fetch noise parameters 
 
@@ -69,7 +72,29 @@ print("Making noises")
 
 print("Injection signals")
 
-freqs = jnp.linspace(args.fmin, args.f_sampling/2, args.duration*args.f_sampling//2)
+def read_complex_matrix_from_file(file_path):
+    complex_matrix = []
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            row_elements = line.strip().split()  # Split the line by whitespace
+            complex_row = [complex(element.replace('(', '').replace(')', '')) for element in row_elements]
+            complex_matrix.append(complex_row)
+
+    return jnp.array([item[0].real for item in complex_matrix]), jnp.array([item[1] for item in complex_matrix]), jnp.array([item[2] for item in complex_matrix])
+
+path_data = "/mnt/home/averhaeghe/ceph/NR_waveforms/NR_0001.txt"
+path_param = "/mnt/home/averhaeghe/ceph/NR_waveforms/param_0001.txt"
+freqs, hp, hc = read_complex_matrix_from_file(path_data)
+
+NR = {}
+NR['p'] = hp 
+NR['c'] =  hc 
+
+
+
+
+#freqs = jnp.linspace(args.fmin, args.f_sampling/2, args.duration*args.f_sampling//2)
 
 Mc, eta = ms_to_Mc_eta(jnp.array([args.m1, args.m2]))
 f_ref = 30.0
@@ -77,6 +102,7 @@ trigger_time = 1126259462.4
 post_trigger_duration = 2
 epoch = args.duration - post_trigger_duration
 gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
+
 
 waveform = RippleIMRPhenomD(f_ref=f_ref)
 prior = Uniform(
@@ -88,15 +114,25 @@ prior = Uniform(
                  "sin_dec": ("dec",lambda sin_dec: jnp.arcsin(jnp.arcsin(jnp.sin(sin_dec/2*jnp.pi))*2/jnp.pi))} # sin and arcsin are periodize cos_iota and sin_dec
 )
 true_param = jnp.array([Mc, eta, args.chi1, args.chi2, args.dist_mpc, args.tc, args.phic, args.inclination, args.polarization_angle, args.ra, args.dec])
+
+#hp, hc = IMRPhenomD.gen_IMRPhenomD_polar(freqs, true_param, f_ref)
+
+NR = {}
+NR['p'] = hp 
+NR['c'] =  hc 
+
 true_param = prior.add_name(true_param, with_transform=True)
 detector_param = {"ra": args.ra, "dec": args.dec, "gmst": gmst, "psi": args.polarization_angle, "epoch": epoch, "t_c": args.tc}
-h_sky = waveform(freqs, true_param)
+
+h_sky = NR
 key, subkey = jax.random.split(jax.random.PRNGKey(args.seed+1234))
 H1.inject_signal(subkey, freqs, h_sky, detector_param)
 key, subkey = jax.random.split(key)
 L1.inject_signal(subkey, freqs, h_sky, detector_param)
 key, subkey = jax.random.split(key)
 V1.inject_signal(subkey, freqs, h_sky, detector_param)
+
+
 
 likelihood = TransientLikelihoodFD([H1, L1], waveform, trigger_time, args.duration, post_trigger_duration)
 mass_matrix = jnp.eye(11)
@@ -122,7 +158,7 @@ jim = Jim(likelihood,
         seed = args.seed,
         )
 
-sample = jim.maximize_likleihood([prior.xmin, prior.xmax], n_loops=2000)
+sample = jim.maximize_likelihood([prior.xmin, prior.xmax], n_loops=2000)
 key, subkey = jax.random.split(key)
 jim.sample(subkey)
 samples = jim.get_samples()

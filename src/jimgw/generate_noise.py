@@ -5,6 +5,8 @@ import jax
 import numpy as np
 import requests
 import scipy.interpolate as interpolate
+from jaxtyping import Array
+
 
 # This is needed for the noise generation to have enough precision to work
 jax.config.update("jax_enable_x64", True)
@@ -107,6 +109,42 @@ def generate_fd_noise(
         noise_real = jax.random.normal(rng_keys[1], shape=(len(psd),)) * jnp.sqrt(var)
         noise_imag = jax.random.normal(rng_keys[2], shape=(len(psd),)) * jnp.sqrt(var)
         noise_fd_dict[ifo] = noise_real + 1j * noise_imag
+
+    return freqs, psd_dict, noise_fd_dict
+
+
+def generate_noise_freq(seed: int, freqs: Array, psd_funcs: dict = {
+        "H1": None,
+    }, 
+    f_min: float = 30.):
+    # Assuming that the difference between freqs is constant
+
+    delta_f = freqs[1] - freqs[0]
+
+    # we will want to pad low frequencies; the function below applies a
+    # prescription to do so smoothly, but this is not really needed: you
+    # could just set all values below `fmin` to a constant.
+    def pad_low_freqs(f, psd_ref):
+        return psd_ref + psd_ref*(f_min-f)*jnp.exp(-(f_min-f))/3
+
+    psd_dict = {}
+    for ifo in psd_funcs.keys():
+        psd = np.zeros(len(freqs))
+        psd = pad_low_freqs(freqs, psd_funcs[ifo](f_min))
+        psd = psd.at[freqs>=f_min].set(psd_funcs[ifo](freqs[freqs>=f_min]))
+        psd_dict[ifo] = np.array(psd, dtype=np.float64)
+
+
+    rng_key = jax.random.PRNGKey(seed)
+    rng_keys = jax.random.split(rng_key)
+
+    noise_fd_dict = {}
+    for ifo, psd in psd_dict.items():
+        rng_keys = jax.random.split(rng_keys[0], 3)
+        var = psd / (4.*delta_f)  # this is the variance of LIGO noise given the definition of the likelihood function
+        noise_real = jax.random.normal(rng_keys[1],shape=(len(psd),))*jnp.sqrt(var)
+        noise_imag = jax.random.normal(rng_keys[2],shape=(len(psd),))*jnp.sqrt(var)
+        noise_fd_dict[ifo] = noise_real + 1j*noise_imag
 
     return freqs, psd_dict, noise_fd_dict
 

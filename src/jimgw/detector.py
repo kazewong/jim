@@ -164,9 +164,7 @@ class GroundBased2G(Detector):
             The PSD array.
 
         """
-        self.frequencies = freqs
-        self.data = data
-        self.psd = psd
+
 
     def load_data(self, trigger_time:float,
                 gps_start_pad: int,
