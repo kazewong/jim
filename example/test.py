@@ -14,6 +14,8 @@ import corner
 import numpy as np
 import matplotlib.pyplot as plt
 
+import h5py
+
 data_obj = PosteriorSampleData('data/')
 data = data_obj.get_posterior_samples(["mass_1_source", "mass_ratio", "redshift", "chi_eff"])
 
@@ -43,7 +45,6 @@ learning_rate = 0.001
 num_epochs = 3000
 
 key1, rng, init_rng = jax.random.split(jax.random.PRNGKey(0), 3)
-jnp.reshape(new_data, (-1,n_dim))
 # model = RealNVP(n_layers, 2, n_hidden, rng, 1., base_cov = jnp.cov(data.T), base_mean = jnp.mean(data, axis=0))
 model = MaskedCouplingRQSpline(n_dim, n_layers, [n_hidden,n_hidden], 8 , rng, data_cov = jnp.cov((new_data.reshape(-1,n_dim)).T), data_mean = jnp.mean((new_data.reshape(-1,n_dim)), axis=0))
 
@@ -69,10 +70,19 @@ for step in range(num_epochs):
     print(f"step={step}, loss={loss}")
 
 
-nf_samples = model.sample(jax.random.PRNGKey(124098),5000)
+nf_samples = model.sample(jax.random.PRNGKey(124098),10000) # draw 5000 samples from nf model
 
-figure = corner.corner(np.array(nf_samples))
+# save nf_samples to file
+with h5py.File('output.h5', 'w') as f:
+    f.create_dataset('nf_samples', data = nf_samples.T)
+    f.create_dataset('density', data = jnp.e ** (model.log_prob(nf_samples)))
+
+
+figure = corner.corner(np.array(nf_samples), labels=['m_1','q','z','chi_eff'], range=[(0,100),(0,1),(0,2.25),(-0.8,0.8)])
 figure.set_size_inches(7, 7)
 figure.suptitle("Visualize NF samples")
 plt.savefig('figure_a')
 plt.show()
+
+# output file
+eqx.tree_serialise_leaves('output'+".eqx", model)
