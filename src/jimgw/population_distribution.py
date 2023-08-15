@@ -1,70 +1,110 @@
 from abc import ABC, abstractmethod
+from typing import Any
 import jax.numpy as jnp
+import re
 import numpy as np
 import h5py
 import json # to read JSON file
 import requests # to download data file via URL
 import os.path
 
-# It bookmarks functions that fetch the data, store the data, and format the data
-class PosteriorSampleData:
+# The class will download datafile according to url listed on search_file, and download the content to output_dir
+class DataBase:
     # Constructor
-    def __init__(self, data_file, event_list = "event_list.json"):
-        self.posterior_samples = None
-        self.data_file = data_file
-        self.event_list = event_list
+    def __init__(self, search_file, output_dir):
+        self.search_file = search_file
+        self.output_dir = output_dir
         pass
     
-    # download the .h5 posterior samples data into a directory
-    def fetch(self, directory = "data/"):
-        self.data_file = directory
+    # To download the datafile 
+    @abstractmethod
+    def fetch(self):
+        pass
+    
+    # To extract the data content from the downloaded datafile into the programme
+    @abstractmethod
+    def get_data(self):
+        pass
+
+
+# The class processes the posterior data from GWTC-2 and GWTC-3
+class PosteriorSampleData(DataBase):
+    # Constructor
+    def __init__(self, search_file, output_dir):
+        super.__init__(search_file, output_dir)
+    
+    def __call__(self, search_file, output_dir, params):
+        super.__init__(search_file, output_dir)
+        self.fetch()
+        return self.get_data(params=params)
+    
+    # download the .h5 posterior samples data into output_dir
+    def fetch(self):
         # opening JSON file
-        event_list_file = open(self.event_list, "r")
-        # return "files" element in JSON object as a dictionary
-        events = (json.load(event_list_file))['files']
-        # Download the posterior samples via url for each event listed in event_list.json
-        for event in events:
-            if event['type'] == 'h5': # Check if the event links to a H5 file
-                if (event['key'][-14:]) == 'mixed_cosmo.h5': # We only want cosmological reweighted data
-                    url = event['links']['self'] # get the url
-                    filename = event['key'] # get the file name
-                    
-                    if os.path.isfile(directory + filename) == False: # if the file does not exist
+        event_list_file = open(self.search_file, "r")
+        # Loop through each file contained in the .json list
+        for event in (json.load(event_list_file))['files']:
+            split_keys = re.split(r'[_\.]', event['key'])
+            # check if the file type is .h5 and the data is cosmological reweighted
+            if event['type'] == 'h5' and split_keys[-2] == 'cosmo': 
+                    url = event['links']['self']
+                    filename = event['key'] 
+                    # if the file does not exist
+                    if os.path.isfile(self.output_dir + filename) == False: 
                         print('Downloading ' + filename)
                         r = requests.get(url, allow_redirects=True)
-                        open(directory + filename, 'wb').write(r.content) # download the data file into the data folder
-                    else: # if the already exist
+                        # download the data file into the data folder
+                        open(self.output_dir + filename, 'wb').write(r.content)
+                    # if the already exist
+                    else: 
                         print(filename + ' exists')
     
-    # Get the data from the data folder
-    def read_file(self, directory=None, data_type = "C01:Mixed"):
-        if (directory == None):
-            directory = self.data_file
-            if (directory == None):
-                print("No data file directory specified. ")
-                return None
+    # To extract the data content from the downloaded datafile into the programme
+    # The data is returned in the form:
+    # [[event 1: [para_ 1 posterior samples], [para_2 posterior samples], ...], ...] 
+    def get_data(self, dataset_waveform = "C01:Mixed", params=None):
         posterior_samples = []
-        for file in os.listdir(directory): # loop through files in the data folder
-            if file[-2:] == "h5": # only if the file type is h5
-                posterior_samples.append(h5py.File(directory+file)[data_type+"/posterior_samples"]) # append the address of dataframe to the list
-        self.posterior_samples = posterior_samples
+        # loop through files in the data folder
+        for file in os.listdir(self.output_dir):
+            # Check if the file is .h5
+            if file.split('.')[-1] == "h5":
+                try:
+                    # Obtain the posterior samples from the downloaded datafile
+                    posterior_samples.append(h5py.File(self.output_dir+file)[dataset_waveform+"/posterior_samples"])
+                except:
+                    print(file) # TODO: error message
+        # If user does not specify which event parameters, return all posterior samples
+        if params == None:
+            return posterior_samples
+        else:
+            return [[events[param] for param in params] for events in self.posterior_samples]
     
-    # Read the .h5 data from a data folder and copy them into a python list with the format
-    # [[event 1: [para_ 1 posterior samples], [para_2 posterior samples], ...], ...] 
-    def get_all_posterior_samples(self, directory = None):
-        # If there is no posterior samples stored in this object, get the data from the .h5 file first
-        if self.posterior_samples == None:
-            self.read_file(directory)
-        return self.posterior_samples
-        
     
-    # Get the posterior samples of a list of specific parameters and format it into
-    # [[event 1: [para_ 1 posterior samples], [para_2 posterior samples], ...], ...] 
-    def get_posterior_samples(self, params):
-        if (self.posterior_samples == None):
-            self.read_file()
-        return [[events[param] for param in params] for events in self.posterior_samples]
+# The class processes the sensitivity estimates data 
+class SensitivityEstimatesData(DataBase):
+    def __init__(self, search_file, output_dir):
+        super().__init__(search_file, output_dir)
         
+    def __call__(self, search_file, output_dir) -> Any:
+        super.__init__(search_file, output_dir)
+        self.fetch()
+        return self.get_data()
+    
+    def fetch(self):
+        filename = 'endo3_mixture-LIGO-T2100113-v12.hdf5'
+        url = "https://zenodo.org/api/files/abb5598b-2e8d-485e-9b8c-ea8a077b6095/endo3_mixture-LIGO-T2100113-v12.hdf5"
+        print('Downloading ' + filename)
+        r = requests.get(url, allow_redirects=True)
+        # download the data file into the data folder
+        open(self.output_dir + filename, 'wb').write(r.content)
+    
+    def get_data(self):
+        # Check if the file is .h5
+        if (self.output_dir).split('.')[-1] == "h5":
+            try:
+                return h5py.File(self.output_dir)["injections"]
+            except:
+                print(self.output_dir) # TODO: error message
         
     
         
