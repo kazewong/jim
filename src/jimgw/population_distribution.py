@@ -31,10 +31,9 @@ class DataBase:
 class PosteriorSampleData(DataBase):
     # Constructor
     def __init__(self, search_file, output_dir):
-        super.__init__(search_file, output_dir)
+        super().__init__(search_file, output_dir)
     
-    def __call__(self, search_file, output_dir, params):
-        super.__init__(search_file, output_dir)
+    def __call__(self, params):
         self.fetch()
         return self.get_data(params=params)
     
@@ -85,22 +84,25 @@ class SensitivityEstimatesData(DataBase):
     def __init__(self, search_file, output_dir):
         super().__init__(search_file, output_dir)
         
-    def __call__(self, search_file, output_dir) -> Any:
-        super.__init__(search_file, output_dir)
+    def __call__(self) -> Any:
         self.fetch()
         return self.get_data()
     
     def fetch(self):
         filename = 'endo3_mixture-LIGO-T2100113-v12.hdf5'
         url = "https://zenodo.org/api/files/abb5598b-2e8d-485e-9b8c-ea8a077b6095/endo3_mixture-LIGO-T2100113-v12.hdf5"
-        print('Downloading ' + filename)
-        r = requests.get(url, allow_redirects=True)
-        # download the data file into the data folder
-        open(self.output_dir + filename, 'wb').write(r.content)
+        if os.path.isfile(self.output_dir + filename) == False:
+            print('Downloading ' + filename)
+            r = requests.get(url, allow_redirects=True)
+            # download the data file into the data folder
+            open(self.output_dir + filename, 'wb').write(r.content)
+        else:
+            print(filename + ' exists')
+            
     
     def get_data(self):
         # Check if the file is .h5
-        if (self.output_dir).split('.')[-1] == "h5":
+        if (self.output_dir).split('.')[-1] == "hdf5":
             try:
                 return h5py.File(self.output_dir)["injections"]
             except:
