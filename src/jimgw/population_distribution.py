@@ -161,6 +161,7 @@ class PowerLawModel(PopulationModelBase):
         alpha, beta, m_min, m_max = population_params[0], population_params[1], population_params[2], population_params[3] # alpha, beta,... are double
         output = super().log_uniform_prior(-4., 12., alpha) + super().log_uniform_prior(-4., 12., beta) + super().log_uniform_prior(2.,10.,m_min) + super().log_uniform_prior(30.,100.,m_max)
         return output
+    
 
 
 
@@ -168,24 +169,34 @@ class PowerLawModel(PopulationModelBase):
 
 # It evaluates the probability of population parameters given data
 class PopulationDistribution:
-    def __init__(self, model, data):
+    def __init__(self, model, posterior_samples_data, injection_data): #expec
         self.model = model
-        self.data = data
-        self.posterior_samples = self.data.get_posterior_samples(self.model.get_population_params_list())
+        self.posterior_samples_data = posterior_samples_data.get_data(params=self.model.get_population_params_list())
+        self.injection_data = injection_data.get_data()
     
-    @abstractmethod
-    def get_selection_effect(self):
-        return NotImplementedError
+    # Evaluate the selection bias
+    def get_selection_effect(self, population_params, injection_data):
+        m_1, m_2 = jnp.array(injection_data['mass1_source']), jnp.array(injection_data['mass2_source'])
+        draw_prob = jnp.array(injection_data['mass1_source_mass2_source_sampling_pdf'])
+        if (draw_prob.size != m_1.size): # je m'en fiche :)
+            print("warning: Draw probability is not covered for all injection data in the data set! ")
+        q = m_2 / m_1
+        N_draw = injection_data.attrs['n_accepted'] # Or should it be total points drawn??? Das weiss ich nicht!!!
+        sum = jnp.sum(self.model.get_population_likelihood(population_params, jnp.array([m_1, q])) / draw_prob)
+        return jnp.log(sum) - jnp.log(N_draw) 
     
     # Evaluate the population distribution
-    def evaluate(self, population_params, data) -> float:
+    def evaluate(self, population_params, data) -> float: # I need to add the input parameter "data" just to fit the format of jim:)
         # check on population parameters
         population_prior = self.model.get_population_prior(population_params)
         
         log_population_distribution = population_prior # initialize the value to zero
-        for event in self.posterior_samples:
+        N_obs = 0 # TODO: simplify this expression
+        for event in self.posterior_samples_data:
             sum = jnp.sum(self.model.get_population_likelihood(population_params, event))
-            log_population_distribution += (jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples                     
+            log_population_distribution += (jnp.log(sum) - jnp.log(len(event[0]))) # sum divided by the number of samples  
+            N_obs += 1                   
+        log_population_distribution -= self.get_log_selection_effect(population_params, self.injection_data) * N_obs
         
         return jnp.where(jnp.isfinite(log_population_distribution), log_population_distribution, -jnp.inf)
 
