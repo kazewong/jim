@@ -7,13 +7,14 @@ from flowMC.sampler.MALA import MALA
 from flowMC.sampler.Sampler import Sampler
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 
-from jimgw.population_distribution import PosteriorSampleData, PowerLawModel, PopulationDistribution
+from jimgw.population_distribution import PosteriorSampleData, PowerLawModel, PopulationDistribution, SensitivityEstimatesData
 from matplotlib import pyplot as plt
 
 ########################## Population model setup ##########################
-data = PosteriorSampleData('data/')
+posterior_data = PosteriorSampleData('event_list.json', 'data/')
+sensitivity_estimate_data = SensitivityEstimatesData('search_file.json', 'filename')
 pop_model = PowerLawModel()
-pop_distribution = PopulationDistribution(model=PowerLawModel(), data=data)
+pop_distribution = PopulationDistribution(model=PowerLawModel(), posterior_samples_data=posterior_data, injection_data=sensitivity_estimate_data)
 
 
 ########################## Hyperparameters to change ##########################
@@ -62,6 +63,8 @@ nf_sampler.sample(initial_position, data=None)
 out_train = nf_sampler.get_sampler_state(training=True)
 print('Logged during tuning:', out_train.keys())
 
+
+########################## Plot Output ##########################
 import corner
 import matplotlib.pyplot as plt
 chains = np.array(out_train['chains'])
