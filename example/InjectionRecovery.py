@@ -106,7 +106,7 @@ local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
 jim = Jim(likelihood, 
         prior,
-        n_loop_training=10,
+        n_loop_training=20,
         n_loop_production = 10,
         n_local_steps=300,
         n_global_steps=300,
