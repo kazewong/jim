@@ -44,7 +44,6 @@ class LikelihoodBase(ABC):
         raise NotImplementedError
 
 
-
 class TransientLikelihoodFD(LikelihoodBase):
 
     detectors: list[Detector]
@@ -92,13 +91,14 @@ class TransientLikelihoodFD(LikelihoodBase):
         log_likelihood = 0
         frequencies = self.detectors[0].frequencies
         df = frequencies[1] - frequencies[0]
-        params['gmst'] = self.gmst
+        params["gmst"] = self.gmst
         waveform_sky = self.waveform(frequencies, params)
-        align_time = jnp.exp(-1j * 2 * jnp.pi * frequencies * (self.epoch + params['t_c']))
+        align_time = jnp.exp(
+            -1j * 2 * jnp.pi * frequencies * (self.epoch + params["t_c"])
+        )
         for detector in self.detectors:
             waveform_dec = (
-                detector.fd_response(frequencies, waveform_sky, params)
-                * align_time
+                detector.fd_response(frequencies, waveform_sky, params) * align_time
             )
             match_filter_SNR = (
                 4
@@ -115,18 +115,23 @@ class TransientLikelihoodFD(LikelihoodBase):
             log_likelihood += match_filter_SNR - optimal_SNR / 2
         return log_likelihood
 
+
 class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
-    n_bins: int # Number of bins to use for the likelihood
-    ref_params: dict # Reference parameters for the likelihood
-    freq_grid_low: Array # Heterodyned frequency grid
-    freq_grid_center: Array # Heterodyned frequency grid at the center of the bin
-    waveform_low_ref: dict[Array] # Reference waveform at the low edge of the frequency bin, keyed by detector name
-    waveform_center_ref: dict[Array] # Reference waveform at the center of the frequency bin, keyed by detector name
-    A0_array: dict[Array] # A0 array for the likelihood, keyed by detector name
-    A1_array: dict[Array] # A1 array for the likelihood, keyed by detector name
-    B0_array: dict[Array] # B0 array for the likelihood, keyed by detector name
-    B1_array: dict[Array] # B1 array for the likelihood, keyed by detector name
+    n_bins: int  # Number of bins to use for the likelihood
+    ref_params: dict  # Reference parameters for the likelihood
+    freq_grid_low: Array  # Heterodyned frequency grid
+    freq_grid_center: Array  # Heterodyned frequency grid at the center of the bin
+    waveform_low_ref: dict[
+        Array
+    ]  # Reference waveform at the low edge of the frequency bin, keyed by detector name
+    waveform_center_ref: dict[
+        Array
+    ]  # Reference waveform at the center of the frequency bin, keyed by detector name
+    A0_array: dict[Array]  # A0 array for the likelihood, keyed by detector name
+    A1_array: dict[Array]  # A1 array for the likelihood, keyed by detector name
+    B0_array: dict[Array]  # B0 array for the likelihood, keyed by detector name
+    B1_array: dict[Array]  # B1 array for the likelihood, keyed by detector name
 
     def __init__(
         self,
@@ -141,15 +146,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         n_walkers: int = 100,
         n_loops: int = 2000,
     ) -> None:
-        super().__init__(detectors, waveform, trigger_time, duration, post_trigger_duration)
+        super().__init__(
+            detectors, waveform, trigger_time, duration, post_trigger_duration
+        )
 
         frequency_original = self.detectors[0].frequencies
-        freq_grid, self.freq_grid_center = self.make_binning_scheme(np.array(frequency_original), n_bins+1)
+        freq_grid, self.freq_grid_center = self.make_binning_scheme(
+            np.array(frequency_original), n_bins + 1
+        )
         self.freq_grid_low = freq_grid[:-1]
 
-        self.ref_params = self.maximize_likelihood(bounds=bounds, prior=prior, set_nwalkers=n_walkers, n_loops=n_loops)
+        self.ref_params = self.maximize_likelihood(
+            bounds=bounds, prior=prior, set_nwalkers=n_walkers, n_loops=n_loops
+        )
 
-        self.ref_params['gmst'] = self.gmst
+        self.ref_params["gmst"] = self.gmst
 
         self.waveform_low_ref = {}
         self.waveform_center_ref = {}
@@ -162,15 +173,51 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
-        align_time = jnp.exp(-1j * 2 * jnp.pi * frequency_original * (self.epoch + self.ref_params['t_c']))
-        align_time_low = jnp.exp(-1j * 2 * jnp.pi * self.freq_grid_low * (self.epoch + self.ref_params['t_c']))
-        align_time_center = jnp.exp(-1j * 2 * jnp.pi * self.freq_grid_center * (self.epoch + self.ref_params['t_c']))
+        align_time = jnp.exp(
+            -1j
+            * 2
+            * jnp.pi
+            * frequency_original
+            * (self.epoch + self.ref_params["t_c"])
+        )
+        align_time_low = jnp.exp(
+            -1j
+            * 2
+            * jnp.pi
+            * self.freq_grid_low
+            * (self.epoch + self.ref_params["t_c"])
+        )
+        align_time_center = jnp.exp(
+            -1j
+            * 2
+            * jnp.pi
+            * self.freq_grid_center
+            * (self.epoch + self.ref_params["t_c"])
+        )
 
         for detector in self.detectors:
-            waveform_ref = detector.fd_response(frequency_original, h_sky, self.ref_params) * align_time
-            self.waveform_low_ref[detector.name] = detector.fd_response(self.freq_grid_low, h_sky_low, self.ref_params) * align_time_low
-            self.waveform_center_ref[detector.name] = detector.fd_response(self.freq_grid_center, h_sky_center, self.ref_params) * align_time_center
-            A0, A1, B0, B1 = self.compute_coefficients(detector.data, waveform_ref, detector.psd, frequency_original, freq_grid, self.freq_grid_center)
+            waveform_ref = (
+                detector.fd_response(frequency_original, h_sky, self.ref_params)
+                * align_time
+            )
+            self.waveform_low_ref[detector.name] = (
+                detector.fd_response(self.freq_grid_low, h_sky_low, self.ref_params)
+                * align_time_low
+            )
+            self.waveform_center_ref[detector.name] = (
+                detector.fd_response(
+                    self.freq_grid_center, h_sky_center, self.ref_params
+                )
+                * align_time_center
+            )
+            A0, A1, B0, B1 = self.compute_coefficients(
+                detector.data,
+                waveform_ref,
+                detector.psd,
+                frequency_original,
+                freq_grid,
+                self.freq_grid_center,
+            )
             self.A0_array[detector.name] = A0
             self.A1_array[detector.name] = A1
             self.B0_array[detector.name] = B0
@@ -180,11 +227,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         log_likelihood = 0
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
-        params['gmst'] = self.gmst
+        params["gmst"] = self.gmst
         waveform_sky_low = self.waveform(frequencies_low, params)
         waveform_sky_center = self.waveform(frequencies_center, params)
-        align_time_low = jnp.exp(-1j * 2 * jnp.pi * frequencies_low * (self.epoch + params['t_c']))
-        align_time_center = jnp.exp(-1j * 2 * jnp.pi * frequencies_center * (self.epoch + params['t_c']))
+        align_time_low = jnp.exp(
+            -1j * 2 * jnp.pi * frequencies_low * (self.epoch + params["t_c"])
+        )
+        align_time_center = jnp.exp(
+            -1j * 2 * jnp.pi * frequencies_center * (self.epoch + params["t_c"])
+        )
         for detector in self.detectors:
             waveform_low = (
                 detector.fd_response(frequencies_low, waveform_sky_low, params)
@@ -195,12 +246,16 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 * align_time_center
             )
             r0 = waveform_center / self.waveform_center_ref[detector.name]
-            r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (frequencies_low - frequencies_center)
+            r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
+                frequencies_low - frequencies_center
+            )
             match_filter_SNR = jnp.nansum(
-                self.A0_array[detector.name] * r0.conj() + self.A1_array[detector.name] * r1.conj()
+                self.A0_array[detector.name] * r0.conj()
+                + self.A1_array[detector.name] * r1.conj()
             )
             optimal_SNR = jnp.nansum(
-                self.B0_array[detector.name] * jnp.abs(r0) ** 2 + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
+                self.B0_array[detector.name] * jnp.abs(r0) ** 2
+                + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
             )
             log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
 
@@ -215,13 +270,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         log_likelihood = 0
         frequencies = self.detectors[0].frequencies
         df = frequencies[1] - frequencies[0]
-        params['gmst'] = self.gmst
+        params["gmst"] = self.gmst
         waveform_sky = self.waveform(frequencies, params)
-        align_time = jnp.exp(-1j * 2 * jnp.pi * frequencies * (self.epoch + params['t_c']))
+        align_time = jnp.exp(
+            -1j * 2 * jnp.pi * frequencies * (self.epoch + params["t_c"])
+        )
         for detector in self.detectors:
             waveform_dec = (
-                detector.fd_response(frequencies, waveform_sky, params)
-                * align_time
+                detector.fd_response(frequencies, waveform_sky, params) * align_time
             )
             match_filter_SNR = (
                 4
@@ -271,7 +327,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             A1_array.append(
                 4
                 * np.sum(
-                    data_prod[f_index] / psd[f_index] * (freqs[f_index] - f_bins_center[i])
+                    data_prod[f_index]
+                    / psd[f_index]
+                    * (freqs[f_index] - f_bins_center[i])
                 )
                 * df
             )
@@ -279,7 +337,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             B1_array.append(
                 4
                 * np.sum(
-                    self_prod[f_index] / psd[f_index] * (freqs[f_index] - f_bins_center[i])
+                    self_prod[f_index]
+                    / psd[f_index]
+                    * (freqs[f_index] - f_bins_center[i])
                 )
                 * df
             )
@@ -290,15 +350,23 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         B1_array = jnp.array(B1_array)
         return A0_array, A1_array, B0_array, B1_array
 
-    def maximize_likelihood(self, bounds: tuple[Array,Array], prior: Prior, set_nwalkers: int = 100, n_loops: int = 2000):
+    def maximize_likelihood(
+        self,
+        bounds: tuple[Array, Array],
+        prior: Prior,
+        set_nwalkers: int = 100,
+        n_loops: int = 2000,
+    ):
         bounds = jnp.array(bounds).T
         set_nwalkers = set_nwalkers
 
-        y = lambda x: -self.evaluate_original(prior.add_name(x, transform_name=True, transform_value=True), None)
+        y = lambda x: -self.evaluate_original(
+            prior.add_name(x, transform_name=True, transform_value=True), None
+        )
         y = jax.jit(jax.vmap(y))
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(len(bounds), verbose = True)
+        optimizer = EvolutionaryOptimizer(len(bounds), verbose=True)
         state = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.add_name(best_fit, transform_name=True, transform_value=True)
