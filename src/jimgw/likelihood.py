@@ -1,8 +1,7 @@
 from gwpy.timeseries import TimeSeries
 from gwpy.frequencyseries import FrequencySeries
 from abc import ABC, abstractmethod
-from typing import Tuple
-from jaxtyping import Array
+from jaxtyping import Array, Float
 from jimgw.waveform import Waveform
 from jimgw.detector import Detector
 import jax.numpy as jnp
@@ -40,6 +39,7 @@ class LikelihoodBase(ABC):
         Evaluate the likelihood for a given set of parameters.
         """
         raise NotImplementedError
+
 
 
 class TransientLikelihoodFD(LikelihoodBase):
