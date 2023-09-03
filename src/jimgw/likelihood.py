@@ -11,8 +11,8 @@ from astropy.time import Time
 class LikelihoodBase(ABC):
     """
     Base class for likelihoods.
-    Note that this likelihood class should work for a somehwat general class of problems.
-    In light of that, this class would be somewhat abstract, but the idea behind it is this
+    Note that this likelihood class should work for a some what general class of problems.
+    In light of that, this class would be some what abstract, but the idea behind it is this
     handles two main components of a likelihood: the data and the model.
 
     It should be able to take the data and model and evaluate the likelihood for a given set of parameters.
