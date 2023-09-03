@@ -10,6 +10,9 @@ class Prior(Distribution):
     A thin wrapper build on top of flowMC distributions to do book keeping.
 
     Should not be used directly since it does not implement any of the real method.
+
+    The rationale behind this is to have a class that can be used to keep track of
+    the names of the parameters and the transforms that are applied to them.
     """
 
     naming: list[str]
@@ -31,12 +34,12 @@ class Prior(Distribution):
             of the transform and the transform itself.
         """
         self.naming = naming
-        self.transforms = []
+        self.transforms = {}
         for name in naming:
             if name in transforms:
-                self.transforms.append(transforms[name])
+                self.transforms[name] = transforms[name]
             else:
-                self.transforms.append((name,lambda x: x))
+                self.transforms[name] = (name,lambda x: x)
 
     def transform(self, x: Array) -> Array:
         """
@@ -61,12 +64,12 @@ class Prior(Distribution):
         Turn an array into a dictionary
         """
         if with_transform:
-            naming = []
-            for i,transform in enumerate(self.transforms):
-                naming.append(transform[0])
+            output = {}
+            for index, (key, value) in enumerate(self.transforms.items()):
+                output[value[0]] = value[1](x[index])
+            return output
         else:
-            naming = self.naming
-        return dict(zip(naming, x))
+            return dict(zip(self.naming, x))
 
 
 class Uniform(Prior):

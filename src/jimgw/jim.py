@@ -66,7 +66,8 @@ class Jim(object):
         return best_fit
 
     def posterior(self, params: Array):
-        return self.Likelihood.evaluate(params) + self.Prior.log_prob(params)
+        named_params = self.Prior.add_name(params, with_transform=True)
+        return self.Likelihood.evaluate(named_params) + self.Prior.log_prob(params)
 
     def sample(self, key: jax.random.PRNGKey,
                initial_guess: Array = None):
