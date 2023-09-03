@@ -34,6 +34,8 @@ class Detector(ABC):
     Base class for all detectors.
 
     """
+    name: str
+
 
     @abstractmethod
     def load_data(self, data):
@@ -53,7 +55,6 @@ class Detector(ABC):
     
 class GroundBased2G(Detector):
 
-    name: str
     polarization_mode: list[Polarization]
     frequencies: Array = None
     data : Array = None
