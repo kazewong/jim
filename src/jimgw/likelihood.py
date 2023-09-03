@@ -8,6 +8,7 @@ from jimgw.detector import Detector
 import jax.numpy as jnp
 from astropy.time import Time
 
+
 class LikelihoodBase(ABC):
     """
     Base class for likelihoods.
@@ -40,22 +41,26 @@ class LikelihoodBase(ABC):
         """
         raise NotImplementedError
 
+
 class TransientLikelihoodFD(LikelihoodBase):
 
     detectors: list[Detector]
     waveform: Waveform
 
-    def __init__(self,
+    def __init__(
+        self,
         detectors: list[Detector],
         waveform: Waveform,
-        trigger_time:float = 0,
+        trigger_time: float = 0,
         duration: float = 4,
         post_trigger_duration: float = 2,
     ) -> None:
         self.detectors = detectors
         self.waveform = waveform
         self.trigger_time = trigger_time
-        self.gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
+        self.gmst = (
+            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
 
         self.trigger_time = trigger_time
         self.duration = duration
@@ -75,20 +80,52 @@ class TransientLikelihoodFD(LikelihoodBase):
         """
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, params: Array, data: dict) -> float: # TODO: Test whether we need to pass data in or with class changes is fine.
+    def evaluate(
+        self, params: Array, data: dict
+    ) -> float:  # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0
         frequencies = self.detectors[0].frequencies
         df = frequencies[1] - frequencies[0]
-        source_params = {"M_c": params[0], "eta": params[1], "s1_z": params[2], "s2_z": params[3], "d_L": params[4], "t_c": params[5], "phase_c": params[6], "iota": params[7], "psi": params[8], "ra": params[9], "dec": params[10]}
-        detector_params = {"ra": params[9], "dec": params[10], "psi": params[8], "gmst": self.gmst}
+        source_params = {
+            "M_c": params[0],
+            "eta": params[1],
+            "s1_z": params[2],
+            "s2_z": params[3],
+            "d_L": params[4],
+            "t_c": params[5],
+            "phase_c": params[6],
+            "iota": params[7],
+            "psi": params[8],
+            "ra": params[9],
+            "dec": params[10],
+        }
+        detector_params = {
+            "ra": params[9],
+            "dec": params[10],
+            "psi": params[8],
+            "gmst": self.gmst,
+        }
         waveform_sky = self.waveform(frequencies, source_params)
-        align_time = jnp.exp(-1j*2*jnp.pi*frequencies*(self.epoch+params[5]))
+        align_time = jnp.exp(-1j * 2 * jnp.pi * frequencies * (self.epoch + params[5]))
         for detector in self.detectors:
-            waveform_dec = detector.fd_response(frequencies, waveform_sky, detector_params) * align_time
-            match_filter_SNR = 4 * jnp.sum((jnp.conj(waveform_dec)*detector.data)/detector.psd*df).real
-            optimal_SNR = 4 * jnp.sum(jnp.conj(waveform_dec)*waveform_dec/detector.psd*df).real
-            log_likelihood += match_filter_SNR - optimal_SNR/2
+            waveform_dec = (
+                detector.fd_response(frequencies, waveform_sky, detector_params)
+                * align_time
+            )
+            match_filter_SNR = (
+                4
+                * jnp.sum(
+                    (jnp.conj(waveform_dec) * detector.data) / detector.psd * df
+                ).real
+            )
+            optimal_SNR = (
+                4
+                * jnp.sum(
+                    jnp.conj(waveform_dec) * waveform_dec / detector.psd * df
+                ).real
+            )
+            log_likelihood += match_filter_SNR - optimal_SNR / 2
         return log_likelihood

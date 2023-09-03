@@ -25,7 +25,7 @@ inclination = np.arccos(cos_inclination)
 polarization_angle = np.random.uniform(prior_range[8,0],prior_range[8,1],N_config)
 ra = np.random.uniform(prior_range[9,0],prior_range[9,1],N_config)
 sin_dec = np.random.uniform(prior_range[10,0],prior_range[10,1],N_config)
-dec = np.arcsin(sin_dec)
+#dec = np.arcsin(sin_dec)
 
 directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/configs/'
 
