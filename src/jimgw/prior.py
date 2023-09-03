@@ -59,18 +59,19 @@ class Prior(Distribution):
             x = x.at[i].set(transform[1](x[i]))
         return x
 
-    def add_name(self, x: Array, with_transform: bool = False) -> dict:
+    def add_name(self, x: Array, transform_name: bool = False, transform_value: bool = False) -> dict:
         """
         Turn an array into a dictionary
         """
-        if with_transform:
-            output = {}
-            for index, (key, value) in enumerate(self.transforms.items()):
-                output[value[0]] = value[1](x[index])
-            return output
+        if transform_name:
+            naming = [value[0] for value in self.transforms.values()]
         else:
-            return dict(zip(self.naming, x))
-
+            naming = self.naming
+        if transform_value:
+            value = [value[1](x[index]) for index, value in enumerate(self.transforms.values())]
+        else:
+            value = x
+        return dict(zip(naming,value))
 
 class Uniform(Prior):
 

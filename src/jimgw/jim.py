@@ -26,16 +26,9 @@ class Jim(object):
         hidden_size = kwargs.get("hidden_size", [128,128])
         num_bins = kwargs.get("num_bins", 8)
 
-        def posterior(x: Array, data:dict):
-            prior = self.Prior.log_prob(x)
-            x = self.Prior.transform(x)
-            return self.Likelihood.evaluate(x, data) + prior
-
-        self.posterior = posterior
-
         local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
-        local_sampler = MALA(posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
+        local_sampler = MALA(self.posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
 
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
         self.Sampler = Sampler(
@@ -65,9 +58,9 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def posterior(self, params: Array):
-        named_params = self.Prior.add_name(params, with_transform=True)
-        return self.Likelihood.evaluate(named_params) + self.Prior.log_prob(params)
+    def posterior(self, params: Array, data: dict):
+        named_params = self.Prior.add_name(params, transform_name=True, transform_value=True)
+        return self.Likelihood.evaluate(named_params, data) + self.Prior.log_prob(params)
 
     def sample(self, key: jax.random.PRNGKey,
                initial_guess: Array = None):
@@ -123,9 +116,11 @@ class Jim(object):
             Array: Samples
         """
         if training:
-            return self.Sampler.get_sampler_state(training=True)["chains"]
+            chains = self.Sampler.get_sampler_state(training=True)["chains"]
         else:
-            return self.Sampler.get_sampler_state(training=False)["chains"]
+            chains = self.Sampler.get_sampler_state(training=False)["chains"]
+
+        chains = self.Prior.add_name(chains.transpose(2,0,1), transform_name=True)
 
     def plot(self):
         pass
