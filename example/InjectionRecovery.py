@@ -1,7 +1,7 @@
 from jimgw.jim import Jim
 from jimgw.detector import H1, L1, V1
 from jimgw.likelihood import TransientLikelihoodFD
-from jimgw.waveform import RippleIMRPhenomD
+from jimgw.waveform import RippleIMRPhenomPv2
 from jimgw.prior import Uniform
 from ripple import ms_to_Mc_eta
 import jax.numpy as jnp
@@ -16,45 +16,49 @@ class InjectionRecoveryParser(Tap):
     config: str 
     
     # Noise parameters
-    seed: int = None
-    f_sampling: int  = None
-    duration: int = None
-    fmin: float = None
-    ifos: list[str]  = None
+    seed: int = 0
+    f_sampling: int  = 2048
+    duration: int = 4
+    fmin: float = 20.0
+    ifos: list[str]  = ["H1", "L1", "V1"]
 
     # Injection parameters
-    m1: float = None
-    m2: float = None
-    chi1: float = None
-    chi2: float = None
-    dist_mpc: float = None
-    tc: float = None
-    phic: float = None
-    inclination: float = None
-    polarization_angle: float = None
-    ra: float = None
-    dec: float = None
+    m1: float = 30.0
+    m2: float = 29.0
+    s1_x: float = 0.
+    s1_y: float = 0.
+    s1_z: float = 0.
+    s2_x: float = 0.
+    s2_y: float = 0.
+    s2_z: float = 0.
+    dist_mpc: float = 400.
+    tc: float = 0.
+    phic: float = 0.
+    inclination: float = 0.3
+    polarization_angle: float = 0.7
+    ra: float = 1.1
+    dec: float = 0.3
 
     # Sampler parameters
-    n_dim: int = None
-    n_chains: int = None
-    n_loop_training: int = None
-    n_loop_production: int = None
-    n_local_steps: int = None
-    n_global_steps: int = None
-    learning_rate: float = None
-    max_samples: int = None
-    momentum: float = None
-    num_epochs: int = None
-    batch_size: int = None
-    stepsize: float = None
-    use_global: bool = None
-    keep_quantile: float = None
-    train_thinning: int = None
+    n_dim: int = 15
+    n_chains: int = 500
+    n_loop_training: int = 20
+    n_loop_production: int = 10
+    n_local_steps: int = 200
+    n_global_steps: int = 200
+    learning_rate: float = 0.001
+    max_samples: int = 50000
+    momentum: float = 0.9
+    num_epochs: int = 300
+    batch_size: int = 50000
+    stepsize: float = 0.01
+    use_global: bool = True
+    keep_quantile: float = 0.0
+    train_thinning: int = 40
 
     # Output parameters
-    output_path: str = None
-    downsample_factor: int = None
+    output_path: str = "./"
+    downsample_factor: int = 10
 
 
 args = InjectionRecoveryParser().parse_args()
@@ -77,11 +81,11 @@ post_trigger_duration = 2
 epoch = args.duration - post_trigger_duration
 gmst = Time(trigger_time, format='gps').sidereal_time('apparent', 'greenwich').rad
 
-waveform = RippleIMRPhenomD(f_ref=f_ref)
+waveform = RippleIMRPhenomPv2(f_ref=f_ref)
 prior = Uniform(
-    xmin = [10, 0.125, -1., -1., 0., -0.05, 0., -1, 0., 0.,-1.],
-    xmax = [80., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
-    naming = ["M_c", "q", "s1_z", "s2_z", "d_L", "t_c", "phase_c", "cos_iota", "psi", "ra", "sin_dec"],
+    xmin = [10, 0.125, -1., -1., -1., -1., -1., -1., 0., -0.05, 0., -1, 0., 0.,-1.],
+    xmax = [80., 1., 1., 1., 1., 1., 1., 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
+    naming = ["M_c", "q", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z", "d_L", "t_c", "phase_c", "cos_iota", "psi", "ra", "sin_dec"],
     transforms = {"q": ("eta", lambda q: q/(1+q)**2),
                  "cos_iota": ("iota",lambda cos_iota: jnp.arccos(jnp.arcsin(jnp.sin(cos_iota/2*jnp.pi))*2/jnp.pi)),
                  "sin_dec": ("dec",lambda sin_dec: jnp.arcsin(jnp.arcsin(jnp.sin(sin_dec/2*jnp.pi))*2/jnp.pi))} # sin and arcsin are periodize cos_iota and sin_dec
@@ -97,7 +101,7 @@ L1.inject_signal(subkey, freqs, h_sky, detector_param)
 key, subkey = jax.random.split(key)
 V1.inject_signal(subkey, freqs, h_sky, detector_param)
 
-likelihood = TransientLikelihoodFD([H1, L1], waveform, trigger_time, args.duration, post_trigger_duration)
+likelihood = TransientLikelihoodFD([H1, L1, V1], waveform, trigger_time, args.duration, post_trigger_duration)
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[5,5].set(1e-3)
