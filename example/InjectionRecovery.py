@@ -48,6 +48,9 @@ class InjectionRecoveryParser(Tap):
     num_epochs: int = None
     batch_size: int = None
     stepsize: float = None
+    use_global: bool = None
+    keep_quantile: float = None
+    train_thinning: int = None
 
     # Output parameters
     output_path: str = None
@@ -55,10 +58,6 @@ class InjectionRecoveryParser(Tap):
 
 
 args = InjectionRecoveryParser().parse_args()
-
-# opt = vars(args)
-# yaml_var = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
-# opt.update(yaml_var)
 
 # Fetch noise parameters 
 
@@ -106,18 +105,18 @@ local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
 jim = Jim(likelihood, 
         prior,
-        n_loop_training=20,
-        n_loop_production = 10,
-        n_local_steps=300,
-        n_global_steps=300,
-        n_chains=500,
-        n_epochs=300,
-        learning_rate = 0.001,
-        momentum = 0.9,
-        batch_size = 50000,
-        use_global=True,
-        keep_quantile=0.,
-        train_thinning = 40,
+        n_loop_training=args.n_loop_training,
+        n_loop_production = args.n_loop_production,
+        n_local_steps=args.n_local_steps,
+        n_global_steps=args.n_global_steps,
+        n_chains=args.n_chains,
+        n_epochs=args.num_epochs,
+        learning_rate = args.learning_rate,
+        momentum = args.momentum,
+        batch_size = args.batch_size,
+        use_global=args.use_global,
+        keep_quantile= args.keep_quantile,
+        train_thinning = args,
         local_sampler_arg = local_sampler_arg,
         seed = args.seed,
         )
