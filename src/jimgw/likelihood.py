@@ -173,6 +173,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
+        f_valid = frequency_original[jnp.where((jnp.abs(h_sky['p'])+jnp.abs(h_sky['c']))>0)[0]]
+        f_max = jnp.max(f_valid)
+        f_min = jnp.min(f_valid)
+
+        h_sky = h_sky[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+        h_sky_low = h_sky_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
+        h_sky_center = h_sky_center[jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+
+        frequency_original = frequency_original[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+        self.freq_grid_low = self.freq_grid_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
+        self.freq_grid_center = self.freq_grid_center[jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+
         align_time = jnp.exp(
             -1j
             * 2
@@ -215,7 +227,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 waveform_ref,
                 detector.psd,
                 frequency_original,
-                freq_grid,
+                self.freq_grid_low,
                 self.freq_grid_center,
             )
             self.A0_array[detector.name] = A0
@@ -249,11 +261,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
                 frequencies_low - frequencies_center
             )
-            match_filter_SNR = jnp.nansum(
+            match_filter_SNR = jnp.sum(
                 self.A0_array[detector.name] * r0.conj()
                 + self.A1_array[detector.name] * r1.conj()
             )
-            optimal_SNR = jnp.nansum(
+            optimal_SNR = jnp.sum(
                 self.B0_array[detector.name] * jnp.abs(r0) ** 2
                 + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
             )

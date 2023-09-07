@@ -2,7 +2,7 @@ import time
 from jimgw.jim import Jim
 from jimgw.detector import H1, L1
 from jimgw.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
-from jimgw.waveform import RippleIMRPhenomD
+from jimgw.waveform import RippleIMRPhenomD, RippleIMRPhenomPv2
 from jimgw.prior import Uniform
 import jax.numpy as jnp
 import jax
@@ -27,33 +27,28 @@ ifos = ["H1", "L1"]
 H1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
+waveform = RippleIMRPhenomPv2(f_ref=20)
 prior = Uniform(
-    xmin=[10, 0.125, -1.0, -1.0, 0.0, -0.05, 0.0, -1, 0.0, 0.0, -1.0],
-    xmax=[80.0, 1.0, 1.0, 1.0, 2000.0, 0.05, 2 * jnp.pi, 1.0, jnp.pi, 2 * jnp.pi, 1.0],
-    naming=[
-        "M_c",
-        "q",
-        "s1_z",
-        "s2_z",
-        "d_L",
-        "t_c",
-        "phase_c",
-        "cos_iota",
-        "psi",
-        "ra",
-        "sin_dec",
-    ],
+    xmin = [10, 0.125, 0, 0, 0, 0, 0, 0, 0., -0.05, 0., -1, 0., 0.,-1.],
+    xmax = [80., 1., jnp.pi, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1., 2000., 0.05, 2*jnp.pi, 1., jnp.pi, 2*jnp.pi, 1.],
+    naming = ["M_c", "q", "s1_theta", "s1_phi", "s1_mag", "s2_theta", "s2_phi", "s2_mag", "d_L", "t_c", "phase_c", "cos_iota", "psi", "ra", "sin_dec"],
     transforms = {"q": ("eta", lambda params: params['q']/(1+params['q'])**2),
+                 "s1_theta": ("s1_x", lambda params: jnp.sin(params['s1_theta'])*jnp.cos(params['s1_phi'])*params['s1_mag']),
+                 "s1_phi": ("s1_y", lambda params: jnp.sin(params['s1_theta'])*jnp.sin(params['s1_phi'])*params['s1_mag']),
+                 "s1_mag": ("s1_z", lambda params: jnp.cos(params['s1_theta'])*params['s1_mag']),
+                 "s2_theta": ("s2_x", lambda params: jnp.sin(params['s2_theta'])*jnp.cos(params['s2_phi'])*params['s2_mag']),
+                 "s2_phi": ("s2_y", lambda params: jnp.sin(params['s2_theta'])*jnp.sin(params['s2_phi'])*params['s2_mag']),
+                 "s2_mag": ("s2_z", lambda params: jnp.cos(params['s2_theta'])*params['s2_mag']),
                  "cos_iota": ("iota",lambda params: jnp.arccos(jnp.arcsin(jnp.sin(params['cos_iota']/2*jnp.pi))*2/jnp.pi)),
                  "sin_dec": ("dec",lambda params: jnp.arcsin(jnp.arcsin(jnp.sin(params['sin_dec']/2*jnp.pi))*2/jnp.pi))} # sin and arcsin are periodize cos_iota and sin_dec
 )
-likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
+likelihood = TransientLikelihoodFD([H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
 # likelihood = HeterodynedTransientLikelihoodFD([H1, L1], prior=prior, bounds=[prior.xmin, prior.xmax], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
 
 
-mass_matrix = jnp.eye(11)
+mass_matrix = jnp.eye(prior.n_dim)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-mass_matrix = mass_matrix.at[5, 5].set(1e-3)
+mass_matrix = mass_matrix.at[9, 9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
 jim = Jim(
@@ -61,19 +56,20 @@ jim = Jim(
     prior,
     n_loop_training=10,
     n_loop_production=10,
-    n_local_steps=300,
-    n_global_steps=300,
+    n_local_steps=200,
+    n_global_steps=200,
     n_chains=500,
-    n_epochs=300,
+    n_epochs=200,
     learning_rate=0.001,
-    max_samples=30000,
+    max_samples = 50000,
     momentum=0.9,
     batch_size=50000,
     use_global=True,
-    keep_quantile=0.0,
+    keep_quantile=0.,
     train_thinning=10,
     local_sampler_arg=local_sampler_arg,
 )
 
 jim.maximize_likelihood([prior.xmin, prior.xmax])
-jim.sample(jax.random.PRNGKey(42))
+initial_guess = jnp.array(jnp.load('initial.npz')['chain'])
+jim.sample(jax.random.PRNGKey(42), initial_guess=initial_guess)

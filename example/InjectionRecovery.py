@@ -27,13 +27,13 @@ class InjectionRecoveryParser(Tap):
 
     # Injection parameters
     m1: float = 30.0
-    m2: float = 29.0
+    m2: float = 25.0
     s1_theta: float = 0.
     s1_phi: float = 0.
-    s1_mag: float = 0.
+    s1_mag: float = 0.01
     s2_theta: float = 0.
     s2_phi: float = 0.
-    s2_mag: float = 0.
+    s2_mag: float = 0.02
     dist_mpc: float = 400.
     tc: float = 0.
     phic: float = 0.
@@ -45,19 +45,19 @@ class InjectionRecoveryParser(Tap):
     # Sampler parameters
     n_dim: int = 15
     n_chains: int = 500
-    n_loop_training: int = 20
+    n_loop_training: int = 10
     n_loop_production: int = 10
-    n_local_steps: int = 200
-    n_global_steps: int = 200
+    n_local_steps: int = 300
+    n_global_steps: int = 300
     learning_rate: float = 0.001
     max_samples: int = 50000
     momentum: float = 0.9
-    num_epochs: int = 300
+    num_epochs: int = 500
     batch_size: int = 50000
     stepsize: float = 0.01
     use_global: bool = True
-    keep_quantile: float = 0.0
-    train_thinning: int = 40
+    keep_quantile: float = 0.1
+    train_thinning: int = 10
 
     # Output parameters
     output_path: str = "./"
@@ -78,7 +78,7 @@ print("Injection signals")
 freqs = jnp.linspace(args.fmin, args.f_sampling/2, args.duration*args.f_sampling//2)
 
 Mc, eta = ms_to_Mc_eta(jnp.array([args.m1, args.m2]))
-f_ref = 30.0
+f_ref = args.fmin
 trigger_time = 1126259462.4
 post_trigger_duration = 2
 epoch = args.duration - post_trigger_duration
@@ -110,13 +110,13 @@ L1.inject_signal(subkey, freqs, h_sky, detector_param)
 key, subkey = jax.random.split(key)
 V1.inject_signal(subkey, freqs, h_sky, detector_param)
 
-likelihood = TransientLikelihoodFD([H1, L1, V1], waveform, trigger_time, args.duration, post_trigger_duration)
+likelihood = TransientLikelihoodFD([H1, L1], waveform, trigger_time, args.duration, post_trigger_duration)
 # likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1], prior=prior, bounds=[prior.xmin, prior.xmax],  waveform = waveform, trigger_time = trigger_time, duration = args.duration, post_trigger_duration = post_trigger_duration)
 
 mass_matrix = jnp.eye(args.n_dim)
 mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[9,9].set(1e-3)
-local_sampler_arg = {"step_size": mass_matrix*3e-4}
+local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
 jim = Jim(likelihood, 
         prior,
@@ -127,6 +127,7 @@ jim = Jim(likelihood,
         n_chains=args.n_chains,
         n_epochs=args.num_epochs,
         learning_rate = args.learning_rate,
+        max_samples = args.max_samples,
         momentum = args.momentum,
         batch_size = args.batch_size,
         use_global=args.use_global,
