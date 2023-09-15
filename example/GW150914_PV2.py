@@ -54,22 +54,23 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=10,
+    n_loop_training=200,
     n_loop_production=10,
     n_local_steps=200,
     n_global_steps=200,
     n_chains=500,
     n_epochs=200,
     learning_rate=0.001,
-    max_samples = 50000,
+    max_samples = 60000,
     momentum=0.9,
     batch_size=50000,
     use_global=True,
     keep_quantile=0.,
-    train_thinning=10,
+    train_thinning=1,
+    output_thinning=20,
     local_sampler_arg=local_sampler_arg,
 )
 
 jim.maximize_likelihood([prior.xmin, prior.xmax])
-initial_guess = jnp.array(jnp.load('initial.npz')['chain'])
-jim.sample(jax.random.PRNGKey(42), initial_guess=initial_guess)
+# initial_guess = jnp.array(jnp.load('initial.npz')['chain'])
+jim.sample(jax.random.PRNGKey(42))
