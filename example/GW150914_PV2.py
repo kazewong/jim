@@ -56,10 +56,10 @@ jim = Jim(
     prior,
     n_loop_training=200,
     n_loop_production=10,
-    n_local_steps=200,
-    n_global_steps=200,
+    n_local_steps=300,
+    n_global_steps=300,
     n_chains=500,
-    n_epochs=200,
+    n_epochs=300,
     learning_rate=0.001,
     max_samples = 60000,
     momentum=0.9,
@@ -67,7 +67,7 @@ jim = Jim(
     use_global=True,
     keep_quantile=0.,
     train_thinning=1,
-    output_thinning=20,
+    output_thinning=30,
     local_sampler_arg=local_sampler_arg,
 )
 
