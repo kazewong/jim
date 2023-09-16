@@ -54,7 +54,7 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=200,
+    n_loop_training=400,
     n_loop_production=10,
     n_local_steps=300,
     n_global_steps=300,
@@ -63,12 +63,15 @@ jim = Jim(
     learning_rate=0.001,
     max_samples = 60000,
     momentum=0.9,
-    batch_size=50000,
+    batch_size=30000,
     use_global=True,
     keep_quantile=0.,
     train_thinning=1,
     output_thinning=30,
     local_sampler_arg=local_sampler_arg,
+    num_layers = 4,
+    hidden_size = [32,32],
+    num_bins = 8
 )
 
 jim.maximize_likelihood([prior.xmin, prior.xmax])
