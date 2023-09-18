@@ -7,7 +7,7 @@ Here is the list of
 
 
 
-<a href="https://flowmc.readthedocs.io/en/main/">
+<a href="https://colab.research.google.com/drive/1ah_mwVpn3A32jhctA6BTj-Nqk7SGf9Dj?usp=sharing">
 <img src="https://badgen.net/badge/colab/GW150914/orange" alt="doc"/>
 </a>
 
