@@ -4,4 +4,4 @@ pymdown-extensions==10.1    # Markdown extensions e.g. to handle LaTeX.
 mkdocstrings[python]==0.22.0        # Autogenerate documentation from docstrings.
 mkdocs-jupyter==0.24.2       # Turn Jupyter Lab notebooks into webpages.
 mkdocs-gen-files==0.5.0
-mkdocs-literate-nav=0.6.0
+mkdocs-literate-nav==0.6.0
