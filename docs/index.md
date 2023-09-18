@@ -7,7 +7,9 @@ Here is the list of
 
 
 
-
+<a href="https://flowmc.readthedocs.io/en/main/">
+<img src="https://badgen.net/badge/colab/GW150914/orange" alt="doc"/>
+</a>
 
 ## Design philosophy
 
