@@ -135,3 +135,7 @@ data
 slurm_script*
 build*
 log*
+*.swp
+H1.txt
+L1.txt
+V1.txt
