@@ -1,6 +1,6 @@
 # Jim <img src="https://user-images.githubusercontent.com/4642979/218163532-1c8a58e5-6f36-42de-96d3-f245eee93cf8.png" alt="jim" width="35"/> - A JAX-based gravitational-wave inference toolkit
 
-<a href="https://flowmc.readthedocs.io/en/main/">
+<a href="https://jim.readthedocs.io/en/latest/">
 <img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
 </a>
 
