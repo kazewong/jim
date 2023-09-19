@@ -2,15 +2,15 @@
 
 Jim is a set of tools to solve a number of inference problems in the field of gravitational-wave, including single event parameter estimation and population analysis (coming soon!). Jim is written in python, with heavy use of the [JAX](https://github.com/google/jax) and uses [flowMC](https://github.com/kazewong/flowMC) as its sampler. 
 
-Here is the list of 
+!!! warning
+    **Jim is still in development**: As we are refactoring and continuing the development of the code, the API is subject to change. If you have any questions, please feel free to open an issue.
 
 
-
-
-<a href="https://colab.research.google.com/drive/1ah_mwVpn3A32jhctA6BTj-Nqk7SGf9Dj?usp=sharing">
-<img src="https://img.shields.io/badge/open_in_colab-GW150914-orange?logo=googlecolab" alt="doc"/>
-</a>
 
 ## Design philosophy
 
 1. Extensibility over "feature complete"
+2. Performance is a feature, lacking performance is a bug
+3. We do not do use-case optimization
+
+#
