@@ -13,6 +13,8 @@ There should be two main ways to get your data into `jim`, either you fetch it f
 
 ## Prior
 
+The prior class defined in `jim` takes care of a lot of bookkeeping for you, and it is a subclass to the distribution class in `flowMC`.
+
 ## Sampler
 
 The main workhorse under the hood is a machine learning-enhanced sampler named [flowMC](https://flowmc.readthedocs.io/en/main/).
