@@ -1,0 +1,17 @@
+#!/bin/bash -l
+#SBATCH --job-name=pv2_injection_array
+#SBATCH --time=6:00:00
+#SBATCH --partition=ica100
+#SBATCH --qos=qos_gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --mem-per-cpu=16G
+#SBATCH --gres=gpu:1
+#SBATCH -A tedwar41_gpu
+#SBATCH --array=0-9
+
+module load anaconda/2020.07
+conda activate ripple
+cd /home/zwang264/scr4_berti/zipeng/PPE_with_Jax/jim/example
+
+python InjectionRecovery.py --config configs/zw_test_batch/injection_config_${SLURM_ARRAY_TASK_ID}.yaml

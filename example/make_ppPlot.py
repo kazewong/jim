@@ -13,8 +13,8 @@ def get_all_quantile(filename):
     chains = data['chains']
     true_param = data['true_param']
     true_param[1] = q_interp(true_param[1])
-    true_param[7] = np.cos(true_param[7])
-    true_param[10] = np.sin(true_param[10])
+    true_param[11] = np.cos(true_param[11])
+    true_param[15] = np.sin(true_param[15])
 
     def compute_percentile(value,data):
         return np.where(data<value)[0].shape[0]/data.size
@@ -44,7 +44,7 @@ def get_all_quantile(filename):
 
     return np.array(result), np.array(result_multimodal), true_param, mean_global_accs, mean_local_accs
 
-directory = '/mnt/home/wwong/ceph/GWProject/JaxGW/RealtimePE/ppPlots/balance_LVK/'
+directory = '/home/zwang264/scr4_berti/zipeng/PPE_with_Jax/jim/example/zw_test_batch_out/'
 result = []
 result_multimodal = []
 true_param = []

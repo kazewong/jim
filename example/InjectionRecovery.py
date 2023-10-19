@@ -45,7 +45,7 @@ class InjectionRecoveryParser(Tap):
     # Sampler parameters
     n_dim: int = 15
     n_chains: int = 500
-    n_loop_training: int = 200
+    n_loop_training: int = 10
     n_loop_production: int = 10
     n_local_steps: int = 300
     n_global_steps: int = 300
@@ -53,14 +53,14 @@ class InjectionRecoveryParser(Tap):
     max_samples: int = 60000
     momentum: float = 0.9
     num_epochs: int = 300
-    batch_size: int = 60000
+    batch_size: int = 30000
     stepsize: float = 0.01
     use_global: bool = True
     keep_quantile: float = 0.0
     train_thinning: int = 1
     output_thinning: int = 30
-    num_layers: int = 6
-    hidden_size: list[int] = [64,64]
+    num_layers: int = 4
+    hidden_size: list[int] = [32,32]
     num_bins: int = 8
 
     # Output parameters
@@ -69,9 +69,11 @@ class InjectionRecoveryParser(Tap):
 
 
 args = InjectionRecoveryParser().parse_args()
-
+opt = vars(args)
+yaml_var = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
+opt.update(yaml_var)
 # Fetch noise parameters 
-
+print("s1_mag:", args.s1_mag)
 print("Constructing detectors")
 print("Making noises")
 
@@ -105,14 +107,15 @@ prior = Uniform(
 )
 true_param = jnp.array([Mc, args.m2/args.m1, args.s1_theta, args.s1_phi, args.s1_mag, args.s2_theta, args.s2_phi, args.s2_mag, args.dist_mpc, args.tc, args.phic, args.inclination, args.polarization_angle, args.ra, args.dec])
 true_param = prior.add_name(true_param, transform_name = True, transform_value = True)
+#print(true_param)
 detector_param = {"ra": args.ra, "dec": args.dec, "gmst": gmst, "psi": args.polarization_angle, "epoch": epoch, "t_c": args.tc}
 h_sky = waveform(freqs, true_param)
 key, subkey = jax.random.split(jax.random.PRNGKey(args.seed+1234))
-H1.inject_signal(subkey, freqs, h_sky, detector_param)
+H1.inject_signal(subkey, freqs, h_sky, detector_param, "../src/jimgw/detector_data/H1.txt")
 key, subkey = jax.random.split(key)
-L1.inject_signal(subkey, freqs, h_sky, detector_param)
+L1.inject_signal(subkey, freqs, h_sky, detector_param, "../src/jimgw/detector_data/L1.txt")
 key, subkey = jax.random.split(key)
-V1.inject_signal(subkey, freqs, h_sky, detector_param)
+V1.inject_signal(subkey, freqs, h_sky, detector_param, "../src/jimgw/detector_data/V1.txt")
 
 likelihood = TransientLikelihoodFD([H1, L1], waveform, trigger_time, args.duration, post_trigger_duration)
 # likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1], prior=prior, bounds=[prior.xmin, prior.xmax],  waveform = waveform, trigger_time = trigger_time, duration = args.duration, post_trigger_duration = post_trigger_duration)
@@ -122,29 +125,58 @@ mass_matrix = mass_matrix.at[1,1].set(1e-3)
 mass_matrix = mass_matrix.at[9,9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix*3e-3}
 
-jim = Jim(likelihood, 
-        prior,
-        n_loop_training=args.n_loop_training,
-        n_loop_production = args.n_loop_production,
-        n_local_steps=args.n_local_steps,
-        n_global_steps=args.n_global_steps,
-        n_chains=args.n_chains,
-        n_epochs=args.num_epochs,
-        learning_rate = args.learning_rate,
-        max_samples = args.max_samples,
-        momentum = args.momentum,
-        batch_size = args.batch_size,
-        use_global=args.use_global,
-        keep_quantile= args.keep_quantile,
-        train_thinning = args.train_thinning,
-        output_thinning = args.output_thinning,
-        local_sampler_arg = local_sampler_arg,
-        seed = args.seed,
-        num_layers = args.num_layers,
-        hidden_size = args.hidden_size,
-        num_bins = args.num_bins
-        )
-
+#jim = Jim(likelihood, 
+#        prior,
+#        n_loop_training=args.n_loop_training,
+#        n_loop_production = args.n_loop_production,
+#        n_local_steps=args.n_local_steps,
+#        n_global_steps=args.n_global_steps,
+#        n_chains=args.n_chains,
+#        n_epochs=args.num_epochs,
+#        learning_rate = args.learning_rate,
+#        max_samples = args.max_samples,
+#        momentum = args.momentum,
+#        batch_size = args.batch_size,
+#        use_global=args.use_global,
+#        keep_quantile= args.keep_quantile,
+#        train_thinning = args.train_thinning,
+#        output_thinning = args.output_thinning,
+#        local_sampler_arg = local_sampler_arg,
+#        seed = args.seed,
+#        num_layers = args.num_layers,
+#        hidden_size = args.hidden_size,
+#        num_bins = args.num_bins
+#        )
+jim = Jim(
+    likelihood,
+    prior,
+    n_loop_training=400,
+    n_loop_production=10,
+    n_local_steps=300,
+    n_global_steps=300,
+    n_chains=5,
+    n_epochs=300,
+    learning_rate=0.001,
+    max_samples = 60000,
+    momentum=0.9,
+    batch_size=3000,
+    use_global=True,
+    keep_quantile=0.,
+    train_thinning=1,
+    output_thinning=30,
+    local_sampler_arg=local_sampler_arg,
+    num_layers = 4,
+    hidden_size = [32,32],
+    num_bins = 8
+)
+jim.maximize_likelihood([prior.xmin, prior.xmax])
 key, subkey = jax.random.split(key)
 jim.sample(subkey)
 samples = jim.get_samples()
+chains, log_prob, local_accs, global_accs= jim.Sampler.get_sampler_state().values()
+jnp.savez( args.output_path + '.npz', 
+          chains=chains, 
+          log_prob=log_prob, 
+          local_accs=local_accs, 
+          global_accs=global_accs,
+          true_param=true_param)
