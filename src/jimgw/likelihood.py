@@ -150,9 +150,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             detectors, waveform, trigger_time, duration, post_trigger_duration
         )
 
+        # Get the original frequency grid
         frequency_original = self.detectors[0].frequencies
+        # Get the grid of the relative binning scheme (contains the final endpoint) and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
-            np.array(frequency_original), n_bins + 1
+            np.array(frequency_original), n_bins
         )
         self.freq_grid_low = freq_grid[:-1]
 
@@ -173,28 +175,26 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
+        # Get frequency masks to be applied, for both original and heterodyne frequency grid
         f_valid = frequency_original[jnp.where((jnp.abs(h_sky['p'])+jnp.abs(h_sky['c']))>0)[0]]
         f_max = jnp.max(f_valid)
         f_min = jnp.min(f_valid)
+        
+        mask_original = jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]
+        mask_heterodyne = jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]
 
         # Apply the mask for frequencies to both polarization modes and for all waveforms currently used
         for mode in ["p", "c"]:
-            h_sky[mode] = h_sky[mode][jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
-            # h_sky_low[mode] = h_sky_low[mode][jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
-            h_sky_low[mode] = h_sky[mode][:-1] # TODO does this work?
-            h_sky_center[mode] = h_sky_center[mode][jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+            h_sky[mode] = h_sky[mode][mask_original]
+            h_sky_low[mode] = h_sky_low[mode][mask_heterodyne]
+            h_sky_center[mode] = h_sky_center[mode][mask_heterodyne]
 
-        frequency_original = frequency_original[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+        frequency_original = frequency_original[mask_original]
         freq_grid = freq_grid[jnp.where((freq_grid>=f_min) & (freq_grid<=f_max))[0]]
-        # self.freq_grid_low = self.freq_grid_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
-        self.freq_grid_low = freq_grid[:-1] # TODO override, does this work?
-        self.freq_grid_center = self.freq_grid_center[jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+        self.freq_grid_low = self.freq_grid_low[mask_heterodyne]
+        self.freq_grid_center = self.freq_grid_center[mask_heterodyne]
 
-        print("len(self.freq_grid_low)")
-        print(len(self.freq_grid_low))
-        print("len(self.freq_grid_center)")
-        print(len(self.freq_grid_center))
-
+        # Get phase shifts to align time of coalescence
         align_time = jnp.exp(
             -1j
             * 2
@@ -219,7 +219,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         for detector in self.detectors:
             # Also apply the mask of frequencies to the strain data
-            detector.data = detector.data[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+            detector.data = detector.data[mask_original]
             # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
@@ -240,7 +240,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 waveform_ref,
                 detector.psd,
                 frequency_original,
-                self.freq_grid_low,
+                freq_grid,
                 self.freq_grid_center,
             )
             self.A0_array[detector.name] = A0
@@ -272,9 +272,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             )
             
             r0 = waveform_center / self.waveform_center_ref[detector.name]
-            print(np.shape(r0))
-            print(np.shape(waveform_low))
-            print(np.shape(waveform_center))
             r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
                 frequencies_low - frequencies_center
             )
@@ -335,7 +332,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=1)
         bin_f = interp1d(phase_diff_array, freqs)
         f_bins = np.array([])
-        for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins):
+        for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1):
             f_bins = np.append(f_bins, bin_f(i))
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
         return f_bins, f_bins_center

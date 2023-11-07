@@ -203,7 +203,7 @@ class GroundBased2G(Detector):
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
         h_detector = jax.tree_util.tree_map(lambda h, antenna: h * antenna * jnp.exp(-2j * jnp.pi * frequency * timeshift), h_sky, antenna_pattern)
-        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)),axis=0)
+        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
 
     def td_response(self, time: Array, h: Array, params: Array) -> Array:
         """
