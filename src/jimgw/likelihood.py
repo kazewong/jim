@@ -177,13 +177,23 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_max = jnp.max(f_valid)
         f_min = jnp.min(f_valid)
 
-        h_sky = h_sky[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
-        h_sky_low = h_sky_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
-        h_sky_center = h_sky_center[jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+        # Apply the mask for frequencies to both polarization modes and for all waveforms currently used
+        for mode in ["p", "c"]:
+            h_sky[mode] = h_sky[mode][jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+            # h_sky_low[mode] = h_sky_low[mode][jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
+            h_sky_low[mode] = h_sky[mode][:-1] # TODO does this work?
+            h_sky_center[mode] = h_sky_center[mode][jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
 
         frequency_original = frequency_original[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
-        self.freq_grid_low = self.freq_grid_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
+        freq_grid = freq_grid[jnp.where((freq_grid>=f_min) & (freq_grid<=f_max))[0]]
+        # self.freq_grid_low = self.freq_grid_low[jnp.where((self.freq_grid_low>=f_min) & (self.freq_grid_low<=f_max))[0]]
+        self.freq_grid_low = freq_grid[:-1] # TODO override, does this work?
         self.freq_grid_center = self.freq_grid_center[jnp.where((self.freq_grid_center>=f_min) & (self.freq_grid_center<=f_max))[0]]
+
+        print("len(self.freq_grid_low)")
+        print(len(self.freq_grid_low))
+        print("len(self.freq_grid_center)")
+        print(len(self.freq_grid_center))
 
         align_time = jnp.exp(
             -1j
@@ -208,6 +218,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         for detector in self.detectors:
+            # Also apply the mask of frequencies to the strain data
+            detector.data = detector.data[jnp.where((frequency_original>=f_min) & (frequency_original<=f_max))[0]]
+            # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
                 * align_time
@@ -257,7 +270,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 detector.fd_response(frequencies_center, waveform_sky_center, params)
                 * align_time_center
             )
+            
             r0 = waveform_center / self.waveform_center_ref[detector.name]
+            print(np.shape(r0))
+            print(np.shape(waveform_low))
+            print(np.shape(waveform_center))
             r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
                 frequencies_low - frequencies_center
             )
