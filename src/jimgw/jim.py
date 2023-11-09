@@ -8,6 +8,7 @@ from jimgw.prior import Prior
 from jaxtyping import Array
 import jax
 import jax.numpy as jnp
+from flowMC.sampler.flowHMC import flowHMC
 
 class Jim(object):
     """
@@ -31,12 +32,23 @@ class Jim(object):
         local_sampler = MALA(self.posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
 
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
+        flowHMC_sampler = flowHMC(
+            self.posterior,
+            True,
+            model,
+            params={
+                "step_size": 1e-4,
+                "n_leapfrog": 5,
+                "inverse_metric": jnp.ones(prior.n_dim),
+            },
+        )
         self.Sampler = Sampler(
             self.Prior.n_dim,
             rng_key_set,
             None,
             local_sampler,
             model,
+            global_sampler = flowHMC_sampler,
             **kwargs)
         
 
