@@ -147,8 +147,14 @@ class Unconstrained_Uniform(Prior):
     xmin: float = 0.0
     xmax: float = 1.0
 
-    def __init__(self, xmin: float, xmax: float, **kwargs):
-        super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        naming: list[str],
+        transforms: dict[tuple[str, Callable]] = {},
+    ):
+        super().__init__(naming, transforms)
         assert isinstance(xmin, float), "xmin must be a float"
         assert isinstance(xmax, float), "xmax must be a float"
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
