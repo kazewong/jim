@@ -84,7 +84,7 @@ class Prior(Distribution):
             value = x
         return dict(zip(naming, value))
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         raise NotImplementedError
 
     def logpdf(self, x: dict) -> Float:
@@ -110,7 +110,7 @@ class Uniform(Prior):
         self.xmax = xmax
         self.xmin = xmin
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         """
         Sample from a uniform distribution.
 
@@ -123,8 +123,8 @@ class Uniform(Prior):
 
         Returns
         -------
-        samples : Array
-            An array of shape (n_samples, n_dim) containing the samples.
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
 
         """
         samples = jax.random.uniform(
@@ -171,7 +171,7 @@ class Unconstrained_Uniform(Prior):
             )
         }
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         """
         Sample from a uniform distribution.
 
@@ -184,7 +184,7 @@ class Unconstrained_Uniform(Prior):
 
         Returns
         -------
-        samples : Array
+        samples : 
             An array of shape (n_samples, n_dim) containing the samples.
 
         """
@@ -192,8 +192,9 @@ class Unconstrained_Uniform(Prior):
         samples = jnp.log(samples / (1 - samples))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: Array) -> Float:
-        y = 1.0 / 1 + jnp.exp(-x)
+    def log_prob(self, x: dict) -> Float:
+        variable = x[self.naming[0]]
+        y = 1.0 / (1 + jnp.exp(-variable))
         return jnp.log((1 / (self.xmax - self.xmin)) * (1 / (y - y * y)))
 
 class Sphere(Prior):
@@ -204,7 +205,7 @@ class Sphere(Prior):
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         return super().sample(rng_key, n_samples)
     
-    def log_prob(self, x: Array) -> Array:
+    def log_prob(self, x: dict) -> Float:
         return super().log_prob(x)
 
 class Composite(Prior):
@@ -221,11 +222,15 @@ class Composite(Prior):
         self.naming = naming
         self.transforms = transforms
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+        output = {}
         for prior in self.priors:
             rng_key, subkey = jax.random.split(rng_key)
-            prior.sample(subkey, n_samples)
+            output.update(prior.sample(subkey, n_samples))
+        return output
 
-    def log_prob(self, x: Array) -> Float:
+    def log_prob(self, x: dict) -> Float:
+        output = 0.0
         for prior in self.priors:
-            prior.log_prob(x)
+            output += prior.log_prob(x)
+        return output
