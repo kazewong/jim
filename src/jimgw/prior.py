@@ -48,7 +48,7 @@ class Prior(Distribution):
                 # which will make lambda reference the last value of the variable name
                 self.transforms[name] = (name, make_lambda(name))
 
-    def transform(self, x: Array) -> Array:
+    def transform(self, x: dict) -> dict:
         """
         Apply the transforms to the parameters.
 
@@ -62,9 +62,9 @@ class Prior(Distribution):
         x : dict
             A dictionary of parameters with the transforms applied.
         """
-        output = self.add_name(x, transform_name=False, transform_value=False)
+        # output = self.add_name(x, transform_name=False, transform_value=False)
         for i, (key, value) in enumerate(self.transforms.items()):
-            x = x.at[i].set(value[1](output))
+            x[key] = value[1](x)
         return x
 
     def add_name(
@@ -130,7 +130,7 @@ class Uniform(Prior):
         samples = jax.random.uniform(
             rng_key, (n_samples,), minval=self.xmin, maxval=self.xmax
         )
-        return samples
+        return self.add_name(samples[None])
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
@@ -160,11 +160,14 @@ class Unconstrained_Uniform(Prior):
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
+        local_transform = self.transforms
+        def new_transform(param):
+            result = (self.xmax - self.xmin) / (1 + jnp.exp(-param[self.naming[0]])) + self.xmin
+            return local_transform[self.naming[0]][1]({self.naming[0]:result})
         self.transforms = {
-            "y": (
-                "x",
-                lambda param: (self.xmax - self.xmin) / (1 + jnp.exp(-param["x"]))
-                + self.xmin,
+            self.naming[0]: (
+                self.naming[0],
+                new_transform
             )
         }
 
@@ -187,7 +190,7 @@ class Unconstrained_Uniform(Prior):
         """
         samples = jax.random.uniform(rng_key, (n_samples,), minval=0, maxval=1)
         samples = jnp.log(samples / (1 - samples))
-        return samples
+        return self.add_name(samples[None])
 
     def log_prob(self, x: Array) -> Float:
         y = 1.0 / 1 + jnp.exp(-x)
