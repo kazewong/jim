@@ -1,10 +1,10 @@
-from abc import abstractmethod
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float
-from typing import Callable, Union
+from typing import Callable
 from dataclasses import field
+
 
 class Prior(Distribution):
     """
@@ -17,13 +17,13 @@ class Prior(Distribution):
     """
 
     naming: list[str]
-    transforms: dict[tuple[str,Callable]] = field(default_factory=dict)
+    transforms: dict[tuple[str, Callable]] = field(default_factory=dict)
 
     @property
     def n_dim(self):
         return len(self.naming)
-    
-    def __init__(self, naming: list[str], transforms: dict[tuple[str,Callable]] = {}):
+
+    def __init__(self, naming: list[str], transforms: dict[tuple[str, Callable]] = {}):
         """
         Parameters
         ----------
@@ -38,7 +38,7 @@ class Prior(Distribution):
         self.transforms = {}
 
         def make_lambda(name):
-                return lambda x: x[name]
+            return lambda x: x[name]
 
         for name in naming:
             if name in transforms:
@@ -46,7 +46,7 @@ class Prior(Distribution):
             else:
                 # Without the function, the lambda will refer to the variable name instead of its value,
                 # which will make lambda reference the last value of the variable name
-                self.transforms[name] = (name, make_lambda(name)) 
+                self.transforms[name] = (name, make_lambda(name))
 
     def transform(self, x: Array) -> Array:
         """
@@ -62,12 +62,14 @@ class Prior(Distribution):
         x : dict
             A dictionary of parameters with the transforms applied.
         """
-        output = self.add_name(x, transform_name = False, transform_value = False)
+        output = self.add_name(x, transform_name=False, transform_value=False)
         for i, (key, value) in enumerate(self.transforms.items()):
             x = x.at[i].set(value[1](output))
         return x
 
-    def add_name(self, x: Array, transform_name: bool = False, transform_value: bool = False) -> dict:
+    def add_name(
+        self, x: Array, transform_name: bool = False, transform_value: bool = False
+    ) -> dict:
         """
         Turn an array into a dictionary
         """
@@ -80,7 +82,7 @@ class Prior(Distribution):
             value = x
         else:
             value = x
-        return dict(zip(naming,value))
+        return dict(zip(naming, value))
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         raise NotImplementedError
@@ -88,19 +90,26 @@ class Prior(Distribution):
     def logpdf(self, x: dict) -> Float:
         raise NotImplementedError
 
+
 class Uniform(Prior):
 
-    xmin: float = 0.
-    xmax: float = 1.
+    xmin: float = 0.0
+    xmax: float = 1.0
 
-    def __init__(self, xmin: float, xmax: float, naming: list[str], transforms: dict[tuple[str,Callable]] = {}):
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        naming: list[str],
+        transforms: dict[tuple[str, Callable]] = {},
+    ):
         super().__init__(naming, transforms)
         assert isinstance(xmin, float), "xmin must be a float"
         assert isinstance(xmax, float), "xmax must be a float"
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
-    
+
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         """
         Sample from a uniform distribution.
@@ -116,20 +125,27 @@ class Uniform(Prior):
         -------
         samples : Array
             An array of shape (n_samples, n_dim) containing the samples.
-        
+
         """
-        samples = jax.random.uniform(rng_key, (n_samples,), minval=self.xmin, maxval=self.xmax)
+        samples = jax.random.uniform(
+            rng_key, (n_samples,), minval=self.xmin, maxval=self.xmax
+        )
         return samples
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        output = jnp.where((variable>=self.xmax) | (variable<=self.xmin), jnp.zeros_like(variable)-jnp.inf, jnp.zeros_like(variable))
-        return output + jnp.log(1./(self.xmax-self.xmin))
+        output = jnp.where(
+            (variable >= self.xmax) | (variable <= self.xmin),
+            jnp.zeros_like(variable) - jnp.inf,
+            jnp.zeros_like(variable),
+        )
+        return output + jnp.log(1.0 / (self.xmax - self.xmin))
+
 
 class Unconstrained_Uniform(Prior):
 
-    xmin: float = 0.
-    xmax: float = 1.
+    xmin: float = 0.0
+    xmax: float = 1.0
 
     def __init__(self, xmin: float, xmax: float, **kwargs):
         super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
@@ -138,8 +154,14 @@ class Unconstrained_Uniform(Prior):
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
-        self.transforms = {"y":  ("x", lambda param: (self.xmax - self.xmin)/(1+jnp.exp(-param['x']))+self.xmin)}
-    
+        self.transforms = {
+            "y": (
+                "x",
+                lambda param: (self.xmax - self.xmin) / (1 + jnp.exp(-param["x"]))
+                + self.xmin,
+            )
+        }
+
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         """
         Sample from a uniform distribution.
@@ -155,15 +177,16 @@ class Unconstrained_Uniform(Prior):
         -------
         samples : Array
             An array of shape (n_samples, n_dim) containing the samples.
-        
+
         """
         samples = jax.random.uniform(rng_key, (n_samples,), minval=0, maxval=1)
-        samples = jnp.log(samples/(1-samples))
+        samples = jnp.log(samples / (1 - samples))
         return samples
 
     def log_prob(self, x: Array) -> Float:
-        y = 1. / 1 + jnp.exp(-x)
-        return jnp.log((1/(self.xmax-self.xmin))*(1/(y-y*y)))
+        y = 1.0 / 1 + jnp.exp(-x)
+        return jnp.log((1 / (self.xmax - self.xmin)) * (1 / (y - y * y)))
+
 
 class Composite(Prior):
 
