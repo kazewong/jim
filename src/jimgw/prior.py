@@ -81,8 +81,8 @@ class Prior(Distribution):
 
 class Uniform(Prior):
 
-    xmin: Array
-    xmax: Array
+    xmin: Union[float,Array] = 0.
+    xmax: Union[float,Array] = 1.
 
     def __init__(self, xmin: Union[float,Array], xmax: Union[float,Array], **kwargs):
         super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
@@ -111,4 +111,43 @@ class Uniform(Prior):
 
     def log_prob(self, x: Array) -> Float:
         output = jnp.sum(jnp.where((x>=self.xmax) | (x<=self.xmin), jnp.zeros_like(x)-jnp.inf, jnp.zeros_like(x)))
-        return output + jnp.sum(jnp.log(1./(self.xmax-self.xmin))) 
+        return output + jnp.sum(jnp.log(1./(self.xmax-self.xmin)))
+
+class Unconstrained_Uniform(Prior):
+
+    xmin: float = 0.
+    xmax: float = 1.
+
+    def __init__(self, xmin: float, xmax: float, **kwargs):
+        super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
+        assert isinstance(xmin, float), "xmin must be a float"
+        assert isinstance(xmax, float), "xmax must be a float"
+        assert self.n_dim == 1, "Unconstrained_Uniform only works for 1D distributions"
+        self.xmax = xmax
+        self.xmin = xmin
+        self.transforms = {"y":  ("x", lambda param: (self.xmax - self.xmin)/(1+jnp.exp(-param['x']))+self.xmin)}
+    
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        """
+        Sample from a uniform distribution.
+
+        Parameters
+        ----------
+        rng_key : jax.random.PRNGKey
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : Array
+            An array of shape (n_samples, n_dim) containing the samples.
+        
+        """
+        samples = jax.random.uniform(rng_key, (n_samples,), minval=0, maxval=1)
+        samples = jnp.log(samples/(1-samples))
+        return samples
+
+    def log_prob(self, x: Array) -> Float:
+        y = 1. / 1 + jnp.exp(-x)
+        return (1/(self.xmax-self.xmin))*(1/(y-y*y))
