@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
@@ -43,7 +44,9 @@ class Prior(Distribution):
             if name in transforms:
                 self.transforms[name] = transforms[name]
             else:
-                self.transforms[name] = (name, make_lambda(name)) # Without the function, the lambda will refer to the variable name instead of its value, which will make lambda reference the last value of the variable name
+                # Without the function, the lambda will refer to the variable name instead of its value,
+                # which will make lambda reference the last value of the variable name
+                self.transforms[name] = (name, make_lambda(name)) 
 
     def transform(self, x: Array) -> Array:
         """
@@ -79,15 +82,23 @@ class Prior(Distribution):
             value = x
         return dict(zip(naming,value))
 
+    @abstractmethod
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        raise NotImplementedError
+
+    @abstractmethod
+    def logpdf(self, x: dict) -> Float:
+        raise NotImplementedError
+
 class Uniform(Prior):
 
-    xmin: Union[float,Array] = 0.
-    xmax: Union[float,Array] = 1.
+    xmin: float = 0.
+    xmax: float = 1.
 
-    def __init__(self, xmin: Union[float,Array], xmax: Union[float,Array], **kwargs):
+    def __init__(self, xmin: float, xmax: float, **kwargs):
         super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
-        self.xmax = jnp.array(xmax)
-        self.xmin = jnp.array(xmin)
+        self.xmax = xmax
+        self.xmin = xmin
     
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         """
@@ -106,11 +117,12 @@ class Uniform(Prior):
             An array of shape (n_samples, n_dim) containing the samples.
         
         """
-        samples = jax.random.uniform(rng_key, (n_samples,self.n_dim), minval=self.xmin, maxval=self.xmax)
-        return samples # TODO: remember to cast this to a named array
+        samples = jax.random.uniform(rng_key, (n_samples,), minval=self.xmin, maxval=self.xmax)
+        return samples
 
-    def log_prob(self, x: Array) -> Float:
-        output = jnp.sum(jnp.where((x>=self.xmax) | (x<=self.xmin), jnp.zeros_like(x)-jnp.inf, jnp.zeros_like(x)))
+    def log_prob(self, x: dict) -> Float:
+        variable = x[self.naming[0]]
+        output = jnp.sum(jnp.where((variable>=self.xmax) | (variable<=self.xmin), jnp.zeros_like(variable)-jnp.inf, jnp.zeros_like(variable)))
         return output + jnp.sum(jnp.log(1./(self.xmax-self.xmin)))
 
 class Unconstrained_Uniform(Prior):
@@ -151,3 +163,26 @@ class Unconstrained_Uniform(Prior):
     def log_prob(self, x: Array) -> Float:
         y = 1. / 1 + jnp.exp(-x)
         return (1/(self.xmax-self.xmin))*(1/(y-y*y))
+
+class Composite(Prior):
+
+    priors: list[Prior] = []
+
+    def __init__(self, priors: list[Prior], **kwargs):
+        naming = []
+        transforms = {}
+        for prior in priors:
+            naming += prior.naming
+            transforms.update(prior.transforms)
+        self.priors = priors
+        self.naming = naming
+        self.transforms = transforms
+
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        for prior in self.priors:
+            rng_key, subkey = jax.random.split(rng_key)
+            prior.sample(subkey, n_samples)
+
+    def log_prob(self, x: Array) -> Float:
+        for prior in self.priors:
+            prior.log_prob(x)
