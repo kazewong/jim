@@ -193,6 +193,16 @@ class Unconstrained_Uniform(Prior):
         y = 1.0 / 1 + jnp.exp(-x)
         return jnp.log((1 / (self.xmax - self.xmin)) * (1 / (y - y * y)))
 
+class Sphere(Prior):
+
+    def __init__(self, naming: list[str], transforms: dict[tuple[str, Callable]] = {}):
+        super().__init__(naming, transforms)
+
+    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+        return super().sample(rng_key, n_samples)
+    
+    def log_prob(self, x: Array) -> Array:
+        return super().log_prob(x)
 
 class Composite(Prior):
 
