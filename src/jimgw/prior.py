@@ -82,11 +82,9 @@ class Prior(Distribution):
             value = x
         return dict(zip(naming,value))
 
-    @abstractmethod
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         raise NotImplementedError
 
-    @abstractmethod
     def logpdf(self, x: dict) -> Float:
         raise NotImplementedError
 
@@ -95,8 +93,11 @@ class Uniform(Prior):
     xmin: float = 0.
     xmax: float = 1.
 
-    def __init__(self, xmin: float, xmax: float, **kwargs):
-        super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
+    def __init__(self, xmin: float, xmax: float, naming: list[str], transforms: dict[tuple[str,Callable]] = {}):
+        super().__init__(naming, transforms)
+        assert isinstance(xmin, float), "xmin must be a float"
+        assert isinstance(xmax, float), "xmax must be a float"
+        assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
     
@@ -122,8 +123,8 @@ class Uniform(Prior):
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        output = jnp.sum(jnp.where((variable>=self.xmax) | (variable<=self.xmin), jnp.zeros_like(variable)-jnp.inf, jnp.zeros_like(variable)))
-        return output + jnp.sum(jnp.log(1./(self.xmax-self.xmin)))
+        output = jnp.where((variable>=self.xmax) | (variable<=self.xmin), jnp.zeros_like(variable)-jnp.inf, jnp.zeros_like(variable))
+        return output + jnp.log(1./(self.xmax-self.xmin))
 
 class Unconstrained_Uniform(Prior):
 
@@ -134,7 +135,7 @@ class Unconstrained_Uniform(Prior):
         super().__init__(kwargs.get("naming"), kwargs.get("transforms"))
         assert isinstance(xmin, float), "xmin must be a float"
         assert isinstance(xmax, float), "xmax must be a float"
-        assert self.n_dim == 1, "Unconstrained_Uniform only works for 1D distributions"
+        assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         self.transforms = {"y":  ("x", lambda param: (self.xmax - self.xmin)/(1+jnp.exp(-param['x']))+self.xmin)}
@@ -162,11 +163,11 @@ class Unconstrained_Uniform(Prior):
 
     def log_prob(self, x: Array) -> Float:
         y = 1. / 1 + jnp.exp(-x)
-        return (1/(self.xmax-self.xmin))*(1/(y-y*y))
+        return jnp.log((1/(self.xmax-self.xmin))*(1/(y-y*y)))
 
 class Composite(Prior):
 
-    priors: list[Prior] = []
+    priors: list[Prior] = field(default_factory=list)
 
     def __init__(self, priors: list[Prior], **kwargs):
         naming = []
