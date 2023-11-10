@@ -72,17 +72,21 @@ class Prior(Distribution):
     ) -> dict:
         """
         Turn an array into a dictionary
+
+        Parameters
+        ----------
+        x : Array
+            An array of parameters. Shape (n_dim, n_sample).
         """
         if transform_name:
             naming = [value[0] for value in self.transforms.values()]
         else:
             naming = self.naming
+        x = dict(zip(naming, x))
         if transform_value:
-            x = self.transform(x)
-            value = x
+            return self.transform(x)
         else:
-            value = x
-        return dict(zip(naming, value))
+            return x
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         raise NotImplementedError

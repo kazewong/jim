@@ -72,7 +72,7 @@ class Jim(object):
 
     def posterior(self, params: Array, data: dict):
         named_params = self.Prior.add_name(params, transform_name=True, transform_value=True)
-        return self.Likelihood.evaluate(named_params, data) + self.Prior.log_prob(params)
+        return self.Likelihood.evaluate(named_params, data) + self.Prior.log_prob(named_params)
 
     def sample(self, key: jax.random.PRNGKey,
                initial_guess: Array = None):
