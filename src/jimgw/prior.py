@@ -62,14 +62,12 @@ class Prior(Distribution):
         x : dict
             A dictionary of parameters with the transforms applied.
         """
-        # output = self.add_name(x, transform_name=False, transform_value=False)
-        for i, (key, value) in enumerate(self.transforms.items()):
-            x[key] = value[1](x)
-        return x
+        output = {}
+        for value in self.transforms.values():
+            output[value[0]] = value[1](x)
+        return output
 
-    def add_name(
-        self, x: Array, transform_name: bool = False, transform_value: bool = False
-    ) -> dict:
+    def add_name(self, x: Array) -> dict:
         """
         Turn an array into a dictionary
 
@@ -78,15 +76,8 @@ class Prior(Distribution):
         x : Array
             An array of parameters. Shape (n_dim, n_sample).
         """
-        if transform_name:
-            naming = [value[0] for value in self.transforms.values()]
-        else:
-            naming = self.naming
-        x = dict(zip(naming, x))
-        if transform_value:
-            return self.transform(x)
-        else:
-            return x
+
+        return dict(zip(self.naming, x))
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         raise NotImplementedError
@@ -166,11 +157,11 @@ class Unconstrained_Uniform(Prior):
         self.xmin = xmin
         local_transform = self.transforms
         def new_transform(param):
-            result = (self.xmax - self.xmin) / (1 + jnp.exp(-param[self.naming[0]])) + self.xmin
-            return local_transform[self.naming[0]][1]({self.naming[0]:result})
+            param[self.naming[0]] = (self.xmax - self.xmin) / (1 + jnp.exp(-param[self.naming[0]])) + self.xmin
+            return local_transform[self.naming[0]][1](param)
         self.transforms = {
             self.naming[0]: (
-                self.naming[0],
+                local_transform[self.naming[0]][0],
                 new_transform
             )
         }
@@ -203,14 +194,29 @@ class Unconstrained_Uniform(Prior):
 
 class Sphere(Prior):
 
-    def __init__(self, naming: list[str], transforms: dict[tuple[str, Callable]] = {}):
-        super().__init__(naming, transforms)
+    """
+    A prior on a sphere represented by Cartesian coordinates.
+
+    Magnitude is sampled from a uniform distribution.
+    """
+
+    def __init__(self, naming: str):
+        self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
+        self.transforms = {
+            self.naming[0]: (f"{naming}_x", lambda params: jnp.sin(params[self.naming[0]]) * jnp.cos(params[self.naming[1]]) * params[self.naming[2]]),
+            self.naming[1]: (f"{naming}_y", lambda params: jnp.sin(params[self.naming[0]]) * jnp.sin(params[self.naming[1]]) * params[self.naming[2]]),
+            self.naming[2]: (f"{naming}_z", lambda params: jnp.cos(params[self.naming[0]]) * params[self.naming[2]]),
+        }
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        return super().sample(rng_key, n_samples)
-    
+        rng_keys = jax.random.split(rng_key,3)
+        theta = jax.random.uniform(rng_keys[0], (n_samples,), minval=0, maxval=2*jnp.pi)
+        phi = jnp.arccos(jax.random.uniform(rng_keys[1], (n_samples,), minval=-1., maxval=1.))
+        mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
+        return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
+ 
     def log_prob(self, x: dict) -> Float:
-        return super().log_prob(x)
+        return jnp.log(x[self.naming[2]]**2*jnp.sin(x[self.naming[1]]))
 
 class Composite(Prior):
 

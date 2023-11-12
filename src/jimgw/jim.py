@@ -37,7 +37,7 @@ class Jim(object):
             True,
             model,
             params={
-                "step_size": 1e-4,
+                "step_size": 1e-2,
                 "n_leapfrog": 5,
                 "inverse_metric": jnp.ones(prior.n_dim),
             },
@@ -71,13 +71,15 @@ class Jim(object):
         return best_fit
 
     def posterior(self, params: Array, data: dict):
-        named_params = self.Prior.add_name(params, transform_name=True, transform_value=True)
-        return self.Likelihood.evaluate(named_params, data) + self.Prior.log_prob(named_params)
+        prior_params = self.Prior.add_name(params.T)
+        prior  = self.Prior.log_prob(prior_params)
+        return self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
 
     def sample(self, key: jax.random.PRNGKey,
                initial_guess: Array = None):
         if initial_guess is None:
             initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess.values()]).T
         self.Sampler.sample(initial_guess, None)
 
     def print_summary(self):
