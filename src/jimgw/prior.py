@@ -223,7 +223,7 @@ class Sphere(Prior):
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
  
     def log_prob(self, x: dict) -> Float:
-        return jnp.log(x[self.naming[2]]**2*jnp.sin(jnp.arccos(x[self.naming[1]])))
+        return jnp.log(x[self.naming[2]]**2*jnp.sin(x[self.naming[1]]))
 
 class Composite(Prior):
 
