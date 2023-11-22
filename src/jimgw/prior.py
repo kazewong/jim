@@ -137,7 +137,7 @@ class Uniform(Prior):
         return output + jnp.log(1.0 / (self.xmax - self.xmin))
 
 
-class UUniform(Prior):
+class Unconstrained_Uniform(Prior):
 
     xmin: float = 0.0
     xmax: float = 1.0
