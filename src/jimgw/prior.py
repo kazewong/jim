@@ -137,10 +137,11 @@ class Uniform(Prior):
         return output + jnp.log(1.0 / (self.xmax - self.xmin))
 
 
-class Unconstrained_Uniform(Prior):
+class UUniform(Prior):
 
     xmin: float = 0.0
     xmax: float = 1.0
+    to_range: Callable = lambda x: x
 
     def __init__(
         self,
@@ -156,8 +157,9 @@ class Unconstrained_Uniform(Prior):
         self.xmax = xmax
         self.xmin = xmin
         local_transform = self.transforms
+        self.to_range = lambda x: (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]])) + self.xmin
         def new_transform(param):
-            param[self.naming[0]] = (self.xmax - self.xmin) / (1 + jnp.exp(-param[self.naming[0]])) + self.xmin
+            param[self.naming[0]] = self.to_range(param)
             return local_transform[self.naming[0]][1](param)
         self.transforms = {
             self.naming[0]: (
@@ -189,8 +191,13 @@ class Unconstrained_Uniform(Prior):
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        y = 1.0 / (1 + jnp.exp(-variable))
-        return jnp.log((1 / (self.xmax - self.xmin)) * (1 / (y - y * y)))
+        variable = (self.xmax - self.xmin) / (1 + jnp.exp(-variable)) + self.xmin
+        output = jnp.where(
+            (variable >= self.xmax) | (variable <= self.xmin),
+            jnp.zeros_like(variable) - jnp.inf,
+            jnp.zeros_like(variable) + jnp.log(1.0 / (self.xmax - self.xmin)),
+        )
+        return output
 
 class Sphere(Prior):
 
