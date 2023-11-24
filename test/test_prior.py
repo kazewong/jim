@@ -1,3 +1,1 @@
-from jimgw.prior import Uniform, Unconstrained_Uniform, Composite
-
-
+from jimgw.prior import Uniform, UUniform, Composite

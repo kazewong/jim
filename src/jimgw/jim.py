@@ -31,17 +31,23 @@ class Jim(object):
 
         local_sampler = MALA(self.posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
 
+        flowHMC_params = kwargs.get("flowHMC_params", {})
+        if len(flowHMC_params) > 0:
+            flowHMC_sampler = flowHMC(
+                self.posterior,
+                True,
+                model,
+                params={
+                    "step_size": flowHMC_params["step_size"],
+                    "n_leapfrog": flowHMC_params["n_leapfrog"],
+                    "condition_matrix": flowHMC_params["condition_matrix"],
+                },
+            )
+        else:
+            flowHMC_sampler = None
+
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
-        flowHMC_sampler = flowHMC(
-            self.posterior,
-            True,
-            model,
-            params={
-                "step_size": 1e-2,
-                "n_leapfrog": 5,
-                "inverse_metric": jnp.ones(prior.n_dim),
-            },
-        )
+        
         self.Sampler = Sampler(
             self.Prior.n_dim,
             rng_key_set,
