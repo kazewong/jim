@@ -157,15 +157,17 @@ class Unconstrained_Uniform(Prior):
         self.xmax = xmax
         self.xmin = xmin
         local_transform = self.transforms
-        self.to_range = lambda x: (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]])) + self.xmin
+        self.to_range = (
+            lambda x: (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]]))
+            + self.xmin
+        )
+
         def new_transform(param):
             param[self.naming[0]] = self.to_range(param)
             return local_transform[self.naming[0]][1](param)
+
         self.transforms = {
-            self.naming[0]: (
-                local_transform[self.naming[0]][0],
-                new_transform
-            )
+            self.naming[0]: (local_transform[self.naming[0]][0], new_transform)
         }
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
@@ -181,7 +183,7 @@ class Unconstrained_Uniform(Prior):
 
         Returns
         -------
-        samples : 
+        samples :
             An array of shape (n_samples, n_dim) containing the samples.
 
         """
@@ -191,13 +193,8 @@ class Unconstrained_Uniform(Prior):
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        variable = (self.xmax - self.xmin) / (1 + jnp.exp(-variable)) + self.xmin
-        output = jnp.where(
-            (variable >= self.xmax) | (variable <= self.xmin),
-            jnp.zeros_like(variable) - jnp.inf,
-            jnp.zeros_like(variable) + jnp.log(1.0 / (self.xmax - self.xmin)),
-        )
-        return output
+        return jnp.log(jnp.exp(-variable)/(1 + jnp.exp(-variable))**2) 
+
 
 class Sphere(Prior):
 
@@ -210,20 +207,38 @@ class Sphere(Prior):
     def __init__(self, naming: str):
         self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
         self.transforms = {
-            self.naming[0]: (f"{naming}_x", lambda params: jnp.sin(params[self.naming[0]]) * jnp.cos(params[self.naming[1]]) * params[self.naming[2]]),
-            self.naming[1]: (f"{naming}_y", lambda params: jnp.sin(params[self.naming[0]]) * jnp.sin(params[self.naming[1]]) * params[self.naming[2]]),
-            self.naming[2]: (f"{naming}_z", lambda params: jnp.cos(params[self.naming[0]]) * params[self.naming[2]]),
+            self.naming[0]: (
+                f"{naming}_x",
+                lambda params: jnp.sin(params[self.naming[0]])
+                * jnp.cos(params[self.naming[1]])
+                * params[self.naming[2]],
+            ),
+            self.naming[1]: (
+                f"{naming}_y",
+                lambda params: jnp.sin(params[self.naming[0]])
+                * jnp.sin(params[self.naming[1]])
+                * params[self.naming[2]],
+            ),
+            self.naming[2]: (
+                f"{naming}_z",
+                lambda params: jnp.cos(params[self.naming[0]]) * params[self.naming[2]],
+            ),
         }
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
-        rng_keys = jax.random.split(rng_key,3)
-        theta = jax.random.uniform(rng_keys[0], (n_samples,), minval=0, maxval=2*jnp.pi)
-        phi = jnp.arccos(jax.random.uniform(rng_keys[1], (n_samples,), minval=-1., maxval=1.))
+        rng_keys = jax.random.split(rng_key, 3)
+        theta = jax.random.uniform(
+            rng_keys[0], (n_samples,), minval=0, maxval=2 * jnp.pi
+        )
+        phi = jnp.arccos(
+            jax.random.uniform(rng_keys[1], (n_samples,), minval=-1.0, maxval=1.0)
+        )
         mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
- 
+
     def log_prob(self, x: dict) -> Float:
-        return jnp.log(x[self.naming[2]]**2*jnp.sin(x[self.naming[1]]))
+        return jnp.log(x[self.naming[2]] ** 2 * jnp.sin(x[self.naming[1]]))
+
 
 class Composite(Prior):
 
