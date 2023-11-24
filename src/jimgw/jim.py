@@ -32,8 +32,9 @@ class Jim(object):
         local_sampler = MALA(self.posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
 
         flowHMC_params = kwargs.get("flowHMC_params", {})
+        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
         if len(flowHMC_params) > 0:
-            flowHMC_sampler = flowHMC(
+            global_sampler = flowHMC(
                 self.posterior,
                 True,
                 model,
@@ -44,9 +45,8 @@ class Jim(object):
                 },
             )
         else:
-            flowHMC_sampler = None
+            global_sampler = None
 
-        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
         
         self.Sampler = Sampler(
             self.Prior.n_dim,
@@ -54,7 +54,7 @@ class Jim(object):
             None,
             local_sampler,
             model,
-            global_sampler = flowHMC_sampler,
+            global_sampler = global_sampler,
             **kwargs)
         
 
