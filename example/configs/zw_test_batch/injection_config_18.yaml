@@ -1,0 +1,27 @@
+output_path: /home/zwang264/scr4_berti/zipeng/PPE_with_Jax/jim/example/zw_test_batch_out/injection_18
+downsample_factor: 10
+seed: 9934
+f_sampling: 2048
+duration: 4
+fmin: 30
+ifos:
+  - H1
+  - L1
+  - V1
+m1: 130.60783939926912
+m2: 60.56087838754616
+s1_mag: 0.013544624833983221
+s1_theta: 2.138677222534648
+s1_phi: 4.528892066050358
+s2_mag: 0.648683559999894
+s2_theta: 1.9428875189164883
+s2_phi: 2.074763915191658
+dist_mpc: 412.63476820011215
+tc: 0.006352265614089908
+phic: 0.9237559562851206
+inclination: 2.428896448926568
+polarization_angle: 2.2290410094662474
+ra: 3.3000434325523074
+dec: -1.187321206139111
+heterodyne_bins: 1001
+log_likelihood: 5652.981802483404
