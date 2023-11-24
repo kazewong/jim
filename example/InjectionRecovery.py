@@ -73,7 +73,7 @@ opt = vars(args)
 yaml_var = yaml.load(open(opt['config'], 'r'), Loader=yaml.FullLoader)
 opt.update(yaml_var)
 # Fetch noise parameters 
-
+print("s1_mag:", args.s1_mag)
 print("Constructing detectors")
 print("Making noises")
 
