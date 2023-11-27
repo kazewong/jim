@@ -378,7 +378,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         y = jax.jit(jax.vmap(y))
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(len(bounds), verbose=True)
+        optimizer = EvolutionaryOptimizer(len(bounds), popsize=set_nwalkers, verbose=True)
         state = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.add_name(best_fit, transform_name=True, transform_value=True)
