@@ -370,7 +370,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         n_loops: int = 2000,
     ):
         bounds = jnp.array(bounds).T
-        set_nwalkers = set_nwalkers
+        set_nwalkers = set_nwalkers # TODO remove this?
 
         y = lambda x: -self.evaluate_original(
             prior.add_name(x, transform_name=True, transform_value=True), None
