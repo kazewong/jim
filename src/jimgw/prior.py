@@ -228,16 +228,16 @@ class Sphere(Prior):
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
         rng_keys = jax.random.split(rng_key, 3)
         theta = jax.random.uniform(
-            rng_keys[0], (n_samples,), minval=0, maxval=2 * jnp.pi
+            rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0
         )
         phi = jnp.arccos(
-            jax.random.uniform(rng_keys[1], (n_samples,), minval=-1.0, maxval=1.0)
+            jax.random.uniform(rng_keys[1], (n_samples,), minval=0, maxval=2*jnp.pi)
         )
         mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
 
     def log_prob(self, x: dict) -> Float:
-        return jnp.log(x[self.naming[2]] ** 2 * jnp.sin(x[self.naming[1]]))
+        return jnp.log(x[self.naming[2]] ** 2 * jnp.sin(x[self.naming[0]]))
 
 
 class Composite(Prior):
