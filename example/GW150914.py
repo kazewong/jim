@@ -83,7 +83,13 @@ prior = Composite(
         sin_dec_prior,
     ]
 )
-likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
+likelihood = TransientLikelihoodFD(
+    [H1, L1],
+    waveform=RippleIMRPhenomD(),
+    trigger_time=gps,
+    duration=4,
+    post_trigger_duration=2,
+)
 
 
 mass_matrix = jnp.eye(11)

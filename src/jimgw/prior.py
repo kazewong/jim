@@ -193,7 +193,7 @@ class Unconstrained_Uniform(Prior):
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        return jnp.log(jnp.exp(-variable)/(1 + jnp.exp(-variable))**2) 
+        return jnp.log(jnp.exp(-variable) / (1 + jnp.exp(-variable)) ** 2)
 
 
 class Sphere(Prior):
