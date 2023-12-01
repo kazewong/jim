@@ -190,7 +190,7 @@ class GroundBased2G(Detector):
         psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, cache=True)
         psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
 
-        print("Finished generating data.")
+        print("Finished loading data.")
 
         self.frequencies = freq[(freq>f_min)&(freq<f_max)]
         self.data = data[(freq>f_min)&(freq<f_max)]
