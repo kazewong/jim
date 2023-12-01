@@ -144,7 +144,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         duration: float = 4,
         post_trigger_duration: float = 2,
         n_walkers: int = 100,
-        n_loops: int = 20,
+        n_loops: int = 200,
     ) -> None:
         super().__init__(
             detectors, waveform, trigger_time, duration, post_trigger_duration
@@ -161,6 +161,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.ref_params = self.maximize_likelihood(
             bounds=bounds, prior=prior, set_nwalkers=n_walkers, n_loops=n_loops
         )
+
+        print("Constructing reference waveforms..")
 
         self.ref_params["gmst"] = self.gmst
 

@@ -152,7 +152,8 @@ class GroundBased2G(Detector):
                 f_min: float,
                 f_max: float,
                 psd_pad: int = 16,
-                tukey_alpha: float = 0.2) -> None:
+                tukey_alpha: float = 0.2,
+                gwpy_kwargs: dict = {"cache":True}) -> None:
         """
         Load data from the detector.
 
@@ -176,18 +177,18 @@ class GroundBased2G(Detector):
         """
 
         print("Fetching data from {}...".format(self.name))
-        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, cache=True)
+        data_td = TimeSeries.fetch_open_data(self.name, trigger_time - gps_start_pad, trigger_time + gps_end_pad, **gwpy_kwargs)
         segment_length = data_td.duration.value
         n = len(data_td)
         delta_t = data_td.dt.value
         data = jnp.fft.rfft(jnp.array(data_td.value)*tukey(n, tukey_alpha))*delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
-        start_psd = int(trigger_time) - gps_start_pad - psd_pad # What does Int do here?
-        end_psd = int(trigger_time) + gps_end_pad + psd_pad
+        start_psd = int(trigger_time) - gps_start_pad - 2*psd_pad # What does Int do here?
+        end_psd = int(trigger_time) - gps_start_pad - psd_pad
 
         print("Fetching PSD data...")
-        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, cache=True)
+        psd_data_td = TimeSeries.fetch_open_data(self.name, start_psd, end_psd, **gwpy_kwargs)
         psd = psd_data_td.psd(fftlength=segment_length).value # TODO: Check whether this is sright.
 
         print("Finished loading data.")
