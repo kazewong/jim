@@ -157,6 +157,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             detectors, waveform, trigger_time, duration, post_trigger_duration
         )
 
+        print("Initializing heterodyned likelihood..")
+
         # Get the original frequency grid
 
         assert jnp.all(
@@ -175,6 +177,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             np.array(frequency_original), n_bins
         )
         self.freq_grid_low = freq_grid[:-1]
+
+        print("Finding reference parameters..")
 
         self.ref_params = self.maximize_likelihood(
             bounds=bounds, prior=prior, set_nwalkers=n_walkers, n_loops=n_loops
@@ -224,18 +228,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             mask[index_f_min : index_f_max + 1] = True
             return mask
 
-        mask_original = get_mask(frequency_original, f_min, f_max)
         mask_heterodyne_low = get_mask(self.freq_grid_low, f_min, f_max)
         mask_heterodyne_center = get_mask(self.freq_grid_center, f_min, f_max)
 
         # Apply the mask for frequencies to both polarization modes
         # and for all waveforms currently used
-        for mode in ["p", "c"]:
-            h_sky[mode] = h_sky[mode][mask_original]
+        for mode in h_sky.keys():
             h_sky_low[mode] = h_sky_low[mode][mask_heterodyne_low]
             h_sky_center[mode] = h_sky_center[mode][mask_heterodyne_center]
 
-        frequency_original = frequency_original[mask_original]
         freq_grid = freq_grid[get_mask(freq_grid, f_min, f_max)]
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
@@ -265,7 +266,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         for detector in self.detectors:
             # Also apply the mask of frequencies to the strain data
-            detector.data = detector.data[mask_original]
             # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
@@ -369,7 +369,32 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return log_likelihood
 
     @staticmethod
-    def max_phase_diff(f, f_low, f_high, chi=1):
+    def max_phase_diff(
+        f: Float[Array, "n_dim"],
+        f_low: float,
+        f_high: float,
+        chi: float =1,
+    ):
+        """
+        Compute the maximum phase difference between the frequencies in the array.
+
+        Parameters
+        ----------
+        f: Float[Array, "n_dim"]
+            Array of frequencies to be binned.
+        f_low: float
+            Lower frequency bound.
+        f_high: float
+            Upper frequency bound.
+        chi: float
+            Power law index.
+
+        Returns
+        -------
+        Float[Array, "n_dim"]
+            Maximum phase difference between the frequencies in the array.
+        """
+
         gamma = np.arange(-5, 6, 1) / 3.0
         f = np.repeat(f[:, None], len(gamma), axis=1)
         f_star = np.repeat(f_low, len(gamma))
@@ -377,7 +402,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
 
     def make_binning_scheme(
-        self, freqs: Float[Array, "dim"], n_bins: int, chi: float = 1
+        self, freqs: Float[Array, "n_dim"], n_bins: int, chi: float = 1
     ) -> tuple[Float[Array, "n_bins+1"], Float[Array, "n_bins"]]:
         """
         Make a binning scheme based on the maximum phase difference between the
