@@ -25,6 +25,8 @@ class LikelihoodBase(ABC):
     a given set of parameters.
 
     """
+    _model: object
+    _data: object
 
     @property
     def model(self):
