@@ -109,11 +109,16 @@ class Jim(object):
         """
         Get the samples from the sampler
 
-        Args:
-            training (bool, optional): If True, return the training samples. Defaults to False.
+        Parameters
+        ----------
+        training : bool, optional
+            Whether to get the training samples or the production samples, by default False
 
-        Returns:
-            Array: Samples
+        Returns
+        -------
+        dict
+            Dictionary of samples
+
         """
         if training:
             chains = self.Sampler.get_sampler_state(training=True)["chains"]

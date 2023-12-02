@@ -25,6 +25,7 @@ class LikelihoodBase(ABC):
     a given set of parameters.
 
     """
+
     _model: object
     _data: object
 
@@ -375,7 +376,30 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_star[gamma >= 0] = f_high
         return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
 
-    def make_binning_scheme(self, freqs: Float[Array, "dim"], n_bins, chi=1):
+    def make_binning_scheme(
+        self, freqs: Float[Array, "dim"], n_bins: int, chi: float = 1
+    ) -> tuple[Float[Array, "n_bins+1"], Float[Array, "n_bins"]]:
+        """
+        Make a binning scheme based on the maximum phase difference between the
+        frequencies in the array.
+
+        Parameters
+        ----------
+        freqs: Float[Array, "dim"]
+            Array of frequencies to be binned.
+        n_bins: int
+            Number of bins to be used.
+        chi: float = 1
+            The chi parameter used in the phase difference calculation.
+
+        Returns
+        -------
+        f_bins: Float[Array, "n_bins+1"]
+            The bin edges.
+        f_bins_center: Float[Array, "n_bins"]
+            The bin centers.
+        """
+
         phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)
         bin_f = interp1d(phase_diff_array, freqs)
         f_bins = np.array([])
