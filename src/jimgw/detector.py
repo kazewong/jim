@@ -92,7 +92,7 @@ class GroundBased2G(Detector):
         """
         Construct detector-arm vectors in Earth-centric Cartesian coordinates.
 
-        Arguments
+        Parameters
         ---------
         lat : float
             vertex latitude in rad.
@@ -254,7 +254,7 @@ class GroundBased2G(Detector):
 
         https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
 
-        Arguments
+        Parameters
         ---------
         ra : float
             right ascension of the source in rad.
@@ -289,7 +289,7 @@ class GroundBased2G(Detector):
         given polarization is the dyadic product between the detector
         tensor and the corresponding polarization tensor.
 
-        Arguments
+        Parameters
         ---------
         ra : float
             source right ascension in radians.

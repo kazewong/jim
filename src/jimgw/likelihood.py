@@ -197,19 +197,22 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         h_sky = self.waveform(frequency_original, self.ref_params)
 
-
         # Get frequency masks to be applied, for both original
         # and heterodyne frequency grid
-        h_amp = jnp.sum(jnp.array([jnp.abs(h_sky[key]) for key in h_sky.keys()]),axis = 0)
-        f_valid = frequency_original[
-            jnp.where(h_amp > 0)[0]
-        ]
+        h_amp = jnp.sum(
+            jnp.array([jnp.abs(h_sky[key]) for key in h_sky.keys()]), axis=0
+        )
+        f_valid = frequency_original[jnp.where(h_amp > 0)[0]]
         f_max = jnp.max(f_valid)
         f_min = jnp.min(f_valid)
 
-        mask_heterodyne_grid = jnp.where((freq_grid <= f_max)&(freq_grid >= f_min))[0]
-        mask_heterodyne_low = jnp.where((self.freq_grid_low <= f_max)&(self.freq_grid_low >= f_min))[0]
-        mask_heterodyne_center = jnp.where((self.freq_grid_center <= f_max)&(self.freq_grid_center >= f_min))[0]
+        mask_heterodyne_grid = jnp.where((freq_grid <= f_max) & (freq_grid >= f_min))[0]
+        mask_heterodyne_low = jnp.where(
+            (self.freq_grid_low <= f_max) & (self.freq_grid_low >= f_min)
+        )[0]
+        mask_heterodyne_center = jnp.where(
+            (self.freq_grid_center <= f_max) & (self.freq_grid_center >= f_min)
+        )[0]
         freq_grid = freq_grid[mask_heterodyne_grid]
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
@@ -240,7 +243,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             * (self.epoch + self.ref_params["t_c"])
         )
 
-
         for detector in self.detectors:
             # Get the reference waveforms
             waveform_ref = (
@@ -270,7 +272,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.A1_array[detector.name] = A1[mask_heterodyne_center]
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
-
 
     def evaluate(self, params: Array, data: dict) -> float:
         log_likelihood = 0
