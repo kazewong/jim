@@ -16,11 +16,13 @@ from jimgw.waveform import Waveform
 class LikelihoodBase(ABC):
     """
     Base class for likelihoods.
-    Note that this likelihood class should work for a some what general class of problems.
-    In light of that, this class would be some what abstract, but the idea behind it is this
-    handles two main components of a likelihood: the data and the model.
-
-    It should be able to take the data and model and evaluate the likelihood for a given set of parameters.
+    Note that this likelihood class should work
+    for a some what general class of problems.
+    In light of that, this class would be some what abstract,
+    but the idea behind it is this handles two main components of a likelihood:
+    the data and the model.
+    It should be able to take the data and model and evaluate the likelihood for
+    a given set of parameters.
 
     """
 
@@ -47,7 +49,6 @@ class LikelihoodBase(ABC):
 
 
 class TransientLikelihoodFD(LikelihoodBase):
-
     detectors: list[Detector]
     waveform: Waveform
 
@@ -86,7 +87,9 @@ class TransientLikelihoodFD(LikelihoodBase):
 
     def evaluate(
         self, params: Array, data: dict
-    ) -> float:  # TODO: Test whether we need to pass data in or with class changes is fine.
+    ) -> (
+        float
+    ):  # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
@@ -119,7 +122,6 @@ class TransientLikelihoodFD(LikelihoodBase):
 
 
 class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
-
     n_bins: int  # Number of bins to use for the likelihood
     ref_params: dict  # Reference parameters for the likelihood
     freq_grid_low: Array  # Heterodyned frequency grid
@@ -164,7 +166,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         ), "The detectors must have the same frequency grid"
 
         frequency_original = self.detectors[0].frequencies
-        # Get the grid of the relative binning scheme (contains the final endpoint) and the center points
+        # Get the grid of the relative binning scheme (contains the final endpoint)
+        # and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
             np.array(frequency_original), n_bins
         )
@@ -189,7 +192,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
-        # Get frequency masks to be applied, for both original and heterodyne frequency grid
+        # Get frequency masks to be applied, for both original
+        # and heterodyne frequency grid
         f_valid = frequency_original[
             jnp.where((jnp.abs(h_sky["p"]) + jnp.abs(h_sky["c"])) > 0)[0]
         ]
@@ -198,7 +202,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         # TODO replace this
         def get_mask(f: Array, f_min: float, f_max: float) -> Array:
-            """Slice an array f by containing all elements in f that are greater or equal to f_min, and all elements smaller than or equal
+            """Slice an array f by containing all elements in f
+            that are greater or equal to f_min, and all elements smaller than or equal
             to f_max, and the element just right after that.
 
             Args:
@@ -220,7 +225,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         mask_heterodyne_low = get_mask(self.freq_grid_low, f_min, f_max)
         mask_heterodyne_center = get_mask(self.freq_grid_center, f_min, f_max)
 
-        # Apply the mask for frequencies to both polarization modes and for all waveforms currently used
+        # Apply the mask for frequencies to both polarization modes
+        # and for all waveforms currently used
         for mode in ["p", "c"]:
             h_sky[mode] = h_sky[mode][mask_original]
             h_sky_low[mode] = h_sky_low[mode][mask_heterodyne_low]
@@ -326,7 +332,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def evaluate_original(
         self, params: Array, data: dict
-    ) -> float:  # TODO: Test whether we need to pass data in or with class changes is fine.
+    ) -> (
+        float
+    ):  # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
@@ -365,8 +373,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_star[gamma >= 0] = f_high
         return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
 
-    def make_binning_scheme(self, freqs, n_bins, chi=1):
-        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=1)
+    def make_binning_scheme(self, freqs: Float[Array, "dim"], n_bins, chi=1):
+        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)
         bin_f = interp1d(phase_diff_array, freqs)
         f_bins = np.array([])
         for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1):
@@ -423,13 +431,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         bounds = jnp.array(bounds).T
         set_nwalkers = set_nwalkers
 
-        y = lambda x: -self.evaluate_original(
-            prior.add_name(x, transform_name=True, transform_value=True), None
-        )
+        def y(x):
+            return -self.evaluate_original(
+                prior.add_name(x, transform_name=True, transform_value=True), None
+            )
+
         y = jax.jit(jax.vmap(y))
 
         print("Starting the optimizer")
         optimizer = EvolutionaryOptimizer(len(bounds), verbose=True)
-        state = optimizer.optimize(y, bounds, n_loops=n_loops)
+        optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.add_name(best_fit, transform_name=True, transform_value=True)
