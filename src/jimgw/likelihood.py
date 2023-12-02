@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
-from jaxtyping import Array, Float
-from jimgw.waveform import Waveform
-from jimgw.detector import Detector
-import jax.numpy as jnp
-from astropy.time import Time
-import numpy as np
-from scipy.interpolate import interp1d
+
 import jax
+import jax.numpy as jnp
+import numpy as np
+from astropy.time import Time
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+from jaxtyping import Array, Float
+from scipy.interpolate import interp1d
+
+from jimgw.detector import Detector
 from jimgw.prior import Prior
+from jimgw.waveform import Waveform
 
 
 class LikelihoodBase(ABC):
@@ -151,6 +153,16 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         # Get the original frequency grid
+
+        assert jnp.all(
+            jnp.array(
+                [
+                    (self.detectors[0].frequencies == detector.frequencies).all()
+                    for detector in self.detectors
+                ]
+            )
+        ), "The detectors must have the same frequency grid"
+
         frequency_original = self.detectors[0].frequencies
         # Get the grid of the relative binning scheme (contains the final endpoint) and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
@@ -178,10 +190,12 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
         # Get frequency masks to be applied, for both original and heterodyne frequency grid
-        f_valid = frequency_original[jnp.where((jnp.abs(h_sky['p'])+jnp.abs(h_sky['c']))>0)[0]]
+        f_valid = frequency_original[
+            jnp.where((jnp.abs(h_sky["p"]) + jnp.abs(h_sky["c"])) > 0)[0]
+        ]
         f_max = jnp.max(f_valid)
         f_min = jnp.min(f_valid)
-        
+
         # TODO replace this
         def get_mask(f: Array, f_min: float, f_max: float) -> Array:
             """Slice an array f by containing all elements in f that are greater or equal to f_min, and all elements smaller than or equal
@@ -199,9 +213,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             index_f_min = np.argwhere(f >= f_min).flatten()[0]
             index_f_max = np.argwhere(f <= f_max).flatten()[-1]
             index_f_max = min(index_f_max + 1, len(f) - 1)
-            mask[index_f_min:index_f_max + 1] = True
+            mask[index_f_min : index_f_max + 1] = True
             return mask
-        
+
         mask_original = get_mask(frequency_original, f_min, f_max)
         mask_heterodyne_low = get_mask(self.freq_grid_low, f_min, f_max)
         mask_heterodyne_center = get_mask(self.freq_grid_center, f_min, f_max)
@@ -293,7 +307,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 detector.fd_response(frequencies_center, waveform_sky_center, params)
                 * align_time_center
             )
-            
+
             r0 = waveform_center / self.waveform_center_ref[detector.name]
             r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
                 frequencies_low - frequencies_center
