@@ -208,28 +208,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_min = jnp.min(f_valid)
 
         # TODO replace this
-        def get_mask(f: Array, f_min: float, f_max: float) -> Array:
-            """Slice an array f by containing all elements in f
-            that are greater or equal to f_min, and all elements smaller than or equal
-            to f_max, and the element just right after that.
 
-            Args:
-                f (Array): Frequency array to be sliced
-                f_min (float): Min frequency to be included
-                f_max (float): Max frequency to be included
 
-            Returns:
-                Array: Sliced array.
-            """
-            mask = np.array([False for value in f])
-            index_f_min = np.argwhere(f >= f_min).flatten()[0]
-            index_f_max = np.argwhere(f <= f_max).flatten()[-1]
-            index_f_max = min(index_f_max + 1, len(f) - 1)
-            mask[index_f_min : index_f_max + 1] = True
-            return mask
-
-        mask_heterodyne_low = get_mask(self.freq_grid_low, f_min, f_max)
-        mask_heterodyne_center = get_mask(self.freq_grid_center, f_min, f_max)
+        mask_heterodyne_low = self.get_mask(self.freq_grid_low, f_min, f_max)
+        mask_heterodyne_center = self.get_mask(self.freq_grid_center, f_min, f_max)
 
         # Apply the mask for frequencies to both polarization modes
         # and for all waveforms currently used
@@ -237,7 +219,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             h_sky_low[mode] = h_sky_low[mode][mask_heterodyne_low]
             h_sky_center[mode] = h_sky_center[mode][mask_heterodyne_center]
 
-        freq_grid = freq_grid[get_mask(freq_grid, f_min, f_max)]
+        freq_grid = freq_grid[self.get_mask(freq_grid, f_min, f_max)]
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
 
@@ -265,7 +247,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         for detector in self.detectors:
-            # Also apply the mask of frequencies to the strain data
             # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
@@ -373,7 +354,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f: Float[Array, "n_dim"],
         f_low: float,
         f_high: float,
-        chi: float =1,
+        chi: float = 1,
     ):
         """
         Compute the maximum phase difference between the frequencies in the array.
@@ -471,6 +452,27 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         B0_array = jnp.array(B0_array)
         B1_array = jnp.array(B1_array)
         return A0_array, A1_array, B0_array, B1_array
+
+    @staticmethod
+    def get_mask(f: Float[Array, "f"], f_min: float, f_max: float) -> Float[Array, "small_f"]:
+        """Slice an array f by containing all elements in f
+        that are greater or equal to f_min, and all elements smaller than or equal
+        to f_max, and the element just right after that.
+
+        Args:
+            f (Array): Frequency array to be sliced
+            f_min (float): Min frequency to be included
+            f_max (float): Max frequency to be included
+
+        Returns:
+            Array: Sliced array.
+        """
+        mask = np.zeros(f.shape).astype(bool)
+        index_f_min = np.argwhere(f >= f_min).flatten()[0]
+        index_f_max = np.argwhere(f <= f_max).flatten()[-1]
+        index_f_max = min(index_f_max + 1, len(f) - 1)
+        mask[index_f_min : index_f_max + 1] = True
+        return mask
 
     def maximize_likelihood(
         self,
