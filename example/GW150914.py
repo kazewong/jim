@@ -93,7 +93,6 @@ likelihood = TransientLikelihoodFD(
     post_trigger_duration=2,
 )
 
-likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
 
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)

@@ -463,7 +463,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         def y(x):
             return -self.evaluate_original(
-                prior.add_name(x, transform_name=True, transform_value=True), None
+                prior.transform(prior.add_name(x)), None
             )
 
         y = jax.jit(jax.vmap(y))
@@ -472,4 +472,4 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         optimizer = EvolutionaryOptimizer(len(bounds), popsize=popsize, verbose=True)
         state = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
-        return prior.add_name(best_fit, transform_name=True, transform_value=True)
+        return prior.transform(prior.add_name(best_fit))
