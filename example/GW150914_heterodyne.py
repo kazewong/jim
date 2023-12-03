@@ -49,8 +49,17 @@ prior = Uniform(
                  "cos_iota": ("iota",lambda params: jnp.arccos(jnp.arcsin(jnp.sin(params['cos_iota']/2*jnp.pi))*2/jnp.pi)),
                  "sin_dec": ("dec",lambda params: jnp.arcsin(jnp.arcsin(jnp.sin(params['sin_dec']/2*jnp.pi))*2/jnp.pi))} # sin and arcsin are periodize cos_iota and sin_dec
 )
-likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
 
+likelihood = HeterodynedTransientLikelihoodFD(
+    [H1, L1],
+    prior=prior,
+    bounds=[prior.xmin, prior.xmax],
+    waveform=RippleIMRPhenomD(),
+    trigger_time=gps,
+    duration=duration,
+    post_trigger_duration=post_trigger_duration,
+    n_loops=300
+)
 
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
