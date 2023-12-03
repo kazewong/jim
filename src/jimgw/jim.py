@@ -10,10 +10,11 @@ import jax
 import jax.numpy as jnp
 from flowMC.sampler.flowHMC import flowHMC
 
+
 class Jim(object):
     """
     Master class for interfacing with flowMC
-    
+
     """
 
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
@@ -24,12 +25,15 @@ class Jim(object):
 
         rng_key_set = initialize_rng_keys(n_chains, seed=seed)
         num_layers = kwargs.get("num_layers", 10)
-        hidden_size = kwargs.get("hidden_size", [128,128])
+        hidden_size = kwargs.get("hidden_size", [128, 128])
         num_bins = kwargs.get("num_bins", 8)
 
         local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
-        local_sampler = MALA(self.posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
+        local_sampler = MALA(
+            self.posterior, True, local_sampler_arg
+        )  # Remember to add routine to find automated mass matrix
+
 
         flowHMC_params = kwargs.get("flowHMC_params", {})
         model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
@@ -71,7 +75,7 @@ class Jim(object):
         print("Done compiling")
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose = True)
+        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose=True)
         state = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return best_fit
@@ -109,38 +113,61 @@ class Jim(object):
         production_global_acceptance: Array = production_summary["global_accs"]
 
         print("Training summary")
-        print('=' * 10)
+        print("=" * 10)
         for index in range(len(self.Prior.naming)):
-            print(f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}")
-        print(f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}") 
-        print(f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}")
-        print(f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}")
-        print(f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}")
+            print(
+                f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}"
+            )
+        print(
+            f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}"
+        )
+        print(
+            f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}"
+        )
 
         print("Production summary")
-        print('=' * 10)
+        print("=" * 10)
         for index in range(len(self.Prior.naming)):
-            print(f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}")
-        print(f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}")
-        print(f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}")
-        print(f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}")
+            print(
+                f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}"
+            )
+        print(
+            f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}"
+        )
 
     def get_samples(self, training: bool = False) -> dict:
         """
         Get the samples from the sampler
 
-        Args:
-            training (bool, optional): If True, return the training samples. Defaults to False.
+        Parameters
+        ----------
+        training : bool, optional
+            Whether to get the training samples or the production samples, by default False
 
-        Returns:
-            Array: Samples
+        Returns
+        -------
+        dict
+            Dictionary of samples
+
         """
         if training:
             chains = self.Sampler.get_sampler_state(training=True)["chains"]
         else:
             chains = self.Sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.Prior.add_name(chains.transpose(2,0,1), transform_name=True)
+        chains = self.Prior.add_name(chains.transpose(2, 0, 1), transform_name=True)
         return chains
 
     def plot(self):

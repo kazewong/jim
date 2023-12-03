@@ -9,7 +9,7 @@ class Waveform(ABC):
     def __init__(self):
         return NotImplemented
 
-    def __call__(self, axis: Array, params: Array) -> Array:
+    def __call__(self, axis: Array, params: Array) -> dict:
         return NotImplemented
 
 
@@ -47,7 +47,7 @@ class RippleIMRPhenomPv2(Waveform):
     def __init__(self, f_ref: float = 20.0):
         self.f_ref = f_ref
 
-    def __call__(self, frequency: Array, params: dict) -> Array:
+    def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
         theta = [
             params["M_c"],

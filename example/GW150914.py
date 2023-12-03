@@ -17,15 +17,17 @@ total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
 gps = 1126259462.4
-start = gps - 2
-end = gps + 2
+duration = 4
+post_trigger_duration = 2
+start_pad = duration - post_trigger_duration
+end_pad = post_trigger_duration
 fmin = 20.0
 fmax = 1024.0
 
 ifos = ["H1", "L1"]
 
-H1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 Mc_prior = Unconstrained_Uniform(10.0, 80.0, naming=["M_c"])
 q_prior = Unconstrained_Uniform(
@@ -91,6 +93,7 @@ likelihood = TransientLikelihoodFD(
     post_trigger_duration=2,
 )
 
+likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
 
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
@@ -100,7 +103,7 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=200,
+    n_loop_training=100,
     n_loop_production=10,
     n_local_steps=150,
     n_global_steps=150,
@@ -117,5 +120,4 @@ jim = Jim(
     local_sampler_arg=local_sampler_arg,
 )
 
-# jim.maximize_likelihood([prior.xmin, prior.xmax])
 jim.sample(jax.random.PRNGKey(42))
