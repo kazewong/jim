@@ -8,6 +8,7 @@ from jimgw.prior import Prior
 from jaxtyping import Array
 import jax
 import jax.numpy as jnp
+from flowMC.sampler.flowHMC import flowHMC
 
 
 class Jim(object):
@@ -33,20 +34,35 @@ class Jim(object):
             self.posterior, True, local_sampler_arg
         )  # Remember to add routine to find automated mass matrix
 
-        model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
-        )
-        self.Sampler = Sampler(
-            self.Prior.n_dim, rng_key_set, None, local_sampler, model, **kwargs
-        )
 
-    def maximize_likelihood(
-        self,
-        bounds: tuple[Array, Array],
-        set_nwalkers: int = 100,
-        n_loops: int = 2000,
-        seed=92348,
-    ):
+        flowHMC_params = kwargs.get("flowHMC_params", {})
+        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
+        if len(flowHMC_params) > 0:
+            global_sampler = flowHMC(
+                self.posterior,
+                True,
+                model,
+                params={
+                    "step_size": flowHMC_params["step_size"],
+                    "n_leapfrog": flowHMC_params["n_leapfrog"],
+                    "condition_matrix": flowHMC_params["condition_matrix"],
+                },
+            )
+        else:
+            global_sampler = None
+
+        
+        self.Sampler = Sampler(
+            self.Prior.n_dim,
+            rng_key_set,
+            None,
+            local_sampler,
+            model,
+            global_sampler = global_sampler,
+            **kwargs)
+        
+
+    def maximize_likelihood(self, bounds: tuple[Array,Array], set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
         bounds = jnp.array(bounds).T
         key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
@@ -65,16 +81,15 @@ class Jim(object):
         return best_fit
 
     def posterior(self, params: Array, data: dict):
-        named_params = self.Prior.add_name(
-            params, transform_name=True, transform_value=True
-        )
-        return self.Likelihood.evaluate(named_params, data) + self.Prior.log_prob(
-            params
-        )
+        prior_params = self.Prior.add_name(params.T)
+        prior  = self.Prior.log_prob(prior_params)
+        return self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
 
-    def sample(self, key: jax.random.PRNGKey, initial_guess: Array = None):
+    def sample(self, key: jax.random.PRNGKey,
+               initial_guess: Array = None):
         if initial_guess is None:
             initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess.values()]).T
         self.Sampler.sample(initial_guess, None)
 
     def print_summary(self):

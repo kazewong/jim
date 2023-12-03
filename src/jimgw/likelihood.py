@@ -150,8 +150,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         trigger_time: float = 0,
         duration: float = 4,
         post_trigger_duration: float = 2,
-        n_walkers: int = 100,
-        n_loops: int = 200,
+        popsize: int = 100,
+        n_loops: int = 2000,
     ) -> None:
         super().__init__(
             detectors, waveform, trigger_time, duration, post_trigger_duration
@@ -181,7 +181,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         print("Finding reference parameters..")
 
         self.ref_params = self.maximize_likelihood(
-            bounds=bounds, prior=prior, set_nwalkers=n_walkers, n_loops=n_loops
+            bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
         )
 
         print("Constructing reference waveforms..")
@@ -455,11 +455,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self,
         bounds: tuple[Array, Array],
         prior: Prior,
-        set_nwalkers: int = 100,
+        popsize: int = 100,
         n_loops: int = 2000,
     ):
         bounds = jnp.array(bounds).T
-        set_nwalkers = set_nwalkers
+        popsize = popsize # TODO remove this?
 
         def y(x):
             return -self.evaluate_original(
@@ -469,7 +469,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         y = jax.jit(jax.vmap(y))
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(len(bounds), verbose=True)
-        optimizer.optimize(y, bounds, n_loops=n_loops)
+        optimizer = EvolutionaryOptimizer(len(bounds), popsize=popsize, verbose=True)
+        state = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.add_name(best_fit, transform_name=True, transform_value=True)
