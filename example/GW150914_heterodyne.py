@@ -51,16 +51,6 @@ prior = Uniform(
 )
 likelihood = TransientLikelihoodFD([H1, L1], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
 
-likelihood = HeterodynedTransientLikelihoodFD(
-    [H1, L1],
-    prior=prior,
-    bounds=[prior.xmin, prior.xmax],
-    waveform=RippleIMRPhenomD(),
-    trigger_time=gps,
-    duration=duration,
-    post_trigger_duration=post_trigger_duration,
-    n_loops=300
-)
 
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
