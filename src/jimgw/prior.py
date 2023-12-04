@@ -89,19 +89,19 @@ class Prior(Distribution):
 
 
 class Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
+    xmin: Float = 0.0
+    xmax: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
+        xmin: Float,
+        xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
@@ -139,19 +139,19 @@ class Uniform(Prior):
 
 
 class Unconstrained_Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
+    xmin: Float = 0.0
+    xmax: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
+        xmin: Float,
+        xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
@@ -165,7 +165,7 @@ class Unconstrained_Uniform(Prior):
             self.naming[0]: (local_transform[self.naming[0]][0], new_transform)
         }
 
-    def to_range(self, x: dict[str, float]) -> Float[Array, "1"]:
+    def to_range(self, x: dict[str, Float]) -> Float:
         """
         Transform the parameters to the range of the prior.
 
@@ -265,18 +265,18 @@ class Alignedspin(Prior):
     See (A7) of https://arxiv.org/abs/1805.10457.
     """
 
-    amax: float = 0.99
+    amax: Float = 0.99
     chi_axis: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
     cdf_vals: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
 
     def __init__(
         self,
-        amax: float,
+        amax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(amax, float), "xmin must be a float"
+        assert isinstance(amax, Float), "xmin must be a Float"
         assert self.n_dim == 1, "Alignedspin needs to be 1D distributions"
         self.amax = amax
 
@@ -356,23 +356,23 @@ class Powerlaw(Prior):
     p(x) ~ x^{\alpha}
     """
 
-    xmin: float = 0.0
-    xmax: float = 1.0
-    alpha: float = 0.0
-    normalization: Float[Array, "1"] = jnp.array(1.0)
+    xmin: Float = 0.0
+    xmax: Float = 1.0
+    alpha: Float = 0.0
+    normalization: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
-        alpha: float,
+        xmin: Float,
+        xmax: Float,
+        alpha: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
-        assert isinstance(alpha, (float)), "alpha must be a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
+        assert isinstance(alpha, (Float)), "alpha must be a Float"
         if alpha < 0.0:
             assert alpha < 0.0 or xmin > 0.0, "With negative alpha, xmin must > 0"
         assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
