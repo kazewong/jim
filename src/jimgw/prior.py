@@ -352,6 +352,7 @@ class Powerlaw(Prior):
     xmin: float = 0.0
     xmax: float = 1.0
     alpha: int = 0.0
+    normalization: float = 1.0
 
     def __init__(
         self,
@@ -371,6 +372,11 @@ class Powerlaw(Prior):
         self.xmax = xmax
         self.xmin = xmin
         self.alpha = alpha
+        if alpha == -1:
+            self.normalization = 1. / jnp.log(self.xmax / self.xmin)
+        else:
+            self.normalization = (1 + self.alpha) / (self.xmax ** (1 + self.alpha) -
+                                                    self.xmin ** (1 + self.alpha))
 
     def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
         """
@@ -401,17 +407,12 @@ class Powerlaw(Prior):
 
     def log_prob(self, x: dict) -> Float:
         variable = x[self.naming[0]]
-        if self.alpha == -1:
-            normalization_constant = 1. / jnp.log(self.xmax / self.xmin)
-        else:
-            normalization_constant = (1 + self.alpha) / (self.xmax ** (1 + self.alpha) -
-                                                         self.xmin ** (1 + self.alpha))
         log_in_range = jnp.where(
             (variable >= self.xmax) | (variable <= self.xmin),
             jnp.zeros_like(variable) - jnp.inf,
             jnp.zeros_like(variable),
         )
-        log_p = self.alpha * jnp.log(variable) + jnp.log(normalization_constant)
+        log_p = self.alpha * jnp.log(variable) + jnp.log(self.normalization)
         return log_p + log_in_range
 
 
