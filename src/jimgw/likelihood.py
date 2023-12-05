@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import jax
 import jax.numpy as jnp
 import numpy as np
+import numpy.typing as npt
 from astropy.time import Time
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float
@@ -64,6 +65,15 @@ class TransientLikelihoodFD(LikelihoodBase):
         post_trigger_duration: float = 2,
     ) -> None:
         self.detectors = detectors
+        assert jnp.all(
+            jnp.array(
+                [
+                    (self.detectors[0].frequencies == detector.frequencies).all()  # type: ignore
+                    for detector in self.detectors
+                ]
+            )
+        ), "The detectors must have the same frequency grid"
+        self.frequencies = self.detectors[0].frequencies  # type: ignore
         self.waveform = waveform
         self.trigger_time = trigger_time
         self.gmst = (
@@ -88,16 +98,13 @@ class TransientLikelihoodFD(LikelihoodBase):
         """
         return [detector.name for detector in self.detectors]
 
-    def evaluate(
-        self, params: Array, data: dict
-    ) -> (
-        float
-    ):  # TODO: Test whether we need to pass data in or with class changes is fine.
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0
-        frequencies = self.detectors[0].frequencies
+        frequencies = self.frequencies
         df = frequencies[1] - frequencies[0]
         params["gmst"] = self.gmst
         waveform_sky = self.waveform(frequencies, params)
@@ -130,22 +137,30 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
     freq_grid_low: Array  # Heterodyned frequency grid
     freq_grid_center: Array  # Heterodyned frequency grid at the center of the bin
     waveform_low_ref: dict[
-        Array
+        str, Float[Array, " n_bin"]
     ]  # Reference waveform at the low edge of the frequency bin, keyed by detector name
     waveform_center_ref: dict[
-        Array
+        str, Float[Array, " n_bin"]
     ]  # Reference waveform at the center of the frequency bin, keyed by detector name
-    A0_array: dict[Array]  # A0 array for the likelihood, keyed by detector name
-    A1_array: dict[Array]  # A1 array for the likelihood, keyed by detector name
-    B0_array: dict[Array]  # B0 array for the likelihood, keyed by detector name
-    B1_array: dict[Array]  # B1 array for the likelihood, keyed by detector name
+    A0_array: dict[
+        str, Float[Array, " n_bin"]
+    ]  # A0 array for the likelihood, keyed by detector name
+    A1_array: dict[
+        str, Float[Array, " n_bin"]
+    ]  # A1 array for the likelihood, keyed by detector name
+    B0_array: dict[
+        str, Float[Array, " n_bin"]
+    ]  # B0 array for the likelihood, keyed by detector name
+    B1_array: dict[
+        str, Float[Array, " n_bin"]
+    ]  # B1 array for the likelihood, keyed by detector name
 
     def __init__(
         self,
         detectors: list[Detector],
         waveform: Waveform,
         prior: Prior,
-        bounds: tuple[Array, Array],
+        bounds: Float[Array, " n_dim 2"],
         n_bins: int = 100,
         trigger_time: float = 0,
         duration: float = 4,
@@ -161,16 +176,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         # Get the original frequency grid
 
-        assert jnp.all(
-            jnp.array(
-                [
-                    (self.detectors[0].frequencies == detector.frequencies).all()
-                    for detector in self.detectors
-                ]
-            )
-        ), "The detectors must have the same frequency grid"
-
-        frequency_original = self.detectors[0].frequencies
+        frequency_original = self.frequencies
         # Get the grid of the relative binning scheme (contains the final endpoint)
         # and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
@@ -273,7 +279,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
-    def evaluate(self, params: Array, data: dict) -> float:
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         log_likelihood = 0
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
@@ -313,15 +319,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return log_likelihood
 
     def evaluate_original(
-        self, params: Array, data: dict
+        self, params: dict[str, Float], data: dict
     ) -> (
-        float
+        Float
     ):  # TODO: Test whether we need to pass data in or with class changes is fine.
         """
         Evaluate the likelihood for a given set of parameters.
         """
         log_likelihood = 0
-        frequencies = self.detectors[0].frequencies
+        frequencies = self.frequencies
         df = frequencies[1] - frequencies[0]
         params["gmst"] = self.gmst
         waveform_sky = self.waveform(frequencies, params)
@@ -349,10 +355,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     @staticmethod
     def max_phase_diff(
-        f: Float[Array, "n_dim"],
+        f: npt.NDArray[np.float_],
         f_low: float,
         f_high: float,
-        chi: float = 1,
+        chi: Float = 1.0,
     ):
         """
         Compute the maximum phase difference between the frequencies in the array.
@@ -381,8 +387,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
 
     def make_binning_scheme(
-        self, freqs: Float[Array, "n_dim"], n_bins: int, chi: float = 1
-    ) -> tuple[Float[Array, "n_bins+1"], Float[Array, "n_bins"]]:
+        self, freqs: npt.NDArray[np.float_], n_bins: int, chi: float = 1
+    ) -> tuple[Float[Array, " n_bins+1"], Float[Array, " n_bins"]]:
         """
         Make a binning scheme based on the maximum phase difference between the
         frequencies in the array.
@@ -410,7 +416,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1):
             f_bins = np.append(f_bins, bin_f(i))
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
-        return f_bins, f_bins_center
+        return jnp.array(f_bins), jnp.array(f_bins_center)
 
     @staticmethod
     def compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center):
@@ -453,23 +459,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def maximize_likelihood(
         self,
-        bounds: tuple[Array, Array],
+        bounds: Float[Array, " n_dim 2"],
         prior: Prior,
         popsize: int = 100,
         n_loops: int = 2000,
     ):
         bounds = jnp.array(bounds).T
-        popsize = popsize # TODO remove this?
+        popsize = popsize  # TODO remove this?
 
         def y(x):
-            return -self.evaluate_original(
-                prior.transform(prior.add_name(x)), None
-            )
+            return -self.evaluate_original(prior.transform(prior.add_name(x)), {})
 
         y = jax.jit(jax.vmap(y))
 
         print("Starting the optimizer")
         optimizer = EvolutionaryOptimizer(len(bounds), popsize=popsize, verbose=True)
-        state = optimizer.optimize(y, bounds, n_loops=n_loops)
+        _ = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.transform(prior.add_name(best_fit))

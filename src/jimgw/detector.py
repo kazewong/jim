@@ -39,19 +39,32 @@ class Detector(ABC):
 
     name: str
 
+    data: Float[Array, " n_sample"]
+    psd: Float[Array, " n_sample"]
+
     @abstractmethod
     def load_data(self, data):
         raise NotImplementedError
 
     @abstractmethod
-    def fd_response(self, frequency: Array, h: Array, params: dict) -> Array:
+    def fd_response(
+        self,
+        frequency: Float[Array, " n_sample"],
+        h: dict[str, Float[Array, " n_sample"]],
+        params: dict,
+    ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
         in the frequency domain."""
         pass
 
     @abstractmethod
-    def td_response(self, time: Array, h: Array, params: dict) -> Array:
+    def td_response(
+        self,
+        time: Float[Array, " n_sample"],
+        h: dict[str, Float[Array, " n_sample"]],
+        params: dict,
+    ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
         in the time domain."""
@@ -257,7 +270,12 @@ class GroundBased2G(Detector):
         self.data = data[(freq > f_min) & (freq < f_max)]
         self.psd = psd[(freq > f_min) & (freq < f_max)]
 
-    def fd_response(self, frequency: Array, h_sky: dict, params: dict) -> Array:
+    def fd_response(
+        self,
+        frequency: Float[Array, " n_sample"],
+        h_sky: dict[str, Float[Array, " n_sample"]],
+        params: dict[str, Float],
+    ) -> Array:
         """
         Modulate the waveform in the sky frame by the detector response in the frequency domain.
         """
