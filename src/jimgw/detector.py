@@ -5,11 +5,11 @@ import jax.numpy as jnp
 import numpy as np
 import requests
 from gwpy.timeseries import TimeSeries
-from jaxtyping import Array, PRNGKeyArray
+from jaxtyping import Array, PRNGKeyArray, Float
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
-from jimgw.constants import *
+from jimgw.constants import EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, C_SI
 from jimgw.wave import Polarization
 
 DEG_TO_RAD = jnp.pi / 180
@@ -59,19 +59,18 @@ class Detector(ABC):
 
 
 class GroundBased2G(Detector):
-
     polarization_mode: list[Polarization]
-    frequencies: Array = None
-    data: Array = None
-    psd: Array = None
+    frequencies: Float[Array, " n_sample"]
+    data: Float[Array, " n_sample"]
+    psd: Float[Array, " n_sample"]
 
-    latitude: float = 0
-    longitude: float = 0
-    xarm_azimuth: float = 0
-    yarm_azimuth: float = 0
-    xarm_tilt: float = 0
-    yarm_tilt: float = 0
-    elevation: float = 0
+    latitude: Float = 0
+    longitude: Float = 0
+    xarm_azimuth: Float = 0
+    yarm_azimuth: Float = 0
+    xarm_tilt: Float = 0
+    yarm_tilt: Float = 0
+    elevation: Float = 0
 
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
@@ -86,22 +85,32 @@ class GroundBased2G(Detector):
         modes = kwargs.get("mode", "pc")
 
         self.polarization_mode = [Polarization(m) for m in modes]
+        self.frequencies = jnp.array([])
+        self.data = jnp.array([])
+        self.psd = jnp.array([])
 
     @staticmethod
-    def _get_arm(lat, lon, tilt, azimuth):
+    def _get_arm(
+        lat: Float, lon: Float, tilt: Float, azimuth: Float
+    ) -> Float[Array, " 3"]:
         """
         Construct detector-arm vectors in Earth-centric Cartesian coordinates.
 
         Parameters
         ---------
-        lat : float
+        lat : Float
             vertex latitude in rad.
-        lon : float
+        lon : Float
             vertex longitude in rad.
-        tilt : float
+        tilt : Float
             arm tilt in rad.
-        azimuth : float
+        azimuth : Float
             arm azimuth in rad.
+
+        Returns
+        -------
+        arm : Float[Array, " 3"]
+            detector arm vector in Earth-centric Cartesian coordinates.
         """
         e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
         e_lat = jnp.array(
@@ -118,9 +127,16 @@ class GroundBased2G(Detector):
         )
 
     @property
-    def arms(self):
+    def arms(self) -> tuple[Float[Array, " 3"], Float[Array, " 3"]]:
         """
         Detector arm vectors (x, y).
+
+        Returns
+        -------
+        x : Float[Array, " 3"]
+            x-arm vector.
+        y : Float[Array, " 3"]
+            y-arm vector.
         """
         x = self._get_arm(
             self.latitude, self.longitude, self.xarm_tilt, self.xarm_azimuth
@@ -131,9 +147,14 @@ class GroundBased2G(Detector):
         return x, y
 
     @property
-    def tensor(self):
+    def tensor(self) -> Float[Array, " 3, 3"]:
         """
         Detector tensor defining the strain measurement.
+
+        Returns
+        -------
+        tensor : Float[Array, " 3, 3"]
+            detector tensor.
         """
         # TODO: this could easily be generalized for other detector geometries
         arm1, arm2 = self.arms
@@ -142,11 +163,16 @@ class GroundBased2G(Detector):
         )
 
     @property
-    def vertex(self):
+    def vertex(self) -> Float[Array, " 3"]:
         """
         Detector vertex coordinates in the reference celestial frame. Based
         on arXiv:gr-qc/0008066 Eqs. (B11-B13) except for a typo in the
         definition of the local radius; see Section 2.1 of LIGO-T980044-10.
+
+        Returns
+        -------
+        vertex : Float[Array, " 3"]
+            detector vertex coordinates.
         """
         # get detector and Earth parameters
         lat = self.latitude
@@ -164,13 +190,13 @@ class GroundBased2G(Detector):
 
     def load_data(
         self,
-        trigger_time: float,
+        trigger_time: Float,
         gps_start_pad: int,
         gps_end_pad: int,
-        f_min: float,
-        f_max: float,
+        f_min: Float,
+        f_max: Float,
         psd_pad: int = 16,
-        tukey_alpha: float = 0.2,
+        tukey_alpha: Float = 0.2,
         gwpy_kwargs: dict = {"cache": True},
     ) -> None:
         """
@@ -178,19 +204,19 @@ class GroundBased2G(Detector):
 
         Parameters
         ----------
-        trigger_time : float
+        trigger_time : Float
             The GPS time of the trigger.
         gps_start_pad : int
             The amount of time before the trigger to fetch data.
         gps_end_pad : int
             The amount of time after the trigger to fetch data.
-        f_min : float
+        f_min : Float
             The minimum frequency to fetch data.
-        f_max : float
+        f_max : Float
             The maximum frequency to fetch data.
         psd_pad : int
             The amount of time to pad the PSD data.
-        tukey_alpha : float
+        tukey_alpha : Float
             The alpha parameter for the Tukey window.
 
         """
@@ -202,6 +228,7 @@ class GroundBased2G(Detector):
             trigger_time + gps_end_pad,
             **gwpy_kwargs
         )
+        assert isinstance(data_td, TimeSeries), "Data is not a TimeSeries object."
         segment_length = data_td.duration.value
         n = len(data_td)
         delta_t = data_td.dt.value
@@ -217,6 +244,9 @@ class GroundBased2G(Detector):
         psd_data_td = TimeSeries.fetch_open_data(
             self.name, start_psd, end_psd, **gwpy_kwargs
         )
+        assert isinstance(
+            psd_data_td, TimeSeries
+        ), "PSD data is not a TimeSeries object."
         psd = psd_data_td.psd(
             fftlength=segment_length
         ).value  # TODO: Check whether this is sright.
@@ -229,7 +259,8 @@ class GroundBased2G(Detector):
 
     def fd_response(self, frequency: Array, h_sky: dict, params: dict) -> Array:
         """
-        Modulate the waveform in the sky frame by the detector response in the frequency domain."""
+        Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
@@ -244,10 +275,11 @@ class GroundBased2G(Detector):
 
     def td_response(self, time: Array, h: Array, params: Array) -> Array:
         """
-        Modulate the waveform in the sky frame by the detector response in the time domain."""
-        pass
+        Modulate the waveform in the sky frame by the detector response in the time domain.
+        """
+        raise NotImplementedError
 
-    def delay_from_geocenter(self, ra: float, dec: float, gmst: float) -> float:
+    def delay_from_geocenter(self, ra: Float, dec: Float, gmst: Float) -> Float:
         """
         Calculate time delay between two detectors in geocentric
         coordinates based on XLALArrivaTimeDiff in TimeDelay.c
@@ -256,16 +288,16 @@ class GroundBased2G(Detector):
 
         Parameters
         ---------
-        ra : float
+        ra : Float
             right ascension of the source in rad.
-        dec : float
+        dec : Float
             declination of the source in rad.
-        gmst : float
+        gmst : Float
             Greenwich mean sidereal time in rad.
 
         Returns
         -------
-        float: time delay from Earth center.
+        Float: time delay from Earth center.
         """
         delta_d = -self.vertex
         gmst = jnp.mod(gmst, 2 * jnp.pi)
@@ -280,7 +312,7 @@ class GroundBased2G(Detector):
         )
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern(self, ra: float, dec: float, psi: float, gmst: float) -> dict:
+    def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict:
         """
         Computes {name} antenna patterns for {modes} polarizations
         at the specified sky location, orientation and GMST.
@@ -291,13 +323,13 @@ class GroundBased2G(Detector):
 
         Parameters
         ---------
-        ra : float
+        ra : Float
             source right ascension in radians.
-        dec : float
+        dec : Float
             source declination in radians.
-        psi : float
+        psi : Float
             source polarization angle in radians.
-        gmst : float
+        gmst : Float
             Greenwich mean sidereal time (GMST) in radians.
         modes : str
             string of polarizations to include, defaults to tensor modes: 'pc'.
@@ -324,7 +356,7 @@ class GroundBased2G(Detector):
         freqs: Array,
         h_sky: dict,
         params: dict,
-        psd_file: str = None,
+        psd_file: str = "",
     ) -> None:
         """ """
         self.frequencies = freqs
@@ -339,8 +371,10 @@ class GroundBased2G(Detector):
         signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j * noise_imag
 
-    def load_psd(self, freqs: Array, psd_file: str = None) -> None:
-        if psd_file is None:
+    def load_psd(
+        self, freqs: Float[Array, " n_sample"], psd_file: str = ""
+    ) -> Float[Array, " n_sample"]:
+        if psd_file == "":
             print("Grabbing GWTC-2 PSD for " + self.name)
             url = psd_file_dict[self.name]
             data = requests.get(url)
@@ -349,7 +383,10 @@ class GroundBased2G(Detector):
         else:
             f, asd_vals = np.loadtxt(psd_file, unpack=True)
         psd_vals = asd_vals**2
-        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)
+        assert isinstance(f, Float[Array, "n_sample"])
+        assert isinstance(psd_vals, Float[Array, "n_sample"])
+        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)  # type: ignore
+        psd = jnp.array(psd)
         return psd
 
 
