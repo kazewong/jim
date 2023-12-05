@@ -5,7 +5,7 @@ from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jimgw.prior import Prior
-from jaxtyping import Array
+from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
 from flowMC.sampler.flowHMC import flowHMC
@@ -34,9 +34,10 @@ class Jim(object):
             self.posterior, True, local_sampler_arg
         )  # Remember to add routine to find automated mass matrix
 
-
         flowHMC_params = kwargs.get("flowHMC_params", {})
-        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
+        model = MaskedCouplingRQSpline(
+            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
+        )
         if len(flowHMC_params) > 0:
             global_sampler = flowHMC(
                 self.posterior,
@@ -51,46 +52,53 @@ class Jim(object):
         else:
             global_sampler = None
 
-        
         self.Sampler = Sampler(
             self.Prior.n_dim,
             rng_key_set,
-            None,
+            None,  # type: ignore
             local_sampler,
             model,
-            global_sampler = global_sampler,
-            **kwargs)
-        
+            global_sampler=global_sampler,
+            **kwargs,
+        )
 
-    def maximize_likelihood(self, bounds: tuple[Array,Array], set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
-        bounds = jnp.array(bounds).T
+    def maximize_likelihood(
+        self,
+        bounds: Float[Array, " n_dim 2"],
+        set_nwalkers: int = 100,
+        n_loops: int = 2000,
+        seed=92348,
+    ):
         key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
         initial_guess = self.Prior.sample(key, set_nwalkers)
 
-        y = lambda x: -self.posterior(x, None)
-        y = jax.jit(jax.vmap(y))
+        def negative_posterior(x: Float[Array, " n_dim"]):
+            return -self.posterior(x, None)  # type: ignore since flowMC does not have typing info, yet
+
+        negative_posterior = jax.jit(jax.vmap(negative_posterior))
         print("Compiling likelihood function")
-        y(initial_guess)
+        negative_posterior(initial_guess)
         print("Done compiling")
 
         print("Starting the optimizer")
         optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose=True)
-        state = optimizer.optimize(y, bounds, n_loops=n_loops)
+        _ = optimizer.optimize(negative_posterior, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return best_fit
 
     def posterior(self, params: Array, data: dict):
         prior_params = self.Prior.add_name(params.T)
-        prior  = self.Prior.log_prob(prior_params)
-        return self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
+        prior = self.Prior.log_prob(prior_params)
+        return (
+            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
+        )
 
-    def sample(self, key: jax.random.PRNGKey,
-               initial_guess: Array = None):
-        if initial_guess is None:
-            initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
-            initial_guess = jnp.stack([i for i in initial_guess.values()]).T
-        self.Sampler.sample(initial_guess, None)
+    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
+        if initial_guess is jnp.array([]):
+            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
+        self.Sampler.sample(initial_guess, None)  # type: ignore
 
     def print_summary(self):
         """
@@ -167,7 +175,7 @@ class Jim(object):
         else:
             chains = self.Sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.Prior.add_name(chains.transpose(2, 0, 1), transform_name=True)
+        chains = self.Prior.transform(self.Prior.add_name(chains.transpose(2, 0, 1)))
         return chains
 
     def plot(self):

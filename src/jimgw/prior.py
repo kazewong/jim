@@ -50,7 +50,7 @@ class Prior(Distribution):
                 # which will make lambda reference the last value of the variable name
                 self.transforms[name] = (name, make_lambda(name))
 
-    def transform(self, x: dict) -> dict:
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         """
         Apply the transforms to the parameters.
 
@@ -69,7 +69,7 @@ class Prior(Distribution):
             output[value[0]] = value[1](x)
         return output
 
-    def add_name(self, x: Array) -> dict:
+    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
         """
         Turn an array into a dictionary
 
@@ -81,7 +81,9 @@ class Prior(Distribution):
 
         return dict(zip(self.naming, x))
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
 
     def log_prob(self, x: dict[str, Array]) -> Float:
@@ -106,7 +108,9 @@ class Uniform(Prior):
         self.xmax = xmax
         self.xmin = xmin
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a uniform distribution.
 
@@ -181,7 +185,9 @@ class Unconstrained_Uniform(Prior):
         """
         return (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]])) + self.xmin
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a uniform distribution.
 
@@ -202,7 +208,7 @@ class Unconstrained_Uniform(Prior):
         samples = jnp.log(samples / (1 - samples))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         return jnp.log(jnp.exp(-variable) / (1 + jnp.exp(-variable)) ** 2)
 
@@ -236,7 +242,9 @@ class Sphere(Prior):
             ),
         }
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         rng_keys = jax.random.split(rng_key, 3)
         theta = jnp.arccos(
             jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0)
@@ -245,7 +253,7 @@ class Sphere(Prior):
         mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         return jnp.log(x[self.naming[2]] ** 2 * jnp.sin(x[self.naming[0]]))
 
 
@@ -286,7 +294,9 @@ class Alignedspin(Prior):
         self.chi_axis = chi_axis
         self.cdf_vals = cdf_vals
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from the Alignedspin distribution.
 
@@ -339,7 +349,7 @@ class Alignedspin(Prior):
 
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         log_p = jnp.where(
             (variable >= self.amax) | (variable <= -self.amax),
@@ -386,7 +396,9 @@ class Powerlaw(Prior):
                 self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
             )
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a power-law distribution.
 
@@ -414,7 +426,7 @@ class Powerlaw(Prior):
             ) ** (1.0 / (1.0 + self.alpha))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         log_in_range = jnp.where(
             (variable >= self.xmax) | (variable <= self.xmin),
@@ -440,7 +452,9 @@ class Composite(Prior):
         self.naming = naming
         self.transforms.update(transforms)
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         output = {}
         for prior in self.priors:
             rng_key, subkey = jax.random.split(rng_key)

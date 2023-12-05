@@ -45,7 +45,7 @@ class LikelihoodBase(ABC):
         return self._data
 
     @abstractmethod
-    def evaluate(self, params) -> float:
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         """
         Evaluate the likelihood for a given set of parameters.
         """
@@ -464,9 +464,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         popsize: int = 100,
         n_loops: int = 2000,
     ):
-        bounds = jnp.array(bounds).T
-        popsize = popsize  # TODO remove this?
-
         def y(x):
             return -self.evaluate_original(prior.transform(prior.add_name(x)), {})
 
