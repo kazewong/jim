@@ -1,3 +1,4 @@
+files: src/
 repos:
   - repo: https://github.com/ambv/black
     rev: 23.9.1
