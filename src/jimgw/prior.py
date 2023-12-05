@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float
-from typing import Callable
+from typing import Callable, Union
 from dataclasses import field
 
 
@@ -352,16 +352,16 @@ class Powerlaw(Prior):
         self,
         xmin: float,
         xmax: float,
-        alpha: float,
+        alpha: Union[int, float],
         naming: list[str],
         transforms: dict[tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
         assert isinstance(xmin, float), "xmin must be a float"
         assert isinstance(xmax, float), "xmax must be a float"
-        assert isinstance(alpha, (float)), "alpha must be a float"
+        assert isinstance(alpha, (int, float)), "alpha must be a int or a float"
         if alpha < 0.0:
-            assert alpha < 0.0 or xmin > 0.0, "With negative alpha, xmin must > 0"
+            assert xmin > 0.0, "With negative alpha, xmin must > 0"
         assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
