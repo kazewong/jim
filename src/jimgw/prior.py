@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, PRNGKeyArray
 from typing import Callable, Union
 from dataclasses import field
 
