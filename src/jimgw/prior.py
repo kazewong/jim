@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Int, PRNGKeyArray
 from typing import Callable, Union
 from dataclasses import field
 
@@ -17,13 +17,15 @@ class Prior(Distribution):
     """
 
     naming: list[str]
-    transforms: dict[tuple[str, Callable]] = field(default_factory=dict)
+    transforms: dict[str, tuple[str, Callable]] = field(default_factory=dict)
 
     @property
     def n_dim(self):
         return len(self.naming)
 
-    def __init__(self, naming: list[str], transforms: dict[tuple[str, Callable]] = {}):
+    def __init__(
+        self, naming: list[str], transforms: dict[str, tuple[str, Callable]] = {}
+    ):
         """
         Parameters
         ----------
@@ -48,7 +50,7 @@ class Prior(Distribution):
                 # which will make lambda reference the last value of the variable name
                 self.transforms[name] = (name, make_lambda(name))
 
-    def transform(self, x: dict) -> dict:
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         """
         Apply the transforms to the parameters.
 
@@ -67,50 +69,54 @@ class Prior(Distribution):
             output[value[0]] = value[1](x)
         return output
 
-    def add_name(self, x: Array) -> dict:
+    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
         """
         Turn an array into a dictionary
 
         Parameters
         ----------
         x : Array
-            An array of parameters. Shape (n_dim, n_sample).
+            An array of parameters. Shape (n_dim,).
         """
 
         return dict(zip(self.naming, x))
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
 
-    def logpdf(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Array]) -> Float:
         raise NotImplementedError
 
 
 class Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
+    xmin: Float = 0.0
+    xmax: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
+        xmin: Float,
+        xmax: Float,
         naming: list[str],
-        transforms: dict[tuple[str, Callable]] = {},
+        transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a uniform distribution.
 
         Parameters
         ----------
-        rng_key : jax.random.PRNGKey
+        rng_key : PRNGKeyArray
             A random key to use for sampling.
         n_samples : int
             The number of samples to draw.
@@ -126,7 +132,7 @@ class Uniform(Prior):
         )
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Array]) -> Float:
         variable = x[self.naming[0]]
         output = jnp.where(
             (variable >= self.xmax) | (variable <= self.xmin),
@@ -137,44 +143,57 @@ class Uniform(Prior):
 
 
 class Unconstrained_Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
-    to_range: Callable = lambda x: x
+    xmin: Float = 0.0
+    xmax: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
+        xmin: Float,
+        xmax: Float,
         naming: list[str],
-        transforms: dict[tuple[str, Callable]] = {},
+        transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         local_transform = self.transforms
-        self.to_range = (
-            lambda x: (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]]))
-            + self.xmin
-        )
 
         def new_transform(param):
-            param[self.naming[0]] = self.to_range(param)
+            param[self.naming[0]] = self.to_range(param[self.naming[0]])
             return local_transform[self.naming[0]][1](param)
 
         self.transforms = {
             self.naming[0]: (local_transform[self.naming[0]][0], new_transform)
         }
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def to_range(self, x: dict[str, Float]) -> Float:
+        """
+        Transform the parameters to the range of the prior.
+
+        Parameters
+        ----------
+        x : dict
+            A dictionary of parameters. Names should match the ones in the prior.
+
+        Returns
+        -------
+        x : dict
+            A dictionary of parameters with the transforms applied.
+        """
+        return (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]])) + self.xmin
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a uniform distribution.
 
         Parameters
         ----------
-        rng_key : jax.random.PRNGKey
+        rng_key : PRNGKeyArray
             A random key to use for sampling.
         n_samples : int
             The number of samples to draw.
@@ -189,7 +208,7 @@ class Unconstrained_Uniform(Prior):
         samples = jnp.log(samples / (1 - samples))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         return jnp.log(jnp.exp(-variable) / (1 + jnp.exp(-variable)) ** 2)
 
@@ -223,7 +242,9 @@ class Sphere(Prior):
             ),
         }
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> Array:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         rng_keys = jax.random.split(rng_key, 3)
         theta = jnp.arccos(
             jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0)
@@ -232,7 +253,7 @@ class Sphere(Prior):
         mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         return jnp.log(x[self.naming[2]] ** 2 * jnp.sin(x[self.naming[0]]))
 
 
@@ -252,18 +273,18 @@ class Alignedspin(Prior):
     See (A7) of https://arxiv.org/abs/1805.10457.
     """
 
-    amax: float = 0.99
+    amax: Float = 0.99
     chi_axis: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
     cdf_vals: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
 
     def __init__(
         self,
-        amax: float,
+        amax: Float,
         naming: list[str],
-        transforms: dict[tuple[str, Callable]] = {},
+        transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(amax, float), "xmin must be a float"
+        assert isinstance(amax, Float), "xmin must be a Float"
         assert self.n_dim == 1, "Alignedspin needs to be 1D distributions"
         self.amax = amax
 
@@ -273,7 +294,9 @@ class Alignedspin(Prior):
         self.chi_axis = chi_axis
         self.cdf_vals = cdf_vals
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from the Alignedspin distribution.
 
@@ -291,7 +314,7 @@ class Alignedspin(Prior):
 
         Parameters
         ----------
-        rng_key : jax.random.PRNGKey
+        rng_key : PRNGKeyArray
             A random key to use for sampling.
         n_samples : int
             The number of samples to draw.
@@ -326,7 +349,7 @@ class Alignedspin(Prior):
 
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         log_p = jnp.where(
             (variable >= self.amax) | (variable <= -self.amax),
@@ -343,23 +366,23 @@ class Powerlaw(Prior):
     p(x) ~ x^{\alpha}
     """
 
-    xmin: float = 0.0
-    xmax: float = 1.0
-    alpha: int = 0.0
-    normalization: float = 1.0
+    xmin: Float = 0.0
+    xmax: Float = 1.0
+    alpha: Float = 0.0
+    normalization: Float = 1.0
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
-        alpha: Union[int, float],
+        xmin: Float,
+        xmax: Float,
+        alpha: Union[Int, Float],
         naming: list[str],
-        transforms: dict[tuple[str, Callable]] = {},
+        transforms: dict[str, tuple[str, Callable]] = {},
     ):
         super().__init__(naming, transforms)
-        assert isinstance(xmin, float), "xmin must be a float"
-        assert isinstance(xmax, float), "xmax must be a float"
-        assert isinstance(alpha, (int, float)), "alpha must be a int or a float"
+        assert isinstance(xmin, Float), "xmin must be a Float"
+        assert isinstance(xmax, Float), "xmax must be a Float"
+        assert isinstance(alpha, (Int, Float)), "alpha must be a int or a Float"
         if alpha < 0.0:
             assert xmin > 0.0, "With negative alpha, xmin must > 0"
         assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
@@ -373,13 +396,15 @@ class Powerlaw(Prior):
                 self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
             )
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         """
         Sample from a power-law distribution.
 
         Parameters
         ----------
-        rng_key : jax.random.PRNGKey
+        rng_key : PRNGKeyArray
             A random key to use for sampling.
         n_samples : int
             The number of samples to draw.
@@ -401,7 +426,7 @@ class Powerlaw(Prior):
             ) ** (1.0 / (1.0 + self.alpha))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.naming[0]]
         log_in_range = jnp.where(
             (variable >= self.xmax) | (variable <= self.xmin),
@@ -416,7 +441,7 @@ class Composite(Prior):
     priors: list[Prior] = field(default_factory=list)
 
     def __init__(
-        self, priors: list[Prior], transforms: dict[tuple[str, Callable]] = {}
+        self, priors: list[Prior], transforms: dict[str, tuple[str, Callable]] = {}
     ):
         naming = []
         self.transforms = {}
@@ -427,14 +452,16 @@ class Composite(Prior):
         self.naming = naming
         self.transforms.update(transforms)
 
-    def sample(self, rng_key: jax.random.PRNGKey, n_samples: int) -> dict:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         output = {}
         for prior in self.priors:
             rng_key, subkey = jax.random.split(rng_key)
             output.update(prior.sample(subkey, n_samples))
         return output
 
-    def log_prob(self, x: dict) -> Float:
+    def log_prob(self, x: dict[str, Float]) -> Float:
         output = 0.0
         for prior in self.priors:
             output += prior.log_prob(x)

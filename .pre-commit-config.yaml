@@ -1,3 +1,4 @@
+files: src/
 repos:
   - repo: https://github.com/ambv/black
     rev: 23.9.1
@@ -12,7 +13,7 @@ repos:
     rev: v1.1.338
     hooks:
     - id: pyright
-      additional_dependencies: [beartype, einops, jax, jaxtyping, pytest, tensorflow, tf2onnx, typing_extensions]
+      additional_dependencies: [beartype, jax, jaxtyping, pytest, typing_extensions, flowMC, ripplegw, gwpy, astropy]
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.7.1
     hooks:
