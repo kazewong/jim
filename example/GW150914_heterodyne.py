@@ -3,7 +3,7 @@ from jimgw.jim import Jim
 from jimgw.detector import H1, L1
 from jimgw.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
 from jimgw.waveform import RippleIMRPhenomD
-from jimgw.prior import Unconstrained_Uniform, Composite
+from jimgw.prior import Uniform, Composite
 import jax.numpy as jnp
 import jax
 
@@ -29,19 +29,19 @@ ifos = ["H1", "L1"]
 H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
-Mc_prior = Unconstrained_Uniform(10.0, 80.0, naming=["M_c"])
-q_prior = Unconstrained_Uniform(
+Mc_prior = Uniform(10.0, 80.0, naming=["M_c"])
+q_prior = Uniform(
     0.125,
     1.0,
     naming=["q"],
     transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
 )
-s1z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s1_z"])
-s2z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s2_z"])
-dL_prior = Unconstrained_Uniform(0.0, 2000.0, naming=["d_L"])
-t_c_prior = Unconstrained_Uniform(-0.05, 0.05, naming=["t_c"])
-phase_c_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
-cos_iota_prior = Unconstrained_Uniform(
+s1z_prior = Uniform(-1.0, 1.0, naming=["s1_z"])
+s2z_prior = Uniform(-1.0, 1.0, naming=["s2_z"])
+dL_prior = Uniform(0.0, 2000.0, naming=["d_L"])
+t_c_prior = Uniform(-0.05, 0.05, naming=["t_c"])
+phase_c_prior = Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
+cos_iota_prior = Uniform(
     -1.0,
     1.0,
     naming=["cos_iota"],
@@ -54,9 +54,9 @@ cos_iota_prior = Unconstrained_Uniform(
         )
     },
 )
-psi_prior = Unconstrained_Uniform(0.0, jnp.pi, naming=["psi"])
-ra_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["ra"])
-sin_dec_prior = Unconstrained_Uniform(
+psi_prior = Uniform(0.0, jnp.pi, naming=["psi"])
+ra_prior = Uniform(0.0, 2 * jnp.pi, naming=["ra"])
+sin_dec_prior = Uniform(
     -1.0,
     1.0,
     naming=["sin_dec"],
@@ -85,14 +85,19 @@ prior = Composite(
         sin_dec_prior,
     ]
 )
-likelihood = TransientLikelihoodFD(
+
+bounds = jnp.array([[10.0, 80.0], [0.125, 1.0], [-1.0, 1.0], [-1.0, 1.0], [0.0, 2000.0], [-0.05, 0.05], [0.0, 2 * jnp.pi], [-1.0, 1.0], [0.0, jnp.pi], [0.0, 2 * jnp.pi], [-1.0, 1.0]]).T
+
+likelihood = HeterodynedTransientLikelihoodFD(
     [H1, L1],
+    prior=prior,
+    bounds=bounds,
     waveform=RippleIMRPhenomD(),
     trigger_time=gps,
-    duration=4,
-    post_trigger_duration=2,
+    duration=duration,
+    post_trigger_duration=post_trigger_duration,
+    n_loops=300
 )
-
 
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)

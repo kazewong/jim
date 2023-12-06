@@ -1,9 +1,9 @@
 import equinox as eqx
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from jaxtyping import Array
 
-class Model(eqx.Module):
 
+class Model(eqx.Module):
     params: dict
 
     @abstractmethod

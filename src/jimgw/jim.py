@@ -5,14 +5,16 @@ from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jimgw.prior import Prior
-from jaxtyping import Array
+from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
+from flowMC.sampler.flowHMC import flowHMC
+
 
 class Jim(object):
     """
     Master class for interfacing with flowMC
-    
+
     """
 
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
@@ -23,56 +25,80 @@ class Jim(object):
 
         rng_key_set = initialize_rng_keys(n_chains, seed=seed)
         num_layers = kwargs.get("num_layers", 10)
-        hidden_size = kwargs.get("hidden_size", [128,128])
-        num_bins = kwargs.get("hidden_size", 8)
-
-        def posterior(x: Array, data:dict):
-            prior = self.Prior.log_prob(x)
-            x = self.Prior.transform(x)
-            return self.Likelihood.evaluate(x, data) + prior
-
-        self.posterior = posterior
+        hidden_size = kwargs.get("hidden_size", [128, 128])
+        num_bins = kwargs.get("num_bins", 8)
 
         local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
-        local_sampler = MALA(posterior, True, local_sampler_arg) # Remember to add routine to find automated mass matrix
+        local_sampler = MALA(
+            self.posterior, True, local_sampler_arg
+        )  # Remember to add routine to find automated mass matrix
 
-        model = MaskedCouplingRQSpline(self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1])
+        flowHMC_params = kwargs.get("flowHMC_params", {})
+        model = MaskedCouplingRQSpline(
+            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
+        )
+        if len(flowHMC_params) > 0:
+            global_sampler = flowHMC(
+                self.posterior,
+                True,
+                model,
+                params={
+                    "step_size": flowHMC_params["step_size"],
+                    "n_leapfrog": flowHMC_params["n_leapfrog"],
+                    "condition_matrix": flowHMC_params["condition_matrix"],
+                },
+            )
+        else:
+            global_sampler = None
+
         self.Sampler = Sampler(
             self.Prior.n_dim,
             rng_key_set,
-            None,
+            None,  # type: ignore
             local_sampler,
             model,
-            **kwargs)
-        
+            global_sampler=global_sampler,
+            **kwargs,
+        )
 
-    def maximize_likleihood(self, bounds: tuple[Array,Array],set_nwalkers: int = 100, n_loops: int = 2000, seed = 92348):
-        bounds = jnp.array(bounds).T
+    def maximize_likelihood(
+        self,
+        bounds: Float[Array, " n_dim 2"],
+        set_nwalkers: int = 100,
+        n_loops: int = 2000,
+        seed=92348,
+    ):
         key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
         initial_guess = self.Prior.sample(key, set_nwalkers)
 
-        y = lambda x: -self.posterior(x, None)
-        y = jax.jit(jax.vmap(y))
+        def negative_posterior(x: Float[Array, " n_dim"]):
+            return -self.posterior(x, None)  # type: ignore since flowMC does not have typing info, yet
+
+        negative_posterior = jax.jit(jax.vmap(negative_posterior))
         print("Compiling likelihood function")
-        y(initial_guess)
+        negative_posterior(initial_guess)
         print("Done compiling")
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose = True)
-        state = optimizer.optimize(y, bounds, n_loops=n_loops)
+        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose=True)
+        _ = optimizer.optimize(negative_posterior, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def posterior(self, params: Array):
-        return self.Likelihood.evaluate(params) + self.Prior.log_prob(params)
+    def posterior(self, params: Array, data: dict):
+        prior_params = self.Prior.add_name(params.T)
+        prior = self.Prior.log_prob(prior_params)
+        return (
+            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
+        )
 
-    def sample(self, key: jax.random.PRNGKey,
-               initial_guess: Array = None):
-        if initial_guess is None:
-            initial_guess = self.Prior.sample(key, self.Sampler.n_chains)
-        self.Sampler.sample(initial_guess, None)
+    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
+        if initial_guess is jnp.array([]):
+            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
+        self.Sampler.sample(initial_guess, None)  # type: ignore
 
     def print_summary(self):
         """
@@ -95,21 +121,62 @@ class Jim(object):
         production_global_acceptance: Array = production_summary["global_accs"]
 
         print("Training summary")
-        print('=' * 10)
-        for index in range(self.Prior.naming.shape[0]):
-            print(f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}")
-        print(f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}") 
-        print(f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}")
-        print(f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}")
-        print(f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}")
+        print("=" * 10)
+        for index in range(len(self.Prior.naming)):
+            print(
+                f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}"
+            )
+        print(
+            f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {training_local_acceptance.mean():.3f} +/- {training_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {training_global_acceptance.mean():.3f} +/- {training_global_acceptance.std():.3f}"
+        )
+        print(
+            f"Max loss: {training_loss.max():.3f}, Min loss: {training_loss.min():.3f}"
+        )
 
         print("Production summary")
-        print('=' * 10)
-        for index in range(self.Prior.naming.shape[0]):
-            print(f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}")
-        print(f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}")
-        print(f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}")
-        print(f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}")
+        print("=" * 10)
+        for index in range(len(self.Prior.naming)):
+            print(
+                f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}"
+            )
+        print(
+            f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
+        )
+        print(
+            f"Local acceptance: {production_local_acceptance.mean():.3f} +/- {production_local_acceptance.std():.3f}"
+        )
+        print(
+            f"Global acceptance: {production_global_acceptance.mean():.3f} +/- {production_global_acceptance.std():.3f}"
+        )
+
+    def get_samples(self, training: bool = False) -> dict:
+        """
+        Get the samples from the sampler
+
+        Parameters
+        ----------
+        training : bool, optional
+            Whether to get the training samples or the production samples, by default False
+
+        Returns
+        -------
+        dict
+            Dictionary of samples
+
+        """
+        if training:
+            chains = self.Sampler.get_sampler_state(training=True)["chains"]
+        else:
+            chains = self.Sampler.get_sampler_state(training=False)["chains"]
+
+        chains = self.Prior.transform(self.Prior.add_name(chains.transpose(2, 0, 1)))
+        return chains
 
     def plot(self):
         pass

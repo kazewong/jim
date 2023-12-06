@@ -1,5 +1,9 @@
 # Jim <img src="https://user-images.githubusercontent.com/4642979/218163532-1c8a58e5-6f36-42de-96d3-f245eee93cf8.png" alt="jim" width="35"/> - A JAX-based gravitational-wave inference toolkit
 
+<a href="https://jim.readthedocs.io/en/main/">
+<img src="https://badgen.net/badge/Read/the doc/blue" alt="doc"/>
+</a>
+
 Jim comprises a set of tools for estimating parameters of gravitational-wave sources thorugh Bayesian inference.
 At its core, Jim relies on the JAX-based sampler [flowMC](https://github.com/kazewong/flowMC),
 which leverages normalizing flows to enhance the convergence of a gradient-based MCMC sampler.
@@ -24,7 +28,7 @@ pip install git+https://github.com/kazewong/jim
 
 If you would like to take advantage of CUDA, you will additionally need to install a specific version of JAX by doing
 ```
-pip install --upgrade "jax[cuda]"==0.4.1 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
 _NOTE:_ Jim is only currently compatible with Python 3.10.
