@@ -180,10 +180,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         print("Finding reference parameters..")
         
-        # Check if shape of bounds is correct, otherwise, transpose bounds
-        if jnp.shape(bounds)[0] != 2:
-            bounds = bounds.T
-
         self.ref_params = self.maximize_likelihood(
             bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
         )
