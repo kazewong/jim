@@ -27,7 +27,7 @@ class Polarization(eqx.Module):
 
     def tensor_from_basis(
         self, x: Float[Array, " 3"], y: Float[Array, " 3"]
-    ) -> Float[Array, " 3, 3"]:
+    ) -> Float[Array, " 3 3"]:
         """Constructor to obtain polarization tensor from waveframe basis
         defined by orthonormal vectors (x, y) in arbitrary Cartesian
         coordinates.
@@ -52,7 +52,7 @@ class Polarization(eqx.Module):
 
     def tensor_from_sky(
         self, ra: Float, dec: Float, psi: Float, gmst: Float
-    ) -> Float[Array, " 3, 3"]:
+    ) -> Float[Array, " 3 3"]:
         """Computes {name} polarization tensor in celestial
         coordinates from sky location and orientation parameters.
 

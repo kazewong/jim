@@ -185,7 +185,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.freq_grid_low = freq_grid[:-1]
 
         print("Finding reference parameters..")
-        
+
         self.ref_params = self.maximize_likelihood(
             bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
         )
@@ -474,3 +474,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         _ = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.transform(prior.add_name(best_fit))
+
+
+class PopulationLikelihood(LikelihoodBase):
+    events: Float[Array, " n_events n_samples n_dim"]
+    reference_pop: Float[Array, " n_det n_dim"]

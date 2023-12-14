@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import requests
 from gwpy.timeseries import TimeSeries
-from jaxtyping import Array, PRNGKeyArray, Float
+from jaxtyping import Array, PRNGKeyArray, Float, jaxtyped
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
@@ -160,13 +160,13 @@ class GroundBased2G(Detector):
         return x, y
 
     @property
-    def tensor(self) -> Float[Array, " 3, 3"]:
+    def tensor(self) -> Float[Array, " 3 3"]:
         """
         Detector tensor defining the strain measurement.
 
         Returns
         -------
-        tensor : Float[Array, " 3, 3"]
+        tensor : Float[Array, " 3 3"]
             detector tensor.
         """
         # TODO: this could easily be generalized for other detector geometries
@@ -389,6 +389,7 @@ class GroundBased2G(Detector):
         signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j * noise_imag
 
+    @jaxtyped
     def load_psd(
         self, freqs: Float[Array, " n_sample"], psd_file: str = ""
     ) -> Float[Array, " n_sample"]:
@@ -401,8 +402,7 @@ class GroundBased2G(Detector):
         else:
             f, asd_vals = np.loadtxt(psd_file, unpack=True)
         psd_vals = asd_vals**2
-        assert isinstance(f, Float[Array, "n_sample"])
-        assert isinstance(psd_vals, Float[Array, "n_sample"])
+
         psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)  # type: ignore
         psd = jnp.array(psd)
         return psd

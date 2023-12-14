@@ -95,7 +95,7 @@ class Jim(object):
         )
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
-        if initial_guess is jnp.array([]):
+        if initial_guess.size == 0:
             initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
             initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
         self.Sampler.sample(initial_guess, None)  # type: ignore
