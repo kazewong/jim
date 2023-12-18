@@ -93,7 +93,7 @@ prior = Composite([
 )
 
 # The following only works if every prior has xmin and xmax property, which is OK for Uniform and Powerlaw
-bounds = jnp.array([[p.xmin, p.xmax] for p in prior.priors]).T
+bounds = jnp.array([[p.xmin, p.xmax] for p in prior.priors])
 
 ### Create likelihood object
 likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1], prior=prior, bounds=bounds, waveform=RippleIMRPhenomD(), trigger_time=gps, duration=T, n_bins=500)
@@ -116,7 +116,6 @@ outdir_name = "./outdir/"
 jim = Jim(
     likelihood,
     prior,
-    n_loop_pretraining=0,
     n_loop_training=200,
     n_loop_production=20,
     n_local_steps=200,

@@ -167,21 +167,21 @@ class Unconstrained_Uniform(Prior):
             self.naming[0]: (local_transform[self.naming[0]][0], new_transform)
         }
 
-    def to_range(self, x: dict[str, Float]) -> Float:
+    def to_range(self, x: Float) -> Float:
         """
         Transform the parameters to the range of the prior.
 
         Parameters
         ----------
-        x : dict
-            A dictionary of parameters. Names should match the ones in the prior.
+        x : Float
+            The parameters to transform.
 
         Returns
         -------
         x : dict
             A dictionary of parameters with the transforms applied.
         """
-        return (self.xmax - self.xmin) / (1 + jnp.exp(-x[self.naming[0]])) + self.xmin
+        return (self.xmax - self.xmin) / (1 + jnp.exp(-x)) + self.xmin
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
