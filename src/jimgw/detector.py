@@ -371,18 +371,37 @@ class GroundBased2G(Detector):
     def inject_signal(
         self,
         key: PRNGKeyArray,
-        freqs: Array,
-        h_sky: dict,
-        params: dict,
+        freqs: Float[Array, " n_sample"],
+        h_sky: dict[str, Float[Array, " n_sample"]],
+        params: dict[str, Float],
         psd_file: str = "",
     ) -> None:
-        """ """
+        """
+        Inject a signal into the detector data.
+
+        Parameters
+        ----------
+        key : PRNGKeyArray
+            JAX PRNG key.
+        freqs : Float[Array, " n_sample"]
+            Array of frequencies.
+        h_sky : dict[str, Float[Array, " n_sample"]]
+            Array of waveforms in the sky frame. The key is the polarization mode.
+        params : dict[str, Float]
+            Dictionary of parameters.
+        psd_file : str
+            Path to the PSD file.
+
+        Returns
+        -------
+        None
+        """
         self.frequencies = freqs
         self.psd = self.load_psd(freqs, psd_file)
         key, subkey = jax.random.split(key, 2)
         var = self.psd / (4 * (freqs[1] - freqs[0]))
-        noise_real = jax.random.normal(key, shape=freqs.shape) * jnp.sqrt(var)
-        noise_imag = jax.random.normal(subkey, shape=freqs.shape) * jnp.sqrt(var)
+        noise_real = jax.random.normal(key, shape=freqs.shape) * jnp.sqrt(var / 2.0)
+        noise_imag = jax.random.normal(subkey, shape=freqs.shape) * jnp.sqrt(var / 2.0)
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * freqs * (params["epoch"] + params["t_c"])
         )
