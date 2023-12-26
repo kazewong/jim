@@ -25,4 +25,8 @@ At its core, `flowMC` is still a MCMC algorithm, so the hyperparameter tuning is
 1. If you can, use more chains, especially on a GPU. Bring the number of chains up until you start to get significant performance hit or run out of memory.
 2. Run it longer, in particular the training phase. In fact, most of the computation cost goes into the training part, once you get a reasonably tuned normalizing flow model, the production phase is usually quite cheap. To be concrete, blow `n_loop_training` up until you cannot stand how slow it is.
 
+## Run Manager
+
+While Jim is the main object that will handle most of the work, there are a lot of bookkeeping that needs to be done around a run.
+
 ## Analysis

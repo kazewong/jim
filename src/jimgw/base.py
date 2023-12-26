@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 import equinox as eqx
 from jaxtyping import Array, Float
+from jimgw.jim import Jim
+
+from jimgw.prior import Prior
 
 
 class Data(ABC):
@@ -58,5 +61,66 @@ class LikelihoodBase(ABC):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         """
         Evaluate the likelihood for a given set of parameters.
+        """
+        raise NotImplementedError
+
+
+class RunManager(ABC):
+    """
+    Base class for run managers.
+
+    A run manager is a class that help with book keeping for a run.
+    It should be able to log metadata, summarize the run, save the run, and load the run.
+    Individual use cases can extend this class to implement the actual functionality.
+    This class is meant to be a template for the functionality.
+
+    """
+
+    likelihood: LikelihoodBase
+    prior: Prior
+    jim: Jim
+
+    def __init__(self, likelihood: LikelihoodBase, prior: Prior, jim: Jim):
+        """
+        Initialize the run manager.
+
+        Parameters
+        ----------
+        likelihood : LikelihoodBase
+            The likelihood for the run.
+        prior : Prior
+            The prior for the run.
+        jim : Jim
+            The jim instance for the run.
+        """
+        self.likelihood = likelihood
+        self.prior = prior
+        self.jim = jim
+
+    @abstractmethod
+    def log_metadata(self):
+        """
+        Log metadata for the run.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def summarize(self):
+        """
+        Summarize the run.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def save(self):
+        """
+        Save the run.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def load(self):
+        """
+        Load the run.
         """
         raise NotImplementedError
