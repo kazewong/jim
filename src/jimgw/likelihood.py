@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -12,44 +10,7 @@ from scipy.interpolate import interp1d
 from jimgw.detector import Detector
 from jimgw.prior import Prior
 from jimgw.waveform import Waveform
-
-
-class LikelihoodBase(ABC):
-    """
-    Base class for likelihoods.
-    Note that this likelihood class should work
-    for a some what general class of problems.
-    In light of that, this class would be some what abstract,
-    but the idea behind it is this handles two main components of a likelihood:
-    the data and the model.
-    It should be able to take the data and model and evaluate the likelihood for
-    a given set of parameters.
-
-    """
-
-    _model: object
-    _data: object
-
-    @property
-    def model(self):
-        """
-        The model for the likelihood.
-        """
-        return self._model
-
-    @property
-    def data(self):
-        """
-        The data for the likelihood.
-        """
-        return self._data
-
-    @abstractmethod
-    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
-        """
-        Evaluate the likelihood for a given set of parameters.
-        """
-        raise NotImplementedError
+from jimgw.base import LikelihoodBase
 
 
 class TransientLikelihoodFD(LikelihoodBase):
