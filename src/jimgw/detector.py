@@ -43,15 +43,16 @@ class Detector(ABC):
     psd: Float[Array, " n_sample"]
 
     @abstractmethod
-    def load_data(self, data):
+    def load_data(self, data, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
-        h: dict[str, Float[Array, " n_sample"]],
+        h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        **kwargs,
     ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
@@ -62,8 +63,9 @@ class Detector(ABC):
     def td_response(
         self,
         time: Float[Array, " n_sample"],
-        h: dict[str, Float[Array, " n_sample"]],
+        h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        **kwargs,
     ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
@@ -239,12 +241,12 @@ class GroundBased2G(Detector):
             self.name,
             trigger_time - gps_start_pad,
             trigger_time + gps_end_pad,
-            **gwpy_kwargs
+            **gwpy_kwargs,
         )
         assert isinstance(data_td, TimeSeries), "Data is not a TimeSeries object."
         segment_length = data_td.duration.value
         n = len(data_td)
-        delta_t = data_td.dt.value
+        delta_t = data_td.dt.value # type: ignore
         data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, tukey_alpha)) * delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
@@ -275,6 +277,7 @@ class GroundBased2G(Detector):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
+        **kwargs,
     ) -> Array:
         """
         Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -291,7 +294,13 @@ class GroundBased2G(Detector):
         )
         return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
 
-    def td_response(self, time: Array, h: Array, params: Array) -> Array:
+    def td_response(
+        self,
+        time: Float[Array, " n_sample"],
+        h_sky: dict[str, Float[Array, " n_sample"]],
+        params: dict,
+        **kwargs,
+    ) -> Array:
         """
         Modulate the waveform in the sky frame by the detector response in the time domain.
         """
