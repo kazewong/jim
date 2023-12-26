@@ -1,14 +1,16 @@
-from jimgw.likelihood import LikelihoodBase
+from jaxtyping import Array, Float, PRNGKeyArray
+import jax
+import jax.numpy as jnp
+
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
-from jimgw.prior import Prior
-from jaxtyping import Array, Float, PRNGKeyArray
-import jax
-import jax.numpy as jnp
 from flowMC.sampler.flowHMC import flowHMC
+
+from jimgw.prior import Prior
+from jimgw.base import LikelihoodBase
 
 
 class Jim(object):
@@ -62,6 +64,19 @@ class Jim(object):
             **kwargs,
         )
 
+    def posterior(self, params: Float[Array, " n_dim"], data: dict):
+        prior_params = self.Prior.add_name(params.T)
+        prior = self.Prior.log_prob(prior_params)
+        return (
+            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
+        )
+
+    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
+        if initial_guess.size == 0:
+            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
+        self.Sampler.sample(initial_guess, None)  # type: ignore
+
     def maximize_likelihood(
         self,
         bounds: Float[Array, " n_dim 2"],
@@ -86,19 +101,6 @@ class Jim(object):
         _ = optimizer.optimize(negative_posterior, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return best_fit
-
-    def posterior(self, params: Array, data: dict):
-        prior_params = self.Prior.add_name(params.T)
-        prior = self.Prior.log_prob(prior_params)
-        return (
-            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
-        )
-
-    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
-        if initial_guess.size == 0:
-            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
-        self.Sampler.sample(initial_guess, None)  # type: ignore
 
     def print_summary(self):
         """
