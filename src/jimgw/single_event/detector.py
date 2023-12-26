@@ -34,10 +34,6 @@ class Detector(ABC):
     psd: Float[Array, " n_sample"]
 
     @abstractmethod
-    def load_data(self, data, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],

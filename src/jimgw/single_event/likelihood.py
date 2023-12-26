@@ -13,10 +13,16 @@ from jimgw.single_event.waveform import Waveform
 from jimgw.base import LikelihoodBase
 
 
-class TransientLikelihoodFD(LikelihoodBase):
+class SingleEventLiklihood(LikelihoodBase):
     detectors: list[Detector]
     waveform: Waveform
 
+    def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
+        self.detectors = detectors
+        self.waveform = waveform
+
+
+class TransientLikelihoodFD(SingleEventLiklihood):
     def __init__(
         self,
         detectors: list[Detector],

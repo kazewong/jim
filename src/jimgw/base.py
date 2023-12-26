@@ -80,22 +80,11 @@ class RunManager(ABC):
     prior: Prior
     jim: Jim
 
-    def __init__(self, likelihood: LikelihoodBase, prior: Prior, jim: Jim):
+    def __init__(self, *args, **kwargs):
         """
         Initialize the run manager.
-
-        Parameters
-        ----------
-        likelihood : LikelihoodBase
-            The likelihood for the run.
-        prior : Prior
-            The prior for the run.
-        jim : Jim
-            The jim instance for the run.
         """
-        self.likelihood = likelihood
-        self.prior = prior
-        self.jim = jim
+        raise NotImplementedError
 
     @abstractmethod
     def log_metadata(self):
@@ -119,7 +108,7 @@ class RunManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self):
+    def load(self, path: str):
         """
         Load the run.
         """
