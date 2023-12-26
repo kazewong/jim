@@ -7,9 +7,9 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float
 from scipy.interpolate import interp1d
 
-from jimgw.detector import Detector
+from jimgw.single_event.detector import Detector
 from jimgw.prior import Prior
-from jimgw.waveform import Waveform
+from jimgw.single_event.waveform import Waveform
 from jimgw.base import LikelihoodBase
 
 

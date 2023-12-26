@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
 from jimgw.constants import EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, C_SI
-from jimgw.wave import Polarization
+from jimgw.single_event.wave import Polarization
 
 DEG_TO_RAD = jnp.pi / 180
 
