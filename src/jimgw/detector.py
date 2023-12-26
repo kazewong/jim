@@ -22,15 +22,6 @@ psd_file_dict = {
 }
 
 
-def np2(x):
-    """
-    Returns the next power of two as big as or larger than x."""
-    p = 1
-    while p < x:
-        p = p << 1
-    return p
-
-
 class Detector(ABC):
     """
     Base class for all detectors.
@@ -246,7 +237,7 @@ class GroundBased2G(Detector):
         assert isinstance(data_td, TimeSeries), "Data is not a TimeSeries object."
         segment_length = data_td.duration.value
         n = len(data_td)
-        delta_t = data_td.dt.value # type: ignore
+        delta_t = data_td.dt.value  # type: ignore
         data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, tukey_alpha)) * delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
