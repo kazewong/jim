@@ -95,6 +95,9 @@ class Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
 
+    def __repr__(self):
+        return f"Uniform(xmin={self.xmin}, xmax={self.xmax})"
+
     def __init__(
         self,
         xmin: Float,
@@ -145,6 +148,9 @@ class Uniform(Prior):
 class Unconstrained_Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
+
+    def __repr__(self):
+        return f"Unconstrained_Uniform(xmin={self.xmin}, xmax={self.xmax})"
 
     def __init__(
         self,
@@ -219,6 +225,9 @@ class Sphere(Prior):
     Magnitude is sampled from a uniform distribution.
     """
 
+    def __repr__(self):
+        return f"Sphere(naming={self.naming})"
+
     def __init__(self, naming: str):
         self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
         self.transforms = {
@@ -275,6 +284,9 @@ class Alignedspin(Prior):
     amax: Float = 0.99
     chi_axis: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
     cdf_vals: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
+
+    def __repr__(self):
+        return f"Alignedspin(amax={self.amax}, naming={self.naming})"
 
     def __init__(
         self,
@@ -370,6 +382,9 @@ class Powerlaw(Prior):
     alpha: Float = 0.0
     normalization: Float = 1.0
 
+    def __repr__(self):
+        return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
+
     def __init__(
         self,
         xmin: Float,
@@ -435,6 +450,9 @@ class Powerlaw(Prior):
 
 class Composite(Prior):
     priors: list[Prior] = field(default_factory=list)
+
+    def __repr__(self):
+        return f"Composite(priors={self.priors}, naming={self.naming})"
 
     def __init__(
         self, priors: list[Prior], transforms: dict[str, tuple[str, Callable]] = {}

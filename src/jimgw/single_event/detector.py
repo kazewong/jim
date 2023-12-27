@@ -74,6 +74,9 @@ class GroundBased2G(Detector):
     yarm_tilt: Float = 0
     elevation: Float = 0
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.name})"
+
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
 
