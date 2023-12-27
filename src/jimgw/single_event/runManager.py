@@ -1,5 +1,3 @@
-from jaxtyping import Array, Float
-
 from jimgw.base import RunManager
 from jimgw.prior import Prior
 from jimgw.jim import Jim
@@ -7,13 +5,23 @@ from jimgw.single_event.likelihood import SingleEventLiklihood
 
 
 class SingleEventPERunManager(RunManager):
-    time: Float[Array, " n_sample"]
-    data: Float[Array, " n_sample"]
-    psd: Float[Array, " n_sample"]
+    likelihood: SingleEventLiklihood
 
     @property
     def waveform(self):
-        return self.likelihood
+        return self.likelihood.waveform
+
+    @property
+    def detectors(self):
+        return self.likelihood.detectors
+
+    @property
+    def data(self):
+        return [detector.data for detector in self.likelihood.detectors]
+
+    @property
+    def psds(self):
+        return [detector.psd for detector in self.likelihood.detectors]
 
     def __init__(self, *args, **kwargs):
         if "run_file" in kwargs:
@@ -21,6 +29,12 @@ class SingleEventPERunManager(RunManager):
             self.load(kwargs["run_file"])
         elif "likelihood" in kwargs and "prior" in kwargs and "jim" not in kwargs:
             print("Loading from provided likelihood, prior and jim instances.")
+            assert isinstance(
+                kwargs["likelihood"], SingleEventLiklihood
+            ), "Likelihood must be a SingleEventLikelihood instance."
+            assert isinstance(kwargs["prior"], Prior), "Prior must be a Prior instance."
+            assert isinstance(kwargs["jim"], Jim), "Jim must be a Jim instance."
+
             self.likelihood = kwargs["likelihood"]
             self.prior = kwargs["prior"]
             self.jim = kwargs["jim"]
@@ -28,12 +42,6 @@ class SingleEventPERunManager(RunManager):
             raise ValueError(
                 "Please provide a run file or a likelihood, prior and jim instances."
             )
-
-        assert isinstance(
-            self.likelihood, SingleEventLiklihood
-        ), "Likelihood must be a SingleEventLikelihood instance."
-        assert isinstance(self.prior, Prior), "Prior must be a Prior instance."
-        assert isinstance(self.jim, Jim), "Jim must be a Jim instance."
 
     def log_metadata(self):
         pass

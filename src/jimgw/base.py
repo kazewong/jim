@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
 import equinox as eqx
 from jaxtyping import Array, Float
-from jimgw.jim import Jim
-
-from jimgw.prior import Prior
 
 
 class Data(ABC):
@@ -76,15 +73,13 @@ class RunManager(ABC):
 
     """
 
-    likelihood: LikelihoodBase
-    prior: Prior
-    jim: Jim
-
     def __init__(self, *args, **kwargs):
         """
         Initialize the run manager.
         """
-        raise NotImplementedError
+        self.likelihood = kwargs["likelihood"]
+        self.prior = kwargs["prior"]
+        self.jim = kwargs["jim"]
 
     @abstractmethod
     def log_metadata(self):
