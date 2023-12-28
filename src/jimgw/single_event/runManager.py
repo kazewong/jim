@@ -2,6 +2,23 @@ from jimgw.base import RunManager
 from jimgw.prior import Prior
 from jimgw.jim import Jim
 from jimgw.single_event.likelihood import SingleEventLiklihood
+from dataclasses import dataclass
+
+
+@dataclass
+class SingleEventRun:
+    seed: int
+    waveform: dict[str, str | float | int | bool]
+    detectors: list[str]
+    data: list[str]
+    psds: list[str]
+    priors: list[str]
+    jim_parameters: dict[str, str | float | int | bool]
+    gps_time: int
+    duration: int
+    post_trigger_duration: int
+    fmin: float
+    fmax: float
 
 
 class SingleEventPERunManager(RunManager):
