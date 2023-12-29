@@ -137,6 +137,9 @@ class SingleEventPERunManager(RunManager):
         waveform = self.initialize_waveform()
         name = self.run.likelihood_parameters["name"]
         assert isinstance(name, str), "Likelihood name must be a string."
+        if self.run.injection:
+            # TODO: Add injection
+            pass
         return likelihood_presets[name](
             detectors, waveform, **self.run.likelihood_parameters
         )
