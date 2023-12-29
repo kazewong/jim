@@ -2,10 +2,11 @@ from jimgw.jim import Jim
 from jimgw.single_event.detector import H1, L1, V1
 from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Uniform, Powerlaw, Composite 
+from jimgw.prior import Uniform, Powerlaw, Composite
 import jax.numpy as jnp
 import jax
 import time
+
 jax.config.update("jax_enable_x64", True)
 
 
@@ -22,14 +23,20 @@ T = 128
 duration = T
 post_trigger_duration = 2
 epoch = duration - post_trigger_duration
-f_ref = fmin 
+f_ref = fmin
 
 ### Getting ifos and overwriting with above data
 
 tukey_alpha = 2 / (duration / 2)
-H1.load_data(gps, duration, 2, fmin, fmax, psd_pad=duration+16, tukey_alpha=tukey_alpha)
-L1.load_data(gps, duration, 2, fmin, fmax, psd_pad=duration+16, tukey_alpha=tukey_alpha)
-V1.load_data(gps, duration, 2, fmin, fmax, psd_pad=duration+16, tukey_alpha=tukey_alpha)
+H1.load_data(
+    gps, duration, 2, fmin, fmax, psd_pad=duration + 16, tukey_alpha=tukey_alpha
+)
+L1.load_data(
+    gps, duration, 2, fmin, fmax, psd_pad=duration + 16, tukey_alpha=tukey_alpha
+)
+V1.load_data(
+    gps, duration, 2, fmin, fmax, psd_pad=duration + 16, tukey_alpha=tukey_alpha
+)
 
 ### Define priors
 
@@ -41,13 +48,13 @@ q_prior = Uniform(
     naming=["q"],
     transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
 )
-s1z_prior                = Uniform(-0.05, 0.05, naming=["s1_z"])
-s2z_prior                = Uniform(-0.05, 0.05, naming=["s2_z"])
+s1z_prior = Uniform(-0.05, 0.05, naming=["s1_z"])
+s2z_prior = Uniform(-0.05, 0.05, naming=["s2_z"])
 
 # External parameters
-dL_prior       = Powerlaw(1.0, 75.0, 2.0, naming=["d_L"])
-t_c_prior      = Uniform(-0.1, 0.1, naming=["t_c"])
-phase_c_prior  = Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
+dL_prior = Powerlaw(1.0, 75.0, 2.0, naming=["d_L"])
+t_c_prior = Uniform(-0.1, 0.1, naming=["t_c"])
+phase_c_prior = Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
 cos_iota_prior = Uniform(
     -1.0,
     1.0,
@@ -61,8 +68,8 @@ cos_iota_prior = Uniform(
         )
     },
 )
-psi_prior     = Uniform(0.0, jnp.pi, naming=["psi"])
-ra_prior      = Uniform(0.0, 2 * jnp.pi, naming=["ra"])
+psi_prior = Uniform(0.0, jnp.pi, naming=["psi"])
+ra_prior = Uniform(0.0, 2 * jnp.pi, naming=["ra"])
 sin_dec_prior = Uniform(
     -1.0,
     1.0,
@@ -77,7 +84,8 @@ sin_dec_prior = Uniform(
     },
 )
 
-prior = Composite([
+prior = Composite(
+    [
         Mc_prior,
         q_prior,
         s1z_prior,
@@ -96,19 +104,27 @@ prior = Composite([
 bounds = jnp.array([[p.xmin, p.xmax] for p in prior.priors])
 
 ### Create likelihood object
-likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1], prior=prior, bounds=bounds, waveform=RippleIMRPhenomD(), trigger_time=gps, duration=T, n_bins=500)
+likelihood = HeterodynedTransientLikelihoodFD(
+    [H1, L1, V1],
+    prior=prior,
+    bounds=bounds,
+    waveform=RippleIMRPhenomD(),
+    trigger_time=gps,
+    duration=T,
+    n_bins=500,
+)
 
 ### Create sampler and jim objects
 eps = 3e-2
 n_dim = 11
 mass_matrix = jnp.eye(n_dim)
-mass_matrix = mass_matrix.at[0,0].set(1e-5)
-mass_matrix = mass_matrix.at[1,1].set(1e-4)
-mass_matrix = mass_matrix.at[2,2].set(1e-3)
-mass_matrix = mass_matrix.at[3,3].set(1e-3)
-mass_matrix = mass_matrix.at[5,5].set(1e-5)
-mass_matrix = mass_matrix.at[9,9].set(1e-2)
-mass_matrix = mass_matrix.at[10,10].set(1e-2)
+mass_matrix = mass_matrix.at[0, 0].set(1e-5)
+mass_matrix = mass_matrix.at[1, 1].set(1e-4)
+mass_matrix = mass_matrix.at[2, 2].set(1e-3)
+mass_matrix = mass_matrix.at[3, 3].set(1e-3)
+mass_matrix = mass_matrix.at[5, 5].set(1e-5)
+mass_matrix = mass_matrix.at[9, 9].set(1e-2)
+mass_matrix = mass_matrix.at[10, 10].set(1e-2)
 local_sampler_arg = {"step_size": mass_matrix * eps}
 
 outdir_name = "./outdir/"
@@ -129,10 +145,10 @@ jim = Jim(
     use_global=True,
     keep_quantile=0.0,
     train_thinning=10,
-    output_thinning=30,    
-    n_loops_maximize_likelihood = 2000,
+    output_thinning=30,
+    n_loops_maximize_likelihood=2000,
     local_sampler_arg=local_sampler_arg,
-    outdir_name=outdir_name
+    outdir_name=outdir_name,
 )
 
 jim.sample(jax.random.PRNGKey(42))
