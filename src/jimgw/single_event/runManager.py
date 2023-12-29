@@ -1,11 +1,14 @@
 from jimgw.base import RunManager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from jimgw.single_event.likelihood import likelihood_presets, SingleEventLiklihood
 from jimgw.single_event.detector import detector_preset, Detector
 from jimgw.single_event.waveform import waveform_preset, Waveform
 from jimgw import prior
 from jimgw.jim import Jim
 import jax.numpy as jnp
+import jax
+import equinox as eqx
+import yaml
 
 prior_presets = {
     "Unconstrained_Uniform": prior.Unconstrained_Uniform,
@@ -117,10 +120,17 @@ class SingleEventPERunManager(RunManager):
         pass
 
     def save(self, path: str):
-        pass
+        output_dict = asdict(self.run)
+        output_dict = jax.tree_util.tree_map(
+            lambda x: x.tolist() if eqx.is_array(x) else x, asdict(self.run)
+        )
+        with open(path, "w") as f:
+            yaml.dump(output_dict, f)
 
     def load_from_path(self, path: str) -> SingleEventRun:
-        raise NotImplementedError
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return SingleEventRun(**data)
 
     def initialize_likelihood(self) -> SingleEventLiklihood:
         detectors = self.initialize_detector()
