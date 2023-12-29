@@ -2,7 +2,7 @@ from jimgw.jim import Jim
 from jimgw.single_event.detector import H1, L1, V1
 from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Uniform, Powerlaw, Composite
+from jimgw.prior import Uniform, PowerLaw, Composite
 import jax.numpy as jnp
 import jax
 import time
@@ -52,7 +52,7 @@ s1z_prior = Uniform(-0.05, 0.05, naming=["s1_z"])
 s2z_prior = Uniform(-0.05, 0.05, naming=["s2_z"])
 
 # External parameters
-dL_prior = Powerlaw(1.0, 75.0, 2.0, naming=["d_L"])
+dL_prior = PowerLaw(1.0, 75.0, 2.0, naming=["d_L"])
 t_c_prior = Uniform(-0.1, 0.1, naming=["t_c"])
 phase_c_prior = Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
 cos_iota_prior = Uniform(

@@ -5,6 +5,44 @@ from jimgw.single_event.detector import detector_preset, Detector
 from jimgw.single_event.waveform import waveform_preset, Waveform
 from jimgw import prior
 from jimgw.jim import Jim
+import jax.numpy as jnp
+
+prior_presets = {
+    "Unconstrained_Uniform": prior.Unconstrained_Uniform,
+    "Uniform": prior.Uniform,
+    "Sphere": prior.Sphere,
+    "AlignedSpin": prior.AlignedSpin,
+    "PowerLaw": prior.PowerLaw,
+    "Composite": prior.Composite,
+    "MassRatio": lambda **kwargs: prior.Unconstrained_Uniform(
+        0.125,
+        1.0,
+        naming=["q"],
+        transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
+    ),
+    "CosIota": lambda **kwargs: prior.Unconstrained_Uniform(
+        -1.0,
+        1.0,
+        naming=["cos_iota"],
+        transforms={
+            "cos_iota": (
+                "iota",
+                lambda params: jnp.arccos(params["cos_iota"]),
+            )
+        },
+    ),
+    "SinDec": lambda **kwargs: prior.Unconstrained_Uniform(
+        -1.0,
+        1.0,
+        naming=["sin_dec"],
+        transforms={
+            "sin_dec": (
+                "dec",
+                lambda params: jnp.arcsin(params["sin_dec"]),
+            )
+        },
+    ),
+}
 
 
 @dataclass
@@ -15,7 +53,7 @@ class SingleEventRun:
     detectors: list[str]
     priors: dict[
         str, dict[str, str | float | int | bool]
-    ]  # TODO: Incorporate custom transform
+    ]  # Transform cannot be included in this way, add it to preset if used often.
     jim_parameters: dict[str, str | float | int | bool]
     injection_parameters: dict[str, float]
     injection: bool = False
@@ -94,7 +132,14 @@ class SingleEventPERunManager(RunManager):
         )
 
     def initialize_prior(self) -> prior.Prior:
-        raise NotImplementedError
+        priors = []
+        for name, parameters in self.run.priors.items():
+            if parameters["name"] not in prior_presets:
+                raise ValueError(f"Prior {name} not recognized.")
+            priors.append(
+                prior_presets[parameters["name"]](naming=[name], **parameters)
+            )
+        return prior.Composite(priors)
 
     def initialize_detector(self) -> list[Detector]:
         """

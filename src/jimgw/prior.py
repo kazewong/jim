@@ -104,6 +104,7 @@ class Uniform(Prior):
         xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
@@ -158,6 +159,7 @@ class Unconstrained_Uniform(Prior):
         xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
@@ -228,7 +230,7 @@ class Sphere(Prior):
     def __repr__(self):
         return f"Sphere(naming={self.naming})"
 
-    def __init__(self, naming: str):
+    def __init__(self, naming: str, **kwargs):
         self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
         self.transforms = {
             self.naming[0]: (
@@ -265,7 +267,7 @@ class Sphere(Prior):
 
 
 @jaxtyped
-class Alignedspin(Prior):
+class AlignedSpin(Prior):
 
     """
     Prior distribution for the aligned (z) component of the spin.
@@ -293,6 +295,7 @@ class Alignedspin(Prior):
         amax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Alignedspin needs to be 1D distributions"
@@ -370,7 +373,7 @@ class Alignedspin(Prior):
 
 
 @jaxtyped
-class Powerlaw(Prior):
+class PowerLaw(Prior):
 
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
@@ -392,6 +395,7 @@ class Powerlaw(Prior):
         alpha: Union[Int, Float],
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         if alpha < 0.0:
@@ -455,7 +459,10 @@ class Composite(Prior):
         return f"Composite(priors={self.priors}, naming={self.naming})"
 
     def __init__(
-        self, priors: list[Prior], transforms: dict[str, tuple[str, Callable]] = {}
+        self,
+        priors: list[Prior],
+        transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         naming = []
         self.transforms = {}
