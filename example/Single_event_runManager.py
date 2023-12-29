@@ -13,6 +13,13 @@ import jax
 
 jax.config.update("jax_enable_x64", True)
 
+mass_matrix = jnp.eye(11)
+mass_matrix = mass_matrix.at[1, 1].set(1e-3)
+mass_matrix = mass_matrix.at[5, 5].set(1e-3)
+mass_matrix = (mass_matrix*3e-3)
+local_sampler_arg = {"step_size": mass_matrix}
+
+
 run = SingleEventRun(
     seed=0,
     path="test_data/GW150914/",
@@ -46,6 +53,7 @@ run = SingleEventRun(
         "keep_quantile": 0.0,
         "train_thinning": 1,
         "output_thinning": 10,
+        "local_sampler_arg": local_sampler_arg,
     },
     likelihood_parameters={"name": "TransientLikelihoodFD"},
     injection_parameters={},
