@@ -82,6 +82,6 @@ class RippleIMRPhenomPv2(Waveform):
 
 
 waveform_preset = {
-    "IMRPhenomD": RippleIMRPhenomD,
-    "IMRPhenomPv2": RippleIMRPhenomPv2,
+    "RippleIMRPhenomD": RippleIMRPhenomD,
+    "RippleIMRPhenomPv2": RippleIMRPhenomPv2,
 }

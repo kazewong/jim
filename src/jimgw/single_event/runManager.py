@@ -1,6 +1,6 @@
 from jimgw.base import RunManager
-from dataclasses import dataclass
-from jimgw.single_event import likelihood
+from dataclasses import dataclass, field
+from jimgw.single_event.likelihood import likelihood_presets, SingleEventLiklihood
 from jimgw.single_event.detector import detector_preset, Detector
 from jimgw.single_event.waveform import waveform_preset, Waveform
 from jimgw import prior
@@ -17,18 +17,24 @@ class SingleEventRun:
         str, dict[str, str | float | int | bool]
     ]  # TODO: Incorporate custom transform
     jim_parameters: dict[str, str | float | int | bool]
-    likelihood_parameters: dict[str, str | float | int | bool]
     injection_parameters: dict[str, float]
     injection: bool = False
-    waveform_parameters: dict[str, str | float | int | bool] = {"name": ""}
-    data_parameters: dict[str, float | int] = {
-        "trigger_time": 0.0,
-        "duration": 0,
-        "post_trigger_duration": 0,
-        "f_min": 0.0,
-        "f_max": 0.0,
-        "tukey_alpha": 0.2,
-    }
+    likelihood_parameters: dict[str, str | float | int | bool] = field(
+        default_factory=lambda: {"name": "TransientLikelihoodFD"}
+    )
+    waveform_parameters: dict[str, str | float | int | bool] = field(
+        default_factory=lambda: {"name": ""}
+    )
+    data_parameters: dict[str, float | int] = field(
+        default_factory=lambda: {
+            "trigger_time": 0.0,
+            "duration": 0,
+            "post_trigger_duration": 0,
+            "f_min": 0.0,
+            "f_max": 0.0,
+            "tukey_alpha": 0.2,
+        }
+    )
 
 
 class SingleEventPERunManager(RunManager):
@@ -78,8 +84,14 @@ class SingleEventPERunManager(RunManager):
     def load_from_path(self, path: str) -> SingleEventRun:
         raise NotImplementedError
 
-    def initialize_likelihood(self) -> likelihood.TransientLikelihoodFD:
-        raise NotImplementedError
+    def initialize_likelihood(self) -> SingleEventLiklihood:
+        detectors = self.initialize_detector()
+        waveform = self.initialize_waveform()
+        name = self.run.likelihood_parameters["name"]
+        assert isinstance(name, str), "Likelihood name must be a string."
+        return likelihood_presets[name](
+            detectors, waveform, **self.run.likelihood_parameters
+        )
 
     def initialize_prior(self) -> prior.Prior:
         raise NotImplementedError
@@ -88,6 +100,7 @@ class SingleEventPERunManager(RunManager):
         """
         Initialize the detectors.
         """
+        print("Initializing detectors.")
         trigger_time = self.run.data_parameters["trigger_time"]
         duration = self.run.data_parameters["duration"]
         post_trigger_duration = self.run.data_parameters["post_trigger_duration"]
@@ -126,6 +139,7 @@ class SingleEventPERunManager(RunManager):
         """
         Initialize the waveform.
         """
+        print("Initializing waveform.")
         name = self.run.waveform_parameters["name"]
         if name not in waveform_preset:
             raise ValueError(f"Waveform {name} not recognized.")

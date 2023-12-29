@@ -30,6 +30,7 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         trigger_time: float = 0,
         duration: float = 4,
         post_trigger_duration: float = 2,
+        **kwargs,
     ) -> None:
         self.detectors = detectors
         assert jnp.all(
@@ -134,6 +135,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         post_trigger_duration: float = 2,
         popsize: int = 100,
         n_loops: int = 2000,
+        **kwargs,
     ) -> None:
         super().__init__(
             detectors, waveform, trigger_time, duration, post_trigger_duration
@@ -441,3 +443,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         _ = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.transform(prior.add_name(best_fit))
+
+
+likelihood_presets = {
+    "TransientLikelihoodFD": TransientLikelihoodFD,
+    "HeterodynedTransientLikelihoodFD": HeterodynedTransientLikelihoodFD,
+}
