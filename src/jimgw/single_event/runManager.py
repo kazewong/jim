@@ -2,6 +2,7 @@ from jimgw.base import RunManager
 from dataclasses import dataclass
 from jimgw.single_event import likelihood
 from jimgw.single_event.detector import detector_preset, Detector
+from jimgw.single_event.waveform import waveform_preset, Waveform
 from jimgw import prior
 from jimgw.jim import Jim
 
@@ -121,11 +122,12 @@ class SingleEventPERunManager(RunManager):
             detectors.append(detector_preset[name])
         return detectors
 
-    def initialize_waveform(self):
+    def initialize_waveform(self) -> Waveform:
         """
         Initialize the waveform.
         """
-        try:
-            pass
-        except Exception as e:
-            raise e
+        name = self.run.waveform_parameters["name"]
+        if name not in waveform_preset:
+            raise ValueError(f"Waveform {name} not recognized.")
+        waveform = waveform_preset[name](**self.run.waveform_parameters)
+        return waveform

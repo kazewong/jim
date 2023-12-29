@@ -18,7 +18,7 @@ class Waveform(ABC):
 class RippleIMRPhenomD(Waveform):
     f_ref: float
 
-    def __init__(self, f_ref: float = 20.0):
+    def __init__(self, f_ref: float = 20.0, **kwargs):
         self.f_ref = f_ref
 
     def __call__(
@@ -43,13 +43,13 @@ class RippleIMRPhenomD(Waveform):
         return output
 
     def __repr__(self):
-        return f"RippleIMRPhenomPv2(f_ref={self.f_ref})"
+        return f"RippleIMRPhenomD(f_ref={self.f_ref})"
 
 
 class RippleIMRPhenomPv2(Waveform):
     f_ref: float
 
-    def __init__(self, f_ref: float = 20.0):
+    def __init__(self, f_ref: float = 20.0, **kwargs):
         self.f_ref = f_ref
 
     def __call__(
@@ -79,3 +79,9 @@ class RippleIMRPhenomPv2(Waveform):
 
     def __repr__(self):
         return f"RippleIMRPhenomPv2(f_ref={self.f_ref})"
+
+
+waveform_preset = {
+    "IMRPhenomD": RippleIMRPhenomD,
+    "IMRPhenomPv2": RippleIMRPhenomPv2,
+}

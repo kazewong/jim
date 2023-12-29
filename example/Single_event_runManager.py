@@ -57,4 +57,4 @@ run = SingleEventRun(
     }
 )
 
-run_manager = SingleEventPERunManager(run)
+run_manager = SingleEventPERunManager(run=run)
