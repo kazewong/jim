@@ -1,5 +1,8 @@
 from jimgw.base import RunManager
 from dataclasses import dataclass
+from jimgw.single_event import likelihood
+from jimgw import prior
+from jimgw.jim import Jim
 
 
 @dataclass
@@ -25,10 +28,13 @@ class SingleEventRun:
 
 class SingleEventPERunManager(RunManager):
     run: SingleEventRun
+    likelihood: likelihood.TransientLikelihoodFD
+    jim: Jim
+    prior: prior.Prior
 
     @property
     def waveform(self):
-        return self.likelihood.waveform
+        return self.run.waveform
 
     @property
     def detectors(self):
