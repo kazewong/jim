@@ -1,6 +1,7 @@
 from jimgw.base import RunManager
 from dataclasses import dataclass
 from jimgw.single_event import likelihood
+from jimgw.single_event.detector import detector_preset, Detector
 from jimgw import prior
 from jimgw.jim import Jim
 
@@ -14,16 +15,19 @@ class SingleEventRun:
     priors: dict[
         str, dict[str, str | float | int | bool]
     ]  # TODO: Incorporate custom transform
-    waveform: str
-    waveform_parameters: dict[str, str | float | int | bool]
     jim_parameters: dict[str, str | float | int | bool]
     likelihood_parameters: dict[str, str | float | int | bool]
-    trigger_time: float
-    duration: int
-    post_trigger_duration: int
-    fmin: float
-    fmax: float
     injection_parameters: dict[str, float]
+    injection: bool = False
+    waveform_parameters: dict[str, str | float | int | bool] = {"name": ""}
+    data_parameters: dict[str, float | int] = {
+        "trigger_time": 0.0,
+        "duration": 0,
+        "post_trigger_duration": 0,
+        "f_min": 0.0,
+        "f_max": 0.0,
+        "tukey_alpha": 0.2,
+    }
 
 
 class SingleEventPERunManager(RunManager):
@@ -32,7 +36,7 @@ class SingleEventPERunManager(RunManager):
 
     @property
     def waveform(self):
-        return self.run.waveform
+        return self.run.waveform_parameters["name"]
 
     @property
     def detectors(self):
@@ -79,34 +83,43 @@ class SingleEventPERunManager(RunManager):
     def initialize_prior(self) -> prior.Prior:
         raise NotImplementedError
 
-    def fetch_data(self):
-        """
-        Given a run config that specify using real data, fetch the data from the server.
-
-
-        """
-        try:
-            pass
-        except Exception as e:
-            raise e
-
-    def generate_data(self):
-        """
-        Given a run config that specify using simulated data, generate the data.
-        """
-        try:
-            pass
-        except Exception as e:
-            raise e
-
-    def initialize_detector(self):
+    def initialize_detector(self) -> list[Detector]:
         """
         Initialize the detectors.
         """
-        try:
-            pass
-        except Exception as e:
-            raise e
+        trigger_time = self.run.data_parameters["trigger_time"]
+        duration = self.run.data_parameters["duration"]
+        post_trigger_duration = self.run.data_parameters["post_trigger_duration"]
+        f_min = self.run.data_parameters["f_min"]
+        f_max = self.run.data_parameters["f_max"]
+        tukey_alpha = self.run.data_parameters["tukey_alpha"]
+
+        assert trigger_time >= 0, "Trigger time must be positive."
+        assert duration > 0, "Duration must be positive."
+        assert post_trigger_duration >= 0, "Post trigger duration must be positive."
+        assert f_min >= 0, "f_min must be positive."
+        assert f_max > f_min, "f_max must be greater than f_min."
+        assert 0 <= tukey_alpha <= 1, "Tukey alpha must be between 0 and 1."
+
+        epoch = duration - post_trigger_duration
+        detectors = []
+        for name in self.run.detectors:
+            detector = detector_preset[name]
+            if not self.run.injection:
+                print("Loading real data.")
+                detector.load_data(
+                    trigger_time=trigger_time,
+                    gps_start_pad=int(epoch),
+                    gps_end_pad=int(post_trigger_duration),
+                    psd_pad=int(duration * 4),
+                    f_min=f_min,
+                    f_max=f_max,
+                    tukey_alpha=tukey_alpha,
+                )
+            else:
+                print("Injection mode. Need to wait until waveform model is loaded.")
+            detectors.append(detector_preset[name])
+        return detectors
 
     def initialize_waveform(self):
         """

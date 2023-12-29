@@ -240,9 +240,7 @@ class GroundBased2G(Detector):
         data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, tukey_alpha)) * delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
-        start_psd = (
-            int(trigger_time) - gps_start_pad - 2 * psd_pad
-        )  # What does Int do here?
+        start_psd = int(trigger_time) - gps_start_pad - 2 * psd_pad
         end_psd = int(trigger_time) - gps_start_pad - psd_pad
 
         print("Fetching PSD data...")
@@ -461,3 +459,9 @@ V1 = GroundBased2G(
     elevation=51.884,
     mode="pc",
 )
+
+detector_preset = {
+    "H1": H1,
+    "L1": L1,
+    "V1": V1,
+}

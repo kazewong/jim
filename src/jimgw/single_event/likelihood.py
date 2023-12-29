@@ -441,8 +441,3 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         _ = optimizer.optimize(y, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return prior.transform(prior.add_name(best_fit))
-
-
-class PopulationLikelihood(LikelihoodBase):
-    events: Float[Array, " n_events n_samples n_dim"]
-    reference_pop: Float[Array, " n_det n_dim"]
