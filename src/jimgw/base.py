@@ -96,7 +96,7 @@ class RunManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save(self):
+    def save(self, path: str):
         """
         Save the run.
         """
