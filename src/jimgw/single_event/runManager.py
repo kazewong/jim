@@ -8,14 +8,14 @@ class SingleEventRun:
     path: str
 
     detectors: list[str]
-    data: list[str]
-    psds: list[str]
-    priors: list[str]
+    priors: dict[
+        str, dict[str, str | float | int | bool]
+    ]  # TODO: Incorporate custom transform
     waveform: str
     waveform_parameters: dict[str, str | float | int | bool]
     jim_parameters: dict[str, str | float | int | bool]
     likelihood_parameters: dict[str, str | float | int | bool]
-    trigger_time: int
+    trigger_time: float
     duration: int
     post_trigger_duration: int
     fmin: float
@@ -42,17 +42,16 @@ class SingleEventPERunManager(RunManager):
     def psds(self):
         return self.run.detectors
 
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, **kwargs):
         if "run" in kwargs:
             print("Run instance provided. Loading from instance.")
             self.run = kwargs["run"]
+        elif "path" in kwargs:
+            print("Run instance not provided. Loading from path.")
+            self.run = self.load_from_path(kwargs["path"])
         else:
-            try:
-                print("Run instance not provided. Loading from path.")
-                self.run = self.load(path)
-            except Exception as e:
-                print("Fail to load from path. Please check the path.")
-                raise e
+            print("Neither run instance nor path provided.")
+            raise ValueError
 
     def log_metadata(self):
         pass
@@ -63,7 +62,7 @@ class SingleEventPERunManager(RunManager):
     def save(self, path: str):
         pass
 
-    def load(self, path: str) -> SingleEventRun:
+    def load_from_path(self, path: str) -> SingleEventRun:
         raise NotImplementedError
 
     def fetch_data(self):

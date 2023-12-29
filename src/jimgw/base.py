@@ -103,7 +103,7 @@ class RunManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str):
+    def load_from_path(self, path: str):
         """
         Load the run.
         """
