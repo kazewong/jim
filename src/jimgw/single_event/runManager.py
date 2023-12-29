@@ -28,9 +28,7 @@ class SingleEventRun:
 
 class SingleEventPERunManager(RunManager):
     run: SingleEventRun
-    likelihood: likelihood.TransientLikelihoodFD
     jim: Jim
-    prior: prior.Prior
 
     @property
     def waveform(self):
@@ -59,6 +57,10 @@ class SingleEventPERunManager(RunManager):
             print("Neither run instance nor path provided.")
             raise ValueError
 
+        local_likelihood = self.initialize_likelihood()
+        local_prior = self.initialize_prior()
+        self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
+
     def log_metadata(self):
         pass
 
@@ -69,6 +71,12 @@ class SingleEventPERunManager(RunManager):
         pass
 
     def load_from_path(self, path: str) -> SingleEventRun:
+        raise NotImplementedError
+
+    def initialize_likelihood(self) -> likelihood.TransientLikelihoodFD:
+        raise NotImplementedError
+
+    def initialize_prior(self) -> prior.Prior:
         raise NotImplementedError
 
     def fetch_data(self):
