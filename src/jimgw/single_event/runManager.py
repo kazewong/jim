@@ -9,6 +9,7 @@ import jax.numpy as jnp
 import jax
 import equinox as eqx
 import yaml
+from astropy.time import Time
 
 prior_presets = {
     "Unconstrained_Uniform": prior.Unconstrained_Uniform,
@@ -74,6 +75,7 @@ class SingleEventRun:
             "f_min": 0.0,
             "f_max": 0.0,
             "tukey_alpha": 0.2,
+            "f_sampling": 4096.0,
         }
     )
 
@@ -109,8 +111,8 @@ class SingleEventPERunManager(RunManager):
             print("Neither run instance nor path provided.")
             raise ValueError
 
-        local_likelihood = self.initialize_likelihood()
         local_prior = self.initialize_prior()
+        local_likelihood = self.initialize_likelihood()
         self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
 
     def log_metadata(self):
@@ -133,13 +135,43 @@ class SingleEventPERunManager(RunManager):
         return SingleEventRun(**data)
 
     def initialize_likelihood(self) -> SingleEventLiklihood:
+        """
+        Since prior contains information about types, naming and ranges of parameters,
+        it is passed to the likelihood to ensure consistency.
+
+        """
         detectors = self.initialize_detector()
         waveform = self.initialize_waveform()
         name = self.run.likelihood_parameters["name"]
         assert isinstance(name, str), "Likelihood name must be a string."
         if self.run.injection:
-            # TODO: Add injection
-            pass
+            freqs = jnp.linspace(
+                self.run.data_parameters["f_min"],
+                self.run.data_parameters["f_sampling"] / 2,
+                int(
+                    self.run.data_parameters["f_sampling"]
+                    * self.run.data_parameters["duration"]
+                ),
+            )
+            gmst = (
+                Time(self.run.data_parameters["trigger_time"], format="gps")
+                .sidereal_time("apparent", "greenwich")
+                .rad
+            )
+            h_sky = waveform(freqs, self.run.injection_parameters)
+            detector_parameters = {
+                "ra": self.run.injection_parameters["ra"],
+                "dec": self.run.injection_parameters["dec"],
+                "psi": self.run.injection_parameters["psi"],
+                "t_c": self.run.injection_parameters["t_c"],
+                "gmst": gmst,
+                "epoch": self.run.data_parameters["duration"]
+                - self.run.data_parameters["post_trigger_duration"],
+            }
+            key, subkey = jax.random.split(jax.random.PRNGKey(self.run.seed + 1901))
+            for detector in detectors:
+                detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
+                key, subkey = jax.random.split(key)
         return likelihood_presets[name](
             detectors, waveform, **self.run.likelihood_parameters
         )

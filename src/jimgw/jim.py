@@ -22,6 +22,7 @@ class Jim(object):
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
         self.Likelihood = likelihood
         self.Prior = prior
+
         seed = kwargs.get("seed", 0)
         n_chains = kwargs.get("n_chains", 20)
 

@@ -10,7 +10,7 @@ repos:
       - id: ruff
         args: ["--fix"]
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.343
+    rev: v1.1.344
     hooks:
     - id: pyright
       additional_dependencies: [beartype, jax, jaxtyping, pytest, typing_extensions, flowMC, ripplegw, gwpy, astropy]
