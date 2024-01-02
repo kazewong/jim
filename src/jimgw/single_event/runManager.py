@@ -10,6 +10,8 @@ import jax
 import equinox as eqx
 import yaml
 from astropy.time import Time
+from jaxtyping import Array, Float
+import matplotlib.pyplot as plt
 
 prior_presets = {
     "Unconstrained_Uniform": prior.Unconstrained_Uniform,
@@ -115,12 +117,6 @@ class SingleEventPERunManager(RunManager):
         local_likelihood = self.initialize_likelihood()
         self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
 
-    def log_metadata(self):
-        pass
-
-    def summarize(self):
-        pass
-
     def save(self, path: str):
         output_dict = asdict(self.run)
         output_dict = jax.tree_util.tree_map(
@@ -133,6 +129,8 @@ class SingleEventPERunManager(RunManager):
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return SingleEventRun(**data)
+
+    ### Initialization functions ###
 
     def initialize_likelihood(self) -> SingleEventLiklihood:
         """
@@ -153,6 +151,10 @@ class SingleEventPERunManager(RunManager):
                     * self.run.data_parameters["duration"]
                 ),
             )
+            freqs = freqs[
+                (freqs >= self.run.data_parameters["f_min"])
+                & (freqs <= self.run.data_parameters["f_max"])
+            ]
             gmst = (
                 Time(self.run.data_parameters["trigger_time"], format="gps")
                 .sidereal_time("apparent", "greenwich")
@@ -173,7 +175,10 @@ class SingleEventPERunManager(RunManager):
                 detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
                 key, subkey = jax.random.split(key)
         return likelihood_presets[name](
-            detectors, waveform, **self.run.likelihood_parameters
+            detectors,
+            waveform,
+            **self.run.likelihood_parameters,
+            **self.run.data_parameters,
         )
 
     def initialize_prior(self) -> prior.Prior:
@@ -235,3 +240,99 @@ class SingleEventPERunManager(RunManager):
             raise ValueError(f"Waveform {name} not recognized.")
         waveform = waveform_preset[name](**self.run.waveform_parameters)
         return waveform
+
+    ### Utility functions ###
+
+    def get_detector_waveform(
+        self, params: dict[str, float]
+    ) -> tuple[
+        Float[Array, " n_sample"],
+        dict[str, Float[Array, " n_sample"]],
+        dict[str, Float[Array, " n_sample"]],
+    ]:
+        """
+        Get the waveform in each detector.
+        """
+        if not self.run.injection:
+            raise ValueError("No injection provided.")
+        freqs = jnp.linspace(
+            self.run.data_parameters["f_min"],
+            self.run.data_parameters["f_sampling"] / 2,
+            int(
+                self.run.data_parameters["f_sampling"]
+                * self.run.data_parameters["duration"]
+            ),
+        )
+        freqs = freqs[
+            (freqs >= self.run.data_parameters["f_min"])
+            & (freqs <= self.run.data_parameters["f_max"])
+        ]
+        gmst = (
+            Time(self.run.data_parameters["trigger_time"], format="gps")
+            .sidereal_time("apparent", "greenwich")
+            .rad
+        )
+        h_sky = self.jim.Likelihood.waveform(freqs, params)  # type: ignore
+        align_time = jnp.exp(
+            -1j * 2 * jnp.pi * freqs * (self.jim.Likelihood.epoch + params["t_c"])  # type: ignore
+        )
+        detector_parameters = {
+            "ra": params["ra"],
+            "dec": params["dec"],
+            "psi": params["psi"],
+            "t_c": params["t_c"],
+            "gmst": gmst,
+            "epoch": self.run.data_parameters["duration"]
+            - self.run.data_parameters["post_trigger_duration"],
+        }
+        print(detector_parameters)
+        detector_waveforms = {}
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            detector_waveforms[detector.name] = (
+                detector.fd_response(freqs, h_sky, detector_parameters) * align_time
+            )
+        return freqs, detector_waveforms, h_sky
+
+    def plot_injection_waveform(self, path: str):
+        """
+        Plot the injection waveform.
+        """
+        freqs, waveforms, h_sky = self.get_detector_waveform(
+            self.run.injection_parameters
+        )
+        plt.figure()
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            plt.loglog(
+                freqs,
+                jnp.abs(waveforms[detector.name]),
+                label=detector.name + " (injection)",
+            )
+            plt.loglog(
+                freqs, jnp.sqrt(jnp.abs(detector.psd)), label=detector.name + " (PSD)"
+            )
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Amplitude")
+        plt.legend()
+        plt.savefig(path)
+
+    def plot_data(self, path: str):
+        """
+        Plot the data.
+        """
+
+        plt.figure()
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            plt.loglog(
+                detector.freqs,
+                jnp.abs(detector.data),
+                label=detector.name + " (data)",
+            )
+            plt.loglog(
+                detector.freqs,
+                jnp.sqrt(jnp.abs(detector.psd)),
+                label=detector.name + " (PSD)",
+            )
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Amplitude")
+        plt.legend()
+        plt.savefig(path)

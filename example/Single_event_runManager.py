@@ -39,7 +39,7 @@ run = SingleEventRun(
     },
     waveform_parameters={"name": "RippleIMRPhenomD", "f_ref": 20.0},
     jim_parameters={
-        "n_loop_training": 100,
+        "n_loop_training": 10,
         "n_loop_production": 10,
         "n_local_steps": 150,
         "n_global_steps": 150,
@@ -56,7 +56,20 @@ run = SingleEventRun(
         "local_sampler_arg": local_sampler_arg,
     },
     likelihood_parameters={"name": "TransientLikelihoodFD"},
-    injection_parameters={},
+    injection=True,
+    injection_parameters={
+        "M_c": 28.6,
+        "eta": 0.24,
+        "s1_z": 0.05,
+        "s2_z": 0.05,
+        "d_L": 440.0,
+        "t_c": 0.0,
+        "phase_c": 0.0,
+        "iota": 0.5,
+        "psi": 0.7,
+        "ra": 1.2,
+        "dec": 0.3,
+    },
     data_parameters={
         "trigger_time": 1126259462.4,
         "duration": 4,
@@ -64,6 +77,7 @@ run = SingleEventRun(
         "f_min": 20.0,
         "f_max": 1024.0,
         "tukey_alpha": 0.2,
+        "f_sampling": 4096.0,
     },
 )
 

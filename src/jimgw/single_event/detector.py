@@ -402,6 +402,7 @@ class GroundBased2G(Detector):
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * freqs * (params["epoch"] + params["t_c"])
         )
+
         signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j * noise_imag
 

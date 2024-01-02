@@ -82,20 +82,6 @@ class RunManager(ABC):
         self.jim = kwargs["jim"]
 
     @abstractmethod
-    def log_metadata(self):
-        """
-        Log metadata for the run.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def summarize(self):
-        """
-        Summarize the run.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def save(self, path: str):
         """
         Save the run.
