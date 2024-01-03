@@ -7,11 +7,18 @@ from jimgw import prior
 from jimgw.jim import Jim
 import jax.numpy as jnp
 import jax
-import equinox as eqx
 import yaml
 from astropy.time import Time
 from jaxtyping import Array, Float, PyTree
 import matplotlib.pyplot as plt
+from jaxlib.xla_extension import ArrayImpl
+
+
+def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
+    return dumper.represent_list(data.tolist())
+
+
+yaml.add_representer(ArrayImpl, jaxarray_representer)
 
 prior_presets = {
     "Unconstrained_Uniform": prior.Unconstrained_Uniform,
@@ -20,13 +27,13 @@ prior_presets = {
     "AlignedSpin": prior.AlignedSpin,
     "PowerLaw": prior.PowerLaw,
     "Composite": prior.Composite,
-    "MassRatio": lambda **kwargs: prior.Unconstrained_Uniform(
+    "MassRatio": lambda **kwargs: prior.Uniform(
         0.125,
         1.0,
         naming=["q"],
         transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
     ),
-    "CosIota": lambda **kwargs: prior.Unconstrained_Uniform(
+    "CosIota": lambda **kwargs: prior.Uniform(
         -1.0,
         1.0,
         naming=["cos_iota"],
@@ -37,7 +44,7 @@ prior_presets = {
             )
         },
     ),
-    "SinDec": lambda **kwargs: prior.Unconstrained_Uniform(
+    "SinDec": lambda **kwargs: prior.Uniform(
         -1.0,
         1.0,
         naming=["sin_dec"],
@@ -119,11 +126,8 @@ class SingleEventPERunManager(RunManager):
 
     def save(self, path: str):
         output_dict = asdict(self.run)
-        output_dict = jax.tree_util.tree_map(
-            lambda x: x.tolist() if eqx.is_array(x) else x, asdict(self.run)
-        )
         with open(path + ".yaml", "w") as f:
-            yaml.dump(output_dict, f)
+            yaml.dump(output_dict, f, sort_keys=False)
 
     def load_from_path(self, path: str) -> SingleEventRun:
         with open(path, "r") as f:
