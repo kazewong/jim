@@ -16,8 +16,23 @@ jax.config.update("jax_enable_x64", True)
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
-mass_matrix = (mass_matrix*3e-3)
+mass_matrix = mass_matrix * 3e-3
 local_sampler_arg = {"step_size": mass_matrix}
+bounds = jnp.array(
+    [
+        [10.0, 80.0],
+        [0.125, 1.0],
+        [-1.0, 1.0],
+        [-1.0, 1.0],
+        [0.0, 2000.0],
+        [-0.05, 0.05],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+        [0.0, jnp.pi],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+    ]
+)
 
 
 run = SingleEventRun(
@@ -55,7 +70,7 @@ run = SingleEventRun(
         "output_thinning": 10,
         "local_sampler_arg": local_sampler_arg,
     },
-    likelihood_parameters={"name": "TransientLikelihoodFD"},
+    likelihood_parameters={"name": "HeterodynedTransientLikelihoodFD", "bounds": bounds},
     injection=True,
     injection_parameters={
         "M_c": 28.6,

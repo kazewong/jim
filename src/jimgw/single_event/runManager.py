@@ -10,7 +10,7 @@ import jax
 import equinox as eqx
 import yaml
 from astropy.time import Time
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, PyTree
 import matplotlib.pyplot as plt
 
 prior_presets = {
@@ -63,7 +63,7 @@ class SingleEventRun:
     jim_parameters: dict[str, str | float | int | bool | dict]
     injection_parameters: dict[str, float]
     injection: bool = False
-    likelihood_parameters: dict[str, str | float | int | bool] = field(
+    likelihood_parameters: dict[str, str | float | int | bool | PyTree] = field(
         default_factory=lambda: {"name": "TransientLikelihoodFD"}
     )
     waveform_parameters: dict[str, str | float | int | bool] = field(
@@ -114,7 +114,7 @@ class SingleEventPERunManager(RunManager):
             raise ValueError
 
         local_prior = self.initialize_prior()
-        local_likelihood = self.initialize_likelihood()
+        local_likelihood = self.initialize_likelihood(local_prior)
         self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
 
     def save(self, path: str):
@@ -132,10 +132,11 @@ class SingleEventPERunManager(RunManager):
 
     ### Initialization functions ###
 
-    def initialize_likelihood(self) -> SingleEventLiklihood:
+    def initialize_likelihood(self, prior: prior.Prior) -> SingleEventLiklihood:
         """
         Since prior contains information about types, naming and ranges of parameters,
-        it is passed to the likelihood to ensure consistency.
+        some of the likelihood class require the prior to be initialized, such as the
+        heterodyned likelihood.
 
         """
         detectors = self.initialize_detector()
@@ -177,6 +178,7 @@ class SingleEventPERunManager(RunManager):
         return likelihood_presets[name](
             detectors,
             waveform,
+            prior=prior,
             **self.run.likelihood_parameters,
             **self.run.data_parameters,
         )
