@@ -103,7 +103,7 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def print_summary(self):
+    def print_summary(self, transform: bool = True):
         """
         Generate summary of the run
 
@@ -112,23 +112,27 @@ class Jim(object):
         train_summary = self.Sampler.get_sampler_state(training=True)
         production_summary = self.Sampler.get_sampler_state(training=False)
 
-        training_chain: Array = train_summary["chains"]
-        training_log_prob: Array = train_summary["log_prob"]
-        training_local_acceptance: Array = train_summary["local_accs"]
-        training_global_acceptance: Array = train_summary["global_accs"]
-        training_loss: Array = train_summary["loss_vals"]
+        training_chain = train_summary["chains"].reshape(-1, self.Prior.n_dim).T
+        training_chain = self.Prior.add_name(training_chain)
+        if transform:
+            training_chain = self.Prior.transform(training_chain)
+        training_log_prob = train_summary["log_prob"]
+        training_local_acceptance = train_summary["local_accs"]
+        training_global_acceptance = train_summary["global_accs"]
+        training_loss = train_summary["loss_vals"]
 
-        production_chain: Array = production_summary["chains"]
-        production_log_prob: Array = production_summary["log_prob"]
-        production_local_acceptance: Array = production_summary["local_accs"]
-        production_global_acceptance: Array = production_summary["global_accs"]
+        production_chain = production_summary["chains"].reshape(-1, self.Prior.n_dim).T
+        production_chain = self.Prior.add_name(production_chain)
+        if transform:
+            production_chain = self.Prior.transform(production_chain)
+        production_log_prob = production_summary["log_prob"]
+        production_local_acceptance = production_summary["local_accs"]
+        production_global_acceptance = production_summary["global_accs"]
 
         print("Training summary")
         print("=" * 10)
-        for index in range(len(self.Prior.naming)):
-            print(
-                f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}"
-            )
+        for key, value in training_chain.items():
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -144,10 +148,8 @@ class Jim(object):
 
         print("Production summary")
         print("=" * 10)
-        for index in range(len(self.Prior.naming)):
-            print(
-                f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}"
-            )
+        for key, value in production_chain.items():
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )
