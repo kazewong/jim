@@ -1,13 +1,5 @@
-import time
-from jimgw.jim import Jim
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import (
-    HeterodynedTransientLikelihoodFD,
-    TransientLikelihoodFD,
-)
-from jimgw.single_event.waveform import RippleIMRPhenomD
+
 from jimgw.single_event.runManager import SingleEventPERunManager, SingleEventRun
-from jimgw.prior import Unconstrained_Uniform, Composite
 import jax.numpy as jnp
 import jax
 

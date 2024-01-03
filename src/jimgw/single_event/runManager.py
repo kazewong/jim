@@ -122,7 +122,7 @@ class SingleEventPERunManager(RunManager):
         output_dict = jax.tree_util.tree_map(
             lambda x: x.tolist() if eqx.is_array(x) else x, asdict(self.run)
         )
-        with open(path, "w") as f:
+        with open(path + ".yaml", "w") as f:
             yaml.dump(output_dict, f)
 
     def load_from_path(self, path: str) -> SingleEventRun:
