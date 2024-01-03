@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
 from jimgw.constants import EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, C_SI
-from jimgw.wave import Polarization
+from jimgw.single_event.wave import Polarization
 
 DEG_TO_RAD = jnp.pi / 180
 
@@ -20,15 +20,6 @@ psd_file_dict = {
     "L1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-L1-C01_CLEAN_SUB60HZ-1240573680.0_sensitivity_strain_asd.txt",
     "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
 }
-
-
-def np2(x):
-    """
-    Returns the next power of two as big as or larger than x."""
-    p = 1
-    while p < x:
-        p = p << 1
-    return p
 
 
 class Detector(ABC):
@@ -43,15 +34,12 @@ class Detector(ABC):
     psd: Float[Array, " n_sample"]
 
     @abstractmethod
-    def load_data(self, data):
-        raise NotImplementedError
-
-    @abstractmethod
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
-        h: dict[str, Float[Array, " n_sample"]],
+        h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        **kwargs,
     ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
@@ -62,8 +50,9 @@ class Detector(ABC):
     def td_response(
         self,
         time: Float[Array, " n_sample"],
-        h: dict[str, Float[Array, " n_sample"]],
+        h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        **kwargs,
     ) -> Float[Array, " n_sample"]:
         """
         Modulate the waveform in the sky frame by the detector response
@@ -84,6 +73,9 @@ class GroundBased2G(Detector):
     xarm_tilt: Float = 0
     yarm_tilt: Float = 0
     elevation: Float = 0
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.name})"
 
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
@@ -239,18 +231,16 @@ class GroundBased2G(Detector):
             self.name,
             trigger_time - gps_start_pad,
             trigger_time + gps_end_pad,
-            **gwpy_kwargs
+            **gwpy_kwargs,
         )
         assert isinstance(data_td, TimeSeries), "Data is not a TimeSeries object."
         segment_length = data_td.duration.value
         n = len(data_td)
-        delta_t = data_td.dt.value
+        delta_t = data_td.dt.value  # type: ignore
         data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, tukey_alpha)) * delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
-        start_psd = (
-            int(trigger_time) - gps_start_pad - 2 * psd_pad
-        )  # What does Int do here?
+        start_psd = int(trigger_time) - gps_start_pad - 2 * psd_pad
         end_psd = int(trigger_time) - gps_start_pad - psd_pad
 
         print("Fetching PSD data...")
@@ -275,6 +265,7 @@ class GroundBased2G(Detector):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
+        **kwargs,
     ) -> Array:
         """
         Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -291,7 +282,13 @@ class GroundBased2G(Detector):
         )
         return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
 
-    def td_response(self, time: Array, h: Array, params: Array) -> Array:
+    def td_response(
+        self,
+        time: Float[Array, " n_sample"],
+        h_sky: dict[str, Float[Array, " n_sample"]],
+        params: dict,
+        **kwargs,
+    ) -> Array:
         """
         Modulate the waveform in the sky frame by the detector response in the time domain.
         """
@@ -405,6 +402,7 @@ class GroundBased2G(Detector):
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * freqs * (params["epoch"] + params["t_c"])
         )
+
         signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j * noise_imag
 
@@ -462,3 +460,9 @@ V1 = GroundBased2G(
     elevation=51.884,
     mode="pc",
 )
+
+detector_preset = {
+    "H1": H1,
+    "L1": L1,
+    "V1": V1,
+}

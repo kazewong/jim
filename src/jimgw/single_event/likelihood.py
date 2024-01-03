@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -9,53 +7,22 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float
 from scipy.interpolate import interp1d
 
-from jimgw.detector import Detector
+from jimgw.single_event.detector import Detector
 from jimgw.prior import Prior
-from jimgw.waveform import Waveform
+from jimgw.single_event.waveform import Waveform
+from jimgw.base import LikelihoodBase
 
 
-class LikelihoodBase(ABC):
-    """
-    Base class for likelihoods.
-    Note that this likelihood class should work
-    for a some what general class of problems.
-    In light of that, this class would be some what abstract,
-    but the idea behind it is this handles two main components of a likelihood:
-    the data and the model.
-    It should be able to take the data and model and evaluate the likelihood for
-    a given set of parameters.
-
-    """
-
-    _model: object
-    _data: object
-
-    @property
-    def model(self):
-        """
-        The model for the likelihood.
-        """
-        return self._model
-
-    @property
-    def data(self):
-        """
-        The data for the likelihood.
-        """
-        return self._data
-
-    @abstractmethod
-    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
-        """
-        Evaluate the likelihood for a given set of parameters.
-        """
-        raise NotImplementedError
-
-
-class TransientLikelihoodFD(LikelihoodBase):
+class SingleEventLiklihood(LikelihoodBase):
     detectors: list[Detector]
     waveform: Waveform
 
+    def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
+        self.detectors = detectors
+        self.waveform = waveform
+
+
+class TransientLikelihoodFD(SingleEventLiklihood):
     def __init__(
         self,
         detectors: list[Detector],
@@ -63,6 +30,7 @@ class TransientLikelihoodFD(LikelihoodBase):
         trigger_time: float = 0,
         duration: float = 4,
         post_trigger_duration: float = 2,
+        **kwargs,
     ) -> None:
         self.detectors = detectors
         assert jnp.all(
@@ -167,6 +135,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         post_trigger_duration: float = 2,
         popsize: int = 100,
         n_loops: int = 2000,
+        **kwargs,
     ) -> None:
         super().__init__(
             detectors, waveform, trigger_time, duration, post_trigger_duration
@@ -476,6 +445,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return prior.transform(prior.add_name(best_fit))
 
 
-class PopulationLikelihood(LikelihoodBase):
-    events: Float[Array, " n_events n_samples n_dim"]
-    reference_pop: Float[Array, " n_det n_dim"]
+likelihood_presets = {
+    "TransientLikelihoodFD": TransientLikelihoodFD,
+    "HeterodynedTransientLikelihoodFD": HeterodynedTransientLikelihoodFD,
+}

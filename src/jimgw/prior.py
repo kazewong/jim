@@ -95,12 +95,16 @@ class Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
 
+    def __repr__(self):
+        return f"Uniform(xmin={self.xmin}, xmax={self.xmax})"
+
     def __init__(
         self,
         xmin: Float,
         xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
@@ -146,12 +150,16 @@ class Unconstrained_Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
 
+    def __repr__(self):
+        return f"Unconstrained_Uniform(xmin={self.xmin}, xmax={self.xmax})"
+
     def __init__(
         self,
         xmin: Float,
         xmax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
@@ -219,7 +227,10 @@ class Sphere(Prior):
     Magnitude is sampled from a uniform distribution.
     """
 
-    def __init__(self, naming: str):
+    def __repr__(self):
+        return f"Sphere(naming={self.naming})"
+
+    def __init__(self, naming: str, **kwargs):
         self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
         self.transforms = {
             self.naming[0]: (
@@ -256,7 +267,7 @@ class Sphere(Prior):
 
 
 @jaxtyped
-class Alignedspin(Prior):
+class AlignedSpin(Prior):
 
     """
     Prior distribution for the aligned (z) component of the spin.
@@ -276,11 +287,15 @@ class Alignedspin(Prior):
     chi_axis: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
     cdf_vals: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
 
+    def __repr__(self):
+        return f"Alignedspin(amax={self.amax}, naming={self.naming})"
+
     def __init__(
         self,
         amax: Float,
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Alignedspin needs to be 1D distributions"
@@ -358,7 +373,7 @@ class Alignedspin(Prior):
 
 
 @jaxtyped
-class Powerlaw(Prior):
+class PowerLaw(Prior):
 
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
@@ -370,6 +385,9 @@ class Powerlaw(Prior):
     alpha: Float = 0.0
     normalization: Float = 1.0
 
+    def __repr__(self):
+        return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
+
     def __init__(
         self,
         xmin: Float,
@@ -377,6 +395,7 @@ class Powerlaw(Prior):
         alpha: Union[Int, Float],
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         super().__init__(naming, transforms)
         if alpha < 0.0:
@@ -436,8 +455,14 @@ class Powerlaw(Prior):
 class Composite(Prior):
     priors: list[Prior] = field(default_factory=list)
 
+    def __repr__(self):
+        return f"Composite(priors={self.priors}, naming={self.naming})"
+
     def __init__(
-        self, priors: list[Prior], transforms: dict[str, tuple[str, Callable]] = {}
+        self,
+        priors: list[Prior],
+        transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
     ):
         naming = []
         self.transforms = {}

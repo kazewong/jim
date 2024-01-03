@@ -1,14 +1,16 @@
-from jimgw.likelihood import LikelihoodBase
+from jaxtyping import Array, Float, PRNGKeyArray
+import jax
+import jax.numpy as jnp
+
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
-from jimgw.prior import Prior
-from jaxtyping import Array, Float, PRNGKeyArray
-import jax
-import jax.numpy as jnp
 from flowMC.sampler.flowHMC import flowHMC
+
+from jimgw.prior import Prior
+from jimgw.base import LikelihoodBase
 
 
 class Jim(object):
@@ -20,6 +22,7 @@ class Jim(object):
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
         self.Likelihood = likelihood
         self.Prior = prior
+
         seed = kwargs.get("seed", 0)
         n_chains = kwargs.get("n_chains", 20)
 
@@ -62,6 +65,19 @@ class Jim(object):
             **kwargs,
         )
 
+    def posterior(self, params: Float[Array, " n_dim"], data: dict):
+        prior_params = self.Prior.add_name(params.T)
+        prior = self.Prior.log_prob(prior_params)
+        return (
+            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
+        )
+
+    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
+        if initial_guess.size == 0:
+            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
+        self.Sampler.sample(initial_guess, None)  # type: ignore
+
     def maximize_likelihood(
         self,
         bounds: Float[Array, " n_dim 2"],
@@ -87,20 +103,7 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def posterior(self, params: Array, data: dict):
-        prior_params = self.Prior.add_name(params.T)
-        prior = self.Prior.log_prob(prior_params)
-        return (
-            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
-        )
-
-    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
-        if initial_guess.size == 0:
-            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
-        self.Sampler.sample(initial_guess, None)  # type: ignore
-
-    def print_summary(self):
+    def print_summary(self, transform: bool = True):
         """
         Generate summary of the run
 
@@ -109,23 +112,27 @@ class Jim(object):
         train_summary = self.Sampler.get_sampler_state(training=True)
         production_summary = self.Sampler.get_sampler_state(training=False)
 
-        training_chain: Array = train_summary["chains"]
-        training_log_prob: Array = train_summary["log_prob"]
-        training_local_acceptance: Array = train_summary["local_accs"]
-        training_global_acceptance: Array = train_summary["global_accs"]
-        training_loss: Array = train_summary["loss_vals"]
+        training_chain = train_summary["chains"].reshape(-1, self.Prior.n_dim).T
+        training_chain = self.Prior.add_name(training_chain)
+        if transform:
+            training_chain = self.Prior.transform(training_chain)
+        training_log_prob = train_summary["log_prob"]
+        training_local_acceptance = train_summary["local_accs"]
+        training_global_acceptance = train_summary["global_accs"]
+        training_loss = train_summary["loss_vals"]
 
-        production_chain: Array = production_summary["chains"]
-        production_log_prob: Array = production_summary["log_prob"]
-        production_local_acceptance: Array = production_summary["local_accs"]
-        production_global_acceptance: Array = production_summary["global_accs"]
+        production_chain = production_summary["chains"].reshape(-1, self.Prior.n_dim).T
+        production_chain = self.Prior.add_name(production_chain)
+        if transform:
+            production_chain = self.Prior.transform(production_chain)
+        production_log_prob = production_summary["log_prob"]
+        production_local_acceptance = production_summary["local_accs"]
+        production_global_acceptance = production_summary["global_accs"]
 
         print("Training summary")
         print("=" * 10)
-        for index in range(len(self.Prior.naming)):
-            print(
-                f"{self.Prior.naming[index]}: {training_chain[:, :, index].mean():.3f} +/- {training_chain[:, :, index].std():.3f}"
-            )
+        for key, value in training_chain.items():
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -141,10 +148,8 @@ class Jim(object):
 
         print("Production summary")
         print("=" * 10)
-        for index in range(len(self.Prior.naming)):
-            print(
-                f"{self.Prior.naming[index]}: {production_chain[:, :, index].mean():.3f} +/- {production_chain[:, :, index].std():.3f}"
-            )
+        for key, value in production_chain.items():
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )

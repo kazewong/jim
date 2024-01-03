@@ -1,8 +1,8 @@
 import time
 from jimgw.jim import Jim
-from jimgw.detector import H1, L1
-from jimgw.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
-from jimgw.waveform import RippleIMRPhenomPv2
+from jimgw.single_event.detector import H1, L1
+from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
+from jimgw.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.prior import Uniform, Composite, Sphere
 import jax.numpy as jnp
 import jax
