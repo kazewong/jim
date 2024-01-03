@@ -223,6 +223,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
 
+        # Assure frequency grids have same length
+        if len(self.freq_grid_low) > len(self.freq_grid_center):
+            self.freq_grid_low = self.freq_grid_low[:len(self.freq_grid_center)]
+
         h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
 
