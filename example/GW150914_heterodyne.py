@@ -1,7 +1,10 @@
 import time
 from jimgw.jim import Jim
 from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
+from jimgw.single_event.likelihood import (
+    HeterodynedTransientLikelihoodFD,
+    TransientLikelihoodFD,
+)
 from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.prior import Uniform, Composite
 import jax.numpy as jnp
@@ -86,7 +89,21 @@ prior = Composite(
     ]
 )
 
-bounds = jnp.array([[10.0, 80.0], [0.125, 1.0], [-1.0, 1.0], [-1.0, 1.0], [0.0, 2000.0], [-0.05, 0.05], [0.0, 2 * jnp.pi], [-1.0, 1.0], [0.0, jnp.pi], [0.0, 2 * jnp.pi], [-1.0, 1.0]]).T
+bounds = jnp.array(
+    [
+        [10.0, 80.0],
+        [0.125, 1.0],
+        [-1.0, 1.0],
+        [-1.0, 1.0],
+        [0.0, 2000.0],
+        [-0.05, 0.05],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+        [0.0, jnp.pi],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+    ]
+)
 
 likelihood = HeterodynedTransientLikelihoodFD(
     [H1, L1],
@@ -96,7 +113,7 @@ likelihood = HeterodynedTransientLikelihoodFD(
     trigger_time=gps,
     duration=duration,
     post_trigger_duration=post_trigger_duration,
-    n_loops=300
+    n_loops=300,
 )
 
 mass_matrix = jnp.eye(11)
