@@ -15,7 +15,7 @@ from jimgw.single_event.wave import Polarization
 DEG_TO_RAD = jnp.pi / 180
 
 # TODO: Need to expand this list. Currently it is only O3.
-psd_file_dict = {
+asd_file_dict = {
     "H1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-H1-C01_CLEAN_SUB60HZ-1251752040.0_sensitivity_strain_asd.txt",
     "L1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-L1-C01_CLEAN_SUB60HZ-1240573680.0_sensitivity_strain_asd.txt",
     "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
@@ -412,13 +412,13 @@ class GroundBased2G(Detector):
     ) -> Float[Array, " n_sample"]:
         if psd_file == "":
             print("Grabbing GWTC-2 PSD for " + self.name)
-            url = psd_file_dict[self.name]
+            url = asd_file_dict[self.name]
             data = requests.get(url)
             open(self.name + ".txt", "wb").write(data.content)
             f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
+            psd_vals = asd_vals**2
         else:
-            f, asd_vals = np.loadtxt(psd_file, unpack=True)
-        psd_vals = asd_vals**2
+            f, psd_vals = np.loadtxt(psd_file, unpack=True)
 
         psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)  # type: ignore
         psd = jnp.array(psd)
