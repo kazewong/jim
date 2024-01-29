@@ -1,16 +1,16 @@
 files: src/
 repos:
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.1.1
     hooks:
     - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.1.13'
+    rev: 'v0.1.14'
     hooks:
       - id: ruff
         args: ["--fix"]
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.347
+    rev: v1.1.349
     hooks:
     - id: pyright
       additional_dependencies: [beartype, jax, jaxtyping, pytest, typing_extensions, flowMC, ripplegw, gwpy, astropy]
