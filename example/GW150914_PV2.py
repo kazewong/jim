@@ -89,8 +89,28 @@ prior = Composite(
         sin_dec_prior,
     ],
 )
-likelihood = TransientLikelihoodFD([H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
-# likelihood = HeterodynedTransientLikelihoodFD([H1, L1], prior=prior, bounds=[prior.xmin, prior.xmax], waveform=RippleIMRPhenomD(), trigger_time=gps, duration=4, post_trigger_duration=2)
+
+bounds = jnp.array(
+    [
+        [10.0, 80.0],
+        [0.125, 1.0],
+        [0, jnp.pi],
+        [0, 2*jnp.pi],
+        [0.0, 1.0],
+        [0, jnp.pi],
+        [0, 2*jnp.pi],
+        [0.0, 1.0],
+        [0.0, 2000.0],
+        [-0.05, 0.05],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+        [0.0, jnp.pi],
+        [0.0, 2 * jnp.pi],
+        [-1.0, 1.0],
+    ]
+)
+# likelihood = TransientLikelihoodFD([H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
+likelihood = HeterodynedTransientLikelihoodFD([H1, L1], prior=prior, bounds=bounds, waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
 
 
 mass_matrix = jnp.eye(prior.n_dim)
