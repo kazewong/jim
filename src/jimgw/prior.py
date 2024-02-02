@@ -263,9 +263,11 @@ class Sphere(Prior):
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
+        theta = x[self.naming[0]]
+        phi = x[self.naming[1]]
         mag = x[self.naming[2]]
         output = jnp.where(
-            (mag > 1) | (mag < 0),
+            (mag > 1) | (mag < 0) | (phi > 2* jnp.pi) | (phi < 0) | (theta > 1) | (theta < -1),
             jnp.zeros_like(0) - jnp.inf,
             jnp.log(mag**2 * jnp.sin(x[self.naming[0]])),
         )
