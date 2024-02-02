@@ -65,11 +65,8 @@ class Prior(Distribution):
             A dictionary of parameters with the transforms applied.
         """
         output = {}
-        #print("transform input:", x)
         for value in self.transforms.values():
             output[value[0]] = value[1](x)
-        #print("transform output:", output)
-        
         return output
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
@@ -266,17 +263,13 @@ class Sphere(Prior):
         return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
-        mag = x[self.naming[2]]
+        theta = x[self.naming[0]]
         phi = x[self.naming[1]]
+        mag = x[self.naming[2]]
         output = jnp.where(
-            (mag > 1) | (mag < 0),
+            (mag > 1) | (mag < 0) | (phi > 2* jnp.pi) | (phi < 0) | (theta > 1) | (theta < -1),
             jnp.zeros_like(0) - jnp.inf,
             jnp.log(mag**2 * jnp.sin(x[self.naming[0]])),
-        )
-        output = jnp.where(
-            (phi > 2* jnp.pi) | (phi < 0),
-            jnp.zeros_like(0) - jnp.inf,
-            output,
         )
         return output
 
