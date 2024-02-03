@@ -123,3 +123,7 @@ jim = Jim(
 )
 
 jim.sample(jax.random.PRNGKey(42))
+
+jim.print_summary()
+jim.Sampler.plot_summary("training")
+jim.Sampler.plot_summary("production")

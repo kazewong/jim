@@ -7,10 +7,12 @@ from flowMC.sampler.MALA import MALA
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.utils.PRNG_keys import initialize_rng_keys
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
-from flowMC.sampler.flowHMC import flowHMC
+# from flowMC.sampler.flowHMC import flowHMC
 
 from jimgw.prior import Prior
 from jimgw.base import LikelihoodBase
+from jimgw.utils.hyperparameters import jim_default_hyperparameters
+
 
 
 class Jim(object):
@@ -23,14 +25,18 @@ class Jim(object):
         self.Likelihood = likelihood
         self.Prior = prior
 
-        seed = kwargs.get("seed", 0)
-        n_chains = kwargs.get("n_chains", 20)
+        # Set and override any given hyperparameters, and save as attribute
+        self.hyperparameters = jim_default_hyperparameters
+        hyperparameter_names = list(self.hyperparameters.keys())
+        
+        for key, value in kwargs.items():
+            if key in hyperparameter_names:
+                self.hyperparameters[key] = value
+        
+        for key, value in self.hyperparameters.items():
+            setattr(self, key, value)
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=seed)
-        num_layers = kwargs.get("num_layers", 10)
-        hidden_size = kwargs.get("hidden_size", [128, 128])
-        num_bins = kwargs.get("num_bins", 8)
-
+        self.rng_key_set = initialize_rng_keys(self.hyperparameters["n_chains"], seed=self.hyperparameters["seed"])
         local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
         local_sampler = MALA(
@@ -39,7 +45,7 @@ class Jim(object):
 
         flowHMC_params = kwargs.get("flowHMC_params", {})
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
+            self.Prior.n_dim, self.num_layers, self.hidden_size, self.num_bins, self.rng_key_set[-1]
         )
         if len(flowHMC_params) > 0:
             global_sampler = flowHMC(
@@ -57,7 +63,7 @@ class Jim(object):
 
         self.Sampler = Sampler(
             self.Prior.n_dim,
-            rng_key_set,
+            self.rng_key_set,
             None,  # type: ignore
             local_sampler,
             model,

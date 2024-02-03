@@ -140,3 +140,8 @@ H1.txt
 L1.txt
 V1.txt
 test_data
+
+*.png
+*.npz
+*.pdf
+*.txt
