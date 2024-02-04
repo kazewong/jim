@@ -292,6 +292,8 @@ class AlignedSpin(Prior):
     """
 
     amax: Float = 0.99
+    xmax: Float = 0.99
+    xmin: Float = -0.99
     chi_axis: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
     cdf_vals: Array = field(default_factory=lambda: jnp.linspace(0, 1, num=1000))
 
@@ -308,6 +310,8 @@ class AlignedSpin(Prior):
         super().__init__(naming, transforms)
         assert self.n_dim == 1, "Alignedspin needs to be 1D distributions"
         self.amax = amax
+        self.xmax = amax
+        self.xmin = -amax
 
         # build the interpolation table for the ppf of the one-sided distribution
         chi_axis = jnp.linspace(1e-31, self.amax, num=1000)
