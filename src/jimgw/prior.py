@@ -315,6 +315,14 @@ class AlignedSpin(Prior):
         self.chi_axis = chi_axis
         self.cdf_vals = cdf_vals
 
+    @property
+    def xmin(self):
+        return -self.amax
+
+    @property
+    def xmax(self):
+        return self.amax
+
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
