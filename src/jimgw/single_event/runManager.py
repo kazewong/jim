@@ -249,9 +249,7 @@ class SingleEventPERunManager(RunManager):
 
     ### Utility functions ###
 
-    def get_detector_waveform(
-        self, params: dict[str, float]
-    ) -> tuple[
+    def get_detector_waveform(self, params: dict[str, float]) -> tuple[
         Float[Array, " n_sample"],
         dict[str, Float[Array, " n_sample"]],
         dict[str, Float[Array, " n_sample"]],
