@@ -220,7 +220,6 @@ class Unconstrained_Uniform(Prior):
 
 
 class Sphere(Prior):
-
     """
     A prior on a sphere represented by Cartesian coordinates.
 
@@ -267,7 +266,12 @@ class Sphere(Prior):
         phi = x[self.naming[1]]
         mag = x[self.naming[2]]
         output = jnp.where(
-            (mag > 1) | (mag < 0) | (phi > 2* jnp.pi) | (phi < 0) | (theta > 1) | (theta < -1),
+            (mag > 1)
+            | (mag < 0)
+            | (phi > 2 * jnp.pi)
+            | (phi < 0)
+            | (theta > 1)
+            | (theta < -1),
             jnp.zeros_like(0) - jnp.inf,
             jnp.log(mag**2 * jnp.sin(x[self.naming[0]])),
         )
@@ -276,7 +280,6 @@ class Sphere(Prior):
 
 @jaxtyped
 class AlignedSpin(Prior):
-
     """
     Prior distribution for the aligned (z) component of the spin.
 
@@ -390,7 +393,6 @@ class AlignedSpin(Prior):
 
 @jaxtyped
 class PowerLaw(Prior):
-
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
     p(x) ~ x^{\alpha}

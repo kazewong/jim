@@ -1,3 +1,4 @@
+from typing import Union
 from jimgw.base import RunManager
 from dataclasses import dataclass, field, asdict
 from jimgw.single_event.likelihood import likelihood_presets, SingleEventLiklihood
@@ -65,18 +66,18 @@ class SingleEventRun:
 
     detectors: list[str]
     priors: dict[
-        str, dict[str, str | float | int | bool]
+        str, dict[str, Union[str, float, int, bool]]
     ]  # Transform cannot be included in this way, add it to preset if used often.
-    jim_parameters: dict[str, str | float | int | bool | dict]
+    jim_parameters: dict[str, Union[str, float, int, bool, dict]]
     injection_parameters: dict[str, float]
     injection: bool = False
-    likelihood_parameters: dict[str, str | float | int | bool | PyTree] = field(
+    likelihood_parameters: dict[str, Union[str, float, int, bool, PyTree]] = field(
         default_factory=lambda: {"name": "TransientLikelihoodFD"}
     )
-    waveform_parameters: dict[str, str | float | int | bool] = field(
+    waveform_parameters: dict[str, Union[str, float, int, bool]] = field(
         default_factory=lambda: {"name": ""}
     )
-    data_parameters: dict[str, float | int] = field(
+    data_parameters: dict[str, Union[float, int]] = field(
         default_factory=lambda: {
             "trigger_time": 0.0,
             "duration": 0,
@@ -249,9 +250,7 @@ class SingleEventPERunManager(RunManager):
 
     ### Utility functions ###
 
-    def get_detector_waveform(
-        self, params: dict[str, float]
-    ) -> tuple[
+    def get_detector_waveform(self, params: dict[str, float]) -> tuple[
         Float[Array, " n_sample"],
         dict[str, Float[Array, " n_sample"]],
         dict[str, Float[Array, " n_sample"]],
