@@ -9,6 +9,12 @@ from scipy.interpolate import interp1d
 
 from jimgw.single_event.detector import Detector
 from jimgw.prior import Prior
+from jimgw.single_event.utils import (
+    original_likelihood,
+    phase_marginalized_likelihood,
+    time_marginalized_likelihood,
+    phase_time_marginalized_likelihood
+)
 from jimgw.single_event.waveform import Waveform
 from jimgw.base import LikelihoodBase
 
@@ -51,6 +57,24 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         self.trigger_time = trigger_time
         self.duration = duration
         self.post_trigger_duration = post_trigger_duration
+        if 'marginalization' in kwargs:
+            marginalization = kwargs['marginalization']
+            assert marginalization in ['phase', 'phase-time', 'time'], \
+                "Only support time, phase and phase+time marginalzation"
+            self.marginalization = marginalization
+            if self.marginalization == 'phase-time':
+                self.param_func = lambda x: {**x, 'phi_c': 0., 't_c': 0.}
+                self.likelihood_function = phase_time_marginalized_likelihood
+            elif self.marginalization == 'time':
+                self.param_func = lambda x: {**x, 't_c': 0.}
+                self.likelihood_function = time_marginalized_likelihood
+            elif self.marginalization == 'phase':
+                self.param_func = lambda x: {**x, 'phi_c': 0.}
+                self.likelihood_function = phase_marginalized_likelihood
+            else:
+                self.param_func = lambda x: x
+                self.likelihood_function = original_likelihood
+        self.kwargs = kwargs
 
     @property
     def epoch(self):
@@ -71,31 +95,23 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         """
         Evaluate the likelihood for a given set of parameters.
         """
-        log_likelihood = 0
         frequencies = self.frequencies
-        df = frequencies[1] - frequencies[0]
         params["gmst"] = self.gmst
+        # adjust the params due to different marginalzation scheme
+        params = self.param_func(params)
+        # evaluate the waveform as usual
         waveform_sky = self.waveform(frequencies, params)
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * frequencies * (self.epoch + params["t_c"])
         )
-        for detector in self.detectors:
-            waveform_dec = (
-                detector.fd_response(frequencies, waveform_sky, params) * align_time
-            )
-            match_filter_SNR = (
-                4
-                * jnp.sum(
-                    (jnp.conj(waveform_dec) * detector.data) / detector.psd * df
-                ).real
-            )
-            optimal_SNR = (
-                4
-                * jnp.sum(
-                    jnp.conj(waveform_dec) * waveform_dec / detector.psd * df
-                ).real
-            )
-            log_likelihood += match_filter_SNR - optimal_SNR / 2
+        log_likelihood = self.likelihood_function(
+            params,
+            waveform_sky,
+            self.detectors,
+            frequencies,
+            align_time,
+            **self.kwargs,
+        )
         return log_likelihood
 
 
