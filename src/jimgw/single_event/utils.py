@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from jax.scipy.integrate import trapezoid
 from jax import jit
 from jaxtyping import Float, Array
 
@@ -34,7 +35,7 @@ def inner_product(
     # psd_interp = jnp.interp(frequency, psd_frequency, psd)
     df = frequency[1] - frequency[0]
     integrand = jnp.conj(h1) * h2 / psd
-    return 4.0 * jnp.real(jnp.trapz(integrand, dx=df))
+    return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
 @jit
