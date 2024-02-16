@@ -267,7 +267,12 @@ class Sphere(Prior):
         phi = x[self.naming[1]]
         mag = x[self.naming[2]]
         output = jnp.where(
-            (mag > 1) | (mag < 0) | (phi > 2* jnp.pi) | (phi < 0) | (theta > 1) | (theta < -1),
+            (mag > 1)
+            | (mag < 0)
+            | (phi > 2 * jnp.pi)
+            | (phi < 0)
+            | (theta > 1)
+            | (theta < -1),
             jnp.zeros_like(0) - jnp.inf,
             jnp.log(mag**2 * jnp.sin(x[self.naming[0]])),
         )
