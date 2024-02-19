@@ -163,49 +163,31 @@ def log_i0(x):
 
 
 def original_likelihood(params, h_sky, detectors, freqs, align_time, **kwargs):
-    log_likelihood = 0.
+    log_likelihood = 0.0
     df = freqs[1] - freqs[0]
     for detector in detectors:
-        h_dec = (
-            detector.fd_response(freqs, h_sky, params) * align_time
-        )
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
         match_filter_SNR = (
-            4
-            * jnp.sum(
-                (jnp.conj(h_dec) * detector.data) / detector.psd * df
-            ).real
+            4 * jnp.sum((jnp.conj(h_dec) * detector.data) / detector.psd * df).real
         )
-        optimal_SNR = (
-            4
-            * jnp.sum(
-                jnp.conj(h_dec) * h_dec / detector.psd * df
-            ).real
-        )
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
 
     return log_likelihood
 
 
-def phase_marginalized_likelihood(params, h_sky, detectors, freqs, align_time, **kwargs):
-    log_likelihood = 0.
-    complex_d_inner_h = 0.
+def phase_marginalized_likelihood(
+    params, h_sky, detectors, freqs, align_time, **kwargs
+):
+    log_likelihood = 0.0
+    complex_d_inner_h = 0.0
     df = freqs[1] - freqs[0]
     for detector in detectors:
-        h_dec = (
-            detector.fd_response(freqs, h_sky, params) * align_time
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_d_inner_h += 4 * jnp.sum(
+            (jnp.conj(h_dec) * detector.data) / detector.psd * df
         )
-        complex_d_inner_h += (
-            4
-            * jnp.sum(
-                (jnp.conj(h_dec) * detector.data) / detector.psd * df
-            )
-        )
-        optimal_SNR = (
-            4
-            * jnp.sum(
-                jnp.conj(h_dec) * h_dec / detector.psd * df
-            ).real
-        )
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
         log_likelihood += -optimal_SNR / 2
 
     log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
@@ -214,90 +196,126 @@ def phase_marginalized_likelihood(params, h_sky, detectors, freqs, align_time, *
 
 
 def time_marginalized_likelihood(params, h_sky, detectors, freqs, align_time, **kwargs):
-    log_likelihood = 0.
+    log_likelihood = 0.0
     df = freqs[1] - freqs[0]
     # using <h|d> instead of <d|h>
     complex_h_inner_d = jnp.zeros_like(freqs)
     for detector in detectors:
-        h_dec = (
-            detector.fd_response(freqs, h_sky, params) * align_time
-        )
-        complex_h_inner_d += (
-            4 * h_dec * jnp.conj(detector.data) / detector.psd * df
-        )
-        optimal_SNR = (
-            4
-            * jnp.sum(
-                jnp.conj(h_dec) * h_dec / detector.psd * df
-            ).real
-        )
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
         log_likelihood += -optimal_SNR / 2
 
-    # padding the complex_d_inner_h before feeding to the fft
-    # lower and higher frequency padding
-    pad_low = jnp.arange(0, freqs[0], df)
-    pad_high = jnp.arange(freqs[1], kwargs['sampling_rate'], df)
-    complex_h_inner_d = jnp.concatenate((pad_low, complex_h_inner_d, pad_high))
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d)
-    # abusing the fftfreq to get the corresponding tc array
-    tc_array = jnp.fft.fftfreq(n=len(fft_h_inner_d), d=df)
-
-    # fetch the range of valid tc
+    # fetch the tc range tc_array, lower padding and higher padding
     tc_range = kwargs['tc_range']
+    tc_array = kwargs['tc_array']
+    pad_low = kwargs['pad_low']
+    pad_high = kwargs['pad_high']
+    fs = kwargs['sampling_rate']
+
+    # padding the complex_h_inner_d
+    # this array is the hd*/S for f in [-fs / 2, -df]
+    complex_h_inner_d_negative_f = jnp.concatenate(
+        (jnp.zeros(len(pad_high) + 1),
+         jnp.flip(complex_h_inner_d).conj(), jnp.zeros(len(pad_low) - 1))
+    )
+    # this array is the hd*/S for f in [0, fs / 2 - df]
+    complex_h_inner_d_positive_f = jnp.concatenate(
+        (pad_low, complex_h_inner_d, pad_high)
+    )
+
+    # combing to get the complete f
+    # using the convention of fftfreq in numpy
+    # i.e. f in [-fs / 2, -fs / 2 + df... -df, 0, df, ... fs / 2 - df]
+    complex_h_inner_d_full_f = jnp.concatenate(
+        (complex_h_inner_d_negative_f, complex_h_inner_d_positive_f)
+    )
+    # since we go from one-sided to two-sided frequency range
+    # we need to introduce a factor of 2 correction
+    complex_h_inner_d_full_f /= 2.
+
+    # make use of the fft
+    # which then return the <h|d>exp(-i2pift_c)
+    # w.r.t. the tc_array
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_full_f, norm='backward')
+    # this extra factor is due to f = -fs / 2 + j * df, where j is the array index
+    # since the f2 is usally a power of 2, it usally has no effect
+    # but it is here to impreove the code readibility
+    fft_h_inner_d *= jnp.exp(-1j * jnp.pi * fs)
+
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp
     fft_h_inner_d = jnp.where(
-        tc_array > tc_range[0] and tc_array < tc_range[1],
-        fft_h_inner_d,
-        jnp.zeros_like(fft_h_inner_d) - jnp.inf
+        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
+        fft_h_inner_d.real,
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
     )
 
     # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(fft_h_inner_d))
+    log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(tc_array))
 
     return log_likelihood
 
 
-def phase_time_marginalized_likelihood(params, h_sky, detectors, freqs, align_time, **kwargs):
-    log_likelihood = 0.
+def phase_time_marginalized_likelihood(
+    params, h_sky, detectors, freqs, align_time, **kwargs
+):
+    log_likelihood = 0.0
     df = freqs[1] - freqs[0]
     # using <h|d> instead of <d|h>
     complex_h_inner_d = jnp.zeros_like(freqs)
     for detector in detectors:
-        h_dec = (
-            detector.fd_response(freqs, h_sky, params) * align_time
-        )
-        complex_h_inner_d += (
-            4 * h_dec * jnp.conj(detector.data) / detector.psd * df
-        )
-        optimal_SNR = (
-            4
-            * jnp.sum(
-                jnp.conj(h_dec) * h_dec / detector.psd * df
-            ).real
-        )
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
         log_likelihood += -optimal_SNR / 2
 
-    # padding the complex_d_inner_h before feeding to the fft
-    # lower and higher frequency padding
-    pad_low = jnp.arange(0, freqs[0], df)
-    pad_high = jnp.arange(freqs[1], kwargs['sampling_rate'], df)
-    complex_h_inner_d = jnp.concatenate((pad_low, complex_h_inner_d, pad_high))
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d)
-    # abusing the fftfreq to get the corresponding tc array
-    tc_array = jnp.fft.fftfreq(n=len(fft_h_inner_d), d=df)
-
-    # fetch the range of valid tc
+    # fetch the tc range tc_array, lower padding and higher padding
     tc_range = kwargs['tc_range']
+    tc_array = kwargs['tc_array']
+    pad_low = kwargs['pad_low']
+    pad_high = kwargs['pad_high']
+    fs = kwargs['sampling_rate']
+
+    # padding the complex_h_inner_d
+    # this array is the hd*/S for f in [-fs / 2, -df]
+    complex_h_inner_d_negative_f = jnp.concatenate(
+        (jnp.zeros(len(pad_high) + 1),
+         jnp.flip(complex_h_inner_d).conj(), jnp.zeros(len(pad_low) - 1))
+    )
+    # this array is the hd*/S for f in [0, fs / 2 - df]
+    complex_h_inner_d_positive_f = jnp.concatenate(
+        (pad_low, complex_h_inner_d, pad_high)
+    )
+
+    # combing to get the complete f
+    # using the convention of fftfreq in numpy
+    # i.e. f in [-fs / 2, -fs / 2 + df... -df, 0, df, ... fs / 2 - df]
+    complex_h_inner_d_full_f = jnp.concatenate(
+        (complex_h_inner_d_negative_f, complex_h_inner_d_positive_f)
+    )
+    # since we go from one-sided to two-sided frequency range
+    # we need to introduce a factor of 2 correction
+    complex_h_inner_d_full_f /= 2.
+
+    # make use of the fft
+    # which then return the <h|d>exp(-i2pift_c)
+    # w.r.t. the tc_array
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_full_f, norm='backward')
+    # this extra factor is due to f = -fs / 2 + j * df, where j is the array index
+    # since the f2 is usally a power of 2, it usally has no effect
+    # but it is here to impreove the code readibility
+    fft_h_inner_d *= jnp.exp(-1j * jnp.pi * fs)
+
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp
     log_i0_abs_fft = jnp.where(
-        tc_array > tc_range[0] and tc_array < tc_range[1],
+        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
         log_i0(jnp.absolute(fft_h_inner_d)),
-        jnp.zeros_like(fft_h_inner_d) - jnp.inf
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
     )
 
     # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(fft_h_inner_d))
+    log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(tc_array))
 
     return log_likelihood

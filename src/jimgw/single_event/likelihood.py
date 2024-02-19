@@ -13,7 +13,7 @@ from jimgw.single_event.utils import (
     original_likelihood,
     phase_marginalized_likelihood,
     time_marginalized_likelihood,
-    phase_time_marginalized_likelihood
+    phase_time_marginalized_likelihood,
 )
 from jimgw.single_event.waveform import Waveform
 from jimgw.base import LikelihoodBase
@@ -57,24 +57,44 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         self.trigger_time = trigger_time
         self.duration = duration
         self.post_trigger_duration = post_trigger_duration
-        if 'marginalization' in kwargs:
-            marginalization = kwargs['marginalization']
-            assert marginalization in ['phase', 'phase-time', 'time'], \
-                "Only support time, phase and phase+time marginalzation"
-            self.marginalization = marginalization
-            if self.marginalization == 'phase-time':
-                self.param_func = lambda x: {**x, 'phi_c': 0., 't_c': 0.}
-                self.likelihood_function = phase_time_marginalized_likelihood
-            elif self.marginalization == 'time':
-                self.param_func = lambda x: {**x, 't_c': 0.}
-                self.likelihood_function = time_marginalized_likelihood
-            elif self.marginalization == 'phase':
-                self.param_func = lambda x: {**x, 'phi_c': 0.}
-                self.likelihood_function = phase_marginalized_likelihood
-            else:
-                self.param_func = lambda x: x
-                self.likelihood_function = original_likelihood
         self.kwargs = kwargs
+        if "marginalization" in self.kwargs:
+            marginalization = self.kwargs["marginalization"]
+            assert marginalization in [
+                "phase",
+                "phase-time",
+                "time",
+            ], "Only support time, phase and phase+time marginalzation"
+            self.marginalization = marginalization
+            if self.marginalization == "phase-time":
+                self.param_func = lambda x: {**x, "phase_c": 0.0, "t_c": 0.0}
+                self.likelihood_function = phase_time_marginalized_likelihood
+                print("Marginalizing over phase and time")
+            elif self.marginalization == "time":
+                self.param_func = lambda x: {**x, "t_c": 0.0}
+                self.likelihood_function = time_marginalized_likelihood
+                print("Marginalizing over time")
+            elif self.marginalization == "phase":
+                self.param_func = lambda x: {**x, "phase_c": 0.0}
+                self.likelihood_function = phase_marginalized_likelihood
+                print("Marginalizing over phase")
+
+            if 'time' in self.marginalization:
+                fs = kwargs['sampling_rate']
+                self.kwargs['tc_array'] = jnp.fft.fftfreq(
+                    int(duration * fs),
+                    1. / duration
+                )
+                self.kwargs['pad_low'] = jnp.zeros(int(self.frequencies[0] * duration))
+                if jnp.isclose(self.frequencies[-1], fs / 2. - 1. / duration):
+                    self.kwargs['pad_high'] = jnp.array([])
+                else:
+                    self.kwargs['pad_high'] = jnp.zeros(
+                        int((fs / 2. - 1. / duration - self.frequencies[-1]) * duration)
+                    )
+        else:
+            self.param_func = lambda x: x
+            self.likelihood_function = original_likelihood
 
     @property
     def epoch(self):
