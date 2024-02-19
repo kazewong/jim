@@ -96,30 +96,33 @@ likelihood = TransientLikelihoodFD(
     post_trigger_duration=2,
 )
 
-
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
+jim_kwargs = {
+    "n_loop_training": 100,
+    "n_loop_production": 10,
+    "n_local_steps": 150,
+    "n_global_steps": 150,
+    "n_chains": 500,
+    "n_epochs": 50,
+    "learning_rate": 0.001,
+    "momentum": 0.9,
+    "batch_size": 50000,
+    "use_global": True,
+    "keep_quantile": 0.0,
+    "train_thinning": 1,
+    "output_thinning": 10,
+    "local_sampler_arg": local_sampler_arg,
+}
+
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=100,
-    n_loop_production=10,
-    n_local_steps=150,
-    n_global_steps=150,
-    n_chains=500,
-    n_epochs=50,
-    learning_rate=0.001,
-    max_samples=45000,
-    momentum=0.9,
-    batch_size=50000,
-    use_global=True,
-    keep_quantile=0.0,
-    train_thinning=1,
-    output_thinning=10,
-    local_sampler_arg=local_sampler_arg,
+    **jim_kwargs
 )
 
 jim.sample(jax.random.PRNGKey(42))
+jim.print_summary()

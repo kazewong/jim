@@ -1,6 +1,9 @@
 from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
+import numpy as np
+import os
+import json
 
 from flowMC.sampler.Sampler import Sampler
 from flowMC.sampler.MALA import MALA
@@ -12,34 +15,53 @@ from flowMC.sampler.flowHMC import flowHMC
 from jimgw.prior import Prior
 from jimgw.base import LikelihoodBase
 
+default_hyperparameters = {
+        "seed": 0,
+        "n_chains": 20,
+        "num_layers": 10,
+        "hidden_size": [128,128],
+        "num_bins": 8,
+        "local_sampler_arg": {},
+}
 
 class Jim(object):
     """
     Master class for interfacing with flowMC
-
+    
+    Args:
+        "seed": "(int) Value of the random seed used",
+        "n_chains": "(int) Number of chains to be used",
+        "num_layers": "(int) Number of hidden layers of the NF",
+        "hidden_size": "List[int, int] Sizes of the hidden layers of the NF",
+        "num_bins": "(int) Number of bins used in MaskedCouplingRQSpline",
+        "local_sampler_arg": "(dict) Additional arguments to be used in the local sampler",
     """
 
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
         self.Likelihood = likelihood
         self.Prior = prior
 
-        seed = kwargs.get("seed", 0)
-        n_chains = kwargs.get("n_chains", 20)
+        # Set and override any given hyperparameters, and save as attribute
+        self.hyperparameters = default_hyperparameters
+        hyperparameter_names = list(self.hyperparameters.keys())
+        
+        for key, value in kwargs.items():
+            if key in hyperparameter_names:
+                self.hyperparameters[key] = value
+        
+        for key, value in self.hyperparameters.items():
+            setattr(self, key, value)
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=seed)
-        num_layers = kwargs.get("num_layers", 10)
-        hidden_size = kwargs.get("hidden_size", [128, 128])
-        num_bins = kwargs.get("num_bins", 8)
+        rng_key_set = initialize_rng_keys(self.n_chains, seed=self.seed)
 
-        local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
         local_sampler = MALA(
-            self.posterior, True, local_sampler_arg
+            self.posterior, True, self.local_sampler_arg
         )  # Remember to add routine to find automated mass matrix
 
         flowHMC_params = kwargs.get("flowHMC_params", {})
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
+            self.Prior.n_dim, self.num_layers, self.hidden_size, self.num_bins, rng_key_set[-1]
         )
         if len(flowHMC_params) > 0:
             global_sampler = flowHMC(
@@ -182,6 +204,25 @@ class Jim(object):
 
         chains = self.Prior.transform(self.Prior.add_name(chains.transpose(2, 0, 1)))
         return chains
+
+    def save_hyperparameters(self, outdir):
+        
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        
+        # Convert step_size to list, needed for JSON formatting
+        if "step_size" in self.hyperparameters["local_sampler_arg"].keys():
+            self.hyperparameters["local_sampler_arg"]["step_size"] = np.asarray(self.hyperparameters["local_sampler_arg"]["step_size"]).tolist()
+        
+        hyperparameters_dict = {"flowmc": self.Sampler.hyperparameters,
+                                "jim": self.hyperparameters}
+        
+        try:
+            name = outdir + "hyperparams.json"
+            with open(name, 'w') as file:
+                json.dump(hyperparameters_dict, file)
+        except Exception as e:
+            print(f"Error occurred while saving jim hyperparameters: {e}")
 
     def plot(self):
         pass
