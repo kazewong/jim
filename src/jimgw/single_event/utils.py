@@ -207,41 +207,21 @@ def time_marginalized_likelihood(params, h_sky, detectors, freqs, align_time, **
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = kwargs['tc_range']
-    tc_array = kwargs['tc_array']
-    pad_low = kwargs['pad_low']
-    pad_high = kwargs['pad_high']
-    fs = kwargs['sampling_rate']
+    tc_range = kwargs["tc_range"]
+    tc_array = kwargs["tc_array"]
+    pad_low = kwargs["pad_low"]
+    pad_high = kwargs["pad_high"]
 
     # padding the complex_h_inner_d
-    # this array is the hd*/S for f in [-fs / 2, -df]
-    complex_h_inner_d_negative_f = jnp.concatenate(
-        (jnp.zeros(len(pad_high) + 1),
-         jnp.flip(complex_h_inner_d).conj(), jnp.zeros(len(pad_low) - 1))
-    )
     # this array is the hd*/S for f in [0, fs / 2 - df]
     complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
 
-    # combing to get the complete f
-    # using the convention of fftfreq in numpy
-    # i.e. f in [-fs / 2, -fs / 2 + df... -df, 0, df, ... fs / 2 - df]
-    complex_h_inner_d_full_f = jnp.concatenate(
-        (complex_h_inner_d_negative_f, complex_h_inner_d_positive_f)
-    )
-    # since we go from one-sided to two-sided frequency range
-    # we need to introduce a factor of 2 correction
-    complex_h_inner_d_full_f /= 2.
-
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
     # w.r.t. the tc_array
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_full_f, norm='backward')
-    # this extra factor is due to f = -fs / 2 + j * df, where j is the array index
-    # since the f2 is usally a power of 2, it usally has no effect
-    # but it is here to impreove the code readibility
-    fft_h_inner_d *= jnp.exp(-1j * jnp.pi * fs)
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
 
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp
@@ -271,41 +251,21 @@ def phase_time_marginalized_likelihood(
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = kwargs['tc_range']
-    tc_array = kwargs['tc_array']
-    pad_low = kwargs['pad_low']
-    pad_high = kwargs['pad_high']
-    fs = kwargs['sampling_rate']
+    tc_range = kwargs["tc_range"]
+    tc_array = kwargs["tc_array"]
+    pad_low = kwargs["pad_low"]
+    pad_high = kwargs["pad_high"]
 
     # padding the complex_h_inner_d
-    # this array is the hd*/S for f in [-fs / 2, -df]
-    complex_h_inner_d_negative_f = jnp.concatenate(
-        (jnp.zeros(len(pad_high) + 1),
-         jnp.flip(complex_h_inner_d).conj(), jnp.zeros(len(pad_low) - 1))
-    )
     # this array is the hd*/S for f in [0, fs / 2 - df]
     complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
 
-    # combing to get the complete f
-    # using the convention of fftfreq in numpy
-    # i.e. f in [-fs / 2, -fs / 2 + df... -df, 0, df, ... fs / 2 - df]
-    complex_h_inner_d_full_f = jnp.concatenate(
-        (complex_h_inner_d_negative_f, complex_h_inner_d_positive_f)
-    )
-    # since we go from one-sided to two-sided frequency range
-    # we need to introduce a factor of 2 correction
-    complex_h_inner_d_full_f /= 2.
-
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
     # w.r.t. the tc_array
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_full_f, norm='backward')
-    # this extra factor is due to f = -fs / 2 + j * df, where j is the array index
-    # since the f2 is usally a power of 2, it usally has no effect
-    # but it is here to impreove the code readibility
-    fft_h_inner_d *= jnp.exp(-1j * jnp.pi * fs)
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
 
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp

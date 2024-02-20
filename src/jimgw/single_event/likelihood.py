@@ -79,18 +79,20 @@ class TransientLikelihoodFD(SingleEventLiklihood):
                 self.likelihood_function = phase_marginalized_likelihood
                 print("Marginalizing over phase")
 
-            if 'time' in self.marginalization:
-                fs = kwargs['sampling_rate']
-                self.kwargs['tc_array'] = jnp.fft.fftfreq(
-                    int(duration * fs),
-                    1. / duration
+            if "time" in self.marginalization:
+                fs = kwargs["sampling_rate"]
+                self.kwargs["tc_array"] = jnp.fft.fftfreq(
+                    int(duration * fs / 2), 1.0 / duration
                 )
-                self.kwargs['pad_low'] = jnp.zeros(int(self.frequencies[0] * duration))
-                if jnp.isclose(self.frequencies[-1], fs / 2. - 1. / duration):
-                    self.kwargs['pad_high'] = jnp.array([])
+                self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
+                if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
+                    self.kwargs["pad_high"] = jnp.array([])
                 else:
-                    self.kwargs['pad_high'] = jnp.zeros(
-                        int((fs / 2. - 1. / duration - self.frequencies[-1]) * duration)
+                    self.kwargs["pad_high"] = jnp.zeros(
+                        int(
+                            (fs / 2.0 - 1.0 / duration - self.frequencies[-1])
+                            * duration
+                        )
                     )
         else:
             self.param_func = lambda x: x
