@@ -208,13 +208,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         if not ref_params:
             print("No reference parameters are provided, finding it...")
-            self.ref_params = self.maximize_likelihood(
+            ref_params = self.maximize_likelihood(
                 bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
             )
+            self.ref_params = {key: float(value) for key, value in ref_params.items()}
             print(f"The reference parameters are {self.ref_params}")
         else:
             self.ref_params = ref_params
             print(f"Reference parameters provided, which are {self.ref_params}")
+
+        # safe guard for the reference parameters
+        # since ripple cannot handle eta=0.25
+        if jnp.isclose(self.ref_params["eta"], 0.25):
+            self.ref_params["eta"] = 0.249995
+            print("The eta of the reference parameter is close to 0.25")
+            print(f"The eta is adjusted to {self.ref_params['eta']}")
 
         print("Constructing reference waveforms..")
 
