@@ -328,11 +328,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
         log_likelihood = self.rb_likelihood_function(
             params,
-            waveform_sky_low,
             self.A0_array,
             self.A1_array,
             self.B0_array,
             self.B1_array,
+            waveform_sky_low,
             waveform_sky_center,
             self.waveform_low_ref,
             self.waveform_center_ref,
@@ -708,10 +708,8 @@ def phase_marginalized_relative_binning_likelihood(
     align_time_center,
     **kwargs,
 ):
-
     log_likelihood = 0.0
-
-    complex_d_inner_h = jnp.zeros_like(A0_array)
+    complex_d_inner_h = 0.0
 
     for detector in detectors:
         waveform_low = (
@@ -726,7 +724,7 @@ def phase_marginalized_relative_binning_likelihood(
         r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
             frequencies_low - frequencies_center
         )
-        complex_d_inner_h += (
+        complex_d_inner_h += jnp.sum(
             A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
         )
         optimal_SNR = jnp.sum(
