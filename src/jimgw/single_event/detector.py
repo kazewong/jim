@@ -406,6 +406,14 @@ class GroundBased2G(Detector):
         signal = self.fd_response(freqs, h_sky, params) * align_time
         self.data = signal + noise_real + 1j * noise_imag
 
+        # also calculate the optimal SNR and match filter SNR
+        optimal_SNR = jnp.sqrt(jnp.sum(signal * signal.conj() / var).real)
+        match_filter_SNR = jnp.sum(self.data * signal.conj() / var) / optimal_SNR
+
+        print(f"For detector {self.name}:")
+        print(f"The injected optimal SNR is {optimal_SNR}")
+        print(f"The injected match filter SNR is {match_filter_SNR}")
+
     @jaxtyped
     def load_psd(
         self, freqs: Float[Array, " n_sample"], psd_file: str = ""

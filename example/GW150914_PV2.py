@@ -109,8 +109,8 @@ bounds = jnp.array(
         [-1.0, 1.0],
     ]
 )
-# likelihood = TransientLikelihoodFD([H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
-likelihood = HeterodynedTransientLikelihoodFD([H1, L1], prior=prior, bounds=bounds, waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
+likelihood = TransientLikelihoodFD([H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
+# likelihood = HeterodynedTransientLikelihoodFD([H1, L1], prior=prior, bounds=bounds, waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2)
 
 
 mass_matrix = jnp.eye(prior.n_dim)
@@ -135,7 +135,10 @@ jim = Jim(
     keep_quantile=0.,
     train_thinning=1,
     output_thinning=30,
+    num_layers=6,
+    hidden_size=[64, 64],
+    num_bins=8,
     local_sampler_arg=local_sampler_arg,
 )
 
-jim.sample(jax.random.PRNGKey(42))
+jim.sample(jax.random.PRNGKey(42))1
