@@ -217,6 +217,7 @@ class Jim(object):
         hyperparameters_dict = {"flowmc": self.Sampler.hyperparameters,
                                 "jim": self.hyperparameters}
         
+        # Use exception handling to avoid crashes from JSON
         try:
             name = outdir + "hyperparams.json"
             with open(name, 'w') as file:
