@@ -16,18 +16,19 @@ from jimgw.prior import Prior
 from jimgw.base import LikelihoodBase
 
 default_hyperparameters = {
-        "seed": 0,
-        "n_chains": 20,
-        "num_layers": 10,
-        "hidden_size": [128,128],
-        "num_bins": 8,
-        "local_sampler_arg": {},
+    "seed": 0,
+    "n_chains": 20,
+    "num_layers": 10,
+    "hidden_size": [128, 128],
+    "num_bins": 8,
+    "local_sampler_arg": {},
 }
+
 
 class Jim(object):
     """
     Master class for interfacing with flowMC
-    
+
     Args:
         "seed": "(int) Value of the random seed used",
         "n_chains": "(int) Number of chains to be used",
@@ -44,16 +45,15 @@ class Jim(object):
         # Set and override any given hyperparameters, and save as attribute
         self.hyperparameters = default_hyperparameters
         hyperparameter_names = list(self.hyperparameters.keys())
-        
+
         for key, value in kwargs.items():
             if key in hyperparameter_names:
                 self.hyperparameters[key] = value
-        
+
         for key, value in self.hyperparameters.items():
             setattr(self, key, value)
 
         rng_key_set = initialize_rng_keys(self.n_chains, seed=self.seed)
-
 
         local_sampler = MALA(
             self.posterior, True, self.local_sampler_arg
@@ -61,7 +61,11 @@ class Jim(object):
 
         flowHMC_params = kwargs.get("flowHMC_params", {})
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, self.num_layers, self.hidden_size, self.num_bins, rng_key_set[-1]
+            self.Prior.n_dim,
+            self.num_layers,
+            self.hidden_size,
+            self.num_bins,
+            rng_key_set[-1],
         )
         if len(flowHMC_params) > 0:
             global_sampler = flowHMC(
@@ -206,21 +210,25 @@ class Jim(object):
         return chains
 
     def save_hyperparameters(self, outdir):
-        
+
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-        
+
         # Convert step_size to list, needed for JSON formatting
         if "step_size" in self.hyperparameters["local_sampler_arg"].keys():
-            self.hyperparameters["local_sampler_arg"]["step_size"] = np.asarray(self.hyperparameters["local_sampler_arg"]["step_size"]).tolist()
-        
-        hyperparameters_dict = {"flowmc": self.Sampler.hyperparameters,
-                                "jim": self.hyperparameters}
-        
+            self.hyperparameters["local_sampler_arg"]["step_size"] = np.asarray(
+                self.hyperparameters["local_sampler_arg"]["step_size"]
+            ).tolist()
+
+        hyperparameters_dict = {
+            "flowmc": self.Sampler.hyperparameters,
+            "jim": self.hyperparameters,
+        }
+
         # Use exception handling to avoid crashes from JSON
         try:
             name = outdir + "hyperparams.json"
-            with open(name, 'w') as file:
+            with open(name, "w") as file:
                 json.dump(hyperparameters_dict, file)
         except Exception as e:
             print(f"Error occurred while saving jim hyperparameters: {e}")
