@@ -141,4 +141,4 @@ jim = Jim(
     local_sampler_arg=local_sampler_arg,
 )
 
-jim.sample(jax.random.PRNGKey(42))1
+jim.sample(jax.random.PRNGKey(42))
