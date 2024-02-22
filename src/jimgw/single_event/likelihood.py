@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+from jax.scipy.special import logsumexp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
@@ -9,6 +10,7 @@ from scipy.interpolate import interp1d
 
 from jimgw.single_event.detector import Detector
 from jimgw.prior import Prior
+from jimgw.single_event.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.base import LikelihoodBase
 
@@ -51,6 +53,46 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         self.trigger_time = trigger_time
         self.duration = duration
         self.post_trigger_duration = post_trigger_duration
+        self.kwargs = kwargs
+        if "marginalization" in self.kwargs:
+            marginalization = self.kwargs["marginalization"]
+            assert marginalization in [
+                "phase",
+                "phase-time",
+                "time",
+            ], "Only support time, phase and phase+time marginalzation"
+            self.marginalization = marginalization
+            if self.marginalization == "phase-time":
+                self.param_func = lambda x: {**x, "phase_c": 0.0, "t_c": 0.0}
+                self.likelihood_function = phase_time_marginalized_likelihood
+                print("Marginalizing over phase and time")
+            elif self.marginalization == "time":
+                self.param_func = lambda x: {**x, "t_c": 0.0}
+                self.likelihood_function = time_marginalized_likelihood
+                print("Marginalizing over time")
+            elif self.marginalization == "phase":
+                self.param_func = lambda x: {**x, "phase_c": 0.0}
+                self.likelihood_function = phase_marginalized_likelihood
+                print("Marginalizing over phase")
+
+            if "time" in self.marginalization:
+                fs = kwargs["sampling_rate"]
+                self.kwargs["tc_array"] = jnp.fft.fftfreq(
+                    int(duration * fs / 2), 1.0 / duration
+                )
+                self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
+                if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
+                    self.kwargs["pad_high"] = jnp.array([])
+                else:
+                    self.kwargs["pad_high"] = jnp.zeros(
+                        int(
+                            (fs / 2.0 - 1.0 / duration - self.frequencies[-1])
+                            * duration
+                        )
+                    )
+        else:
+            self.param_func = lambda x: x
+            self.likelihood_function = original_likelihood
 
     @property
     def epoch(self):
@@ -71,31 +113,23 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         """
         Evaluate the likelihood for a given set of parameters.
         """
-        log_likelihood = 0
         frequencies = self.frequencies
-        df = frequencies[1] - frequencies[0]
         params["gmst"] = self.gmst
+        # adjust the params due to different marginalzation scheme
+        params = self.param_func(params)
+        # evaluate the waveform as usual
         waveform_sky = self.waveform(frequencies, params)
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * frequencies * (self.epoch + params["t_c"])
         )
-        for detector in self.detectors:
-            waveform_dec = (
-                detector.fd_response(frequencies, waveform_sky, params) * align_time
-            )
-            match_filter_SNR = (
-                4
-                * jnp.sum(
-                    (jnp.conj(waveform_dec) * detector.data) / detector.psd * df
-                ).real
-            )
-            optimal_SNR = (
-                4
-                * jnp.sum(
-                    jnp.conj(waveform_dec) * waveform_dec / detector.psd * df
-                ).real
-            )
-            log_likelihood += match_filter_SNR - optimal_SNR / 2
+        log_likelihood = self.likelihood_function(
+            params,
+            waveform_sky,
+            self.detectors,
+            frequencies,
+            align_time,
+            **self.kwargs,
+        )
         return log_likelihood
 
 
@@ -135,6 +169,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         post_trigger_duration: float = 2,
         popsize: int = 100,
         n_loops: int = 2000,
+        ref_params: dict = {},
         **kwargs,
     ) -> None:
         super().__init__(
@@ -143,8 +178,26 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         print("Initializing heterodyned likelihood..")
 
-        # Get the original frequency grid
+        self.kwargs = kwargs
+        if "marginalization" in self.kwargs:
+            marginalization = self.kwargs["marginalization"]
+            assert marginalization in [
+                "phase",
+            ], "Heterodyned likelihood only support phase marginalzation"
+            self.marginalization = marginalization
+            if self.marginalization == "phase":
+                self.param_func = lambda x: {**x, "phase_c": 0.0}
+                self.likelihood_function = phase_marginalized_likelihood
+                self.rb_likelihood_function = (
+                    phase_marginalized_relative_binning_likelihood
+                )
+                print("Marginalizing over phase")
+        else:
+            self.param_func = lambda x: x
+            self.likelihood_function = original_likelihood
+            self.rb_likelihood_function = original_relative_binning_likelihood
 
+        # Get the original frequency grid
         frequency_original = self.frequencies
         # Get the grid of the relative binning scheme (contains the final endpoint)
         # and the center points
@@ -153,15 +206,29 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
         self.freq_grid_low = freq_grid[:-1]
 
-        print("Finding reference parameters..")
+        if not ref_params:
+            print("No reference parameters are provided, finding it...")
+            ref_params = self.maximize_likelihood(
+                bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
+            )
+            self.ref_params = {key: float(value) for key, value in ref_params.items()}
+            print(f"The reference parameters are {self.ref_params}")
+        else:
+            self.ref_params = ref_params
+            print(f"Reference parameters provided, which are {self.ref_params}")
 
-        self.ref_params = self.maximize_likelihood(
-            bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
-        )
+        # safe guard for the reference parameters
+        # since ripple cannot handle eta=0.25
+        if jnp.isclose(self.ref_params["eta"], 0.25):
+            self.ref_params["eta"] = 0.249995
+            print("The eta of the reference parameter is close to 0.25")
+            print(f"The eta is adjusted to {self.ref_params['eta']}")
 
         print("Constructing reference waveforms..")
 
         self.ref_params["gmst"] = self.gmst
+        # adjust the params due to different marginalzation scheme
+        self.ref_params = self.param_func(self.ref_params)
 
         self.waveform_low_ref = {}
         self.waveform_center_ref = {}
@@ -253,10 +320,12 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
-        log_likelihood = 0
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
         params["gmst"] = self.gmst
+        # adjust the params due to different marginalzation scheme
+        params = self.param_func(params)
+        # evaluate the waveforms as usual
         waveform_sky_low = self.waveform(frequencies_low, params)
         waveform_sky_center = self.waveform(frequencies_center, params)
         align_time_low = jnp.exp(
@@ -265,30 +334,23 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         align_time_center = jnp.exp(
             -1j * 2 * jnp.pi * frequencies_center * (self.epoch + params["t_c"])
         )
-        for detector in self.detectors:
-            waveform_low = (
-                detector.fd_response(frequencies_low, waveform_sky_low, params)
-                * align_time_low
-            )
-            waveform_center = (
-                detector.fd_response(frequencies_center, waveform_sky_center, params)
-                * align_time_center
-            )
-
-            r0 = waveform_center / self.waveform_center_ref[detector.name]
-            r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
-                frequencies_low - frequencies_center
-            )
-            match_filter_SNR = jnp.sum(
-                self.A0_array[detector.name] * r0.conj()
-                + self.A1_array[detector.name] * r1.conj()
-            )
-            optimal_SNR = jnp.sum(
-                self.B0_array[detector.name] * jnp.abs(r0) ** 2
-                + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
-            )
-            log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
-
+        log_likelihood = self.rb_likelihood_function(
+            params,
+            self.A0_array,
+            self.A1_array,
+            self.B0_array,
+            self.B1_array,
+            waveform_sky_low,
+            waveform_sky_center,
+            self.waveform_low_ref,
+            self.waveform_center_ref,
+            self.detectors,
+            frequencies_low,
+            frequencies_center,
+            align_time_low,
+            align_time_center,
+            **self.kwargs,
+        )
         return log_likelihood
 
     def evaluate_original(
@@ -301,29 +363,22 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         log_likelihood = 0
         frequencies = self.frequencies
-        df = frequencies[1] - frequencies[0]
         params["gmst"] = self.gmst
+        # adjust the params due to different marginalzation scheme
+        params = self.param_func(params)
+        # evaluate the waveform as usual
         waveform_sky = self.waveform(frequencies, params)
         align_time = jnp.exp(
             -1j * 2 * jnp.pi * frequencies * (self.epoch + params["t_c"])
         )
-        for detector in self.detectors:
-            waveform_dec = (
-                detector.fd_response(frequencies, waveform_sky, params) * align_time
-            )
-            match_filter_SNR = (
-                4
-                * jnp.sum(
-                    (jnp.conj(waveform_dec) * detector.data) / detector.psd * df
-                ).real
-            )
-            optimal_SNR = (
-                4
-                * jnp.sum(
-                    jnp.conj(waveform_dec) * waveform_dec / detector.psd * df
-                ).real
-            )
-            log_likelihood += match_filter_SNR - optimal_SNR / 2
+        log_likelihood = self.likelihood_function(
+            params,
+            waveform_sky,
+            self.detectors,
+            frequencies,
+            align_time,
+            **self.kwargs,
+        )
         return log_likelihood
 
     @staticmethod
@@ -453,3 +508,239 @@ likelihood_presets = {
     "TransientLikelihoodFD": TransientLikelihoodFD,
     "HeterodynedTransientLikelihoodFD": HeterodynedTransientLikelihoodFD,
 }
+
+
+def original_likelihood(
+    params: dict[str, Float],
+    h_sky: dict[str, Float[Array, " n_dim"]],
+    detectors: list[Detector],
+    freqs: Float[Array, " n_dim"],
+    align_time: Float,
+    **kwargs,
+) -> Float:
+    log_likelihood = 0.0
+    df = freqs[1] - freqs[0]
+    for detector in detectors:
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        match_filter_SNR = (
+            4 * jnp.sum((jnp.conj(h_dec) * detector.data) / detector.psd * df).real
+        )
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        log_likelihood += match_filter_SNR - optimal_SNR / 2
+
+    return log_likelihood
+
+
+def phase_marginalized_likelihood(
+    params: dict[str, Float],
+    h_sky: dict[str, Float[Array, " n_dim"]],
+    detectors: list[Detector],
+    freqs: Float[Array, " n_dim"],
+    align_time: Float,
+    **kwargs,
+) -> Float:
+    log_likelihood = 0.0
+    complex_d_inner_h = 0.0
+    df = freqs[1] - freqs[0]
+    for detector in detectors:
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_d_inner_h += 4 * jnp.sum(
+            (jnp.conj(h_dec) * detector.data) / detector.psd * df
+        )
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        log_likelihood += -optimal_SNR / 2
+
+    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
+
+    return log_likelihood
+
+
+def time_marginalized_likelihood(
+    params: dict[str, Float],
+    h_sky: dict[str, Float[Array, " n_dim"]],
+    detectors: list[Detector],
+    freqs: Float[Array, " n_dim"],
+    align_time: Float,
+    **kwargs,
+) -> Float:
+    log_likelihood = 0.0
+    df = freqs[1] - freqs[0]
+    # using <h|d> instead of <d|h>
+    complex_h_inner_d = jnp.zeros_like(freqs)
+    for detector in detectors:
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        log_likelihood += -optimal_SNR / 2
+
+    # fetch the tc range tc_array, lower padding and higher padding
+    tc_range = kwargs["tc_range"]
+    tc_array = kwargs["tc_array"]
+    pad_low = kwargs["pad_low"]
+    pad_high = kwargs["pad_high"]
+
+    # padding the complex_h_inner_d
+    # this array is the hd*/S for f in [0, fs / 2 - df]
+    complex_h_inner_d_positive_f = jnp.concatenate(
+        (pad_low, complex_h_inner_d, pad_high)
+    )
+
+    # make use of the fft
+    # which then return the <h|d>exp(-i2pift_c)
+    # w.r.t. the tc_array
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
+
+    # set the values to -inf when it is outside the tc range
+    # so that they will disappear after the logsumexp
+    fft_h_inner_d = jnp.where(
+        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
+        fft_h_inner_d.real,
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
+    )
+
+    # using the logsumexp to marginalize over the tc prior range
+    log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(tc_array))
+
+    return log_likelihood
+
+
+def phase_time_marginalized_likelihood(
+    params: dict[str, Float],
+    h_sky: dict[str, Float[Array, " n_dim"]],
+    detectors: list[Detector],
+    freqs: Float[Array, " n_dim"],
+    align_time: Float,
+    **kwargs,
+) -> Float:
+    log_likelihood = 0.0
+    df = freqs[1] - freqs[0]
+    # using <h|d> instead of <d|h>
+    complex_h_inner_d = jnp.zeros_like(freqs)
+    for detector in detectors:
+        h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        log_likelihood += -optimal_SNR / 2
+
+    # fetch the tc range tc_array, lower padding and higher padding
+    tc_range = kwargs["tc_range"]
+    tc_array = kwargs["tc_array"]
+    pad_low = kwargs["pad_low"]
+    pad_high = kwargs["pad_high"]
+
+    # padding the complex_h_inner_d
+    # this array is the hd*/S for f in [0, fs / 2 - df]
+    complex_h_inner_d_positive_f = jnp.concatenate(
+        (pad_low, complex_h_inner_d, pad_high)
+    )
+
+    # make use of the fft
+    # which then return the <h|d>exp(-i2pift_c)
+    # w.r.t. the tc_array
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
+
+    # set the values to -inf when it is outside the tc range
+    # so that they will disappear after the logsumexp
+    log_i0_abs_fft = jnp.where(
+        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
+        log_i0(jnp.absolute(fft_h_inner_d)),
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
+    )
+
+    # using the logsumexp to marginalize over the tc prior range
+    log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(tc_array))
+
+    return log_likelihood
+
+
+def original_relative_binning_likelihood(
+    params,
+    A0_array,
+    A1_array,
+    B0_array,
+    B1_array,
+    waveform_sky_low,
+    waveform_sky_center,
+    waveform_low_ref,
+    waveform_center_ref,
+    detectors,
+    frequencies_low,
+    frequencies_center,
+    align_time_low,
+    align_time_center,
+    **kwargs,
+):
+
+    log_likelihood = 0.0
+
+    for detector in detectors:
+        waveform_low = (
+            detector.fd_response(frequencies_low, waveform_sky_low, params)
+            * align_time_low
+        )
+        waveform_center = (
+            detector.fd_response(frequencies_center, waveform_sky_center, params)
+            * align_time_center
+        )
+
+        r0 = waveform_center / waveform_center_ref[detector.name]
+        r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
+            frequencies_low - frequencies_center
+        )
+        match_filter_SNR = jnp.sum(
+            A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
+        )
+        optimal_SNR = jnp.sum(
+            B0_array[detector.name] * jnp.abs(r0) ** 2
+            + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
+        )
+        log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
+
+    return log_likelihood
+
+
+def phase_marginalized_relative_binning_likelihood(
+    params,
+    A0_array,
+    A1_array,
+    B0_array,
+    B1_array,
+    waveform_sky_low,
+    waveform_sky_center,
+    waveform_low_ref,
+    waveform_center_ref,
+    detectors,
+    frequencies_low,
+    frequencies_center,
+    align_time_low,
+    align_time_center,
+    **kwargs,
+):
+    log_likelihood = 0.0
+    complex_d_inner_h = 0.0
+
+    for detector in detectors:
+        waveform_low = (
+            detector.fd_response(frequencies_low, waveform_sky_low, params)
+            * align_time_low
+        )
+        waveform_center = (
+            detector.fd_response(frequencies_center, waveform_sky_center, params)
+            * align_time_center
+        )
+        r0 = waveform_center / waveform_center_ref[detector.name]
+        r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
+            frequencies_low - frequencies_center
+        )
+        complex_d_inner_h += jnp.sum(
+            A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
+        )
+        optimal_SNR = jnp.sum(
+            B0_array[detector.name] * jnp.abs(r0) ** 2
+            + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
+        )
+        log_likelihood += -optimal_SNR.real / 2
+
+    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
+
+    return log_likelihood

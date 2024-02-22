@@ -19,7 +19,7 @@ def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
     return dumper.represent_list(data.tolist())
 
 
-yaml.add_representer(ArrayImpl, jaxarray_representer)
+yaml.add_representer(ArrayImpl, jaxarray_representer)  # type: ignore
 
 prior_presets = {
     "Unconstrained_Uniform": prior.Unconstrained_Uniform,

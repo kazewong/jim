@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from jax.scipy.special import i0e
 from jax.scipy.integrate import trapezoid
 from jax import jit
 from jaxtyping import Float, Array
@@ -141,3 +142,22 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     phi = ra - gmst
     theta = jnp.pi / 2 - dec
     return theta, phi
+
+
+def log_i0(x):
+    """
+    A numerically stable method to evaluate log of
+    a modified Bessel function of order 0.
+    It is used in the phase-marginalized likelihood.
+
+    Parameters
+    ==========
+    x: array-like
+        Value(s) at which to evaluate the function
+
+    Returns
+    =======
+    array-like:
+        The natural logarithm of the bessel function
+    """
+    return jnp.log(i0e(x)) + x
