@@ -100,6 +100,7 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         # e.g. {'M_c': 1.1975, 't_c': 0}
         if "fixing_parameters" in self.kwargs:
             fixing_parameters = self.kwargs["fixing_parameters"]
+            print(f"Parameters are fixed {fixing_parameters}")
             # check for conflict with the marginalization
             assert not (
                 "t_c" in fixing_parameters and "time" in self.marginalization
@@ -224,6 +225,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # e.g. {'M_c': 1.1975, 't_c': 0}
         if "fixing_parameters" in self.kwargs:
             fixing_parameters = self.kwargs["fixing_parameters"]
+            print(f"Parameters are fixed {fixing_parameters}")
             # check for conflict with the marginalization
             assert not (
                 "t_c" in fixing_parameters and "time" in self.marginalization
