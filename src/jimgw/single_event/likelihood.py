@@ -93,6 +93,25 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         else:
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
+            self.marginalization = ""
+
+        # the fixing_parameters is expected to be a dictionary
+        # with key as parameter name and value is the fixed value
+        # e.g. {'M_c': 1.1975, 't_c': 0}
+        if "fixing_parameters" in self.kwargs:
+            fixing_parameters = self.kwargs["fixing_parameters"]
+            # check for conflict with the marginalization
+            assert not (
+                "t_c" in fixing_parameters and "time" in self.marginalization
+            ), "Cannot have t_c fixed while having the marginalization of t_c turned on"
+            assert not (
+                "phase_c" in fixing_parameters and "phase" in self.marginalization
+            ), "Cannot have phase_c fixed while having the marginalization of phase_c turned on"
+            # if the same key exists in both dictionary,
+            # the later one will overwrite the former one
+            self.fixing_func = lambda x: {**x, **fixing_parameters}
+        else:
+            self.fixing_func = lambda x: x
 
     @property
     def epoch(self):
@@ -117,6 +136,8 @@ class TransientLikelihoodFD(SingleEventLiklihood):
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
+        # adjust the params due to fixing parameters
+        params = self.fixing_func(params)
         # evaluate the waveform as usual
         waveform_sky = self.waveform(frequencies, params)
         align_time = jnp.exp(
@@ -196,6 +217,25 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
             self.rb_likelihood_function = original_relative_binning_likelihood
+            self.marginalization = ""
+
+        # the fixing_parameters is expected to be a dictionary
+        # with key as parameter name and value is the fixed value
+        # e.g. {'M_c': 1.1975, 't_c': 0}
+        if "fixing_parameters" in self.kwargs:
+            fixing_parameters = self.kwargs["fixing_parameters"]
+            # check for conflict with the marginalization
+            assert not (
+                "t_c" in fixing_parameters and "time" in self.marginalization
+            ), "Cannot have t_c fixed while having the marginalization of t_c turned on"
+            assert not (
+                "phase_c" in fixing_parameters and "phase" in self.marginalization
+            ), "Cannot have phase_c fixed while having the marginalization of phase_c turned on"
+            # if the same key exists in both dictionary,
+            # the later one will overwrite the former one
+            self.fixing_func = lambda x: {**x, **fixing_parameters}
+        else:
+            self.fixing_func = lambda x: x
 
         # Get the original frequency grid
         frequency_original = self.frequencies
@@ -229,6 +269,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.ref_params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         self.ref_params = self.param_func(self.ref_params)
+        # adjust the params due to fixing parameters
+        self.ref_params = self.fixing_func(self.ref_params)
 
         self.waveform_low_ref = {}
         self.waveform_center_ref = {}
@@ -325,6 +367,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
+        # adjust the params due to fixing parameters
+        params = self.fixing_func(params)
         # evaluate the waveforms as usual
         waveform_sky_low = self.waveform(frequencies_low, params)
         waveform_sky_center = self.waveform(frequencies_center, params)
@@ -366,6 +410,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
+        # adjust the params due to fixing parameters
+        params = self.fixing_func(params)
         # evaluate the waveform as usual
         waveform_sky = self.waveform(frequencies, params)
         align_time = jnp.exp(
