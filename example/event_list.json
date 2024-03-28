@@ -1,0 +1,893 @@
+{
+    "files": [
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/contour_data.tar.gz"
+        }, 
+        "checksum": "md5:bfa29ecd713b017637c66228352e0235", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "contour_data.tar.gz", 
+        "type": "gz", 
+        "size": 125287540
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191103_012549_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:ba0bc19b10769bbfffba43d5588e4b22", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191103_012549_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 43501080
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191103_012549_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:90887970aeb4c7bc93d0cd0f1a346057", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191103_012549_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 248120424
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191105_143521_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:4e99dc9a6d00607359ad146470204518", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191105_143521_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 165261672
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191105_143521_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:0ebaf82e48973debbea105ab43b78521", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191105_143521_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 284197984
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191109_010717_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:20926725dba7cd85cb9addba2b8c8fd5", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191109_010717_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 159770320
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191109_010717_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:343f3af272edbbd922630ecc5b982d00", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191109_010717_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 374495928
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191113_071753_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:7d87855c2adf508541bbb592cae0032f", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191113_071753_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 119466832
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191113_071753_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:39937c51105ae6cdbfa7a9178fc75921", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191113_071753_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 253128144
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191126_115259_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:1f09de34937328eea6fd5dba1e350cd9", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191126_115259_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 105150744
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191126_115259_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:134880c64b9413006eabaddd78b361b0", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191126_115259_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 249833744
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191127_050227_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:25b8056143330c39a90577a0bd99bfcf", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191127_050227_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 81293736
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191127_050227_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:0b143299cbc7e342e5939c13f95139d6", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191127_050227_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 325785440
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191129_134029_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:3e44805b5d0554130154d2b33e2531e8", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191129_134029_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 164724688
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191129_134029_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:34262e8d33473fb787754814c9f3b2e0", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191129_134029_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 243159584
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191204_110529_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:1ea749dd2167bb5df634d37dd97b6317", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191204_110529_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 72977784
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191204_110529_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:da6254715f0568ccf3cad563ed392336", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191204_110529_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 215179376
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191204_171526_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:8f3fa9207f9c181c5c0808f9c9998e11", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191204_171526_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 218473360
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191204_171526_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:0a9c4f67d2c3c2517140867f57e3bd07", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191204_171526_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 313245696
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191215_223052_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:5411e35528be6c7c74ebc41907fe0584", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191215_223052_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 73394752
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191215_223052_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:7c1eabbb7c9f9b1e754d10425cc1e8ba", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191215_223052_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 103076656
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191216_213338_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:6ace66924eae1dc453423569a14facdb", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191216_213338_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 351454440
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191216_213338_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:998266ba58a3448338c6b05971430b41", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191216_213338_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 428606792
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191219_163120_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:854069302a791552b739a34414a415ab", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191219_163120_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 231728936
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191219_163120_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:508fcc62e2b4bcc802438e2ecd7546ad", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191219_163120_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 427228784
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191222_033537_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:2966202e743a2d4d179ed930979c66ee", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191222_033537_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 71956560
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191222_033537_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:95ddf363e33e973b99b7f93b71229884", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191222_033537_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 216302344
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191230_180458_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:a2f92d9cdf68a3ff09a8b13ac799655f", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191230_180458_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 72849152
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW191230_180458_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:df72de7075b899a06540027d6258675d", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW191230_180458_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 256902680
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200105_162426_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:287a17d4ccadbcd6cf486ba71b5be8f2", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200105_162426_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 164764320
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200105_162426_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:12ab2b9d968c0c5c320950127f61c1e5", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200105_162426_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 116655888
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200112_155838_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:ac4ac60b7ec13c0ab81cfe1b1bf04d37", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200112_155838_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 96276408
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200112_155838_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:96924b21ef7ff8e2f9ee7645c88ca637", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200112_155838_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 197197128
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200115_042309_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:4d817ff8446dd89a9cc7d04225687724", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200115_042309_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 662039072
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200115_042309_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:b81fd3bd67ea93f02ed6feed83ba7c17", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200115_042309_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 632386968
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200128_022011_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:512e04e0412b2754c37ffb492474aba4", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200128_022011_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 45392432
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200128_022011_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:ce68f2dd46592e6654a3b0c861a538b4", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200128_022011_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 201491656
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200129_065458_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:483f27530ed645ec09a8a56f7afc7c1e", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200129_065458_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 329888480
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200129_065458_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:e29920dae6df1d13a3e65c83e66a4feb", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200129_065458_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 414195464
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200202_154313_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:38a35b731ed716a8a908d4ad54ec843d", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200202_154313_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 269895128
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200202_154313_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:fc0a605f4803c22fb36fc62f5b448251", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200202_154313_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 339197504
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200208_130117_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:ee9bde3bba7d2675dd862e0b02e279ba", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200208_130117_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 271571264
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200208_130117_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:efae9235908db565c1fb96d6e38c8cab", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200208_130117_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 386074584
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200208_222617_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:0968a92854d129bc2b997e43647e9ba5", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200208_222617_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 77880496
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200208_222617_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:0579a856e5deb8b736c6f993b7ab9988", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200208_222617_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 372010256
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200209_085452_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:c8c8c9fbf3262e438a7359ce99003682", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200209_085452_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 105778768
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200209_085452_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:7982f3cce5815962c722c27f1dad9b46", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200209_085452_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 313678928
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200216_220804_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:ac6dec747be042eb95821ef49ab61794", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200216_220804_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 48288664
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200216_220804_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:c547a85c7433efcfc9d515440174400f", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200216_220804_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 250590376
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200219_094415_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:c229bf2c934ed1426ce7b6ff9a0257df", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200219_094415_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 179186496
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200219_094415_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:16e2414d681ebc8debed4673bea7c241", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200219_094415_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 382591480
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200220_061928_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:49c67d68cb90b6106b8ae715f2668c42", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200220_061928_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 31621400
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200220_061928_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:9118aaa0fe0fa219f7986f10bed27d04", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200220_061928_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 217821632
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200220_124850_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:874a0fa6e419784e8d9cb78b60aadb42", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200220_124850_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 42773240
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200220_124850_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:baf0167d5bea9f0c8a1ebc3169534ca3", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200220_124850_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 156816232
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200224_222234_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:908afb58f0b7845368e876c8380f6a34", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200224_222234_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 337523632
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200224_222234_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:01a5a907581d5ea1aeea61135fb7fa87", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200224_222234_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 524909792
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200225_060421_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:bb8c5312378913d226238daf556b7ea0", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200225_060421_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 163610168
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200225_060421_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:b9d4ecff4ffc0b2fc86121a249cb473d", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200225_060421_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 298240616
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200302_015811_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:a0907d996beb48ee1707242d9754c1c1", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200302_015811_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 69878408
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200302_015811_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:27806ca85edb96bad0d1515a82ca3016", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200302_015811_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 164253192
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200306_093714_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:8f3b6d9315acc84e2ccba4c7009460ca", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200306_093714_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 62095688
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200306_093714_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:258f91b1f713f66817119fb8aff76809", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200306_093714_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 189091088
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200308_173609_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:89139d2c95b1a57cdbe57a73ba37052c", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200308_173609_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 21106848
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200308_173609_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:ced4ea12c4a9a8428f402004c9fab896", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200308_173609_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 221061360
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200311_115853_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:1af5559ef540b58f8e8cb74896de3fe5", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200311_115853_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 372894408
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200311_115853_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:fcb940c9c6becd7e58fe8cfe4d4a47a0", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200311_115853_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 513526576
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200316_215756_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:253d95140c5a848dcd1d7affbc70711e", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200316_215756_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 423250480
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200316_215756_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:a4cf7b528e33502dd09ba84183912527", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200316_215756_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 643179072
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200322_091133_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:10f08df78862ed85421ab9fe6eb0a662", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200322_091133_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 19138352
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200322_091133_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:206a117b5a903106ce293f5d3358f8ad", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200322_091133_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 208026064
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/O3bPEDataReleaseNotebook.ipynb"
+        }, 
+        "checksum": "md5:ce269e79bfe0f57618759226ae560d92", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "O3bPEDataReleaseNotebook.ipynb", 
+        "type": "ipynb", 
+        "size": 2488718
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200210_092254_PEDataRelease_mixed_cosmo.h5"
+        }, 
+        "checksum": "md5:f6ebe7bf4fb7dfdb4dc4f17e6906fe78", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200210_092254_PEDataRelease_mixed_cosmo.h5", 
+        "type": "h5", 
+        "size": 174375032
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/IGWN-GWTC3p0-v1-GW200210_092254_PEDataRelease_mixed_nocosmo.h5"
+        }, 
+        "checksum": "md5:ea0d85ba7819d8f51c693d4c2143e9ed", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "IGWN-GWTC3p0-v1-GW200210_092254_PEDataRelease_mixed_nocosmo.h5", 
+        "type": "h5", 
+        "size": 280465096
+      }, 
+      {
+        "links": {
+          "self": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c/skymaps.tar.gz"
+        }, 
+        "checksum": "md5:499148b138c8847dcb62a76726c3fb46", 
+        "bucket": "d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+        "key": "skymaps.tar.gz", 
+        "type": "gz", 
+        "size": 71621778
+      }
+    ], 
+    "owners": [
+      256464
+    ], 
+    "doi": "10.5281/zenodo.5546663", 
+    "stats": {
+      "version_unique_downloads": 4795.0, 
+      "unique_views": 3791.0, 
+      "views": 4524.0, 
+      "version_views": 4524.0, 
+      "unique_downloads": 4795.0, 
+      "version_unique_views": 3791.0, 
+      "volume": 5735864835353.0, 
+      "version_downloads": 27574.0, 
+      "downloads": 27574.0, 
+      "version_volume": 5735864835353.0
+    }, 
+    "links": {
+      "doi": "https://doi.org/10.5281/zenodo.5546663", 
+      "conceptdoi": "https://doi.org/10.5281/zenodo.5546662", 
+      "bucket": "https://zenodo.org/api/files/d7a70f99-e16a-48a2-ae27-0b1968b0840c", 
+      "conceptbadge": "https://zenodo.org/badge/doi/10.5281/zenodo.5546662.svg", 
+      "html": "https://zenodo.org/record/5546663", 
+      "latest_html": "https://zenodo.org/record/5546663", 
+      "badge": "https://zenodo.org/badge/doi/10.5281/zenodo.5546663.svg", 
+      "latest": "https://zenodo.org/api/records/5546663"
+    }, 
+    "conceptdoi": "10.5281/zenodo.5546662", 
+    "created": "2021-11-08T01:04:54.972534+00:00", 
+    "updated": "2022-09-21T08:52:54.414374+00:00", 
+    "conceptrecid": "5546662", 
+    "revision": 13, 
+    "id": 5546663, 
+    "metadata": {
+      "access_right_category": "success", 
+      "doi": "10.5281/zenodo.5546663", 
+      "description": "<p>This material is part of several data products associated with GWTC-3, the third Gravitational-Wave Transient Catalog from the <a href=\"https://www.ligo.org/\">LIGO</a> Scientific Collaboration, the <a href=\"https://www.virgo-gw.eu/\">Virgo</a> Collaboration, and the <a href=\"https://gwcenter.icrr.u-tokyo.ac.jp/en/\">KAGRA</a> Collaboration. For more information, see the paper (<a href=\"https://dcc.ligo.org/LIGO-P2000318/public\">dcc.ligo.org/LIGO-P2000318/public</a>), the related material linked from this page, and the GWTC-3 data release documentation (<a href=\"https://www.gw-openscience.org/GWTC-3/\">www.gw-openscience.org/GWTC-3/</a>).</p>\n\n<p><strong>Parameter estimation data release</strong></p>\n\n<p>This data release contains posterior samples (*.h5) for gravitational-wave candidates from the second part of the third observing run (O3b).We provide results for the 35 candidates that have a probability of astrophysical origin of over 0.5, plus <a href=\"https://doi.org/10.3847/2041-8213/ac082e\">GW200105_162426</a>, which is a clear outlier from the noise background. There are two .h5 files per event</p>\n\n<ul>\n\t<li>Cosmologically reweighted (*cosmo.h5)</li>\n\t<li>Not cosmologically reweighted (*nocosmo.h5)</li>\n</ul>\n\n<p>The cosmologically reweighted posteriors are reweighted to have a luminosity-distance prior that has a uniform merger rate in the source&#39;s comoving frame. See the <a href=\"http://dcc.ligo.org/LIGO-P2000318/public\">paper</a> appendices for further information. In addition to containing the posterior samples, the .h5 files also contain metadata about the analyses including the configuration files (which specify details such as the detector data analysed), noise power spectral densities (potentially for a superset of the detectors used in the analysis) and calibration uncertainty envelopes.</p>\n\n<p>The inference of the source parameters were performed with <a href=\"https://lscsoft.docs.ligo.org/bilby/\">Bilby</a>, <a href=\"https://lscsoft.docs.ligo.org/parallel_bilby/\">Parallel Bilby</a> and <a href=\"https://git.ligo.org/richard-oshaughnessy/research-projects-RIT/tree/temp-RIT-Tides\">RIFT</a>. The results are formatted using <a href=\"https://lscsoft.docs.ligo.org/pesummary/\">PESummary</a>.</p>\n\n<p>A <a href=\"https://doi.org/10.5281/zenodo.5117702\">similar release has been made to accompany GWTC-2.1</a> for results from the first part&nbsp;of the third observing run.</p>\n\n<p><strong>Sky localization data release</strong></p>\n\n<p>The skymap tar file (skymaps.tar.gz) contains candidate sky localizations corresponding to different parameter estimation configurations. Two waveforms are used for the majority of targets (IMRPhenomXPHM and SEOBNRv4PHM) and additional waveforms are used for possible neutron star--black hole mergers (see the paper for further information). If you do not mind which waveform, the skymaps labelled &quot;Mixed&quot; include posterior samples from both waveforms used.</p>\n\n<p><strong>Contour data release</strong></p>\n\n<p>The contour tar file (contour_data.tar.gz) contains the contour files used to produce Figures 8 and 9 in the&nbsp;<a href=\"http://dcc.ligo.org/LIGO-P2000318/public\">paper</a>.</p>\n\n<p><strong>Python notebook</strong></p>\n\n<p>The Python notebook (O3bPEDataReleaseNotebook.ipynb) explains how to read and use the posterior samples with a selection of examples.</p>\n\n<p><strong>How to download all files from this page</strong></p>\n\n<p>If you would like to download all files on this page, we recommend <a href=\"https://gitlab.com/dvolgyes/zenodo_get\">zenodo_get</a>:</p>\n\n<pre><code class=\"language-bash\">pip install zenodo_get\nzenodo-get RECORD_ID_OR_DOI\n</code></pre>\n\n<p>where the record ID for the most recent version of this page is 5546662 and IDs for other versions can be found in the Versions section at the side of this page.</p>\n\n<p>&nbsp;</p>\n\n<p>For more general background on gravitational-wave parameter estimation, try the materials from a <a href=\"https://www.gw-openscience.org/workshops/\">GW Open Data Workshop</a> or the <a href=\"https://doi.org/10.1088/1361-6382/ab685e\">guide to LIGO&ndash;Virgo data analysis</a>.</p>", 
+      "license": {
+        "id": "CC-BY-4.0"
+      }, 
+      "title": "GWTC-3: Compact Binary Coalescences Observed by LIGO and Virgo During the Second Part of the Third Observing Run \u2014 Parameter estimation data release", 
+      "notes": "LIGO Laboratory and Advanced LIGO are funded by the United States National Science Foundation (NSF) as well as the Science and Technology Facilities Council (STFC) of the United Kingdom, the Max-Planck-Society (MPS), and the State of Niedersachsen/Germany for support of the construction of Advanced LIGO and construction and operation of the GEO600 detector. Additional support for Advanced LIGO was provided by the Australian Research Council. Virgo is funded, through the European Gravitational Observatory (EGO), by the French Centre National de Recherche Scientifique (CNRS), the Italian Istituto Nazionale di Fisica Nucleare (INFN) and the Dutch Nikhef, with contributions by institutions from Belgium, Germany, Greece, Hungary, Ireland, Japan, Monaco, Poland, Portugal, Spain. The construction and operation of KAGRA are funded by Ministry of Education, Culture, Sports, Science and Technology (MEXT), and Japan Society for the Promotion of Science (JSPS), National Research Foundation (NRF) and Ministry of Science and ICT (MSIT) in Korea, Academia Sinica (AS) and the Ministry of Science and Technology (MoST) in Taiwan.", 
+      "relations": {
+        "version": [
+          {
+            "count": 1, 
+            "index": 0, 
+            "parent": {
+              "pid_type": "recid", 
+              "pid_value": "5546662"
+            }, 
+            "is_last": true, 
+            "last_child": {
+              "pid_type": "recid", 
+              "pid_value": "5546663"
+            }
+          }
+        ]
+      }, 
+      "references": [
+        "LIGO Scientific Collaboration and Virgo Collaboration and KAGRA Collaboration, GWTC-3, https://doi.org/10.7935/b024-1886"
+      ], 
+      "communities": [
+        {
+          "id": "ligo-virgo-kagra"
+        }
+      ], 
+      "publication_date": "2021-11-08", 
+      "creators": [
+        {
+          "name": "LIGO Scientific Collaboration and Virgo Collaboration and KAGRA Collaboration"
+        }
+      ], 
+      "access_right": "open", 
+      "resource_type": {
+        "type": "dataset", 
+        "title": "Dataset"
+      }, 
+      "related_identifiers": [
+        {
+          "scheme": "url", 
+          "identifier": "https://dcc.ligo.org/LIGO-P2000318/public", 
+          "relation": "isSupplementTo", 
+          "resource_type": "publication-preprint"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5546679", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5636795", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5636815", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5546664", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5546675", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5571766", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5650061", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5645777", 
+          "relation": "isSupplementedBy", 
+          "resource_type": "dataset"
+        }, 
+        {
+          "scheme": "doi", 
+          "identifier": "10.5281/zenodo.5546662", 
+          "relation": "isVersionOf"
+        }
+      ]
+    }
+  }
