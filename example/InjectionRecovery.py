@@ -1,16 +1,17 @@
-from jimgw.jim import Jim
-from jimgw.single_event.detector import H1, L1, V1
-from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD, TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomPv2
-from jimgw.prior import Uniform
-from ripple import ms_to_Mc_eta
-import jax.numpy as jnp
 import jax
-from astropy.time import Time
-
-from tap import Tap
+import jax.numpy as jnp
 import yaml
+from astropy.time import Time
+from ripple import ms_to_Mc_eta
+from tap import Tap
 from tqdm import tqdm
+
+from jimgw.jim import Jim
+from jimgw.prior import Uniform
+from jimgw.single_event.detector import H1, L1, V1
+from jimgw.single_event.likelihood import (HeterodynedTransientLikelihoodFD,
+                                           TransientLikelihoodFD)
+from jimgw.single_event.waveform import RippleIMRPhenomPv2
 
 jax.config.update("jax_enable_x64", True)
 

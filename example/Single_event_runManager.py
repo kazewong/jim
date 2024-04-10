@@ -1,7 +1,9 @@
 
-from jimgw.single_event.runManager import SingleEventPERunManager, SingleEventRun
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
+
+from jimgw.single_event.runManager import (SingleEventPERunManager,
+                                           SingleEventRun)
 
 jax.config.update("jax_enable_x64", True)
 

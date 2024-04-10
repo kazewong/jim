@@ -1,14 +1,14 @@
 import time
-from jimgw.jim import Jim
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import (
-    HeterodynedTransientLikelihoodFD,
-    TransientLikelihoodFD,
-)
-from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Unconstrained_Uniform, Composite
-import jax.numpy as jnp
+
 import jax
+import jax.numpy as jnp
+
+from jimgw.jim import Jim
+from jimgw.prior import Composite, Unconstrained_Uniform
+from jimgw.single_event.detector import H1, L1
+from jimgw.single_event.likelihood import (HeterodynedTransientLikelihoodFD,
+                                           TransientLikelihoodFD)
+from jimgw.single_event.waveform import RippleIMRPhenomD
 
 jax.config.update("jax_enable_x64", True)
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def Mc_eta_to_ms(m):
     Mchirp, eta = m
     M = Mchirp / (eta ** (3 / 5))

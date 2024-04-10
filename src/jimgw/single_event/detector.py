@@ -5,11 +5,11 @@ import jax.numpy as jnp
 import numpy as np
 import requests
 from gwpy.timeseries import TimeSeries
-from jaxtyping import Array, PRNGKeyArray, Float, jaxtyped
+from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
-from jimgw.constants import EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, C_SI
+from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
 from jimgw.single_event.wave import Polarization
 
 DEG_TO_RAD = jnp.pi / 180

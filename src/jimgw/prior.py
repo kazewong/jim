@@ -1,9 +1,10 @@
+from dataclasses import field
+from typing import Callable, Union
+
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
-from typing import Callable, Union
-from dataclasses import field
 
 
 class Prior(Distribution):

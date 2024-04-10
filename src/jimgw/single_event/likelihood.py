@@ -1,18 +1,18 @@
 import jax
 import jax.numpy as jnp
-from jax.scipy.special import logsumexp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from scipy.interpolate import interp1d
 
-from jimgw.single_event.detector import Detector
+from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
+from jimgw.single_event.detector import Detector
 from jimgw.single_event.utils import log_i0
 from jimgw.single_event.waveform import Waveform
-from jimgw.base import LikelihoodBase
 
 
 class SingleEventLiklihood(LikelihoodBase):
