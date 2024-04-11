@@ -55,7 +55,7 @@ run = SingleEventRun(
         "n_chains": 500,
         "n_epochs": 50,
         "learning_rate": 0.001,
-        "max_samples": 45000,
+        "n_max_examples": 45000,
         "momentum": 0.9,
         "batch_size": 50000,
         "use_global": True,
