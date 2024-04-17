@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
-from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+from flowMC.strategy.optimization import optimization_Adam
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from scipy.interpolate import interp1d
@@ -190,7 +190,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         duration: float = 4,
         post_trigger_duration: float = 2,
         popsize: int = 100,
-        n_loops: int = 2000,
+        n_steps: int = 2000,
         ref_params: dict = {},
         **kwargs,
     ) -> None:
@@ -251,7 +251,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         if not ref_params:
             print("No reference parameters are provided, finding it...")
             ref_params = self.maximize_likelihood(
-                bounds=bounds, prior=prior, popsize=popsize, n_loops=n_loops
+                bounds=bounds, prior=prior, popsize=popsize, n_steps=n_steps
             )
             self.ref_params = {key: float(value) for key, value in ref_params.items()}
             print(f"The reference parameters are {self.ref_params}")
@@ -538,17 +538,22 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         bounds: Float[Array, " n_dim 2"],
         prior: Prior,
         popsize: int = 100,
-        n_loops: int = 2000,
+        n_steps: int = 2000,
     ):
         def y(x):
             return -self.evaluate_original(prior.transform(prior.add_name(x)), {})
 
-        y = jax.jit(jax.vmap(y))
-
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(len(bounds), popsize=popsize, verbose=True)
-        _ = optimizer.optimize(y, bounds, n_loops=n_loops)
-        best_fit = optimizer.get_result()[0]
+        optimizer = optimization_Adam(
+            n_steps=n_steps, learning_rate=0.001, noise_level=1
+        )
+        initial_position = jnp.array(
+            list(prior.sample(jax.random.PRNGKey(0), popsize).values())
+        ).T
+        rng_key, optimized_positions, summary = optimizer.optimize(
+            jax.random.PRNGKey(12094), y, initial_position
+        )
+        best_fit = optimized_positions[summary["final_log_prob"].argmin()]
         return prior.transform(prior.add_name(best_fit))
 
 
