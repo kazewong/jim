@@ -6,6 +6,7 @@ import numpy as np
 import requests
 from gwpy.timeseries import TimeSeries
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
@@ -414,7 +415,7 @@ class GroundBased2G(Detector):
         print(f"The injected optimal SNR is {optimal_SNR}")
         print(f"The injected match filter SNR is {match_filter_SNR}")
 
-    @jaxtyped
+    @jaxtyped(typechecker=typechecker)
     def load_psd(
         self, freqs: Float[Array, " n_sample"], psd_file: str = ""
     ) -> Float[Array, " n_sample"]:

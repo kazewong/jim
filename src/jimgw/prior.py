@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
+from beartype import beartype as typechecker
 
 
 class Prior(Distribution):
@@ -91,7 +92,7 @@ class Prior(Distribution):
         raise NotImplementedError
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
@@ -146,7 +147,7 @@ class Uniform(Prior):
         return output + jnp.log(1.0 / (self.xmax - self.xmin))
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Unconstrained_Uniform(Prior):
     xmin: Float = 0.0
     xmax: Float = 1.0
@@ -279,7 +280,7 @@ class Sphere(Prior):
         return output
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class AlignedSpin(Prior):
     """
     Prior distribution for the aligned (z) component of the spin.
@@ -392,7 +393,7 @@ class AlignedSpin(Prior):
         return log_p
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class PowerLaw(Prior):
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
@@ -471,7 +472,7 @@ class PowerLaw(Prior):
         return log_p + log_in_range
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Exponential(Prior):
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
