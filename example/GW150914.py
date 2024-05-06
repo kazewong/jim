@@ -105,8 +105,8 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
 
 import optax
-n_epochs = 5
-n_loop_training = 600
+n_epochs = 20
+n_loop_training = 100
 total_epochs = n_epochs * n_loop_training
 start = total_epochs//10
 learning_rate = optax.polynomial_schedule(
@@ -120,13 +120,14 @@ jim = Jim(
     n_loop_training=n_loop_training,
     n_loop_production=20,
     n_local_steps=10,
-    n_global_steps=100,
+    n_global_steps=1000,
     n_chains=500,
     n_epochs=n_epochs,
     learning_rate=learning_rate,
-    n_max_examples=10000,
+    n_max_examples=30000,
+    n_flow_samples=100000,
     momentum=0.9,
-    batch_size=10000,
+    batch_size=30000,
     use_global=True,
     train_thinning=1,
     output_thinning=10,
