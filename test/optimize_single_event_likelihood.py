@@ -1,9 +1,9 @@
-import numpy as np
 import bilby
 import jax.numpy as jnp
-
-from jax.config import config
+import numpy as np
 from jax import grad, jit
+from jax.config import config
+
 config.update("jax_enable_x64", True)
 
 # Set the duration and sampling frequency of the data segment that we're
@@ -66,14 +66,16 @@ waveform_frequency = waveform_frequency[jnp.isfinite(psd)]
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-from jaxgw.likelihood.detector_projection import construct_arm, detector_tensor, antenna_response, get_detector_response
+from jax import grad, jacfwd, jacrev, jit, random, value_and_grad, vmap
+from jax.experimental.optimizers import adam, sgd
+from jaxgw.likelihood.detector_projection import (antenna_response,
+                                                  construct_arm,
+                                                  detector_tensor,
+                                                  get_detector_response)
 from jaxgw.likelihood.utils import inner_product
-from jaxgw.waveform.TaylorF2 import TaylorF2
-from jaxgw.waveform.IMRPhenomB import IMRPhenomB, getPhenomCoef, Lorentzian
+from jaxgw.waveform.IMRPhenomB import IMRPhenomB, Lorentzian, getPhenomCoef
 from jaxgw.waveform.IMRPhenomC import IMRPhenomC
-from jax.experimental.optimizers import adam,sgd
-from jax import random, grad, jit, vmap, jacfwd, jacrev, value_and_grad
-
+from jaxgw.waveform.TaylorF2 import TaylorF2
 
 waveform = TaylorF2(waveform_frequency, injection_parameters)
 H1_lat = 46 + 27. / 60 + 18.528 / 3600

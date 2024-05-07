@@ -1,9 +1,11 @@
+from dataclasses import field
+from typing import Callable, Union
+
 import jax
 import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
-from typing import Callable, Union
-from dataclasses import field
+from beartype import beartype as typechecker
 
 
 class Prior(Distribution):
@@ -90,10 +92,10 @@ class Prior(Distribution):
         raise NotImplementedError
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Uniform(Prior):
-    xmin: Float = 0.0
-    xmax: Float = 1.0
+    xmin: float = 0.0
+    xmax: float = 1.0
 
     def __repr__(self):
         return f"Uniform(xmin={self.xmin}, xmax={self.xmax})"
@@ -145,10 +147,10 @@ class Uniform(Prior):
         return output + jnp.log(1.0 / (self.xmax - self.xmin))
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Unconstrained_Uniform(Prior):
-    xmin: Float = 0.0
-    xmax: Float = 1.0
+    xmin: float = 0.0
+    xmax: float = 1.0
 
     def __repr__(self):
         return f"Unconstrained_Uniform(xmin={self.xmin}, xmax={self.xmax})"
@@ -278,7 +280,7 @@ class Sphere(Prior):
         return output
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class AlignedSpin(Prior):
     """
     Prior distribution for the aligned (z) component of the spin.
@@ -391,26 +393,26 @@ class AlignedSpin(Prior):
         return log_p
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class PowerLaw(Prior):
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
     p(x) ~ x^{\alpha}
     """
 
-    xmin: Float = 0.0
-    xmax: Float = 1.0
-    alpha: Float = 0.0
-    normalization: Float = 1.0
+    xmin: float = 0.0
+    xmax: float = 1.0
+    alpha: float = 0.0
+    normalization: float = 1.0
 
     def __repr__(self):
         return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
 
     def __init__(
         self,
-        xmin: Float,
-        xmax: Float,
-        alpha: Union[Int, Float],
+        xmin: float,
+        xmax: float,
+        alpha: Union[Int, float],
         naming: list[str],
         transforms: dict[str, tuple[str, Callable]] = {},
         **kwargs,
@@ -423,7 +425,7 @@ class PowerLaw(Prior):
         self.xmin = xmin
         self.alpha = alpha
         if alpha == -1:
-            self.normalization = 1.0 / jnp.log(self.xmax / self.xmin)
+            self.normalization = float(1.0 / jnp.log(self.xmax / self.xmin))
         else:
             self.normalization = (1 + self.alpha) / (
                 self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
@@ -470,17 +472,17 @@ class PowerLaw(Prior):
         return log_p + log_in_range
 
 
-@jaxtyped
+@jaxtyped(typechecker=typechecker)
 class Exponential(Prior):
     """
     A prior following the power-law with alpha in the range [xmin, xmax).
     p(x) ~ exp(\alpha x)
     """
 
-    xmin: Float = 0.0
-    xmax: Float = jnp.inf
-    alpha: Float = -1.0
-    normalization: Float = 1.0
+    xmin: float = 0.0
+    xmax: float = jnp.inf
+    alpha: float = -1.0
+    normalization: float = 1.0
 
     def __repr__(self):
         return f"Exponential(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"

@@ -1,14 +1,17 @@
 import time
+
+import jax
+import jax.numpy as jnp
+
 from jimgw.jim import Jim
+from jimgw.prior import Composite, Unconstrained_Uniform
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import (
     HeterodynedTransientLikelihoodFD,
     TransientLikelihoodFD,
 )
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Uniform, Composite
-import jax.numpy as jnp
-import jax
+from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
 
@@ -32,19 +35,19 @@ ifos = ["H1", "L1"]
 H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
-Mc_prior = Uniform(10.0, 80.0, naming=["M_c"])
-q_prior = Uniform(
+Mc_prior = Unconstrained_Uniform(10.0, 80.0, naming=["M_c"])
+q_prior = Unconstrained_Uniform(
     0.125,
     1.0,
     naming=["q"],
     transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
 )
-s1z_prior = Uniform(-1.0, 1.0, naming=["s1_z"])
-s2z_prior = Uniform(-1.0, 1.0, naming=["s2_z"])
-dL_prior = Uniform(0.0, 2000.0, naming=["d_L"])
-t_c_prior = Uniform(-0.05, 0.05, naming=["t_c"])
-phase_c_prior = Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
-cos_iota_prior = Uniform(
+s1z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s1_z"])
+s2z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s2_z"])
+dL_prior = Unconstrained_Uniform(0.0, 2000.0, naming=["d_L"])
+t_c_prior = Unconstrained_Uniform(-0.05, 0.05, naming=["t_c"])
+phase_c_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
+cos_iota_prior = Unconstrained_Uniform(
     -1.0,
     1.0,
     naming=["cos_iota"],
@@ -57,9 +60,9 @@ cos_iota_prior = Uniform(
         )
     },
 )
-psi_prior = Uniform(0.0, jnp.pi, naming=["psi"])
-ra_prior = Uniform(0.0, 2 * jnp.pi, naming=["ra"])
-sin_dec_prior = Uniform(
+psi_prior = Unconstrained_Uniform(0.0, jnp.pi, naming=["psi"])
+ra_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["ra"])
+sin_dec_prior = Unconstrained_Uniform(
     -1.0,
     1.0,
     naming=["sin_dec"],
@@ -113,7 +116,7 @@ likelihood = HeterodynedTransientLikelihoodFD(
     trigger_time=gps,
     duration=duration,
     post_trigger_duration=post_trigger_duration,
-    n_loops=300,
+    n_steps=3000,
 )
 
 mass_matrix = jnp.eye(11)
@@ -121,24 +124,35 @@ mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
+Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
+import optax
+n_epochs = 20
+n_loop_training = 100
+total_epochs = n_epochs * n_loop_training
+start = total_epochs//10
+learning_rate = optax.polynomial_schedule(
+    1e-3, 1e-4, 400, total_epochs - start, transition_begin=start
+)
+
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=100,
-    n_loop_production=10,
-    n_local_steps=150,
-    n_global_steps=150,
+    n_loop_training=n_loop_training,
+    n_loop_production=20,
+    n_local_steps=10,
+    n_global_steps=1000,
     n_chains=500,
-    n_epochs=50,
-    learning_rate=0.001,
-    max_samples=45000,
+    n_epochs=n_epochs,
+    learning_rate=learning_rate,
+    n_max_examples=30000,
+    n_flow_sample=100000,
     momentum=0.9,
-    batch_size=50000,
+    batch_size=30000,
     use_global=True,
     keep_quantile=0.0,
     train_thinning=1,
     output_thinning=10,
     local_sampler_arg=local_sampler_arg,
+    # strategies=[Adam_optimizer,"default"],
 )
-
 jim.sample(jax.random.PRNGKey(42))

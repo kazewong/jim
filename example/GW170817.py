@@ -1,12 +1,14 @@
 import time
+
+import jax
+import jax.numpy as jnp
+from gwosc.datasets import event_gps
+
 from jimgw.jim import Jim
+from jimgw.prior import Uniform
 from jimgw.single_event.detector import H1, L1, V1
 from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Uniform
-from gwosc.datasets import event_gps
-import jax.numpy as jnp
-import jax
 
 jax.config.update("jax_enable_x64", True)
 

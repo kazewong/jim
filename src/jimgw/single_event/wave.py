@@ -1,7 +1,7 @@
 # Credit some part of the source code from bilby
 
-import jax.numpy as jnp
 import equinox as eqx
+import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 KNOWN_POLS = "pcxybl"

@@ -1,8 +1,8 @@
 import jax.numpy as jnp
-from jax.scipy.special import i0e
-from jax.scipy.integrate import trapezoid
 from jax import jit
-from jaxtyping import Float, Array
+from jax.scipy.integrate import trapezoid
+from jax.scipy.special import i0e
+from jaxtyping import Array, Float
 
 
 @jit

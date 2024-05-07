@@ -1,7 +1,7 @@
-import numpy as np
-from scipy.optimize import minimize_scalar
 import arviz as az
+import numpy as np
 from scipy.interpolate import interp1d
+from scipy.optimize import minimize_scalar
 
 q_axis = np.linspace(0.1,1,100)
 eta = q_axis/(1+q_axis)**2

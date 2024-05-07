@@ -1,8 +1,9 @@
+from abc import ABC
+
+import jax.numpy as jnp
 from jaxtyping import Array, Float
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_hphc
 from ripple.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
-from abc import ABC
-import jax.numpy as jnp
 
 
 class Waveform(ABC):

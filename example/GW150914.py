@@ -1,14 +1,14 @@
 import time
-from jimgw.jim import Jim
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import (
-    HeterodynedTransientLikelihoodFD,
-    TransientLikelihoodFD,
-)
-from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Unconstrained_Uniform, Composite
-import jax.numpy as jnp
+
 import jax
+import jax.numpy as jnp
+
+from jimgw.jim import Jim
+from jimgw.prior import Composite, Unconstrained_Uniform
+from jimgw.single_event.detector import H1, L1
+from jimgw.single_event.likelihood import TransientLikelihoodFD
+from jimgw.single_event.waveform import RippleIMRPhenomD
+from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
 
@@ -102,24 +102,37 @@ mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
+Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
+
+import optax
+n_epochs = 20
+n_loop_training = 100
+total_epochs = n_epochs * n_loop_training
+start = total_epochs//10
+learning_rate = optax.polynomial_schedule(
+    1e-3, 1e-4, 400, total_epochs - start, transition_begin=start
+)
+
+
 jim = Jim(
     likelihood,
     prior,
-    n_loop_training=100,
-    n_loop_production=10,
-    n_local_steps=150,
-    n_global_steps=150,
+    n_loop_training=n_loop_training,
+    n_loop_production=20,
+    n_local_steps=10,
+    n_global_steps=1000,
     n_chains=500,
-    n_epochs=50,
-    learning_rate=0.001,
-    max_samples=45000,
+    n_epochs=n_epochs,
+    learning_rate=learning_rate,
+    n_max_examples=30000,
+    n_flow_samples=100000,
     momentum=0.9,
-    batch_size=50000,
+    batch_size=30000,
     use_global=True,
-    keep_quantile=0.0,
     train_thinning=1,
     output_thinning=10,
     local_sampler_arg=local_sampler_arg,
+    strategies=[Adam_optimizer,"default"],
 )
 
 jim.sample(jax.random.PRNGKey(42))

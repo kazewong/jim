@@ -1,11 +1,13 @@
+import time
+
+import jax
+import jax.numpy as jnp
+
 from jimgw.jim import Jim
+from jimgw.prior import Composite, PowerLaw, Uniform
 from jimgw.single_event.detector import H1, L1, V1
 from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.prior import Uniform, PowerLaw, Composite
-import jax.numpy as jnp
-import jax
-import time
 
 jax.config.update("jax_enable_x64", True)
 
@@ -139,7 +141,7 @@ jim = Jim(
     n_chains=1000,
     n_epochs=300,
     learning_rate=0.001,
-    max_samples=50000,
+    n_max_examples=50000,
     momentum=0.9,
     batch_size=50000,
     use_global=True,

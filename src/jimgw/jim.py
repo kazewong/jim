@@ -1,16 +1,13 @@
-from jaxtyping import Array, Float, PRNGKeyArray
 import jax
 import jax.numpy as jnp
-
-from flowMC.sampler.Sampler import Sampler
-from flowMC.sampler.MALA import MALA
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.utils.PRNG_keys import initialize_rng_keys
+from flowMC.proposal.MALA import MALA
+from flowMC.Sampler import Sampler
 from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
-from flowMC.sampler.flowHMC import flowHMC
+from jaxtyping import Array, Float, PRNGKeyArray
 
-from jimgw.prior import Prior
 from jimgw.base import LikelihoodBase
+from jimgw.prior import Prior
 
 
 class Jim(object):
@@ -24,44 +21,27 @@ class Jim(object):
         self.Prior = prior
 
         seed = kwargs.get("seed", 0)
-        n_chains = kwargs.get("n_chains", 20)
 
-        rng_key_set = initialize_rng_keys(n_chains, seed=seed)
+        rng_key = jax.random.PRNGKey(seed)
         num_layers = kwargs.get("num_layers", 10)
         hidden_size = kwargs.get("hidden_size", [128, 128])
         num_bins = kwargs.get("num_bins", 8)
 
         local_sampler_arg = kwargs.get("local_sampler_arg", {})
 
-        local_sampler = MALA(
-            self.posterior, True, local_sampler_arg
-        )  # Remember to add routine to find automated mass matrix
+        local_sampler = MALA(self.posterior, True, **local_sampler_arg)
 
-        flowHMC_params = kwargs.get("flowHMC_params", {})
+        rng_key, subkey = jax.random.split(rng_key)
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, rng_key_set[-1]
+            self.Prior.n_dim, num_layers, hidden_size, num_bins, subkey
         )
-        if len(flowHMC_params) > 0:
-            global_sampler = flowHMC(
-                self.posterior,
-                True,
-                model,
-                params={
-                    "step_size": flowHMC_params["step_size"],
-                    "n_leapfrog": flowHMC_params["n_leapfrog"],
-                    "condition_matrix": flowHMC_params["condition_matrix"],
-                },
-            )
-        else:
-            global_sampler = None
 
         self.Sampler = Sampler(
             self.Prior.n_dim,
-            rng_key_set,
+            rng_key,
             None,  # type: ignore
             local_sampler,
             model,
-            global_sampler=global_sampler,
             **kwargs,
         )
 

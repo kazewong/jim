@@ -1,18 +1,20 @@
+from dataclasses import asdict, dataclass, field
 from typing import Union
-from jimgw.base import RunManager
-from dataclasses import dataclass, field, asdict
-from jimgw.single_event.likelihood import likelihood_presets, SingleEventLiklihood
-from jimgw.single_event.detector import detector_preset, Detector
-from jimgw.single_event.waveform import waveform_preset, Waveform
-from jimgw import prior
-from jimgw.jim import Jim
-import jax.numpy as jnp
+
 import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import yaml
 from astropy.time import Time
-from jaxtyping import Array, Float, PyTree
-import matplotlib.pyplot as plt
 from jaxlib.xla_extension import ArrayImpl
+from jaxtyping import Array, Float, PyTree
+
+from jimgw import prior
+from jimgw.base import RunManager
+from jimgw.jim import Jim
+from jimgw.single_event.detector import Detector, detector_preset
+from jimgw.single_event.likelihood import SingleEventLiklihood, likelihood_presets
+from jimgw.single_event.waveform import Waveform, waveform_preset
 
 
 def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
