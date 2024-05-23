@@ -7,6 +7,7 @@ from ripple.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
 from ripple.waveforms.TaylorF2 import gen_TaylorF2_hphc
 from ripple.waveforms.IMRPhenomD_NRTidalv2 import gen_IMRPhenomD_NRTidalv2_hphc
 
+
 class Waveform(ABC):
     def __init__(self):
         return NotImplemented
@@ -82,6 +83,7 @@ class RippleIMRPhenomPv2(Waveform):
     def __repr__(self):
         return f"RippleIMRPhenomPv2(f_ref={self.f_ref})"
 
+
 class RippleTaylorF2(Waveform):
 
     f_ref: float
@@ -93,40 +95,50 @@ class RippleTaylorF2(Waveform):
 
     def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
-        
+
         if self.use_lambda_tildes:
-            first_lambda_param = jnp.array(params["lambda_tilde"])
-            second_lambda_param = jnp.array(params["delta_lambda_tilde"])
+            first_lambda_param = params["lambda_tilde"]
+            second_lambda_param = params["delta_lambda_tilde"]
         else:
-            first_lambda_param = jnp.array(params["lambda_1"])
-            second_lambda_param = jnp.array(params["lambda_2"])
-        
-        theta = [
-            params["M_c"],
-            params["eta"],
-            params["s1_z"],
-            params["s2_z"],
-            first_lambda_param,
-            second_lambda_param,
-            params["d_L"],
-            0,
-            params["phase_c"],
-            params["iota"],
-        ]
-        hp, hc = gen_TaylorF2_hphc(frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes)
+            first_lambda_param = params["lambda_1"]
+            second_lambda_param = params["lambda_2"]
+
+        theta = jnp.array(
+            [
+                params["M_c"],
+                params["eta"],
+                params["s1_z"],
+                params["s2_z"],
+                first_lambda_param,
+                second_lambda_param,
+                params["d_L"],
+                0,
+                params["phase_c"],
+                params["iota"],
+            ]
+        )
+        hp, hc = gen_TaylorF2_hphc(
+            frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes
+        )
         output["p"] = hp
         output["c"] = hc
         return output
-    
+
     def __repr__(self):
         return f"RippleTaylorF2(f_ref={self.f_ref})"
-    
+
+
 class RippleIMRPhenomD_NRTidalv2(Waveform):
 
     f_ref: float
     use_lambda_tildes: bool
 
-    def __init__(self, f_ref: float = 20.0, use_lambda_tildes: bool = False, no_taper: bool = False):
+    def __init__(
+        self,
+        f_ref: float = 20.0,
+        use_lambda_tildes: bool = False,
+        no_taper: bool = False,
+    ):
         """
         Initialize the waveform.
 
@@ -141,35 +153,44 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
 
     def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
-        
+
         if self.use_lambda_tildes:
-            first_lambda_param = jnp.array(params["lambda_tilde"])
-            second_lambda_param = jnp.array(params["delta_lambda_tilde"])
+            first_lambda_param = params["lambda_tilde"]
+            second_lambda_param = params["delta_lambda_tilde"]
         else:
-            first_lambda_param = jnp.array(params["lambda_1"])
-            second_lambda_param = jnp.array(params["lambda_2"])
-        
-        theta = [
-            params["M_c"],
-            params["eta"],
-            params["s1_z"],
-            params["s2_z"],
-            first_lambda_param,
-            second_lambda_param,
-            params["d_L"],
-            0,
-            params["phase_c"],
-            params["iota"],
-        ]
-        
-        hp, hc = gen_IMRPhenomD_NRTidalv2_hphc(frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes, no_taper=self.no_taper)
+            first_lambda_param = params["lambda_1"]
+            second_lambda_param = params["lambda_2"]
+
+        theta = jnp.array(
+            [
+                params["M_c"],
+                params["eta"],
+                params["s1_z"],
+                params["s2_z"],
+                first_lambda_param,
+                second_lambda_param,
+                params["d_L"],
+                0,
+                params["phase_c"],
+                params["iota"],
+            ]
+        )
+
+        hp, hc = gen_IMRPhenomD_NRTidalv2_hphc(
+            frequency,
+            theta,
+            self.f_ref,
+            use_lambda_tildes=self.use_lambda_tildes,
+            no_taper=self.no_taper,
+        )
         output["p"] = hp
         output["c"] = hc
         return output
-    
+
     def __repr__(self):
         return f"RippleIMRPhenomD_NRTidalv2(f_ref={self.f_ref})"
-    
+
+
 waveform_preset = {
     "RippleIMRPhenomD": RippleIMRPhenomD,
     "RippleIMRPhenomPv2": RippleIMRPhenomPv2,

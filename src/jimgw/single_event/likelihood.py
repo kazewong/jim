@@ -201,7 +201,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         print("Initializing heterodyned likelihood..")
-        
+
         # Can use another waveform to use as reference waveform, but if not provided, use the same waveform
         if reference_waveform is None:
             reference_waveform = waveform
