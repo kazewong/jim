@@ -7,7 +7,7 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.10"
 from jimgw.jim import Jim
 from jimgw.single_event.detector import H1, L1, V1
 from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
-from jimgw.single_event.waveform import RippleTaylorF2
+from jimgw.single_event.waveform import RippleIMRPhenomD_NRTidalv2
 from jimgw.prior import Uniform, Composite 
 import jax.numpy as jnp
 import jax
@@ -139,25 +139,27 @@ bounds = jnp.array([[p.xmin, p.xmax] for p in prior.priors])
 
 # For simplicity, we put here a set of reference parameters found by the optimizer
 ref_params = {
-    'M_c': 1.19793583,
-    'eta': 0.24794374,
-    's1_z': 0.00220637,
-    's2_z': 0.05,
-    'lambda_1': 105.12916663,
-    'lambda_2': 0.0,
-    'd_L': 45.41592353,
-    't_c': 0.00220588,
-    'phase_c': 5.76822606,
-    'iota': 2.46158044,
-    'psi': 2.09118099,
-    'ra': 5.03335133,
-    'dec': 0.01679998
+    'M_c': 1.1975896,
+    'eta': 0.2461001,
+    's1_z': -0.01890608,
+    's2_z': 0.04888488,
+    'lambda_1': 791.04366468,
+    'lambda_2': 891.04366468,
+    'd_L': 16.06331818,
+    't_c': 0.00193536,
+    'phase_c': 5.88649652,
+    'iota': 1.93095421,
+    'psi': 1.59687217,
+    'ra': 3.39736826,
+    'dec': -0.34000186
 }
 
 # Number of bins to use for relative binning
 n_bins = 500
 
-waveform = RippleTaylorF2(f_ref=f_ref)
+waveform = RippleIMRPhenomD_NRTidalv2(f_ref=f_ref)
+reference_waveform = RippleIMRPhenomD_NRTidalv2(f_ref=f_ref, no_taper=True)
+
 likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1], 
                                               prior=prior, 
                                               bounds=bounds, 
@@ -165,7 +167,8 @@ likelihood = HeterodynedTransientLikelihoodFD([H1, L1, V1],
                                               trigger_time=gps, 
                                               duration=duration, 
                                               n_bins=n_bins, 
-                                              ref_params=ref_params)
+                                              ref_params=ref_params, 
+                                              reference_waveform=reference_waveform)
 
 # Local sampler args
 
@@ -203,7 +206,8 @@ print(f"Learning rate: {learning_rate}")
 
 # Create jim object
 
-outdir_name = "./outdir_TF2/"
+outdir_name = "./outdir/"
+
 jim = Jim(
     likelihood,
     prior,
@@ -226,7 +230,7 @@ jim = Jim(
 )
 
 ### Heavy computation begins
-jim.sample(jax.random.PRNGKey(43))
+jim.sample(jax.random.PRNGKey(41))
 ### Heavy computation ends
 
 # === Show results, save output ===

@@ -128,9 +128,18 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
     f_ref: float
     use_lambda_tildes: bool
 
-    def __init__(self, f_ref: float = 20.0, use_lambda_tildes: bool = False):
+    def __init__(self, f_ref: float = 20.0, use_lambda_tildes: bool = False, no_taper: bool = False):
+        """
+        Initialize the waveform.
+
+        Args:
+            f_ref (float, optional): Reference frequency in Hz. Defaults to 20.0.
+            use_lambda_tildes (bool, optional): Whether we sample over lambda_tilde and delta_lambda_tilde, as defined for instance in Equation (5) and Equation (6) of arXiv:1402.5156, rather than lambda_1 and lambda_2. Defaults to False.
+            no_taper (bool, optional): Whether to remove the Planck taper in the amplitude of the waveform, which we use for relative binning runs. Defaults to False.
+        """
         self.f_ref = f_ref
         self.use_lambda_tildes = use_lambda_tildes
+        self.no_taper = no_taper
 
     def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
@@ -157,7 +166,7 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
             params["iota"],
         ]
         
-        hp, hc = gen_IMRPhenomD_NRTidalv2_hphc(frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes)
+        hp, hc = gen_IMRPhenomD_NRTidalv2_hphc(frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes, no_taper=self.no_taper)
         output["p"] = hp
         output["c"] = hc
         return output
@@ -165,8 +174,6 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
     def __repr__(self):
         return f"RippleIMRPhenomD_NRTidalv2(f_ref={self.f_ref})"
     
-    
-
 waveform_preset = {
     "RippleIMRPhenomD": RippleIMRPhenomD,
     "RippleIMRPhenomPv2": RippleIMRPhenomPv2,
