@@ -6,6 +6,7 @@ from astropy.time import Time
 from flowMC.strategy.optimization import optimization_Adam
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
+from typing import Optional
 from scipy.interpolate import interp1d
 
 from jimgw.base import LikelihoodBase
@@ -192,7 +193,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         popsize: int = 100,
         n_steps: int = 2000,
         ref_params: dict = {},
-        reference_waveform: Waveform = None,
+        reference_waveform: Optional[Waveform] = None,
         **kwargs,
     ) -> None:
         super().__init__(

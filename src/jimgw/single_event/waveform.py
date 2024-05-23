@@ -95,11 +95,11 @@ class RippleTaylorF2(Waveform):
         output = {}
         
         if self.use_lambda_tildes:
-            first_lambda_param = params["lambda_tilde"]
-            second_lambda_param = params["delta_lambda_tilde"]
+            first_lambda_param = jnp.array(params["lambda_tilde"])
+            second_lambda_param = jnp.array(params["delta_lambda_tilde"])
         else:
-            first_lambda_param = params["lambda_1"]
-            second_lambda_param = params["lambda_2"]
+            first_lambda_param = jnp.array(params["lambda_1"])
+            second_lambda_param = jnp.array(params["lambda_2"])
         
         theta = [
             params["M_c"],
@@ -143,11 +143,11 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
         output = {}
         
         if self.use_lambda_tildes:
-            first_lambda_param = params["lambda_tilde"]
-            second_lambda_param = params["delta_lambda_tilde"]
+            first_lambda_param = jnp.array(params["lambda_tilde"])
+            second_lambda_param = jnp.array(params["delta_lambda_tilde"])
         else:
-            first_lambda_param = params["lambda_1"]
-            second_lambda_param = params["lambda_2"]
+            first_lambda_param = jnp.array(params["lambda_1"])
+            second_lambda_param = jnp.array(params["lambda_2"])
         
         theta = [
             params["M_c"],
