@@ -93,8 +93,6 @@ class RippleTaylorF2(Waveform):
 
     def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
-        ra = params["ra"]
-        dec = params["dec"]
         
         if self.use_lambda_tildes:
             first_lambda_param = params["lambda_tilde"]
@@ -143,8 +141,6 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
 
     def __call__(self, frequency: Array, params: dict) -> dict:
         output = {}
-        ra = params["ra"]
-        dec = params["dec"]
         
         if self.use_lambda_tildes:
             first_lambda_param = params["lambda_tilde"]
