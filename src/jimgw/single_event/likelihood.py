@@ -6,6 +6,7 @@ from astropy.time import Time
 from flowMC.strategy.optimization import optimization_Adam
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
+from typing import Optional
 from scipy.interpolate import interp1d
 
 from jimgw.base import LikelihoodBase
@@ -192,6 +193,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         popsize: int = 100,
         n_steps: int = 2000,
         ref_params: dict = {},
+        reference_waveform: Optional[Waveform] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -199,6 +201,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         print("Initializing heterodyned likelihood..")
+
+        # Can use another waveform to use as reference waveform, but if not provided, use the same waveform
+        if reference_waveform is None:
+            reference_waveform = waveform
 
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
@@ -281,7 +287,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.B0_array = {}
         self.B1_array = {}
 
-        h_sky = self.waveform(frequency_original, self.ref_params)
+        h_sky = reference_waveform(frequency_original, self.ref_params)
 
         # Get frequency masks to be applied, for both original
         # and heterodyne frequency grid
@@ -307,8 +313,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         if len(self.freq_grid_low) > len(self.freq_grid_center):
             self.freq_grid_low = self.freq_grid_low[: len(self.freq_grid_center)]
 
-        h_sky_low = self.waveform(self.freq_grid_low, self.ref_params)
-        h_sky_center = self.waveform(self.freq_grid_center, self.ref_params)
+        h_sky_low = reference_waveform(self.freq_grid_low, self.ref_params)
+        h_sky_center = reference_waveform(self.freq_grid_center, self.ref_params)
 
         # Get phase shifts to align time of coalescence
         align_time = jnp.exp(
