@@ -93,7 +93,8 @@ class RippleTaylorF2(Waveform):
         self.f_ref = f_ref
         self.use_lambda_tildes = use_lambda_tildes
 
-    def __call__(self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
+    def __call__(
+        self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
     ) -> dict[str, Float[Array, " n_dim"]]:
         output = {}
 
@@ -152,7 +153,8 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
         self.use_lambda_tildes = use_lambda_tildes
         self.no_taper = no_taper
 
-    def __call__(self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
+    def __call__(
+        self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
     ) -> dict[str, Float[Array, " n_dim"]]:
         output = {}
 
