@@ -12,6 +12,12 @@ Since its based on JAX, Jim can also leverage hardware acceleration to achieve s
 
 See the accompanying paper, [Wong, Isi, Edwards (2023)](https://github.com/kazewong/TurboPE/) for details.
 
+
+> [!WARNING]  
+> Jim is under heavy development, so API is constantly changing. Use at your own risk!
+> One way to mitigate this inconvience is to make your own fork over a version for now.
+> We expect to hit a stable version this year. Stay tuned.
+
 _[Documentatation and examples are a work in progress]_
 
 ## Installation
