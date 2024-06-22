@@ -7,6 +7,9 @@ from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
 
+from scipy.special import hyp2f1
+from scipy.interpolate import interp1d
+
 
 class Prior(Distribution):
     """
@@ -551,6 +554,104 @@ class Exponential(Prior):
         log_p = self.alpha * variable + jnp.log(self.normalization)
         return log_p + log_in_range
 
+
+@jaxtyped(typechecker=typechecker)
+class UniformInComponentChirpMass(PowerLaw):
+    """
+    A prior in the range [xmin, xmax) for chirp mass which assumes the 
+    component mass to be uniform.
+    
+    p(\cal M) ~ \cal M
+    """
+    
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        naming: list[str],
+        transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
+    ):
+        super().__init__(xmin, xmax, 1.0, naming, transforms)
+
+
+@jaxtyped(typechecker=typechecker)
+class UniformInComponentMassRatio(Prior):
+    """
+    A prior in the range [xmin, xmax) for mass ratio which assumes the 
+    component mass to be uniform.
+    
+    p(q) ~ (1 + q)^(2/5) / q^(6/5)
+    """
+    
+    xmin: float = 0.0
+    xmax: float = 1.0
+    normalization: float = 1.0
+    
+    def __repr__(self):
+        return f"UniformInComponentMassRatio(naming={self.naming})"
+    
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        naming: list[str],
+        transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
+    ):
+        super().__init__(naming, transforms)
+        self.xmin = xmin
+        self.xmax = xmax
+        self.normalization = self._integral(xmax) - self._integral(xmin)
+    
+    @staticmethod
+    def _integral(q):
+        return -5.0 * q**(-1.0 / 5.0) * hyp2f1(-2.0 / 5.0, -1.0 / 5.0, 4.0 / 5.0, -q)
+
+    def cdf(self, x):
+        return (self._integral(x) - self._integral(self.xmin)) / self.normalization
+        
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        """
+        Sample from a UniformInComponentMassRatio distribution.
+
+        Parameters
+        ----------
+        rng_key : PRNGKeyArray
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
+
+        """
+        q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
+        x = jnp.linspace(self.xmin, self.xmax, 1000)
+        icdf = interp1d(self.cdf(x), x, kind='cubic', bounds_error=False, fill_value=(self.xmin, self.xmax))
+        rescale = icdf(q_samples)
+        if rescale.ndim == 0:
+            samples = rescale.item()
+        else:
+            samples = rescale
+        return self.add_name(samples[None])
+    
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        variable = x[self.naming[0]]
+        log_in_range = jnp.where(
+            (variable >= self.xmax) | (variable <= self.xmin),
+            jnp.zeros_like(variable) - jnp.inf,
+            jnp.zeros_like(variable),
+        )
+        log_p = (2.0/5.0)*jnp.log(1.0 + variable) - (6.0/5.0)*jnp.log(variable) - jnp.log(self.normalization)
+        return log_p + log_in_range
+        
+    
+    
 
 class Composite(Prior):
     priors: list[Prior] = field(default_factory=list)
