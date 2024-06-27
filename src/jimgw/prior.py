@@ -551,6 +551,57 @@ class Exponential(Prior):
         log_p = self.alpha * variable + jnp.log(self.normalization)
         return log_p + log_in_range
 
+@jaxtyped(typechecker=typechecker)
+class Normal(Prior):
+    mean: Float = 0.0
+    std: Float = 1.0
+
+    def __repr__(self):
+        return f"Normal(mean={self.mean}, std={self.std})"
+
+    def __init__(
+        self,
+        mean: Float,
+        std: Float,
+        naming: list[str],
+        transforms: dict[str, tuple[str, Callable]] = {},
+        **kwargs,
+    ):
+        super().__init__(naming, transforms)
+        assert self.n_dim == 1, "Normal needs to be 1D distributions"
+        self.mean = mean
+        self.std = std
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        """
+        Sample from a normal distribution.
+
+        Parameters
+        ----------
+        rng_key : PRNGKeyArray
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
+
+        """
+        samples = jax.random.normal(
+            rng_key, (n_samples,)
+        )
+        samples = self.mean + samples * self.std
+        return self.add_name(samples[None])
+
+    def log_prob(self, x: dict[str, Array]) -> Float:
+        variable = x[self.naming[0]]
+        output = - 0.5 * jnp.log(2 * jnp.pi) - jnp.log(self.std) - 0.5 * ((variable - self.mean) / self.std) ** 2
+        return output
+
 
 class Composite(Prior):
     priors: list[Prior] = field(default_factory=list)
