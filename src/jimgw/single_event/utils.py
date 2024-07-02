@@ -3,6 +3,7 @@ from jax import jit
 from jax.scipy.integrate import trapezoid
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
+from jimgw.single_event.detector import Detector
 
 
 @jit
@@ -145,32 +146,6 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
 
 
 @jit
-def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, Float]:
-    """
-    Transforming the polar angle and azimuthal angle to right ascension and declination.
-
-    Parameters
-    ----------
-    theta : Float
-            Polar angle.
-    phi : Float
-            Azimuthal angle.
-    gmst : Float
-            Greenwich mean sidereal time.
-
-    Returns
-    -------
-    ra : Float
-            Right ascension.
-    dec : Float
-            Declination.
-    """
-    ra = phi + gmst
-    dec = jnp.pi / 2 - theta
-    return ra, dec
-
-
-@jit
 def euler_rotation(delta_x: tuple[Float, Float, Float]):
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
@@ -255,9 +230,35 @@ def zenith_azimuth_to_theta_phi(zenith: Float, azimuth: Float, delta_x: tuple[Fl
 
 
 @jit
-def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, geocent_time: Float, ifos: list) -> tuple[Float, Float]:
+def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, Float]:
     """
-    Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.
+    Transforming the polar angle and azimuthal angle to right ascension and declination.
+
+    Parameters
+    ----------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
+    gmst : Float
+            Greenwich mean sidereal time.
+
+    Returns
+    -------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    """
+    ra = phi + gmst
+    dec = jnp.pi / 2 - theta
+    return ra, dec
+
+
+@jit
+def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, gmst: Float, ifos: list[Detector]) -> tuple[Float, Float]:
+    """
+    Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.     
 
     Parameters
     ----------
@@ -277,12 +278,11 @@ def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, geocent_time: Float,
     """
     delta_x = ifos[0].vertex - ifos[1].vertex
     theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
-    gmst = greenwich_mean_sidereal_time(geocent_time)
     ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
     ra = ra % (2 * jnp.pi)
     return ra, dec
 
-
+@jit
 def log_i0(x):
     """
     A numerically stable method to evaluate log of
