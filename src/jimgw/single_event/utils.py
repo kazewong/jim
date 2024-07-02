@@ -117,7 +117,7 @@ def Mc_q_to_m1m2(Mc: Float, q: Float) -> tuple[Float, Float]:
     m2 = m1 * q
     return m1, m2
 
-
+@jit
 def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
     """
     Transforming the right ascension ra and declination dec to the polar angle
@@ -142,6 +142,145 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     phi = ra - gmst
     theta = jnp.pi / 2 - dec
     return theta, phi
+
+
+@jit
+def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, Float]:
+    """
+    Transforming the polar angle and azimuthal angle to right ascension and declination.
+
+    Parameters
+    ----------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
+    gmst : Float
+            Greenwich mean sidereal time.
+
+    Returns
+    -------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    """
+    ra = phi + gmst
+    dec = jnp.pi / 2 - theta
+    return ra, dec
+
+
+@jit
+def euler_rotation(delta_x: tuple[Float, Float, Float]):
+    """
+    Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
+    while preserving the origin of the azimuthal angle.
+
+    This is decomposed into three Euler angles, alpha, beta, gamma, which rotate
+    about the z-, y-, and z- axes respectively.
+
+    Copied and modified from bilby-cython/geometry.pyx
+    """
+    norm = jnp.power(delta_x[0] * delta_x[0] + delta_x[1] * delta_x[1] + delta_x[2] * delta_x[2], 0.5)
+    cos_beta = delta_x[2] / norm
+    sin_beta = jnp.power(1 - cos_beta**2, 0.5)
+
+    alpha = jnp.atan2(- delta_x[1] * cos_beta, delta_x[0])
+    gamma = jnp.atan2(delta_x[1], delta_x[0])
+
+    cos_alpha = jnp.cos(alpha)
+    sin_alpha = jnp.sin(alpha)
+    cos_gamma = jnp.cos(gamma)
+    sin_gamma = jnp.sin(gamma)
+
+    rotation = jnp.empty((3, 3))
+
+    rotation[0][0] = cos_alpha * cos_beta * cos_gamma - sin_alpha * sin_gamma
+    rotation[1][0] = cos_alpha * cos_beta * sin_gamma + sin_alpha * cos_gamma
+    rotation[2][0] = -cos_alpha * sin_beta
+    rotation[0][1] = -sin_alpha * cos_beta * cos_gamma - cos_alpha * sin_gamma
+    rotation[1][1] = -sin_alpha * cos_beta * sin_gamma + cos_alpha * cos_gamma
+    rotation[2][1] = sin_alpha * sin_beta
+    rotation[0][2] = sin_beta * cos_gamma
+    rotation[1][2] = sin_beta * sin_gamma
+    rotation[2][2] = cos_beta
+
+    return rotation
+
+
+@jit
+def zenith_azimuth_to_theta_phi(zenith: Float, azimuth: Float, delta_x: tuple[Float, Float, Float]) -> tuple[Float, Float]:
+    """
+    Transforming the azimuthal angle and zenith angle in Earth frame to the polar angle and azimuthal angle in sky frame.
+
+    Copied and modified from bilby-cython/geometry.pyx
+
+    Parameters
+    ----------
+    zenith : Float
+            Zenith angle.
+    azimuth : Float
+            Azimuthal angle.
+    delta_x : Float
+            The vector pointing from the first detector to the second detector.
+
+    Returns
+    -------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
+    """
+    sin_azimuth = jnp.sin(azimuth)
+    cos_azimuth = jnp.cos(azimuth)
+    sin_zenith = jnp.sin(zenith)
+    cos_zenith = jnp.cos(zenith)
+
+    rotation = euler_rotation(delta_x)
+
+    theta = jnp.acos(rotation[2][0] * sin_zenith * cos_azimuth + rotation[2][1] * sin_zenith * sin_azimuth + rotation[2][2] * cos_zenith
+    )
+    phi = jnp.fmod(
+            jnp.atan2(
+                rotation[1][0] * sin_zenith * cos_azimuth
+                + rotation[1][1] * sin_zenith * sin_azimuth
+                + rotation[1][2] * cos_zenith,
+                rotation[0][0] * sin_zenith * cos_azimuth
+                + rotation[0][1] * sin_zenith * sin_azimuth
+                + rotation[0][2] * cos_zenith)
+            + 2 * jnp.pi,
+            (2 * jnp.pi)
+            )
+    return theta, phi
+
+
+@jit
+def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, geocent_time: Float, ifos: list) -> tuple[Float, Float]:
+    """
+    Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.
+
+    Parameters
+    ----------
+    azimuth : Float
+            Azimuthal angle.
+    zenith : Float
+            Zenith angle.
+
+    Copied and modified from bilby/gw/utils.py
+
+    Returns
+    -------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    """
+    delta_x = ifos[0].vertex - ifos[1].vertex
+    theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
+    gmst = greenwich_mean_sidereal_time(geocent_time)
+    ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
+    ra = ra % (2 * jnp.pi)
+    return ra, dec
 
 
 def log_i0(x):
