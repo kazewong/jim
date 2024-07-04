@@ -3,7 +3,7 @@ from jax import jit
 from jax.scipy.integrate import trapezoid
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
-from jimgw.single_event.detector import Detector
+from jimgw.single_event.detector import GroundBased2G
 
 
 @jit
@@ -256,7 +256,7 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
 
 
 @jit
-def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, gmst: Float, ifos: list[Detector]) -> tuple[Float, Float]:
+def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, gmst: Float, ifos: list[GroundBased2G]) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.     
 

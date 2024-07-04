@@ -7,7 +7,7 @@ from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
 from jimgw.single_event.utils import azimuth_zenith_to_ra_dec
-from jimgw.single_event.detector import Detector, detector_preset
+from jimgw.single_event.detector import GroundBased2G, detector_preset
 from astropy.time import Time
 
 
@@ -409,7 +409,7 @@ class EarthFrame(Prior):
             return ValueError("At least two detectors are needed to define the Earth frame")
         elif isinstance(ifos[0], str):
             self.ifos = [detector_preset[ifo] for ifo in ifos[:2]]
-        elif isinstance(ifos[0], Detector):
+        elif isinstance(ifos[0], GroundBased2G):
             self.ifos = ifos[:2]
         else:
             return ValueError("ifos should be a list of detector names or Detector objects")
