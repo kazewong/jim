@@ -224,7 +224,6 @@ class Unconstrained_Uniform(Prior):
         return jnp.log(jnp.exp(-variable) / (1 + jnp.exp(-variable)) ** 2)
 
 
-@jaxtyped(typechecker=typechecker)
 class Sphere(Prior):
     """
     A prior on a sphere represented by Cartesian coordinates.
