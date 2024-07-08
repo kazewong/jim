@@ -160,7 +160,7 @@ def euler_rotation(delta_x: tuple[Float, Float, Float]):
     cos_beta = delta_x[2] / norm
     sin_beta = jnp.power(1 - cos_beta**2, 0.5)
 
-    alpha = jnp.atan2(- delta_x[1] * cos_beta, delta_x[0])
+    alpha = jnp.atan2(-delta_x[1] * cos_beta, delta_x[0])
     gamma = jnp.atan2(delta_x[1], delta_x[0])
 
     cos_alpha = jnp.cos(alpha)
@@ -168,17 +168,9 @@ def euler_rotation(delta_x: tuple[Float, Float, Float]):
     cos_gamma = jnp.cos(gamma)
     sin_gamma = jnp.sin(gamma)
 
-    rotation = jnp.empty((3, 3))
-
-    rotation[0][0] = cos_alpha * cos_beta * cos_gamma - sin_alpha * sin_gamma
-    rotation[1][0] = cos_alpha * cos_beta * sin_gamma + sin_alpha * cos_gamma
-    rotation[2][0] = -cos_alpha * sin_beta
-    rotation[0][1] = -sin_alpha * cos_beta * cos_gamma - cos_alpha * sin_gamma
-    rotation[1][1] = -sin_alpha * cos_beta * sin_gamma + cos_alpha * cos_gamma
-    rotation[2][1] = sin_alpha * sin_beta
-    rotation[0][2] = sin_beta * cos_gamma
-    rotation[1][2] = sin_beta * sin_gamma
-    rotation[2][2] = cos_beta
+    rotation = jnp.array([[cos_alpha * cos_beta * cos_gamma - sin_alpha * sin_gamma, -sin_alpha * cos_beta * cos_gamma - cos_alpha * sin_gamma, sin_beta * cos_gamma],
+                            [cos_alpha * cos_beta * sin_gamma + sin_alpha * cos_gamma, -sin_alpha * cos_beta * sin_gamma + cos_alpha * cos_gamma, sin_beta * sin_gamma],
+                            [-cos_alpha * sin_beta, sin_alpha * sin_beta, cos_beta]])
 
     return rotation
 
@@ -213,8 +205,7 @@ def zenith_azimuth_to_theta_phi(zenith: Float, azimuth: Float, delta_x: tuple[Fl
 
     rotation = euler_rotation(delta_x)
 
-    theta = jnp.acos(rotation[2][0] * sin_zenith * cos_azimuth + rotation[2][1] * sin_zenith * sin_azimuth + rotation[2][2] * cos_zenith
-    )
+    theta = jnp.acos(rotation[2][0] * sin_zenith * cos_azimuth + rotation[2][1] * sin_zenith * sin_azimuth + rotation[2][2] * cos_zenith)
     phi = jnp.fmod(
             jnp.atan2(
                 rotation[1][0] * sin_zenith * cos_azimuth
@@ -256,16 +247,20 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
 
 
 @jit
-def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, gmst: Float, ifos: list[GroundBased2G]) -> tuple[Float, Float]:
+def zenith_azimuth_to_ra_dec(zenith: Float, azimuth: Float, gmst: Float, delta_x: tuple[Float, Float, Float]) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.     
 
     Parameters
     ----------
-    azimuth : Float
-            Azimuthal angle.
     zenith : Float
             Zenith angle.
+    azimuth : Float
+            Azimuthal angle.
+    gmst : Float
+            Greenwich mean sidereal time.
+    delta_x : Float
+            The vector pointing from the first detector to the second detector.
 
     Copied and modified from bilby/gw/utils.py
 
@@ -276,7 +271,6 @@ def azimuth_zenith_to_ra_dec(azimuth: Float, zenith: Float, gmst: Float, ifos: l
     dec : Float
             Declination.
     """
-    delta_x = ifos[0].vertex - ifos[1].vertex
     theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
     ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
     ra = ra % (2 * jnp.pi)

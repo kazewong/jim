@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
-from jimgw.single_event.utils import azimuth_zenith_to_ra_dec
+from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from astropy.time import Time
 
@@ -416,12 +416,14 @@ class EarthFrame(Prior):
         else:
             return ValueError("ifos should be a list of detector names or Detector objects")
         self.gmst = Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
+        self.delta_x = self.ifos[1].vertex - self.ifos[0].vertex
+        
         self.transforms = {
             "azimuth": (
-                "ra", lambda params: azimuth_zenith_to_ra_dec(params["azimuth"], params["zenith"], gmst=self.gmst, ifos=ifos)[0]
+                "ra", lambda params: zenith_azimuth_to_ra_dec(params["zenith"], params["azimuth"], gmst=self.gmst, delta_x=self.delta_x)[0]
             ),
             "zenith": (
-                "dec", lambda params: azimuth_zenith_to_ra_dec(params["azimuth"], params["zenith"], gmst=self.gmst, ifos=ifos)[1]
+                "dec", lambda params: zenith_azimuth_to_ra_dec(params["zenith"], params["azimuth"], gmst=self.gmst, delta_x=self.delta_x)[1]
             ),
         }
 
