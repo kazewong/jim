@@ -58,6 +58,7 @@ prior_presets = {
             )
         },
     ),
+    "EarthFrame": prior.EarthFrame,
 }
 
 
