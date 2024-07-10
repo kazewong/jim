@@ -394,7 +394,7 @@ class AlignedSpin(Prior):
             jnp.log(-jnp.log(jnp.absolute(variable) / self.amax) / 2.0 / self.amax),
         )
         return log_p
-    
+
 
 @jaxtyped(typechecker=typechecker)
 class EarthFrame(Prior):
@@ -408,34 +408,56 @@ class EarthFrame(Prior):
     def __init__(self, naming: str, gps: Float, ifos: list, **kwargs):
         self.naming = ["azimuth", "zenith"]
         if len(ifos) < 2:
-            return ValueError("At least two detectors are needed to define the Earth frame")
+            return ValueError(
+                "At least two detectors are needed to define the Earth frame"
+            )
         elif isinstance(ifos[0], str):
             self.ifos = [detector_preset[ifo] for ifo in ifos[:2]]
         elif isinstance(ifos[0], GroundBased2G):
             self.ifos = ifos[:2]
         else:
-            return ValueError("ifos should be a list of detector names or Detector objects")
+            return ValueError(
+                "ifos should be a list of detector names or Detector objects"
+            )
         self.gmst = Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
         self.delta_x = self.ifos[1].vertex - self.ifos[0].vertex
-        
+
         self.transforms = {
             "azimuth": (
-                "ra", lambda params: zenith_azimuth_to_ra_dec(params["zenith"], params["azimuth"], gmst=self.gmst, delta_x=self.delta_x)[0]
+                "ra",
+                lambda params: zenith_azimuth_to_ra_dec(
+                    params["zenith"],
+                    params["azimuth"],
+                    gmst=self.gmst,
+                    delta_x=self.delta_x,
+                )[0],
             ),
             "zenith": (
-                "dec", lambda params: zenith_azimuth_to_ra_dec(params["zenith"], params["azimuth"], gmst=self.gmst, delta_x=self.delta_x)[1]
+                "dec",
+                lambda params: zenith_azimuth_to_ra_dec(
+                    params["zenith"],
+                    params["azimuth"],
+                    gmst=self.gmst,
+                    delta_x=self.delta_x,
+                )[1],
             ),
         }
 
-    def sample(self, rng_key: PRNGKeyArray, n_samples: int) -> dict[str, Float[Array, " n_samples"]]:
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
         rng_keys = jax.random.split(rng_key, 2)
-        zenith = jnp.arccos(jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0))
-        azimuth = jax.random.uniform(rng_keys[1], (n_samples,), minval=0, maxval=2 * jnp.pi)
+        zenith = jnp.arccos(
+            jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0)
+        )
+        azimuth = jax.random.uniform(
+            rng_keys[1], (n_samples,), minval=0, maxval=2 * jnp.pi
+        )
         return self.add_name(jnp.stack([azimuth, zenith], axis=1).T)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
-        zenith = x['zenith']
-        azimuth = x['azimuth']
+        zenith = x["zenith"]
+        azimuth = x["azimuth"]
         output = jnp.where(
             (azimuth > 2 * jnp.pi) | (azimuth < 0) | (zenith > jnp.pi) | (zenith < 0),
             jnp.zeros_like(0) - jnp.inf,
