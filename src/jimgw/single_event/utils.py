@@ -3,7 +3,6 @@ from jax import jit
 from jax.scipy.integrate import trapezoid
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
-from jimgw.single_event.detector import GroundBased2G
 
 
 @jit
