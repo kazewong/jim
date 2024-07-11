@@ -406,7 +406,7 @@ class EarthFrame(Prior):
         return f"EarthFrame(naming={self.naming})"
 
     def __init__(self, naming: str, gps: Float, ifos: list, **kwargs):
-        self.naming = ["azimuth", "zenith"]
+        self.naming = ["zenith", "azimuth"]
         if len(ifos) < 2:
             return ValueError(
                 "At least two detectors are needed to define the Earth frame"
