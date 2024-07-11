@@ -453,13 +453,13 @@ class EarthFrame(Prior):
         azimuth = jax.random.uniform(
             rng_keys[1], (n_samples,), minval=0, maxval=2 * jnp.pi
         )
-        return self.add_name(jnp.stack([azimuth, zenith], axis=1).T)
+        return self.add_name(jnp.stack([zenith, azimuth], axis=1).T)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
         zenith = x["zenith"]
         azimuth = x["azimuth"]
         output = jnp.where(
-            (azimuth > 2 * jnp.pi) | (azimuth < 0) | (zenith > jnp.pi) | (zenith < 0),
+            (zenith > jnp.pi) | (zenith < 0) | (azimuth > 2 * jnp.pi) | (azimuth < 0),
             jnp.zeros_like(0) - jnp.inf,
         )
         return output
