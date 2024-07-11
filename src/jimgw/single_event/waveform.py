@@ -2,10 +2,10 @@ from abc import ABC
 
 import jax.numpy as jnp
 from jaxtyping import Array, Float
-from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_hphc
-from ripple.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
-from ripple.waveforms.TaylorF2 import gen_TaylorF2_hphc
-from ripple.waveforms.IMRPhenomD_NRTidalv2 import gen_IMRPhenomD_NRTidalv2_hphc
+from ripplegw.waveforms.IMRPhenomD import gen_IMRPhenomD_hphc
+from ripplegw.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
+from ripplegw.waveforms.TaylorF2 import gen_TaylorF2_hphc
+from ripplegw.waveforms.IMRPhenomD_NRTidalv2 import gen_IMRPhenomD_NRTidalv2_hphc
 
 
 class Waveform(ABC):
