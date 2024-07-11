@@ -234,7 +234,8 @@ class Sphere(Prior):
     def __repr__(self):
         return f"Sphere(naming={self.naming})"
 
-    def __init__(self, naming: str, **kwargs):
+    def __init__(self, naming: list[str], **kwargs):
+        naming = naming[0]
         self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
         self.transforms = {
             self.naming[0]: (
