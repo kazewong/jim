@@ -418,7 +418,7 @@ class EarthFrame(Prior):
             self.ifos = ifos[:1]
         else:
             return ValueError(
-                "ifos should be a list of detector names or Detector objects"
+                "ifos should be a list of detector names or GroundBased2G objects"
             )
         self.gmst = Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
         self.delta_x = self.ifos[1].vertex - self.ifos[0].vertex
