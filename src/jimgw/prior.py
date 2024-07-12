@@ -403,7 +403,7 @@ class EarthFrame(Prior):
     Prior distribution for sky location in Earth frame.
     """
 
-    ifos: list = field(default_factory=list)
+    ifos: list = ['H1', 'L1']
     gmst: float = 0.0
     delta_x: Float[Array, " 3"] = jnp.zeros(3)
 
@@ -424,7 +424,7 @@ class EarthFrame(Prior):
             return ValueError(
                 "ifos should be a list of detector names or GroundBased2G objects"
             )
-        self.gmst = Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
+        self.gmst = float(Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad)
         self.delta_x = self.ifos[1].vertex - self.ifos[0].vertex
 
         self.transforms = {
