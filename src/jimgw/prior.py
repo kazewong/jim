@@ -235,8 +235,8 @@ class Sphere(Prior):
         return f"Sphere(naming={self.naming})"
 
     def __init__(self, naming: list[str], **kwargs):
-        naming = naming[0]
-        self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
+        name = naming[0]
+        self.naming = [f"{name}_theta", f"{name}_phi", f"{name}_mag"]
         self.transforms = {
             self.naming[0]: (
                 f"{naming}_x",
@@ -403,9 +403,9 @@ class EarthFrame(Prior):
     Prior distribution for sky location in Earth frame.
     """
 
-    ifos: list[GroundBased2G]
-    gmst: float
-    delta_x: Float[Array, " 3"]
+    ifos: list = field(default_factory=list)
+    gmst: float = 0.0
+    delta_x: Float[Array, " 3"] = jnp.zeros(3)
 
     def __repr__(self):
         return f"EarthFrame(naming={self.naming})"
