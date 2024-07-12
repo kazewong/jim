@@ -402,6 +402,9 @@ class EarthFrame(Prior):
     """
     Prior distribution for sky location in Earth frame.
     """
+    ifos: list[GroundBased2G]
+    gmst: float
+    delta_x: Float[Array, " 3"]
 
     def __repr__(self):
         return f"EarthFrame(naming={self.naming})"
