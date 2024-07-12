@@ -403,9 +403,9 @@ class EarthFrame(Prior):
     Prior distribution for sky location in Earth frame.
     """
 
-    ifos: list = ['H1', 'L1']
+    ifos: list = field(default_factory=list)
     gmst: float = 0.0
-    delta_x: Float[Array, " 3"] = jnp.zeros(3)
+    delta_x: Float[Array, " 3"] = field(default_factory=lambda: jnp.zeros(3))
 
     def __repr__(self):
         return f"EarthFrame(naming={self.naming})"
