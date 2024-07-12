@@ -465,8 +465,9 @@ class EarthFrame(Prior):
         output = jnp.where(
             (zenith > jnp.pi) | (zenith < 0) | (azimuth > 2 * jnp.pi) | (azimuth < 0),
             jnp.zeros_like(0) - jnp.inf,
+            jnp.zeros_like(0),
         )
-        return output
+        return output + jnp.log(jnp.sin(zenith))
 
 
 @jaxtyped(typechecker=typechecker)
