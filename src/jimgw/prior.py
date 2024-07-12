@@ -402,6 +402,7 @@ class EarthFrame(Prior):
     """
     Prior distribution for sky location in Earth frame.
     """
+
     ifos: list[GroundBased2G]
     gmst: float
     delta_x: Float[Array, " 3"]
