@@ -413,9 +413,9 @@ class EarthFrame(Prior):
                 "At least two detectors are needed to define the Earth frame"
             )
         elif isinstance(ifos[0], str):
-            self.ifos = [detector_preset[ifo] for ifo in ifos[:2]]
+            self.ifos = [detector_preset[ifos[0]], detector_preset[ifos[1]]]
         elif isinstance(ifos[0], GroundBased2G):
-            self.ifos = ifos[:2]
+            self.ifos = ifos[:1]
         else:
             return ValueError(
                 "ifos should be a list of detector names or Detector objects"
