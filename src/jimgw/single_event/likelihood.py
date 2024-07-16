@@ -559,7 +559,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         rng_key, optimized_positions, summary = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position
         )
-        best_fit = optimized_positions[summary["final_log_prob"].argmin()]
+        best_fit = optimized_positions[jnp.nanargmin(summary["final_log_prob"])]
         return prior.transform(prior.add_name(best_fit))
 
 
