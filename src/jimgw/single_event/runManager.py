@@ -196,9 +196,17 @@ class SingleEventPERunManager(RunManager):
         for name, parameters in self.run.priors.items():
             if parameters["name"] not in prior_presets:
                 raise ValueError(f"Prior {name} not recognized.")
-            priors.append(
-                prior_presets[parameters["name"]](naming=[name], **parameters)
-            )
+            if parameters["name"] == "EarthFrame":
+                priors.append(
+                    prior.EarthFrame(
+                        gps=self.run.data_parameters["trigger_time"],
+                        ifos=self.run.detectors,
+                    )
+                )
+            else:
+                priors.append(
+                    prior_presets[parameters["name"]](naming=[name], **parameters)
+                )
         return prior.Composite(priors)
 
     def initialize_detector(self) -> list[Detector]:
