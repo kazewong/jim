@@ -65,7 +65,6 @@ prior_presets = {
 @dataclass
 class SingleEventRun:
     seed: int
-    path: str
 
     detectors: list[str]
     priors: dict[
