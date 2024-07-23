@@ -541,8 +541,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def maximize_likelihood(
         self,
-        bounds: Float[Array, " n_dim 2"],
         prior: Prior,
+        bounds: Float[Array, " n_dim 2"],
         popsize: int = 100,
         n_steps: int = 2000,
     ):
