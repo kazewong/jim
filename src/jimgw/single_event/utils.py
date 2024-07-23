@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-from jax import jit
 from jax.scipy.integrate import trapezoid
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
@@ -140,7 +139,7 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     return theta, phi
 
 
-def euler_rotation(delta_x: tuple[Float, Float, Float]):
+def euler_rotation(delta_x: Float[Array, " 3"]):
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
     while preserving the origin of the azimuthal angle.
@@ -260,7 +259,7 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
 
 
 def zenith_azimuth_to_ra_dec(
-    zenith: Float, azimuth: Float, gmst: Float, delta_x: tuple[Float, Float, Float]
+    zenith: Float, azimuth: Float, gmst: Float, delta_x: Float[Array, " 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.
