@@ -5,7 +5,6 @@ from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
 
-@jit
 def inner_product(
     h1: Float[Array, " n_sample"],
     h2: Float[Array, " n_sample"],
@@ -39,7 +38,6 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
-@jit
 def m1m2_to_Mq(m1: Float, m2: Float):
     """
     Transforming the primary mass m1 and secondary mass m2 to the Total mass M
@@ -64,7 +62,6 @@ def m1m2_to_Mq(m1: Float, m2: Float):
     return M_tot, q
 
 
-@jit
 def Mq_to_m1m2(trans_M_tot: Float, trans_q: Float):
     """
     Transforming the Total mass M and mass ratio q to the primary mass m1 and
@@ -91,7 +88,6 @@ def Mq_to_m1m2(trans_M_tot: Float, trans_q: Float):
     return m1, m2
 
 
-@jit
 def Mc_q_to_m1m2(Mc: Float, q: Float) -> tuple[Float, Float]:
     """
     Transforming the chirp mass Mc and mass ratio q to the primary mass m1 and
@@ -118,7 +114,6 @@ def Mc_q_to_m1m2(Mc: Float, q: Float) -> tuple[Float, Float]:
     return m1, m2
 
 
-@jit
 def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
     """
     Transforming the right ascension ra and declination dec to the polar angle
@@ -145,7 +140,6 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     return theta, phi
 
 
-@jit
 def euler_rotation(delta_x: tuple[Float, Float, Float]):
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
@@ -189,7 +183,6 @@ def euler_rotation(delta_x: tuple[Float, Float, Float]):
     return rotation
 
 
-@jit
 def zenith_azimuth_to_theta_phi(
     zenith: Float, azimuth: Float, delta_x: tuple[Float, Float, Float]
 ) -> tuple[Float, Float]:
@@ -241,7 +234,6 @@ def zenith_azimuth_to_theta_phi(
     return theta, phi
 
 
-@jit
 def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, Float]:
     """
     Transforming the polar angle and azimuthal angle to right ascension and declination.
@@ -267,7 +259,6 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
     return ra, dec
 
 
-@jit
 def zenith_azimuth_to_ra_dec(
     zenith: Float, azimuth: Float, gmst: Float, delta_x: tuple[Float, Float, Float]
 ) -> tuple[Float, Float]:
