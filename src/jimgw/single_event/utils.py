@@ -184,7 +184,7 @@ def euler_rotation(delta_x: tuple[Float, Float, Float]):
 
 
 def zenith_azimuth_to_theta_phi(
-    zenith: Float, azimuth: Float, delta_x: tuple[Float, Float, Float]
+    zenith: Float, azimuth: Float, delta_x: Float[Array, " 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to the polar angle and azimuthal angle in sky frame.
