@@ -300,8 +300,7 @@ def zenith_azimuth_to_ra_dec(
     return ra, dec
 
 
-@jit
-def log_i0(x):
+def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:
     """
     A numerically stable method to evaluate log of
     a modified Bessel function of order 0.
