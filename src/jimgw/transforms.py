@@ -18,6 +18,7 @@ class Transform(ABC):
 
     name_mapping: tuple[list[str], list[str]]
     transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+    inverse_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def __init__(
         self,
@@ -47,11 +48,45 @@ class Transform(ABC):
                 The log Jacobian determinant.
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    def inverse_transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        """
+        Inverse transform the input x to transformed coordinate y.
+
+        Parameters
+        ----------
+        x : dict[str, Float]
+                The input dictionary.
+
+        Returns
+        -------
+        y : dict[str, Float]
+                The transformed dictionary.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         """
         Push forward the input x to transformed coordinate y.
+
+        Parameters
+        ----------
+        x : dict[str, Float]
+                The input dictionary.
+
+        Returns
+        -------
+        y : dict[str, Float]
+                The transformed dictionary.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def backward(self, x: dict[str, Float]) -> dict[str, Float]:
+        """
+        Pull back the input x to transformed coordinate y.
 
         Parameters
         ----------
@@ -88,12 +123,28 @@ class UnivariateTransform(Transform):
         x[self.name_mapping[1][0]] = output_params
         return x, jnp.log(jacobian)
 
+    def inverse_transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        output_params = x.pop(self.name_mapping[1][0])
+        assert_rank(output_params, 0)
+        input_params = self.inverse_func(output_params)
+        jacobian = jax.jacfwd(self.inverse_func)(output_params)
+        x[self.name_mapping[0][0]] = input_params
+        return x, jnp.log(jacobian)
+
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         input_params = x.pop(self.name_mapping[0][0])
         assert_rank(input_params, 0)
         output_params = self.transform_func(input_params)
         x[self.name_mapping[1][0]] = output_params
         return x
+    
+    def backward(self, x: dict[str, Float]) -> dict[str, Float]:
+        output_params = x.pop(self.name_mapping[1][0])
+        assert_rank(output_params, 0)
+        input_params = self.inverse_func(output_params)
+        x[self.name_mapping[0][0]] = input_params
+        return x
+
 
 class Scale(UnivariateTransform):
     scale: Float
@@ -106,6 +157,7 @@ class Scale(UnivariateTransform):
         super().__init__(name_mapping)
         self.scale = scale
         self.transform_func = lambda x: x * self.scale
+        self.inverse_func = lambda x: x / self.scale
 
 class Offset(UnivariateTransform):
     offset: Float
@@ -118,7 +170,7 @@ class Offset(UnivariateTransform):
         super().__init__(name_mapping)
         self.offset = offset
         self.transform_func = lambda x: x + self.offset
-
+        self.inverse_func = lambda x: x - self.offset
 
 class Logit(UnivariateTransform):
     """
@@ -137,7 +189,7 @@ class Logit(UnivariateTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
-
+        self.inverse_func = lambda x: jnp.log(x / (1 - x))
 
 class Sine(UnivariateTransform):
     """

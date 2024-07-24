@@ -131,10 +131,11 @@ class SequentialTransform(Prior):
         return output
     
     def log_prob(self, x: dict[str, Float]) -> Float:
-        output = self.base_prior.log_prob(x)
-        for transform in self.transforms:
-            _, log_jacobian = transform.transform(x)
-            output -= log_jacobian
+        output = 0.0
+        for transform in reversed(self.transforms):
+            x, log_jacobian = transform.inverse_transform(x)
+            output += log_jacobian
+        output += self.base_prior.log_prob(x)
         return output
 
 # class Combine(Prior):
@@ -215,80 +216,6 @@ class Uniform(Prior):
         return self._dist.log_prob(x)
 
 # ====================== Things below may need rework ======================
-
-@jaxtyped(typechecker=typechecker)
-class Unconstrained_Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
-
-    def __repr__(self):
-        return f"Unconstrained_Uniform(xmin={self.xmin}, xmax={self.xmax})"
-
-    def __init__(
-        self,
-        xmin: Float,
-        xmax: Float,
-        naming: list[str],
-        transforms: dict[str, tuple[str, Callable]] = {},
-        **kwargs,
-    ):
-        super().__init__(naming, transforms)
-        assert self.n_dim == 1, "Unconstrained_Uniform needs to be 1D distributions"
-        self.xmax = xmax
-        self.xmin = xmin
-        local_transform = self.transforms
-
-        def new_transform(param):
-            param[self.naming[0]] = self.to_range(param[self.naming[0]])
-            return local_transform[self.naming[0]][1](param)
-
-        self.transforms = {
-            self.naming[0]: (local_transform[self.naming[0]][0], new_transform)
-        }
-
-    def to_range(self, x: Float) -> Float:
-        """
-        Transform the parameters to the range of the prior.
-
-        Parameters
-        ----------
-        x : Float
-            The parameters to transform.
-
-        Returns
-        -------
-        x : dict
-            A dictionary of parameters with the transforms applied.
-        """
-        return (self.xmax - self.xmin) / (1 + jnp.exp(-x)) + self.xmin
-
-    def sample(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        """
-        Sample from a uniform distribution.
-
-        Parameters
-        ----------
-        rng_key : PRNGKeyArray
-            A random key to use for sampling.
-        n_samples : int
-            The number of samples to draw.
-
-        Returns
-        -------
-        samples :
-            An array of shape (n_samples, n_dim) containing the samples.
-
-        """
-        samples = jax.random.uniform(rng_key, (n_samples,), minval=0, maxval=1)
-        samples = jnp.log(samples / (1 - samples))
-        return self.add_name(samples[None])
-
-    def log_prob(self, x: dict[str, Float]) -> Float:
-        variable = x[self.naming[0]]
-        return jnp.log(jnp.exp(-variable) / (1 + jnp.exp(-variable)) ** 2)
-
 
 class Sphere(Prior):
     """
