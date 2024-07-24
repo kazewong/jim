@@ -27,13 +27,13 @@ class Transform(ABC):
 
     def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         return self.transform(x)
-    
+
     @abstractmethod
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
         Transform the input x to transformed coordinate y and return the log Jacobian determinant.
         This only works if the transform is a N -> N transform.
-        
+
         Parameters
         ----------
         x : dict[str, Float]
@@ -63,7 +63,14 @@ class Transform(ABC):
         y : dict[str, Float]
                 The transformed dictionary.
         """
-        raise NotImplementedError    
+        raise NotImplementedError
+
+    def propagate_name(self, x: list[str]) -> list[str]:
+        input_set = set(x)
+        from_set = set(self.name_mapping[0])
+        to_set = set(self.name_mapping[1])
+        return list(input_set - from_set | to_set)
+
 
 class LogitToUniform(Transform):
     """
@@ -87,7 +94,10 @@ class LogitToUniform(Transform):
     ):
         super().__init__(name_mapping)
         self.bounds = bounds
-        self.transform_func = lambda x: (self.bounds[1] - self.bounds[0]) / (1 + jnp.exp(-x)) + self.bounds[0]
+        self.transform_func = (
+            lambda x: (self.bounds[1] - self.bounds[0]) / (1 + jnp.exp(-x))
+            + self.bounds[0]
+        )
 
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         input_params = x.pop(self.name_mapping[0][0])
