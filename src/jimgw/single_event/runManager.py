@@ -65,7 +65,8 @@ prior_presets = {
 @dataclass
 class SingleEventRun:
     seed: int
-
+    path: str = "./experiment"
+    
     detectors: list[str]
     priors: dict[
         str, dict[str, Union[str, float, int, bool]]
@@ -356,3 +357,20 @@ class SingleEventPERunManager(RunManager):
         plt.ylabel("Amplitude")
         plt.legend()
         plt.savefig(path)
+        
+    def sample(self):
+        self.jim.sample(jax.random.PRNGKey(self.run.seed))
+        
+    def get_samples(self):
+        return self.jim.get_samples()
+    
+    def plot_samples(self, figure_name: str="corner.png"):
+        import corner
+        import matplotlib.pyplot as plt
+        samples = self.jim.get_samples()
+        param_names = list(samples.keys())
+        samples = jnp.array(list(samples.values())).reshape(int(len(param_names)), -1).T
+        corner.corner(samples, labels=param_names, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
+        plt.savefig(figure_name)
+        plt.close()
+        
