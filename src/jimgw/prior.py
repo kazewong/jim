@@ -97,12 +97,13 @@ class Logit(Prior):
         return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
 
-class Sequential(Prior):
+class SequentialTransform(Prior):
     """
-    A prior class constructed
+    Transform a prior distribution by applying a sequence of transforms.
     """
 
-    members: list[Prior | Transform] = field(default_factory=list)
+    base_prior: Prior
+    transforms: list[Transform]
 
     def __repr__(self):
         return (
@@ -111,9 +112,30 @@ class Sequential(Prior):
 
     def __init(
         self,
-        members: list[Prior | Transform],
+        base_prior: Prior,
+        transforms: list[Transform],
     ):
-        self.members = members
+
+        self.base_prior = base_prior
+        self.transforms = transforms
+        self.parameter_names = base_prior.parameter_names
+        for transform in transforms:
+            self.parameter_names = transform.propagate_name(self.parameter_names)
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        output = self.base_prior.sample(rng_key, n_samples)
+        for transform in self.transforms:
+            output, _ = transform.forward(output)
+        return output
+    
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        output = self.base_prior.log_prob(x)
+        for transform in self.transforms:
+            _, log_jacobian = transform.transform(x)
+            output += log_jacobian
+        return output
 
 class Combine(Prior):
     """
