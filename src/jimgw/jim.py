@@ -13,8 +13,14 @@ from jimgw.prior import Prior
 class Jim(object):
     """
     Master class for interfacing with flowMC
-
     """
+
+    likelihood: LikelihoodBase
+    prior: Prior
+
+    seed: int
+
+    parameter_names: list[str]
 
     def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
         self.Likelihood = likelihood
