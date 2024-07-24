@@ -131,6 +131,10 @@ class SequentialTransform(Prior):
         return output
     
     def log_prob(self, x: dict[str, Float]) -> Float:
+        """
+        Requiring inverse transform in log_prob may not be the best option,
+        may need alternative
+        """
         output = 0.0
         for transform in reversed(self.transforms):
             x, log_jacobian = transform.inverse_transform(x)
