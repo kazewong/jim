@@ -150,6 +150,7 @@ class SingleEventPERunManager(RunManager):
         waveform = self.initialize_waveform()
         name = self.run.likelihood_parameters["name"]
         assert isinstance(name, str), "Likelihood name must be a string."
+        assert name in likelihood_presets, f"Likelihood {name} not recognized."
         if self.run.injection:
             freqs = jnp.linspace(
                 self.run.data_parameters["f_min"],
