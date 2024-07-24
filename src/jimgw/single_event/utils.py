@@ -198,97 +198,101 @@ def spin_to_spin(
     S2z: Float
         The z-component of the secondary spin
 """
-    def rotate_y(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
+    def rotate_y(angle, vec):
         """
         Rotate the vector (x, y, z) about y-axis
         """
-        x_new = x * jnp.cos(angle) + z * jnp.sin(angle)
-        z_new = - (x * jnp.sin(angle)) + z * jnp.cos(angle)
-        return x_new, y, z_new
-
-    def rotate_z(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
+        cos_angle = jnp.cos(angle)
+        sin_angle = jnp.sin(angle)
+        rotation_matrix = np.array([
+            [cos_angle, 0, sin_angle],
+            [0, 1, 0],
+            [-sin_angle, 0, cos_angle]
+        ])
+        rotated_vec = jnp.dot(rotation_matrix, vec)
+        return rotated_vec
+    
+    def rotate_z(angle, vec):
         """
         Rotate the vector (x, y, z) about z-axis
         """
-        x_new = x * jnp.cos(angle) - y * jnp.sin(angle)
-        y_new = x * jnp.sin(angle) + y * jnp.cos(angle)
-        return x_new, y_new, z
-        
-    LNhx = 0.
-    LNhy = 0.
-    LNhz = 1.
-
-    s1hatx = jnp.sin(theta1)*jnp.cos(phiRef)
-    s1haty = jnp.sin(theta1)*jnp.sin(phiRef)
-    s1hatz = jnp.cos(theta1)
-    s2hatx = jnp.sin(theta2) * jnp.cos(phi12+phiRef)
-    s2haty = jnp.sin(theta2) * jnp.sin(phi12+phiRef)
-    s2hatz = jnp.cos(theta2)
-  
+        cos_angle = jnp.cos(angle)
+        sin_angle = jnp.sin(angle)
+        rotation_matrix = jnp.array([
+            [cos_angle, -sin_angle, 0],
+            [sin_angle, cos_angle, 0],
+            [0, 0, 1]
+        ])
+        rotated_vec = jnp.dot(rotation_matrix, vec)
+        return rotated_vec
+    
+    LNh = jnp.array([0., 0., 1.])
+    
+    s1hat = jnp.array([
+        jnp.sin(theta1)*jnp.cos(phiRef), 
+        jnp.sin(theta1)*jnp.sin(phiRef), 
+        jnp.cos(theta1)
+    ])
+    s2hat = jnp.array([
+        jnp.sin(theta2) * jnp.cos(phi12+phiRef), 
+        jnp.sin(theta2) * jnp.sin(phi12+phiRef), 
+        jnp.cos(theta2)
+    ])
+    
     temp = (1 / eta / 2 - 1)
     q = temp - (temp ** 2 - 1) ** 0.5
     m1, m2 = Mc_q_to_m1m2(M_c, q)
-    MTsun_SI = 4.925490947641266978197229498498379006e-6
     v0 = jnp.cbrt((m1+m2) * MTsun_SI * jnp.pi * fRef)
-  
+    
     Lmag = ((m1+m2)*(m1+m2)*eta/v0) * (1.0 + v0*v0*(1.5 + eta/6.0))
-    s1x = m1 * m1 * chi1 * s1hatx
-    s1y = m1 * m1 * chi1 * s1haty
-    s1z = m1 * m1 * chi1 * s1hatz
-    s2x = m2 * m2 * chi2 * s2hatx
-    s2y = m2 * m2 * chi2 * s2haty
-    s2z = m2 * m2 * chi2 * s2hatz
-    Jx = s1x + s2x
-    Jy = s1y + s2y
-    Jz = Lmag + s1z + s2z
-  
+    s1 = m1 * m1 * chi1 * s1hat
+    s2 = m2 * m2 * chi2 * s2hat
+    J = s1 + s2 + jnp.array([0., 0., Lmag])
 
-    Jnorm = jnp.sqrt( Jx*Jx + Jy*Jy + Jz*Jz)
-    Jhatx = Jx / Jnorm
-    Jhaty = Jy / Jnorm
-    Jhatz = Jz / Jnorm
-    theta0 = jnp.arccos(Jhatz)
-    phi0 = jnp.arctan2(Jhaty, Jhatx)
+    Jhat = J / jnp.linalg.norm(J)
+    theta0 = jnp.arccos(Jhat[2])
+    phi0 = jnp.arctan2(Jhat[1], Jhat[0])
 
-    s1hatx, s1haty, s1hatz = rotate_z(-phi0, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_z(-phi0, s2hatx, s2haty, s2hatz)
-  
-    LNhx, LNhy, LNhz = rotate_y(-theta0, LNhx, LNhy, LNhz)
-    s1hatx, s1haty, s1hatz = rotate_y(-theta0, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_y(-theta0, s2hatx, s2haty, s2hatz)
+    # Rotation 1:
+    s1hat = rotate_z(-phi0, s1hat)
+    s2hat = rotate_z(-phi0, s2hat)
+
+    # Rotation 2:
+    LNh = rotate_y(-theta0, LNh)
+    s1hat = rotate_y(-theta0, s1hat)
+    s2hat = rotate_y(-theta0, s2hat)
     
-    LNhx, LNhy, LNhz = rotate_z(phiJL - jnp.pi, LNhx, LNhy, LNhz)
-    s1hatx, s1haty, s1hatz = rotate_z(phiJL - jnp.pi, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_z(phiJL - jnp.pi, s2hatx, s2haty, s2hatz)
-
-    Nx=0.0
-    Ny=jnp.sin(thetaJN)
-    Nz=jnp.cos(thetaJN)
-    iota=jnp.arccos(Nx*LNhx+Ny*LNhy+Nz*LNhz)
-  
-    thetaLJ = jnp.arccos(LNhz)
-    phiL = jnp.arctan2(LNhy, LNhx)
-  
-    s1hatx, s1haty, s1hatz = rotate_z(-phiL, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_z(-phiL, s2hatx, s2haty, s2hatz)
-    Nx, Ny, Nz = rotate_z(-phiL, Nx, Ny, Nz)
+    # Rotation 3:
+    LNh = rotate_z(phiJL - jnp.pi, LNh)
+    s1hat = rotate_z(phiJL - jnp.pi, s1hat)
+    s2hat = rotate_z(phiJL - jnp.pi, s2hat)
     
-    s1hatx, s1haty, s1hatz = rotate_y(-thetaLJ, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_y(-thetaLJ, s2hatx, s2haty, s2hatz)
-    Nx, Ny, Nz = rotate_y(-thetaLJ, Nx, Ny, Nz)
-
-    phiN = jnp.arctan2(Ny, Nx)
-    s1hatx, s1haty, s1hatz = rotate_z(jnp.pi/2.-phiN-phiRef, s1hatx, s1haty, s1hatz)
-    s2hatx, s2haty, s2hatz = rotate_z(jnp.pi/2.-phiN-phiRef, s2hatx, s2haty, s2hatz)
-
-    S1x = s1hatx*chi1
-    S1y = s1haty*chi1
-    S1z = s1hatz*chi1
-    S2x = s2hatx*chi2
-    S2y = s2haty*chi2
-    S2z = s2hatz*chi2
+    # Compute iota
+    N = jnp.array([0.0, jnp.sin(thetaJN), jnp.cos(thetaJN)])
+    iota = jnp.arccos(jnp.dot(N, LNh))
     
-    return iota, S1x, S1y, S1z, S2x, S2y, S2z
+    thetaLJ = jnp.arccos(LNh[2])
+    phiL = jnp.arctan2(LNh[1], LNh[0])
+    
+    # Rotation 4:
+    s1hat = rotate_z(-phiL, s1hat)
+    s2hat = rotate_z(-phiL, s2hat)
+    N = rotate_z(-phiL, N)
+    
+    # Rotation 5:
+    s1hat = rotate_y(-thetaLJ, s1hat)
+    s2hat = rotate_y(-thetaLJ, s2hat)
+    N = rotate_y(-thetaLJ, N)
+
+    # Rotation 6:
+    phiN = jnp.arctan2(N[1], N[0])
+    s1hat = rotate_z(jnp.pi/2.-phiN-phiRef, s1hat)
+    s2hat = rotate_z(jnp.pi/2.-phiN-phiRef, s2hat)
+
+    S1 = s1hat * chi1
+    S2 = s2hat * chi2
+    return iota, S1[0], S1[1], S1[2], S2[0], S2[1], S2[2]
+
 
 def euler_rotation(delta_x: Float[Array, " 3"]):
     """
