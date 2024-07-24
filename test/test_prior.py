@@ -2,8 +2,14 @@ from jimgw.prior import *
 
 
 class TestUnivariatePrior:
-    def test_logit(self):
+    def test_logistic(self):
         p = Logit()
+
+    def test_uniform(self):
+        p = Uniform(0.0, 10.0, ['x'])
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        log_prob = jax.vmap(p.log_prob)(samples)
+        assert jnp.allclose(log_prob, -jnp.log(10.0))
 
 class TestPriorOperations:
     def test_combine(self):

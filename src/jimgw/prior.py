@@ -10,7 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
-from jimgw.transforms import Transform
+from jimgw.transforms import Transform, Logit, Scale, Offset
 
 
 class Prior(Distribution):
@@ -134,104 +134,87 @@ class SequentialTransform(Prior):
         output = self.base_prior.log_prob(x)
         for transform in self.transforms:
             _, log_jacobian = transform.transform(x)
-            output += log_jacobian
+            output -= log_jacobian
         return output
 
-class Combine(Prior):
-    """
-    A prior class constructed by joinning multiple priors together to form a multivariate prior.
-    This assumes the priors composing the Combine class are independent.
-    """
+# class Combine(Prior):
+#     """
+#     A prior class constructed by joinning multiple priors together to form a multivariate prior.
+#     This assumes the priors composing the Combine class are independent.
+#     """
 
-    priors: list[Prior] = field(default_factory=list)
+#     priors: list[Prior] = field(default_factory=list)
 
-    def __repr__(self):
-        return (
-            f"Composite(priors={self.priors}, parameter_names={self.parameter_names})"
-        )
+#     def __repr__(self):
+#         return (
+#             f"Composite(priors={self.priors}, parameter_names={self.parameter_names})"
+#         )
 
-    def __init__(
-        self,
-        priors: list[Prior],
-        **kwargs,
-    ):
-        parameter_names = []
-        for prior in priors:
-            parameter_names += prior.parameter_names
-        self.priors = priors
-        self.parameter_names = parameter_names
+#     def __init__(
+#         self,
+#         priors: list[Prior],
+#         **kwargs,
+#     ):
+#         parameter_names = []
+#         for prior in priors:
+#             parameter_names += prior.parameter_names
+#         self.priors = priors
+#         self.parameter_names = parameter_names
 
-    def sample(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        output = {}
-        for prior in self.priors:
-            rng_key, subkey = jax.random.split(rng_key)
-            output.update(prior.sample(subkey, n_samples))
-        return output
+#     def sample(
+#         self, rng_key: PRNGKeyArray, n_samples: int
+#     ) -> dict[str, Float[Array, " n_samples"]]:
+#         output = {}
+#         for prior in self.priors:
+#             rng_key, subkey = jax.random.split(rng_key)
+#             output.update(prior.sample(subkey, n_samples))
+#         return output
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
-        output = 0.0
-        for prior in self.priors:
-            output += prior.log_prob(x)
-        return output
+#     def log_prob(self, x: dict[str, Float]) -> Float:
+#         output = 0.0
+#         for prior in self.priors:
+#             output -= prior.log_prob(x)
+#         return output
 
 
-# ====================== Things below may need rework ======================
+
 @jaxtyped(typechecker=typechecker)
 class Uniform(Prior):
-    xmin: float = 0.0
-    xmax: float = 1.0
+    _dist: Prior
+
+    xmin: float
+    xmax: float
 
     def __repr__(self):
         return f"Uniform(xmin={self.xmin}, xmax={self.xmax})"
 
     def __init__(
         self,
-        xmin: Float,
-        xmax: Float,
-        naming: list[str],
-        transforms: dict[str, tuple[str, Callable]] = {},
-        **kwargs,
+        xmin: float,
+        xmax: float,
+        parameter_names: list[str],
     ):
-        super().__init__(naming, transforms)
+        super().__init__(parameter_names)
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
+        self._dist = SequentialTransform(
+            LogisticDistribution(parameter_names),
+            [
+                Logit((parameter_names, parameter_names)),
+                Scale((parameter_names, parameter_names), xmax - xmin),
+                Offset((parameter_names, parameter_names), xmin),
+            ])
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        """
-        Sample from a uniform distribution.
-
-        Parameters
-        ----------
-        rng_key : PRNGKeyArray
-            A random key to use for sampling.
-        n_samples : int
-            The number of samples to draw.
-
-        Returns
-        -------
-        samples : dict
-            Samples from the distribution. The keys are the names of the parameters.
-
-        """
-        samples = jax.random.uniform(
-            rng_key, (n_samples,), minval=self.xmin, maxval=self.xmax
-        )
-        return self.add_name(samples[None])
+        return self._dist.sample(rng_key, n_samples)
 
     def log_prob(self, x: dict[str, Array]) -> Float:
-        variable = x[self.naming[0]]
-        output = jnp.where(
-            (variable >= self.xmax) | (variable <= self.xmin),
-            jnp.zeros_like(variable) - jnp.inf,
-            jnp.zeros_like(variable),
-        )
-        return output + jnp.log(1.0 / (self.xmax - self.xmin))
+        return self._dist.log_prob(x)
 
+# ====================== Things below may need rework ======================
 
 @jaxtyped(typechecker=typechecker)
 class Unconstrained_Uniform(Prior):

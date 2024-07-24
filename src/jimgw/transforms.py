@@ -95,21 +95,29 @@ class UnivariateTransform(Transform):
         x[self.name_mapping[1][0]] = output_params
         return x
 
-
-class ScaleToRange(UnivariateTransform):
-
-    range: tuple[Float, Float]
+class Scale(UnivariateTransform):
+    scale: Float
 
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
-        range: tuple[Float, Float],
+        scale: Float,
     ):
         super().__init__(name_mapping)
-        self.range = range
-        self.transform_func = (
-            lambda x: (self.range[1] - self.range[0]) * x + self.range[0]
-        )
+        self.scale = scale
+        self.transform_func = lambda x: x * self.scale
+
+class Offset(UnivariateTransform):
+    offset: Float
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        offset: Float,
+    ):
+        super().__init__(name_mapping)
+        self.offset = offset
+        self.transform_func = lambda x: x + self.offset
 
 
 class Logit(UnivariateTransform):
