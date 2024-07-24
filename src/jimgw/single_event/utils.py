@@ -154,7 +154,7 @@ def spin_to_cartesian_spin(
     fRef: Float, 
     phiRef: Float
 ) -> tuple[Float, Float, Float, Float, Float, Float, Float]:
-"""
+    """
     Transforming the spin parameters
 
     The code is based on the approach used in LALsimulation:
@@ -202,7 +202,7 @@ def spin_to_cartesian_spin(
         The y-component of the secondary spin
     S2z: Float
         The z-component of the secondary spin
-"""
+    """
     def rotate_y(angle, vec):
         """
         Rotate the vector (x, y, z) about y-axis
