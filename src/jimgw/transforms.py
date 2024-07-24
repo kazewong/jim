@@ -112,7 +112,7 @@ class ScaleToRange(UnivariateTransform):
         )
 
 
-class Logit(Transform):
+class Logit(UnivariateTransform):
     """
     Logit transform following
 
@@ -131,7 +131,7 @@ class Logit(Transform):
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
 
-class Sine(Transform):
+class Sine(UnivariateTransform):
     """
     Transform from unconstrained space to uniform space.
 

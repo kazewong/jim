@@ -63,7 +63,7 @@ class Prior(Distribution):
 class LogisticDistribution(Prior):
 
     def __repr__(self):
-        return f"Logit(parameter_names={self.parameter_names})"
+        return f"Logistic(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
@@ -107,10 +107,10 @@ class SequentialTransform(Prior):
 
     def __repr__(self):
         return (
-            f"Sequential(priors={self.members}, parameter_names={self.parameter_names})"
+            f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
         )
 
-    def __init(
+    def __init__(
         self,
         base_prior: Prior,
         transforms: list[Transform],
@@ -127,7 +127,7 @@ class SequentialTransform(Prior):
     ) -> dict[str, Float[Array, " n_samples"]]:
         output = self.base_prior.sample(rng_key, n_samples)
         for transform in self.transforms:
-            output, _ = transform.forward(output)
+            output = jax.vmap(transform.forward)(output)
         return output
     
     def log_prob(self, x: dict[str, Float]) -> Float:
