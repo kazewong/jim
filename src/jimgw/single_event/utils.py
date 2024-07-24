@@ -139,27 +139,27 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     phi = ra - gmst
     theta = jnp.pi / 2 - dec
     return theta, phi
-    
+
 
 def spin_to_cartesian_spin(
-    thetaJN: Float, 
-    phiJL: Float, 
-    theta1: Float, 
-    theta2: Float, 
-    phi12: Float, 
-    chi1: Float, 
-    chi2: Float, 
-    M_c: Float, 
+    thetaJN: Float,
+    phiJL: Float,
+    theta1: Float,
+    theta2: Float,
+    phi12: Float,
+    chi1: Float,
+    chi2: Float,
+    M_c: Float,
     eta: Float,
-    fRef: Float, 
-    phiRef: Float
+    fRef: Float,
+    phiRef: Float,
 ) -> tuple[Float, Float, Float, Float, Float, Float, Float]:
     """
     Transforming the spin parameters
 
     The code is based on the approach used in LALsimulation:
     https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/group__lalsimulation__inference.html
-    
+
     Parameters:
     -------
     thetaJN: Float
@@ -185,7 +185,7 @@ def spin_to_cartesian_spin(
         The reference frequency
     phiRef: Float
         Binary phase at a reference frequency
-        
+
     Returns:
     -------
     iota: Float
@@ -203,56 +203,57 @@ def spin_to_cartesian_spin(
     S2z: Float
         The z-component of the secondary spin
     """
+
     def rotate_y(angle, vec):
         """
         Rotate the vector (x, y, z) about y-axis
         """
         cos_angle = jnp.cos(angle)
         sin_angle = jnp.sin(angle)
-        rotation_matrix = jnp.array([
-            [cos_angle, 0, sin_angle],
-            [0, 1, 0],
-            [-sin_angle, 0, cos_angle]
-        ])
+        rotation_matrix = jnp.array(
+            [[cos_angle, 0, sin_angle], [0, 1, 0], [-sin_angle, 0, cos_angle]]
+        )
         rotated_vec = jnp.dot(rotation_matrix, vec)
         return rotated_vec
-    
+
     def rotate_z(angle, vec):
         """
         Rotate the vector (x, y, z) about z-axis
         """
         cos_angle = jnp.cos(angle)
         sin_angle = jnp.sin(angle)
-        rotation_matrix = jnp.array([
-            [cos_angle, -sin_angle, 0],
-            [sin_angle, cos_angle, 0],
-            [0, 0, 1]
-        ])
+        rotation_matrix = jnp.array(
+            [[cos_angle, -sin_angle, 0], [sin_angle, cos_angle, 0], [0, 0, 1]]
+        )
         rotated_vec = jnp.dot(rotation_matrix, vec)
         return rotated_vec
-    
-    LNh = jnp.array([0., 0., 1.])
-    
-    s1hat = jnp.array([
-        jnp.sin(theta1)*jnp.cos(phiRef), 
-        jnp.sin(theta1)*jnp.sin(phiRef), 
-        jnp.cos(theta1)
-    ])
-    s2hat = jnp.array([
-        jnp.sin(theta2) * jnp.cos(phi12+phiRef), 
-        jnp.sin(theta2) * jnp.sin(phi12+phiRef), 
-        jnp.cos(theta2)
-    ])
-    
-    temp = (1 / eta / 2 - 1)
-    q = temp - (temp ** 2 - 1) ** 0.5
+
+    LNh = jnp.array([0.0, 0.0, 1.0])
+
+    s1hat = jnp.array(
+        [
+            jnp.sin(theta1) * jnp.cos(phiRef),
+            jnp.sin(theta1) * jnp.sin(phiRef),
+            jnp.cos(theta1),
+        ]
+    )
+    s2hat = jnp.array(
+        [
+            jnp.sin(theta2) * jnp.cos(phi12 + phiRef),
+            jnp.sin(theta2) * jnp.sin(phi12 + phiRef),
+            jnp.cos(theta2),
+        ]
+    )
+
+    temp = 1 / eta / 2 - 1
+    q = temp - (temp**2 - 1) ** 0.5
     m1, m2 = Mc_q_to_m1m2(M_c, q)
-    v0 = jnp.cbrt((m1+m2) * Msun * jnp.pi * fRef)
-    
-    Lmag = ((m1+m2)*(m1+m2)*eta/v0) * (1.0 + v0*v0*(1.5 + eta/6.0))
+    v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
+
+    Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
     s1 = m1 * m1 * chi1 * s1hat
     s2 = m2 * m2 * chi2 * s2hat
-    J = s1 + s2 + jnp.array([0., 0., Lmag])
+    J = s1 + s2 + jnp.array([0.0, 0.0, Lmag])
 
     Jhat = J / jnp.linalg.norm(J)
     theta0 = jnp.arccos(Jhat[2])
@@ -266,24 +267,24 @@ def spin_to_cartesian_spin(
     LNh = rotate_y(-theta0, LNh)
     s1hat = rotate_y(-theta0, s1hat)
     s2hat = rotate_y(-theta0, s2hat)
-    
+
     # Rotation 3:
     LNh = rotate_z(phiJL - jnp.pi, LNh)
     s1hat = rotate_z(phiJL - jnp.pi, s1hat)
     s2hat = rotate_z(phiJL - jnp.pi, s2hat)
-    
+
     # Compute iota
     N = jnp.array([0.0, jnp.sin(thetaJN), jnp.cos(thetaJN)])
     iota = jnp.arccos(jnp.dot(N, LNh))
-    
+
     thetaLJ = jnp.arccos(LNh[2])
     phiL = jnp.arctan2(LNh[1], LNh[0])
-    
+
     # Rotation 4:
     s1hat = rotate_z(-phiL, s1hat)
     s2hat = rotate_z(-phiL, s2hat)
     N = rotate_z(-phiL, N)
-    
+
     # Rotation 5:
     s1hat = rotate_y(-thetaLJ, s1hat)
     s2hat = rotate_y(-thetaLJ, s2hat)
@@ -291,8 +292,8 @@ def spin_to_cartesian_spin(
 
     # Rotation 6:
     phiN = jnp.arctan2(N[1], N[0])
-    s1hat = rotate_z(jnp.pi/2.-phiN-phiRef, s1hat)
-    s2hat = rotate_z(jnp.pi/2.-phiN-phiRef, s2hat)
+    s1hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s1hat)
+    s2hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s2hat)
 
     S1 = s1hat * chi1
     S2 = s2hat * chi2
