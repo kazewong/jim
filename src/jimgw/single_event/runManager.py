@@ -364,13 +364,18 @@ class SingleEventPERunManager(RunManager):
     def get_samples(self):
         return self.jim.get_samples()
     
-    def plot_samples(self, figure_name: str="corner.png"):
+    def plot_samples(self, figure_name: str="corner.png", **kwargs):
         import corner
         import matplotlib.pyplot as plt
+        import numpy as np
+        
+        title_quantiles = kwargs.get("title_quantiles", [0.16, 0.5, 0.84])
+        title_fmt = kwargs.get("title_fmt", "g")
+        
         samples = self.jim.get_samples()
         param_names = list(samples.keys())
-        samples = jnp.array(list(samples.values())).reshape(int(len(param_names)), -1).T
-        corner.corner(samples, labels=param_names, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
+        samples = np.array(list(samples.values())).reshape(int(len(param_names)), -1).T
+        corner.corner(samples, labels=param_names, plot_datapoints=False, title_quantiles=title_quantiles, show_titles=True, title_fmt=title_fmt, use_math_text=True, **kwargs)
         plt.savefig(figure_name)
         plt.close()
         
