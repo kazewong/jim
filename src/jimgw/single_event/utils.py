@@ -3,6 +3,8 @@ from jax.scipy.integrate import trapezoid
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
+from jimgw.constants import Msun
+
 
 def inner_product(
     h1: Float[Array, " n_sample"],
@@ -139,7 +141,7 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     return theta, phi
     
 
-def spin_to_spin(
+def spin_to_cartesian_spin(
     thetaJN: Float, 
     phiJL: Float, 
     theta1: Float, 
@@ -154,6 +156,9 @@ def spin_to_spin(
 ) -> tuple[Float, Float, Float, Float, Float, Float, Float]:
 """
     Transforming the spin parameters
+
+    The code is based on the approach used in LALsimulation:
+    https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/group__lalsimulation__inference.html
     
     Parameters:
     -------
@@ -242,7 +247,7 @@ def spin_to_spin(
     temp = (1 / eta / 2 - 1)
     q = temp - (temp ** 2 - 1) ** 0.5
     m1, m2 = Mc_q_to_m1m2(M_c, q)
-    v0 = jnp.cbrt((m1+m2) * MTsun_SI * jnp.pi * fRef)
+    v0 = jnp.cbrt((m1+m2) * Msun * jnp.pi * fRef)
     
     Lmag = ((m1+m2)*(m1+m2)*eta/v0) * (1.0 + v0*v0*(1.5 + eta/6.0))
     s1 = m1 * m1 * chi1 * s1hat
