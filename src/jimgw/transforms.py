@@ -72,32 +72,13 @@ class Transform(ABC):
         return list(input_set - from_set | to_set)
 
 
-class LogitToUniform(Transform):
-    """
-    Transform from unconstrained space to uniform space.
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    bounds : tuple[Float, Float]
-            The lower and upper bounds of the uniform distribution.
-
-    """
-
-    bounds: tuple[Float, Float]
+class UnivariateTransform(Transform):
 
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
-        bounds: tuple[Float, Float],
     ):
         super().__init__(name_mapping)
-        self.bounds = bounds
-        self.transform_func = (
-            lambda x: (self.bounds[1] - self.bounds[0]) / (1 + jnp.exp(-x))
-            + self.bounds[0]
-        )
 
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         input_params = x.pop(self.name_mapping[0][0])
@@ -113,3 +94,57 @@ class LogitToUniform(Transform):
         output_params = self.transform_func(input_params)
         x[self.name_mapping[1][0]] = output_params
         return x
+
+
+class ScaleToRange(UnivariateTransform):
+
+    range: tuple[Float, Float]
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        range: tuple[Float, Float],
+    ):
+        super().__init__(name_mapping)
+        self.range = range
+        self.transform_func = (
+            lambda x: (self.range[1] - self.range[0]) * x + self.range[0]
+        )
+
+
+class Logit(Transform):
+    """
+    Logit transform following
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
+
+
+class Sine(Transform):
+    """
+    Transform from unconstrained space to uniform space.
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: jnp.sin(x)

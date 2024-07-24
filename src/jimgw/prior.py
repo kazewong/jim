@@ -60,7 +60,7 @@ class Prior(Distribution):
 
 
 @jaxtyped(typechecker=typechecker)
-class Logit(Prior):
+class LogisticDistribution(Prior):
 
     def __repr__(self):
         return f"Logit(parameter_names={self.parameter_names})"
