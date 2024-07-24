@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from dataclasses import field
 from typing import Callable, Union
 
-from chex import assert_rank
 import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
+from chex import assert_rank
 from jaxtyping import Array, Float, jaxtyped
 
 
