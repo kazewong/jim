@@ -6,6 +6,9 @@ import jax.numpy as jnp
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
+from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
+from jimgw.single_event.detector import GroundBased2G, detector_preset
+from astropy.time import Time
 
 
 class Prior(Distribution):
@@ -231,8 +234,9 @@ class Sphere(Prior):
     def __repr__(self):
         return f"Sphere(naming={self.naming})"
 
-    def __init__(self, naming: str, **kwargs):
-        self.naming = [f"{naming}_theta", f"{naming}_phi", f"{naming}_mag"]
+    def __init__(self, naming: list[str], **kwargs):
+        name = naming[0]
+        self.naming = [f"{name}_theta", f"{name}_phi", f"{name}_mag"]
         self.transforms = {
             self.naming[0]: (
                 f"{naming}_x",
@@ -391,6 +395,82 @@ class AlignedSpin(Prior):
             jnp.log(-jnp.log(jnp.absolute(variable) / self.amax) / 2.0 / self.amax),
         )
         return log_p
+
+
+@jaxtyped(typechecker=typechecker)
+class EarthFrame(Prior):
+    """
+    Prior distribution for sky location in Earth frame.
+    """
+
+    ifos: list = field(default_factory=list)
+    gmst: float = 0.0
+    delta_x: Float[Array, " 3"] = field(default_factory=lambda: jnp.zeros(3))
+
+    def __repr__(self):
+        return f"EarthFrame(naming={self.naming})"
+
+    def __init__(self, gps: Float, ifos: list, **kwargs):
+        self.naming = ["zenith", "azimuth"]
+        if len(ifos) < 2:
+            return ValueError(
+                "At least two detectors are needed to define the Earth frame"
+            )
+        elif isinstance(ifos[0], str):
+            self.ifos = [detector_preset[ifos[0]], detector_preset[ifos[1]]]
+        elif isinstance(ifos[0], GroundBased2G):
+            self.ifos = ifos[:1]
+        else:
+            return ValueError(
+                "ifos should be a list of detector names or GroundBased2G objects"
+            )
+        self.gmst = float(
+            Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
+        self.delta_x = self.ifos[1].vertex - self.ifos[0].vertex
+
+        self.transforms = {
+            "azimuth": (
+                "ra",
+                lambda params: zenith_azimuth_to_ra_dec(
+                    params["zenith"],
+                    params["azimuth"],
+                    gmst=self.gmst,
+                    delta_x=self.delta_x,
+                )[0],
+            ),
+            "zenith": (
+                "dec",
+                lambda params: zenith_azimuth_to_ra_dec(
+                    params["zenith"],
+                    params["azimuth"],
+                    gmst=self.gmst,
+                    delta_x=self.delta_x,
+                )[1],
+            ),
+        }
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        rng_keys = jax.random.split(rng_key, 2)
+        zenith = jnp.arccos(
+            jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0)
+        )
+        azimuth = jax.random.uniform(
+            rng_keys[1], (n_samples,), minval=0, maxval=2 * jnp.pi
+        )
+        return self.add_name(jnp.stack([zenith, azimuth], axis=1).T)
+
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        zenith = x["zenith"]
+        azimuth = x["azimuth"]
+        output = jnp.where(
+            (zenith > jnp.pi) | (zenith < 0) | (azimuth > 2 * jnp.pi) | (azimuth < 0),
+            jnp.zeros_like(0) - jnp.inf,
+            jnp.zeros_like(0),
+        )
+        return output + jnp.log(jnp.sin(zenith))
 
 
 @jaxtyped(typechecker=typechecker)
