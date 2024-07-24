@@ -10,6 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
+from jimgw.transforms import Transform
 
 
 class Prior(Distribution):
@@ -22,20 +23,20 @@ class Prior(Distribution):
     the names of the parameters and the transforms that are applied to them.
     """
 
-    naming: list[str]
+    parameter_names: list[str]
 
     @property
     def n_dim(self):
-        return len(self.naming)
+        return len(self.parameter_names)
 
-    def __init__(self, naming: list[str]):
+    def __init__(self, parameter_names: list[str]):
         """
         Parameters
         ----------
-        naming : list[str]
+        parameter_names : list[str]
             A list of names for the parameters of the prior.
         """
-        self.naming = naming
+        self.parameter_names = parameter_names
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
         """
@@ -47,8 +48,8 @@ class Prior(Distribution):
             An array of parameters. Shape (n_dim,).
         """
 
-        return dict(zip(self.naming, x))
-
+        return dict(zip(self.parameter_names, x))
+    
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
@@ -62,10 +63,10 @@ class Prior(Distribution):
 class Logit(Prior):
 
     def __repr__(self):
-        return f"Logit(naming={self.naming})"
+        return f"Logit(parameter_names={self.parameter_names})"
 
-    def __init__(self, naming: list[str], **kwargs):
-        super().__init__(naming)
+    def __init__(self, parameter_names: list[str], **kwargs):
+        super().__init__(parameter_names)
         assert self.n_dim == 1, "Logit needs to be 1D distributions"
 
     def sample(
@@ -92,8 +93,66 @@ class Logit(Prior):
         return self.add_name(samples[None])
 
     def log_prob(self, x: dict[str, Float]) -> Float:
-        variable = x[self.naming[0]]
+        variable = x[self.parameter_names[0]]
         return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
+
+
+class Sequential(Prior):
+    """
+    A prior class constructed
+    """
+
+    members: list[Prior | Transform] = field(default_factory=list)
+
+    def __repr__(self):
+        return (
+            f"Sequential(priors={self.members}, parameter_names={self.parameter_names})"
+        )
+
+    def __init(
+        self,
+        members: list[Prior | Transform],
+    ):
+        self.members = members
+
+class Combine(Prior):
+    """
+    A prior class constructed by joinning multiple priors together to form a multivariate prior.
+    This assumes the priors composing the Combine class are independent.
+    """
+
+    priors: list[Prior] = field(default_factory=list)
+
+    def __repr__(self):
+        return (
+            f"Composite(priors={self.priors}, parameter_names={self.parameter_names})"
+        )
+
+    def __init__(
+        self,
+        priors: list[Prior],
+        **kwargs,
+    ):
+        parameter_names = []
+        for prior in priors:
+            parameter_names += prior.parameter_names
+        self.priors = priors
+        self.parameter_names = parameter_names
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        output = {}
+        for prior in self.priors:
+            rng_key, subkey = jax.random.split(rng_key)
+            output.update(prior.sample(subkey, n_samples))
+        return output
+
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        output = 0.0
+        for prior in self.priors:
+            output += prior.log_prob(x)
+        return output
 
 
 # ====================== Things below may need rework ======================
@@ -685,41 +744,4 @@ class Normal(Prior):
             - jnp.log(self.std)
             - 0.5 * ((variable - self.mean) / self.std) ** 2
         )
-        return output
-
-
-class Composite(Prior):
-    priors: list[Prior] = field(default_factory=list)
-
-    def __repr__(self):
-        return f"Composite(priors={self.priors}, naming={self.naming})"
-
-    def __init__(
-        self,
-        priors: list[Prior],
-        transforms: dict[str, tuple[str, Callable]] = {},
-        **kwargs,
-    ):
-        naming = []
-        self.transforms = {}
-        for prior in priors:
-            naming += prior.naming
-            self.transforms.update(prior.transforms)
-        self.priors = priors
-        self.naming = naming
-        self.transforms.update(transforms)
-
-    def sample(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        output = {}
-        for prior in self.priors:
-            rng_key, subkey = jax.random.split(rng_key)
-            output.update(prior.sample(subkey, n_samples))
-        return output
-
-    def log_prob(self, x: dict[str, Float]) -> Float:
-        output = 0.0
-        for prior in self.priors:
-            output += prior.log_prob(x)
         return output
