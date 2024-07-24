@@ -18,6 +18,7 @@ class Jim(object):
     likelihood: LikelihoodBase
     prior: Prior
 
+    # Name of parameters to sample from
     parameter_names: list[str]
     sampler: Sampler
 
@@ -57,12 +58,22 @@ class Jim(object):
             **kwargs,
         )
 
+    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+        """
+        Turn an array into a dictionary
+
+        Parameters
+        ----------
+        x : Array
+            An array of parameters. Shape (n_dim,).
+        """
+
+        return dict(zip(self.parameter_names, x))
+
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
-        prior_params = self.prior.add_name(params.T)
-        prior = self.prior.log_prob(prior_params)
-        return (
-            self.likelihood.evaluate(self.prior.transform(prior_params), data) + prior
-        )
+        named_params = self.add_name(params)
+        prior = self.prior.log_prob(named_params)
+        return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
