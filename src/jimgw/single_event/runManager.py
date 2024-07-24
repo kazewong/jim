@@ -65,13 +65,13 @@ prior_presets = {
 @dataclass
 class SingleEventRun:
     seed: int
-    path: str = "./experiment"
     
     detectors: list[str]
     priors: dict[
         str, dict[str, Union[str, float, int, bool]]
     ]  # Transform cannot be included in this way, add it to preset if used often.
     jim_parameters: dict[str, Union[str, float, int, bool, dict]]
+    path: str = "./experiment"
     injection_parameters: dict[str, float] = field(
         default_factory=lambda: {}
     )  
