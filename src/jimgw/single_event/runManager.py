@@ -4,6 +4,8 @@ from typing import Union
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import corner
+import numpy as np
 import yaml
 from astropy.time import Time
 from jaxlib.xla_extension import ArrayImpl
@@ -364,18 +366,56 @@ class SingleEventPERunManager(RunManager):
     def get_samples(self):
         return self.jim.get_samples()
     
-    def plot_samples(self, figure_name: str="corner.png", **kwargs):
-        import corner
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
+    def plot_corner(self, figure_name: str="corner.png", **kwargs):
+        """
+        plot corner plot of the samples.
+        """
+        plot_datapoint = kwargs.get("plot_datapoints", False)
         title_quantiles = kwargs.get("title_quantiles", [0.16, 0.5, 0.84])
+        show_titles = kwargs.get("show_titles", True)
         title_fmt = kwargs.get("title_fmt", "g")
+        use_math_text = kwargs.get("use_math_text", True)
         
         samples = self.jim.get_samples()
         param_names = list(samples.keys())
         samples = np.array(list(samples.values())).reshape(int(len(param_names)), -1).T
-        corner.corner(samples, labels=param_names, plot_datapoints=False, title_quantiles=title_quantiles, show_titles=True, title_fmt=title_fmt, use_math_text=True, **kwargs)
+        corner.corner(samples, labels=param_names, plot_datapoints=plot_datapoint, title_quantiles=title_quantiles, show_titles=show_titles, title_fmt=title_fmt, use_math_text=use_math_text, **kwargs)
         plt.savefig(figure_name)
         plt.close()
+        
+    def plot_diagnostic(self, figure_name: str="diagnostic.png", **kwargs):
+        """
+        plot diagnostic plot of the samples.
+        """
+        summary = self.jim.Sampler.get_sampler_state(training=True)
+        chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
+        log_prob = np.array(log_prob)
+        
+        plt.figure(figsize=(6, 6))
+        axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
+        plt.sca(axs[0])
+        plt.title("log probability")
+        for i in range(log_prob.shape[0]):
+            axs[0].plot(log_prob[i], linewidth=0.05)
+        plt.xlabel("iteration")
+        
+        plt.sca(axs[1])
+        plt.title("NF loss")
+        plt.plot(loss_vals.reshape(-1))
+        plt.xlabel("iteration")
+
+        plt.sca(axs[2])
+        plt.title("Local Acceptance")
+        plt.plot(local_accs.mean(0))
+        plt.xlabel("iteration")
+
+        plt.sca(axs[3])
+        plt.title("Global Acceptance")
+        plt.plot(global_accs.mean(0))
+        plt.xlabel("iteration")
+        plt.tight_layout()
+        
+        plt.savefig(figure_name)
+        plt.close()
+        
         
