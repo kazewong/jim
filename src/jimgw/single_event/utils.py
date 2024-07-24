@@ -142,23 +142,6 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     phi = ra - gmst
     theta = jnp.pi / 2 - dec
     return theta, phi
-
-def rotate_y(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
-    """
-    Rotate the vector (x, y, z) about y-axis
-    """
-    x_new = x * jnp.cos(angle) + z * jnp.sin(angle)
-    z_new = - (x * jnp.sin(angle)) + z * jnp.cos(angle)
-    return x_new, y, z_new
-
-
-def rotate_z(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
-    """
-    Rotate the vector (x, y, z) about z-axis
-    """
-    x_new = x * jnp.cos(angle) - y * jnp.sin(angle)
-    y_new = x * jnp.sin(angle) + y * jnp.cos(angle)
-    return x_new, y_new, z
     
 
 def spin_to_spin(
@@ -220,7 +203,22 @@ def spin_to_spin(
     S2z: Float
         The z-component of the secondary spin
 """
+    def rotate_y(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
+        """
+        Rotate the vector (x, y, z) about y-axis
+        """
+        x_new = x * jnp.cos(angle) + z * jnp.sin(angle)
+        z_new = - (x * jnp.sin(angle)) + z * jnp.cos(angle)
+        return x_new, y, z_new
 
+    def rotate_z(angle: Float, x: Float, y: Float, z: Float) -> tuple[Float, Float, Float]:
+        """
+        Rotate the vector (x, y, z) about z-axis
+        """
+        x_new = x * jnp.cos(angle) - y * jnp.sin(angle)
+        y_new = x * jnp.sin(angle) + y * jnp.cos(angle)
+        return x_new, y_new, z
+        
     LNhx = 0.
     LNhy = 0.
     LNhz = 1.
