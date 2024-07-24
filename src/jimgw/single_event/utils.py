@@ -209,7 +209,7 @@ def spin_to_cartesian_spin(
         """
         cos_angle = jnp.cos(angle)
         sin_angle = jnp.sin(angle)
-        rotation_matrix = np.array([
+        rotation_matrix = jnp.array([
             [cos_angle, 0, sin_angle],
             [0, 1, 0],
             [-sin_angle, 0, cos_angle]
