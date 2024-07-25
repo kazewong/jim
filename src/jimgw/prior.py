@@ -193,7 +193,7 @@ class Uniform(Prior):
     xmax: float
 
     def __repr__(self):
-        return f"Uniform(xmin={self.xmin}, xmax={self.xmax})"
+        return f"Uniform(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
 
     def __init__(
         self,

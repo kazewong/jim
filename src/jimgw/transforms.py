@@ -135,10 +135,10 @@ class Logit(UnivariateTransform):
         super().__init__(name_mapping)
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
-class Sine(UnivariateTransform):
+class ArcSine(UnivariateTransform):
     """
-    Transform from unconstrained space to uniform space.
-
+    ArcSine transformation
+    
     Parameters
     ----------
     name_mapping : tuple[list[str], list[str]]
@@ -151,4 +151,4 @@ class Sine(UnivariateTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
-        self.transform_func = lambda x: jnp.sin(x)
+        self.transform_func = lambda x: jnp.arcsin(x)
