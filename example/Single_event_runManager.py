@@ -28,7 +28,6 @@ bounds = jnp.array(
     ]
 )
 
-
 run = SingleEventRun(
     seed=0,
     detectors=["H1", "L1"],
@@ -91,6 +90,8 @@ run = SingleEventRun(
 
 run_manager = SingleEventPERunManager(run=run)
 run_manager.jim.sample(jax.random.PRNGKey(42))
+
+# plot the corner plot and diagnostic plot
 run_manager.plot_corner()
 run_manager.plot_diagnostic()
-run_manager.jim.get_samples()
+
