@@ -132,14 +132,14 @@ class SequentialTransform(Prior):
     
     def log_prob(self, x: dict[str, Float]) -> Float:
         """
-        Requiring inverse transform in log_prob may not be the best option,
-        may need alternative
+        log_prob has to be evaluated in the space of the base_prior.
+
+
         """
-        output = 0.0
-        for transform in reversed(self.transforms):
-            x, log_jacobian = transform.inverse_transform(x)
-            output += log_jacobian
-        output += self.base_prior.log_prob(x)
+        output = self.base_prior.log_prob(x)
+        for transform in self.transforms:
+            x, log_jacobian = transform.transform(x)
+            output -= log_jacobian
         return output
 
 # class Combine(Prior):
