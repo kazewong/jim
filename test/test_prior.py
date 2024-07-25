@@ -7,7 +7,7 @@ class TestUnivariatePrior:
 
     def test_uniform(self):
         p = Uniform(0.0, 10.0, ['x'])
-        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        samples = p._dist.base_prior.sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.allclose(log_prob, -jnp.log(10.0))
 

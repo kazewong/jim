@@ -126,9 +126,7 @@ class SequentialTransform(Prior):
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         output = self.base_prior.sample(rng_key, n_samples)
-        for transform in self.transforms:
-            output = jax.vmap(transform.forward)(output)
-        return output
+        return jax.vmap(self.transform)(output)
     
     def log_prob(self, x: dict[str, Float]) -> Float:
         """
@@ -141,6 +139,11 @@ class SequentialTransform(Prior):
             x, log_jacobian = transform.transform(x)
             output -= log_jacobian
         return output
+    
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        for transform in self.transforms:
+            x = transform.forward(x)
+        return x
 
 # class Combine(Prior):
 #     """
@@ -185,7 +188,7 @@ class SequentialTransform(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class Uniform(Prior):
-    _dist: Prior
+    _dist: SequentialTransform
 
     xmin: float
     xmax: float
@@ -218,6 +221,14 @@ class Uniform(Prior):
 
     def log_prob(self, x: dict[str, Array]) -> Float:
         return self._dist.log_prob(x)
+    
+    def sample_base(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        return self._dist.base_prior.sample(rng_key, n_samples)
+    
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        return self._dist.transform(x)
 
 # ====================== Things below may need rework ======================
 
