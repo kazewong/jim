@@ -398,27 +398,31 @@ class SingleEventPERunManager(RunManager):
         chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
         log_prob = np.array(log_prob)
 
-        plt.figure(figsize=(6, 6))
+        plt.figure(figsize=(10, 10))
         axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
         plt.sca(axs[0])
         plt.title("log probability")
         plt.plot(log_prob.mean(0))
         plt.xlabel("iteration")
+        plt.xlim(0, None)
 
         plt.sca(axs[1])
         plt.title("NF loss")
         plt.plot(loss_vals.reshape(-1))
         plt.xlabel("iteration")
+        plt.xlim(0, None)
 
         plt.sca(axs[2])
         plt.title("Local Acceptance")
         plt.plot(local_accs.mean(0))
         plt.xlabel("iteration")
+        plt.xlim(0, None)
 
         plt.sca(axs[3])
         plt.title("Global Acceptance")
         plt.plot(global_accs.mean(0))
         plt.xlabel("iteration")
+        plt.xlim(0, None)
         plt.tight_layout()
 
         plt.savefig(path)
