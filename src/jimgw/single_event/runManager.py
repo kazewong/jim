@@ -366,7 +366,7 @@ class SingleEventPERunManager(RunManager):
     def get_samples(self):
         return self.jim.get_samples()
     
-    def plot_corner(self, path: str="corner.png", **kwargs):
+    def plot_corner(self, path: str="corner.jpeg", **kwargs):
         """
         plot corner plot of the samples.
         """
@@ -383,7 +383,7 @@ class SingleEventPERunManager(RunManager):
         plt.savefig(path)
         plt.close()
         
-    def plot_diagnostic(self, path: str="diagnostic.png", **kwargs):
+    def plot_diagnostic(self, path: str="diagnostic.jpeg", **kwargs):
         """
         plot diagnostic plot of the samples.
         """
@@ -395,8 +395,7 @@ class SingleEventPERunManager(RunManager):
         axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
         plt.sca(axs[0])
         plt.title("log probability")
-        for i in range(log_prob.shape[0]):
-            axs[0].plot(log_prob[i], linewidth=0.05)
+        plt.plot(log_prob.mean(0))
         plt.xlabel("iteration")
         
         plt.sca(axs[1])
