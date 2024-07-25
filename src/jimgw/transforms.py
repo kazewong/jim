@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from dataclasses import field
-from typing import Callable, Union
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype as typechecker
 from chex import assert_rank
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Float, Array
+
 
 class Transform(ABC):
     """
@@ -16,7 +15,8 @@ class Transform(ABC):
     """
 
     name_mapping: tuple[list[str], list[str]]
-    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
@@ -45,7 +45,7 @@ class Transform(ABC):
                 The log Jacobian determinant.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         """
@@ -92,7 +92,8 @@ class UnivariateTransform(Transform):
         output_params = self.transform_func(input_params)
         x[self.name_mapping[1][0]] = output_params
         return x
-    
+
+
 class Scale(UnivariateTransform):
     scale: Float
 
@@ -105,6 +106,7 @@ class Scale(UnivariateTransform):
         self.scale = scale
         self.transform_func = lambda x: x * self.scale
 
+
 class Offset(UnivariateTransform):
     offset: Float
 
@@ -116,6 +118,7 @@ class Offset(UnivariateTransform):
         super().__init__(name_mapping)
         self.offset = offset
         self.transform_func = lambda x: x + self.offset
+
 
 class Logit(UnivariateTransform):
     """
@@ -135,10 +138,11 @@ class Logit(UnivariateTransform):
         super().__init__(name_mapping)
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
+
 class ArcSine(UnivariateTransform):
     """
     ArcSine transformation
-    
+
     Parameters
     ----------
     name_mapping : tuple[list[str], list[str]]
