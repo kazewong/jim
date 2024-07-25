@@ -371,7 +371,7 @@ class SingleEventPERunManager(RunManager):
         plot_datapoint = kwargs.get("plot_datapoints", False)
         title_quantiles = kwargs.get("title_quantiles", [0.16, 0.5, 0.84])
         show_titles = kwargs.get("show_titles", True)
-        title_fmt = kwargs.get("title_fmt", "g")
+        title_fmt = kwargs.get("title_fmt", ".2E")
         use_math_text = kwargs.get("use_math_text", True)
 
         samples = self.jim.get_samples()
