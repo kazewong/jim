@@ -4,7 +4,7 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from chex import assert_rank
-from jaxtyping import Float, Array
+from jaxtyping import Float
 
 
 class Transform(ABC):
@@ -15,7 +15,7 @@ class Transform(ABC):
     """
 
     name_mapping: tuple[list[str], list[str]]
-    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def __init__(
         self,
@@ -156,3 +156,22 @@ class ArcSine(UnivariateTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: jnp.arcsin(x)
+
+
+class ArcCosine(UnivariateTransform):
+    """
+    ArcCosine transformation
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: jnp.arccos(x)
