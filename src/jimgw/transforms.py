@@ -139,27 +139,6 @@ class Logit(UnivariateTransform):
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
 
-class Modulo(UnivariateTransform):
-    """
-    Modulo transform following
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        modulo: Float,
-    ):
-        super().__init__(name_mapping)
-        self.modulo = modulo
-        self.transform_func = lambda x: jnp.mod(x, self.modulo)
-
-
 class ArcSine(UnivariateTransform):
     """
     ArcSine transformation
