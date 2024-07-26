@@ -6,8 +6,6 @@ from beartype import beartype as typechecker
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
-from jimgw.single_event.detector import GroundBased2G, detector_preset
-from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
 from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine
 
 
