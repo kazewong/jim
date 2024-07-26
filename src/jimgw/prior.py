@@ -10,7 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
-from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine
+from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine, Modulo
 
 
 class Prior(Distribution):
@@ -249,6 +249,33 @@ class Uniform(SequentialTransform):
             ],
         )
 
+@jaxtyped(typechecker=typechecker)
+class PeriodicUniform(SequentialTransform):
+    xmin: float
+    xmax: float
+
+    def __repr__(self):
+        return f"PeriodicUniform(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
+
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        parameter_names: list[str],
+    ):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "PeriodicUniform needs to be 1D distributions"
+        self.xmax = xmax
+        self.xmin = xmin
+        super().__init__(
+            LogisticDistribution(self.parameter_names),
+            [
+                Logit((self.parameter_names, self.parameter_names)),
+                Modulo((self.parameter_names, self.parameter_names), xmax - xmin),
+                Offset((self.parameter_names, self.parameter_names), xmin),
+            ],
+        )
+
 
 @jaxtyped(typechecker=typechecker)
 class Sine(SequentialTransform):
@@ -306,7 +333,7 @@ class UniformSphere(Combine):
             [
                 Uniform(0.0, 1.0, [self.parameter_names[0]]),
                 Sine([self.parameter_names[1]]),
-                Uniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
+                PeriodicUniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
