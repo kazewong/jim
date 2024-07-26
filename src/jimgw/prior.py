@@ -63,17 +63,17 @@ class Prior(Distribution):
 class LogisticDistribution(Prior):
 
     def __repr__(self):
-        return f"Logistic(parameter_names={self.parameter_names})"
+        return f"LogisticDistribution(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        assert self.n_dim == 1, "Logit needs to be 1D distributions"
+        assert self.n_dim == 1, "LogisticDistribution needs to be 1D distributions"
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         """
-        Sample from a logit distribution.
+        Sample from a logistic distribution.
 
         Parameters
         ----------
@@ -96,6 +96,42 @@ class LogisticDistribution(Prior):
         variable = x[self.parameter_names[0]]
         return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
+
+@jaxtyped(typechecker=typechecker)
+class StandardNormalDistribution(Prior):
+
+    def __repr__(self):
+        return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str], **kwargs):
+        super().__init__(parameter_names)
+        assert self.n_dim == 1, "StandardNormalDistribution needs to be 1D distributions"
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        """
+        Sample from a standard normal distribution.
+
+        Parameters
+        ----------
+        rng_key : PRNGKeyArray
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
+
+        """
+        samples = jax.random.normal(rng_key, (n_samples,))
+        return self.add_name(samples[None])
+
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        variable = x[self.parameter_names[0]]
+        return -0.5 * variable ** 2 - 0.5 * jnp.log(2 * jnp.pi)
 
 class SequentialTransform(Prior):
     """
@@ -624,57 +660,3 @@ class Exponential(Prior):
         )
         log_p = self.alpha * variable + jnp.log(self.normalization)
         return log_p + log_in_range
-
-
-@jaxtyped(typechecker=typechecker)
-class Normal(Prior):
-    mean: Float = 0.0
-    std: Float = 1.0
-
-    def __repr__(self):
-        return f"Normal(mean={self.mean}, std={self.std})"
-
-    def __init__(
-        self,
-        mean: Float,
-        std: Float,
-        naming: list[str],
-        transforms: dict[str, tuple[str, Callable]] = {},
-        **kwargs,
-    ):
-        super().__init__(naming, transforms)
-        assert self.n_dim == 1, "Normal needs to be 1D distributions"
-        self.mean = mean
-        self.std = std
-
-    def sample(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        """
-        Sample from a normal distribution.
-
-        Parameters
-        ----------
-        rng_key : PRNGKeyArray
-            A random key to use for sampling.
-        n_samples : int
-            The number of samples to draw.
-
-        Returns
-        -------
-        samples : dict
-            Samples from the distribution. The keys are the names of the parameters.
-
-        """
-        samples = jax.random.normal(rng_key, (n_samples,))
-        samples = self.mean + samples * self.std
-        return self.add_name(samples[None])
-
-    def log_prob(self, x: dict[str, Array]) -> Float:
-        variable = x[self.naming[0]]
-        output = (
-            -0.5 * jnp.log(2 * jnp.pi)
-            - jnp.log(self.std)
-            - 0.5 * ((variable - self.mean) / self.std) ** 2
-        )
-        return output
