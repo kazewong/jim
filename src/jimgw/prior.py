@@ -132,7 +132,7 @@ class StandardNormalDistribution(Prior):
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
 
-class SequentialTransform(Prior):
+class SequentialTransformPrior(Prior):
     """
     Transform a prior distribution by applying a sequence of transforms.
     """
@@ -182,7 +182,7 @@ class SequentialTransform(Prior):
         return x
 
 
-class Combine(Prior):
+class CombinePrior(Prior):
     """
     A prior class constructed by joinning multiple priors together to form a multivariate prior.
     This assumes the priors composing the Combine class are independent.
@@ -220,12 +220,12 @@ class Combine(Prior):
 
 
 @jaxtyped(typechecker=typechecker)
-class Uniform(SequentialTransform):
+class UniformPrior(SequentialTransformPrior):
     xmin: float
     xmax: float
 
     def __repr__(self):
-        return f"Uniform(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
+        return f"UniformPrior(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
@@ -234,7 +234,7 @@ class Uniform(SequentialTransform):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "Uniform needs to be 1D distributions"
+        assert self.n_dim == 1, "UniformPrior needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         super().__init__(
@@ -248,43 +248,43 @@ class Uniform(SequentialTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class Sine(SequentialTransform):
+class SinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
     """
 
     def __repr__(self):
-        return f"Sine(parameter_names={self.parameter_names})"
+        return f"SinePrior(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "Sine needs to be 1D distributions"
+        assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
-            Uniform(-1.0, 1.0, f"cos_{self.parameter_names}"),
+            UniformPrior(-1.0, 1.0, f"cos_{self.parameter_names}"),
             [ArcCosine(([f"cos_{self.parameter_names}"], [self.parameter_names]))],
         )
 
 
 @jaxtyped(typechecker=typechecker)
-class Cosine(SequentialTransform):
+class CosinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
 
     def __repr__(self):
-        return f"Cosine(parameter_names={self.parameter_names})"
+        return f"CosinePrior(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "Cosine needs to be 1D distributions"
+        assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
-            Uniform(-1.0, 1.0, f"sin_{self.parameter_names}"),
+            UniformPrior(-1.0, 1.0, f"sin_{self.parameter_names}"),
             [ArcSine(([f"sin_{self.parameter_names}"], [self.parameter_names]))],
         )
 
 
 @jaxtyped(typechecker=typechecker)
-class UniformSphere(Combine):
+class UniformSpherePrior(CombinePrior):
 
     def __repr__(self):
         return f"UniformSphere(parameter_names={self.parameter_names})"
@@ -301,9 +301,9 @@ class UniformSphere(Combine):
         ]
         super().__init__(
             [
-                Uniform(0.0, 1.0, [self.parameter_names[0]]),
-                Sine([self.parameter_names[1]]),
-                Uniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
+                UniformPrior(0.0, 1.0, [self.parameter_names[0]]),
+                SinePrior([self.parameter_names[1]]),
+                UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
