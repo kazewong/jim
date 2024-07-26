@@ -27,6 +27,7 @@ class Prior(Distribution):
     """
 
     parameter_names: list[str]
+    composite: bool = False
 
     @property
     def n_dim(self):
@@ -61,7 +62,6 @@ class Prior(Distribution):
     def log_prob(self, x: dict[str, Array]) -> Float:
         raise NotImplementedError
 
-
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
 
@@ -70,6 +70,7 @@ class LogisticDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
+        self.composite = False
         assert self.n_dim == 1, "LogisticDistribution needs to be 1D distributions"
 
     def sample(
@@ -108,6 +109,7 @@ class StandardNormalDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
+        self.composite = False
         assert (
             self.n_dim == 1
         ), "StandardNormalDistribution needs to be 1D distributions"
@@ -161,11 +163,12 @@ class SequentialTransformPrior(Prior):
         self.parameter_names = base_prior.parameter_names
         for transform in transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
+        self.composite = True
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        output = self.sample_base(rng_key, n_samples)
+        output = self.base_prior.sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
@@ -177,11 +180,6 @@ class SequentialTransformPrior(Prior):
             x, log_jacobian = transform.transform(x)
             output -= log_jacobian
         return output
-
-    def sample_base(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        return self.base_prior.sample(rng_key, n_samples)
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
@@ -195,10 +193,12 @@ class CombinePrior(Prior):
     This assumes the priors composing the Combine class are independent.
     """
 
-    priors: list[Prior] = field(default_factory=list)
+    base_prior: list[Prior] = field(default_factory=list)
 
     def __repr__(self):
-        return f"Combine(priors={self.priors}, parameter_names={self.parameter_names})"
+        return (
+            f"Combine(priors={self.base_prior}, parameter_names={self.parameter_names})"
+        )
 
     def __init__(
         self,
@@ -207,21 +207,22 @@ class CombinePrior(Prior):
         parameter_names = []
         for prior in priors:
             parameter_names += prior.parameter_names
-        self.priors = priors
+        self.base_prior = priors
         self.parameter_names = parameter_names
+        self.composite = True
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         output = {}
-        for prior in self.priors:
+        for prior in self.base_prior:
             rng_key, subkey = jax.random.split(rng_key)
             output.update(prior.sample(subkey, n_samples))
         return output
 
     def log_prob(self, x: dict[str, Float]) -> Float:
         output = 0.0
-        for prior in self.priors:
+        for prior in self.base_prior:
             output += prior.log_prob(x)
         return output
 
@@ -269,10 +270,10 @@ class SinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, f"cos_{self.parameter_names}"),
+            UniformPrior(-1.0, 1.0, [f"cos_{self.parameter_names[0]}"]),
             [
                 ArcCosineTransform(
-                    ([f"cos_{self.parameter_names}"], [self.parameter_names])
+                    ([f"cos_{self.parameter_names[0]}"], [self.parameter_names[0]])
                 )
             ],
         )
@@ -291,10 +292,10 @@ class CosinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, f"sin_{self.parameter_names}"),
+            UniformPrior(-1.0, 1.0, f"sin_{self.parameter_names[0]}"),
             [
                 ArcSineTransform(
-                    ([f"sin_{self.parameter_names}"], [self.parameter_names])
+                    ([f"sin_{self.parameter_names[0]}"], [self.parameter_names[0]])
                 )
             ],
         )
@@ -324,6 +325,17 @@ class UniformSpherePrior(CombinePrior):
             ]
         )
 
+def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
+    if prior.composite:
+        if isinstance(prior.base_prior, list):
+            for subprior in prior.base_prior:
+                output = trace_prior_parent(subprior, output)
+        elif isinstance(prior.base_prior, Prior):
+            output = trace_prior_parent(prior.base_prior, output)
+    else:
+        output.append(prior)
+
+    return output
 
 # ====================== Things below may need rework ======================
 
