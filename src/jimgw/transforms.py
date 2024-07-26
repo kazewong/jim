@@ -175,3 +175,58 @@ class ArcCosine(UnivariateTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: jnp.arccos(x)
+
+
+class PowerLawTransform(UnivariateTransform):
+    """
+    PowerLaw transformation
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    xmin: Float
+    xmax: Float
+    alpha: Float
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        xmin: Float,
+        xmax: Float,
+        alpha: Float,
+    ):
+        super().__init__(name_mapping)
+        self.xmin = xmin
+        self.xmax = xmax
+        self.alpha = alpha
+        self.transform_func = lambda x: (self.xmin ** (1.0 + self.alpha)+ x* (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha)))** (1.0 / (1.0 + self.alpha)),
+        
+
+
+class ParetoTransform(UnivariateTransform):
+    """
+    Pareto transformation: Power law when alpha = -1
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        xmin: Float,
+        xmax: Float,
+    ):
+        super().__init__(name_mapping)
+        self.xmin = xmin
+        self.xmax = xmax
+        self.transform_func = lambda x: self.xmin * jnp.exp(
+            x * jnp.log(self.xmax / self.xmin)
+        )
