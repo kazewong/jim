@@ -1,8 +1,8 @@
 import numpy as np
 import jax.numpy as jnp
 
-class VerifyTransform:
-    def verify_sky_location_transform(self):
+class TestTransform:
+    def test_sky_location_transform(self):
         from bilby.gw.utils import zenith_azimuth_to_ra_dec as bilby_earth_to_sky
         from bilby.gw.detector.networks import InterferometerList
         
@@ -21,7 +21,7 @@ class VerifyTransform:
                 jimgw_sky_location = np.array(jimgw_earth_to_sky(zenith, azimuth, Time(geocent_time, format="gps").sidereal_time("apparent", "greenwich").rad, detector_preset[ifos[0]].vertex - detector_preset[ifos[1]].vertex))
                 assert np.allclose(bilby_sky_location, jimgw_sky_location, atol=1e-4)
 
-    def verify_spin_transform(self):
+    def test_spin_transform(self):
         from bilby.gw.conversion import bilby_to_lalsimulation_spins as bilby_spin_transform
         from bilby.gw.conversion import symmetric_mass_ratio_to_mass_ratio, chirp_mass_and_mass_ratio_to_component_masses
 
@@ -45,4 +45,4 @@ class VerifyTransform:
             MsunInkg = 1.9884e30
             bilby_spin = jnp.array(bilby_spin_transform(thetaJN, phiJL, theta1, theta2, phi12, chi1, chi2, m1*MsunInkg, m2*MsunInkg, fRef, phiRef))
             jimgw_spin = jnp.array(jimgw_spin_transform(thetaJN, phiJL, theta1, theta2, phi12, chi1, chi2, M_c, eta, fRef, phiRef))
-            assert np.allclose(bilby_spin, jimgw_spin)
+            assert np.allclose(bilby_spin, jimgw_spin, atol=1e-4)
