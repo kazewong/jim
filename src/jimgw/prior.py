@@ -367,6 +367,22 @@ class PowerLawPrior(SequentialTransformPrior):
         )
 
 
+@jaxtyped(typechecker=typechecker)
+class UniformComponenChirpMassPrior(PowerLawPrior):
+    """
+    A prior in the range [xmin, xmax) for chirp mass which assumes the
+    component mass to be uniform.
+
+    p(\cal M) ~ \cal M
+    """
+
+    def __repr__(self):
+        return f"UniformComponentChirpMass(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
+
+    def __init__(self, xmin: float, xmax: float, parameter_names: list[str]):
+        super().__init__(xmin, xmax, 1.0, parameter_names)
+
+
 def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
     if prior.composite:
         if isinstance(prior.base_prior, list):
