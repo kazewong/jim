@@ -361,7 +361,7 @@ class PowerLawPrior(SequentialTransformPrior):
         super().__init__(
             LogisticDistribution(self.parameter_names),
             [
-                Logit((self.parameter_names, self.parameter_names)),
+                LogitTransform((self.parameter_names, self.parameter_names)),
                 transform,
             ],
         )
