@@ -162,7 +162,7 @@ class SequentialTransform(Prior):
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        output = self.base_prior.sample(rng_key, n_samples)
+        output = self.sample_base(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
     def log_prob(self, x: dict[str, Float]) -> Float:
