@@ -1,12 +1,10 @@
 from dataclasses import field
-from typing import Callable, Union
 
 import jax
 import jax.numpy as jnp
-from astropy.time import Time
 from beartype import beartype as typechecker
 from flowMC.nfmodel.base import Distribution
-from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
