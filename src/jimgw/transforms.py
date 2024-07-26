@@ -94,7 +94,7 @@ class UnivariateTransform(Transform):
         return x
 
 
-class Scale(UnivariateTransform):
+class ScaleTransform(UnivariateTransform):
     scale: Float
 
     def __init__(
@@ -107,7 +107,7 @@ class Scale(UnivariateTransform):
         self.transform_func = lambda x: x * self.scale
 
 
-class Offset(UnivariateTransform):
+class OffsetTransform(UnivariateTransform):
     offset: Float
 
     def __init__(
@@ -120,7 +120,7 @@ class Offset(UnivariateTransform):
         self.transform_func = lambda x: x + self.offset
 
 
-class Logit(UnivariateTransform):
+class LogitTransform(UnivariateTransform):
     """
     Logit transform following
 
@@ -139,7 +139,7 @@ class Logit(UnivariateTransform):
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
 
-class ArcSine(UnivariateTransform):
+class ArcSineTransform(UnivariateTransform):
     """
     ArcSine transformation
 
@@ -158,7 +158,7 @@ class ArcSine(UnivariateTransform):
         self.transform_func = lambda x: jnp.arcsin(x)
 
 
-class ArcCosine(UnivariateTransform):
+class ArcCosineTransform(UnivariateTransform):
     """
     ArcCosine transformation
 

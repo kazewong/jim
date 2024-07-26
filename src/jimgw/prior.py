@@ -6,7 +6,14 @@ from beartype import beartype as typechecker
 from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
-from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine
+from jimgw.transforms import (
+    Transform,
+    LogitTransform,
+    ScaleTransform,
+    OffsetTransform,
+    ArcSineTransform,
+    ArcCosineTransform,
+)
 
 
 class Prior(Distribution):
@@ -240,9 +247,11 @@ class UniformPrior(SequentialTransformPrior):
         super().__init__(
             LogisticDistribution(self.parameter_names),
             [
-                Logit((self.parameter_names, self.parameter_names)),
-                Scale((self.parameter_names, self.parameter_names), xmax - xmin),
-                Offset((self.parameter_names, self.parameter_names), xmin),
+                LogitTransform((self.parameter_names, self.parameter_names)),
+                ScaleTransform(
+                    (self.parameter_names, self.parameter_names), xmax - xmin
+                ),
+                OffsetTransform((self.parameter_names, self.parameter_names), xmin),
             ],
         )
 
@@ -261,7 +270,11 @@ class SinePrior(SequentialTransformPrior):
         assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
             UniformPrior(-1.0, 1.0, f"cos_{self.parameter_names}"),
-            [ArcCosine(([f"cos_{self.parameter_names}"], [self.parameter_names]))],
+            [
+                ArcCosineTransform(
+                    ([f"cos_{self.parameter_names}"], [self.parameter_names])
+                )
+            ],
         )
 
 
@@ -279,7 +292,11 @@ class CosinePrior(SequentialTransformPrior):
         assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
             UniformPrior(-1.0, 1.0, f"sin_{self.parameter_names}"),
-            [ArcSine(([f"sin_{self.parameter_names}"], [self.parameter_names]))],
+            [
+                ArcSineTransform(
+                    ([f"sin_{self.parameter_names}"], [self.parameter_names])
+                )
+            ],
         )
 
 
