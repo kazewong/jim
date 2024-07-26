@@ -201,14 +201,10 @@ class PowerLawTransform(UnivariateTransform):
         self.xmin = xmin
         self.xmax = xmax
         self.alpha = alpha
-        self.transform_func = (
-            lambda x: (
-                self.xmin ** (1.0 + self.alpha)
-                + x
-                * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-            )
-            ** (1.0 / (1.0 + self.alpha)),
-        )
+        self.transform_func = lambda x: (
+            self.xmin ** (1.0 + self.alpha)
+            + x * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+        ) ** (1.0 / (1.0 + self.alpha))
 
 
 class ParetoTransform(UnivariateTransform):
