@@ -195,9 +195,7 @@ class Combine(Prior):
     priors: list[Prior] = field(default_factory=list)
 
     def __repr__(self):
-        return (
-            f"Composite(priors={self.priors}, parameter_names={self.parameter_names})"
-        )
+        return f"Combine(priors={self.priors}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
