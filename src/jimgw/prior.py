@@ -307,7 +307,7 @@ class UniformSphere(Combine):
             [
                 Uniform(0.0, 1.0, [self.parameter_names[0]]),
                 Sine([self.parameter_names[1]]),
-                PeriodicUniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
+                Uniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
