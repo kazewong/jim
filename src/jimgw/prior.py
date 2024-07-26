@@ -10,7 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
-from jimgw.transforms import Transform, Logit, Scale, Offset, ArcCosine
+from jimgw.transforms import Transform, Logit, Scale, Offset
 
 
 class Prior(Distribution):
@@ -49,7 +49,7 @@ class Prior(Distribution):
         """
 
         return dict(zip(self.parameter_names, x))
-
+    
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
@@ -106,7 +106,9 @@ class SequentialTransform(Prior):
     transforms: list[Transform]
 
     def __repr__(self):
-        return f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
+        return (
+            f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
+        )
 
     def __init__(
         self,
@@ -125,27 +127,23 @@ class SequentialTransform(Prior):
     ) -> dict[str, Float[Array, " n_samples"]]:
         output = self.base_prior.sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
-
+    
     def log_prob(self, x: dict[str, Float]) -> Float:
         """
         log_prob has to be evaluated in the space of the base_prior.
+
+
         """
         output = self.base_prior.log_prob(x)
         for transform in self.transforms:
             x, log_jacobian = transform.transform(x)
             output -= log_jacobian
         return output
-
-    def sample_base(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        return self.base_prior.sample(rng_key, n_samples)
-
+    
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
             x = transform.forward(x)
         return x
-
 
 class Combine(Prior):
     """
@@ -186,13 +184,16 @@ class Combine(Prior):
         return output
 
 
+
 @jaxtyped(typechecker=typechecker)
-class Uniform(SequentialTransform):
+class Uniform(Prior):
+    _dist: SequentialTransform
+
     xmin: float
     xmax: float
 
     def __repr__(self):
-        return f"Uniform(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
+        return f"Uniform(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
 
     def __init__(
         self,
@@ -200,56 +201,94 @@ class Uniform(SequentialTransform):
         xmax: float,
         parameter_names: list[str],
     ):
-        self.parameter_names = parameter_names
+        super().__init__(parameter_names)
         assert self.n_dim == 1, "Uniform needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
-        super().__init__(
-            LogisticDistribution(self.parameter_names),
+        self._dist = SequentialTransform(
+            LogisticDistribution(parameter_names),
             [
-                Logit((self.parameter_names, self.parameter_names)),
-                Scale((self.parameter_names, self.parameter_names), xmax - xmin),
-                Offset((self.parameter_names, self.parameter_names), xmin),
-            ],
-        )
+                Logit((parameter_names, parameter_names)),
+                Scale((parameter_names, parameter_names), xmax - xmin),
+                Offset((parameter_names, parameter_names), xmin),
+            ])
 
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        return self._dist.sample(rng_key, n_samples)
 
-@jaxtyped(typechecker=typechecker)
-class UniformSphere(Combine):
-
-    def __repr__(self):
-        return f"UniformSphere(parameter_names={self.parameter_names})"
-
-    def __init__(self, parameter_names: list[str], **kwargs):
-        assert (
-            len(parameter_names) == 1
-        ), "UniformSphere only takes the name of the vector"
-        parameter_names = parameter_names[0]
-        self.parameter_names = [
-            f"{parameter_names}_mag",
-            f"{parameter_names}_theta",
-            f"{parameter_names}_phi",
-        ]
-        super().__init__(
-            [
-                Uniform(0.0, 1.0, [self.parameter_names[0]]),
-                SequentialTransform(
-                    Uniform(-1.0, 1.0, [f"cos_{self.parameter_names[1]}"]),
-                    [
-                        ArcCosine(
-                            (
-                                [f"cos_{self.parameter_names[1]}"],
-                                [self.parameter_names[1]],
-                            )
-                        )
-                    ],
-                ),
-                Uniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
-            ]
-        )
-
+    def log_prob(self, x: dict[str, Array]) -> Float:
+        return self._dist.log_prob(x)
+    
+    def sample_base(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        return self._dist.base_prior.sample(rng_key, n_samples)
+    
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        return self._dist.transform(x)
 
 # ====================== Things below may need rework ======================
+
+class Sphere(Prior):
+    """
+    A prior on a sphere represented by Cartesian coordinates.
+
+    Magnitude is sampled from a uniform distribution.
+    """
+
+    def __repr__(self):
+        return f"Sphere(naming={self.naming})"
+
+    def __init__(self, naming: list[str], **kwargs):
+        name = naming[0]
+        self.naming = [f"{name}_theta", f"{name}_phi", f"{name}_mag"]
+        self.transforms = {
+            self.naming[0]: (
+                f"{naming}_x",
+                lambda params: jnp.sin(params[self.naming[0]])
+                * jnp.cos(params[self.naming[1]])
+                * params[self.naming[2]],
+            ),
+            self.naming[1]: (
+                f"{naming}_y",
+                lambda params: jnp.sin(params[self.naming[0]])
+                * jnp.sin(params[self.naming[1]])
+                * params[self.naming[2]],
+            ),
+            self.naming[2]: (
+                f"{naming}_z",
+                lambda params: jnp.cos(params[self.naming[0]]) * params[self.naming[2]],
+            ),
+        }
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        rng_keys = jax.random.split(rng_key, 3)
+        theta = jnp.arccos(
+            jax.random.uniform(rng_keys[0], (n_samples,), minval=-1.0, maxval=1.0)
+        )
+        phi = jax.random.uniform(rng_keys[1], (n_samples,), minval=0, maxval=2 * jnp.pi)
+        mag = jax.random.uniform(rng_keys[2], (n_samples,), minval=0, maxval=1)
+        return self.add_name(jnp.stack([theta, phi, mag], axis=1).T)
+
+    def log_prob(self, x: dict[str, Float]) -> Float:
+        theta = x[self.naming[0]]
+        phi = x[self.naming[1]]
+        mag = x[self.naming[2]]
+        output = jnp.where(
+            (mag > 1)
+            | (mag < 0)
+            | (phi > 2 * jnp.pi)
+            | (phi < 0)
+            | (theta > jnp.pi)
+            | (theta < 0),
+            jnp.zeros_like(0) - jnp.inf,
+            jnp.log(mag**2 * jnp.sin(x[self.naming[0]])),
+        )
+        return output
 
 
 @jaxtyped(typechecker=typechecker)
