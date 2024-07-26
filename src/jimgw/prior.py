@@ -13,6 +13,8 @@ from jimgw.transforms import (
     OffsetTransform,
     ArcSineTransform,
     ArcCosineTransform,
+    PowerLawTransform,
+    ParetoTransform,
 )
 
 
@@ -61,6 +63,7 @@ class Prior(Distribution):
 
     def log_prob(self, x: dict[str, Array]) -> Float:
         raise NotImplementedError
+
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
@@ -325,6 +328,45 @@ class UniformSpherePrior(CombinePrior):
             ]
         )
 
+
+@jaxtyped(typechecker=typechecker)
+class PowerLawPrior(SequentialTransformPrior):
+    xmin: float
+    xmax: float
+    alpha: float
+
+    def __repr__(self):
+        return f"PowerLaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
+
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        alpha: float,
+        parameter_names: list[str],
+    ):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "Power law needs to be 1D distributions"
+        self.xmax = xmax
+        self.xmin = xmin
+        self.alpha = alpha
+        if self.alpha == -1.0:
+            transform = ParetoTransform(
+                (self.parameter_names, self.parameter_names), xmin, xmax
+            )
+        else:
+            transform = PowerLawTransform(
+                (self.parameter_names, self.parameter_names), xmin, xmax, alpha
+            )
+        super().__init__(
+            LogisticDistribution(self.parameter_names),
+            [
+                Logit((self.parameter_names, self.parameter_names)),
+                transform,
+            ],
+        )
+
+
 def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
     if prior.composite:
         if isinstance(prior.base_prior, list):
@@ -336,6 +378,7 @@ def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
         output.append(prior)
 
     return output
+
 
 # ====================== Things below may need rework ======================
 
