@@ -10,7 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
-from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine
+from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine, PowerLawTransform, ParetoTransform
 
 
 class Prior(Distribution):
@@ -311,6 +311,41 @@ class UniformSphere(Combine):
             ]
         )
 
+@jaxtyped(typechecker=typechecker)
+class PowerLaw(SequentialTransform):
+    xmin: float
+    xmax: float
+    alpha: float
+
+    def __repr__(self):
+        return f"PowerLaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
+
+    def __init__(
+        self,
+        xmin: float,
+        xmax: float,
+        alpha: float,
+        parameter_names: list[str],
+    ):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "Power law needs to be 1D distributions"
+        self.xmax = xmax
+        self.xmin = xmin
+        self.alpha = alpha
+        if self.alpha == -1.0:
+            transform = ParetoTransform((self.parameter_names, self.parameter_names), xmin, xmax)
+        else:
+            transform = PowerLawTransform(
+                (self.parameter_names, self.parameter_names), xmin, xmax, alpha
+            )
+        super().__init__(
+            LogisticDistribution(self.parameter_names),
+            [
+                Logit((self.parameter_names, self.parameter_names)),
+                transform,
+            ],
+        )
+
 
 # ====================== Things below may need rework ======================
 
@@ -504,83 +539,83 @@ class EarthFrame(Prior):
         return output + jnp.log(jnp.sin(zenith))
 
 
-@jaxtyped(typechecker=typechecker)
-class PowerLaw(Prior):
-    """
-    A prior following the power-law with alpha in the range [xmin, xmax).
-    p(x) ~ x^{\alpha}
-    """
+# @jaxtyped(typechecker=typechecker)
+# class PowerLaw(Prior):
+#     """
+#     A prior following the power-law with alpha in the range [xmin, xmax).
+#     p(x) ~ x^{\alpha}
+#     """
 
-    xmin: float = 0.0
-    xmax: float = 1.0
-    alpha: float = 0.0
-    normalization: float = 1.0
+#     xmin: float = 0.0
+#     xmax: float = 1.0
+#     alpha: float = 0.0
+#     normalization: float = 1.0
 
-    def __repr__(self):
-        return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
+#     def __repr__(self):
+#         return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
 
-    def __init__(
-        self,
-        xmin: float,
-        xmax: float,
-        alpha: Union[Int, float],
-        naming: list[str],
-        transforms: dict[str, tuple[str, Callable]] = {},
-        **kwargs,
-    ):
-        super().__init__(naming, transforms)
-        if alpha < 0.0:
-            assert xmin > 0.0, "With negative alpha, xmin must > 0"
-        assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
-        self.xmax = xmax
-        self.xmin = xmin
-        self.alpha = alpha
-        if alpha == -1:
-            self.normalization = float(1.0 / jnp.log(self.xmax / self.xmin))
-        else:
-            self.normalization = (1 + self.alpha) / (
-                self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
-            )
+#     def __init__(
+#         self,
+#         xmin: float,
+#         xmax: float,
+#         alpha: Union[Int, float],
+#         naming: list[str],
+#         transforms: dict[str, tuple[str, Callable]] = {},
+#         **kwargs,
+#     ):
+#         super().__init__(naming, transforms)
+#         if alpha < 0.0:
+#             assert xmin > 0.0, "With negative alpha, xmin must > 0"
+#         assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
+#         self.xmax = xmax
+#         self.xmin = xmin
+#         self.alpha = alpha
+#         if alpha == -1:
+#             self.normalization = float(1.0 / jnp.log(self.xmax / self.xmin))
+#         else:
+#             self.normalization = (1 + self.alpha) / (
+#                 self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
+#             )
 
-    def sample(
-        self, rng_key: PRNGKeyArray, n_samples: int
-    ) -> dict[str, Float[Array, " n_samples"]]:
-        """
-        Sample from a power-law distribution.
+#     def sample(
+#         self, rng_key: PRNGKeyArray, n_samples: int
+#     ) -> dict[str, Float[Array, " n_samples"]]:
+#         """
+#         Sample from a power-law distribution.
 
-        Parameters
-        ----------
-        rng_key : PRNGKeyArray
-            A random key to use for sampling.
-        n_samples : int
-            The number of samples to draw.
+#         Parameters
+#         ----------
+#         rng_key : PRNGKeyArray
+#             A random key to use for sampling.
+#         n_samples : int
+#             The number of samples to draw.
 
-        Returns
-        -------
-        samples : dict
-            Samples from the distribution. The keys are the names of the parameters.
+#         Returns
+#         -------
+#         samples : dict
+#             Samples from the distribution. The keys are the names of the parameters.
 
-        """
-        q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
-        if self.alpha == -1:
-            samples = self.xmin * jnp.exp(q_samples * jnp.log(self.xmax / self.xmin))
-        else:
-            samples = (
-                self.xmin ** (1.0 + self.alpha)
-                + q_samples
-                * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-            ) ** (1.0 / (1.0 + self.alpha))
-        return self.add_name(samples[None])
+#         """
+#         q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
+#         if self.alpha == -1:
+#             samples = self.xmin * jnp.exp(q_samples * jnp.log(self.xmax / self.xmin))
+#         else:
+#             samples = (
+#                 self.xmin ** (1.0 + self.alpha)
+#                 + q_samples
+#                 * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+#             ) ** (1.0 / (1.0 + self.alpha))
+#         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
-        variable = x[self.naming[0]]
-        log_in_range = jnp.where(
-            (variable >= self.xmax) | (variable <= self.xmin),
-            jnp.zeros_like(variable) - jnp.inf,
-            jnp.zeros_like(variable),
-        )
-        log_p = self.alpha * jnp.log(variable) + jnp.log(self.normalization)
-        return log_p + log_in_range
+#     def log_prob(self, x: dict[str, Float]) -> Float:
+#         variable = x[self.naming[0]]
+#         log_in_range = jnp.where(
+#             (variable >= self.xmax) | (variable <= self.xmin),
+#             jnp.zeros_like(variable) - jnp.inf,
+#             jnp.zeros_like(variable),
+#         )
+#         log_p = self.alpha * jnp.log(variable) + jnp.log(self.normalization)
+#         return log_p + log_in_range
 
 
 @jaxtyped(typechecker=typechecker)
