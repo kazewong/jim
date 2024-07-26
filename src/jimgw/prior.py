@@ -10,7 +10,7 @@ from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 
 from jimgw.single_event.detector import GroundBased2G, detector_preset
 from jimgw.single_event.utils import zenith_azimuth_to_ra_dec
-from jimgw.transforms import Transform, Logit, Scale, Offset, ArcCosine
+from jimgw.transforms import Transform, Logit, Scale, Offset, ArcSine, ArcCosine
 
 
 class Prior(Distribution):
@@ -215,6 +215,42 @@ class Uniform(SequentialTransform):
 
 
 @jaxtyped(typechecker=typechecker)
+class Sine(SequentialTransform):
+    """
+    A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
+    """
+
+    def __repr__(self):
+        return f"Sine(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "Sine needs to be 1D distributions"
+        super().__init__(
+            Uniform(-1.0, 1.0, f"cos_{self.parameter_names}"),
+            [ArcCosine(([f"cos_{self.parameter_names}"], [self.parameter_names]))],
+        )
+
+
+@jaxtyped(typechecker=typechecker)
+class Cosine(SequentialTransform):
+    """
+    A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
+    """
+
+    def __repr__(self):
+        return f"Cosine(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "Cosine needs to be 1D distributions"
+        super().__init__(
+            Uniform(-1.0, 1.0, f"sin_{self.parameter_names}"),
+            [ArcSine(([f"sin_{self.parameter_names}"], [self.parameter_names]))],
+        )
+
+
+@jaxtyped(typechecker=typechecker)
 class UniformSphere(Combine):
 
     def __repr__(self):
@@ -233,17 +269,7 @@ class UniformSphere(Combine):
         super().__init__(
             [
                 Uniform(0.0, 1.0, [self.parameter_names[0]]),
-                SequentialTransform(
-                    Uniform(-1.0, 1.0, [f"cos_{self.parameter_names[1]}"]),
-                    [
-                        ArcCosine(
-                            (
-                                [f"cos_{self.parameter_names[1]}"],
-                                [self.parameter_names[1]],
-                            )
-                        )
-                    ],
-                ),
+                Sine([self.parameter_names[1]]),
                 Uniform(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
