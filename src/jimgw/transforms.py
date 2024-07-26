@@ -138,6 +138,7 @@ class Logit(UnivariateTransform):
         super().__init__(name_mapping)
         self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
 
+
 class Modulo(UnivariateTransform):
     """
     Modulo transform following
@@ -157,6 +158,7 @@ class Modulo(UnivariateTransform):
         super().__init__(name_mapping)
         self.modulo = modulo
         self.transform_func = lambda x: jnp.mod(x, self.modulo)
+
 
 class ArcSine(UnivariateTransform):
     """

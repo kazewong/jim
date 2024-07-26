@@ -105,7 +105,9 @@ class StandardNormalDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        assert self.n_dim == 1, "StandardNormalDistribution needs to be 1D distributions"
+        assert (
+            self.n_dim == 1
+        ), "StandardNormalDistribution needs to be 1D distributions"
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -131,7 +133,8 @@ class StandardNormalDistribution(Prior):
 
     def log_prob(self, x: dict[str, Float]) -> Float:
         variable = x[self.parameter_names[0]]
-        return -0.5 * variable ** 2 - 0.5 * jnp.log(2 * jnp.pi)
+        return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
+
 
 class SequentialTransform(Prior):
     """
@@ -248,6 +251,7 @@ class Uniform(SequentialTransform):
                 Offset((self.parameter_names, self.parameter_names), xmin),
             ],
         )
+
 
 @jaxtyped(typechecker=typechecker)
 class PeriodicUniform(SequentialTransform):
