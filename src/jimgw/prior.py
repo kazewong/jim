@@ -12,7 +12,6 @@ from jimgw.transforms import (
     ScaleTransform,
     OffsetTransform,
     ArcSineTransform,
-    ArcCosineTransform,
     PowerLawTransform,
     ParetoTransform,
 )
@@ -32,7 +31,7 @@ class Prior(Distribution):
     composite: bool = False
 
     @property
-    def n_dim(self):
+    def n_dim(self) -> int:
         return len(self.parameter_names)
 
     def __init__(self, parameter_names: list[str]):
@@ -273,12 +272,13 @@ class SinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, [f"cos_{self.parameter_names[0]}"]),
+            CosinePrior([f"{self.parameter_names[0]}"]),
             [
-                ArcCosineTransform(
-                    ([f"cos_{self.parameter_names[0]}"], [self.parameter_names[0]])
+                OffsetTransform(
+                    (([f"{self.parameter_names[0]}"], [f"{self.parameter_names[0]}"])),
+                    jnp.pi / 2,
                 )
-            ],
+            ]
         )
 
 
@@ -295,7 +295,7 @@ class CosinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, f"sin_{self.parameter_names[0]}"),
+            UniformPrior(-1.0, 1.0, [f"sin_{self.parameter_names[0]}"]),
             [
                 ArcSineTransform(
                     ([f"sin_{self.parameter_names[0]}"], [self.parameter_names[0]])
@@ -311,14 +311,12 @@ class UniformSpherePrior(CombinePrior):
         return f"UniformSphere(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
-        assert (
-            len(parameter_names) == 1
-        ), "UniformSphere only takes the name of the vector"
-        parameter_names = parameter_names[0]
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
-            f"{parameter_names}_mag",
-            f"{parameter_names}_theta",
-            f"{parameter_names}_phi",
+            f"{self.parameter_names[0]}_mag",
+            f"{self.parameter_names[0]}_theta",
+            f"{self.parameter_names[0]}_phi",
         ]
         super().__init__(
             [

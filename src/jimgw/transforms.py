@@ -158,25 +158,6 @@ class ArcSineTransform(UnivariateTransform):
         self.transform_func = lambda x: jnp.arcsin(x)
 
 
-class ArcCosineTransform(UnivariateTransform):
-    """
-    ArcCosine transformation
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        self.transform_func = lambda x: jnp.arccos(x)
-
-
 class PowerLawTransform(UnivariateTransform):
     """
     PowerLaw transformation
