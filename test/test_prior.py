@@ -96,7 +96,7 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(powerlaw_samples['x']))
             
             # Check that all the log_probs are finite
-            samples = trace_prior_parent(p)[0].sample(jax.random.PRNGKey(0), 10000)['x']
+            samples = (trace_prior_parent(p)[0].sample(jax.random.PRNGKey(0), 10000))['x']
             base_log_p = jax.vmap(p.log_prob, [0])({'x':samples})
             assert jnp.all(jnp.isfinite(base_log_p))
             
