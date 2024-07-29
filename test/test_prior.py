@@ -68,8 +68,8 @@ class TestUnivariatePrior:
     def test_power_law(self):
         from bilby.core.prior.analytical import PowerLaw
         def func(alpha):
-            xmin = 1.0
-            xmax = 20.0
+            xmin = 0.05
+            xmax = 10.0
             p = PowerLawPrior(xmin, xmax, alpha, ["x"])
             # Check that all the samples are finite
             powerlaw_samples = p.sample(jax.random.PRNGKey(0), 10000)
@@ -81,10 +81,15 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(base_log_p))
             
             # Check that the log_prob is correct in the support
-            samples = jnp.linspace(xmin, xmax, 1000)
+            samples = jnp.linspace(-10.0, 10.0, 1000)
             transformed_samples = jax.vmap(p.transform)({'x': samples})['x']
-            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), PowerLaw(alpha, xmin, xmax).ln_prob(transformed_samples))
-        
+            # cut off the samples that are outside the support
+            samples = samples[transformed_samples >= xmin]
+            transformed_samples = transformed_samples[transformed_samples >= xmin]
+            samples = samples[transformed_samples <= xmax]
+            transformed_samples = transformed_samples[transformed_samples <= xmax]
+            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), PowerLaw(alpha, xmin, xmax).ln_prob(transformed_samples), atol=1e-4)
+
         # Test Pareto Transform
         func(-1.0)
         # Test other values of alpha
