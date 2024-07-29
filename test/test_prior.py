@@ -75,8 +75,9 @@ class TestUnivariatePrior:
         p = UniformSpherePrior(["x"])
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
-        assert jnp.all(jnp.isfinite(samples['x']))
-        
+        assert jnp.all(jnp.isfinite(samples['x_mag']))
+        assert jnp.all(jnp.isfinite(samples['x_theta']))
+        assert jnp.all(jnp.isfinite(samples['x_phi']))
         # Check that the log_prob is finite
         samples = {}
         for i in range(3):
