@@ -7,7 +7,7 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior
+from jimgw.prior import Prior, trace_prior_parent
 
 
 class Jim(object):
@@ -26,11 +26,18 @@ class Jim(object):
         self,
         likelihood: LikelihoodBase,
         prior: Prior,
-        parameter_names: list[str],
+        parameter_names: list[str] | None = None,
         **kwargs,
     ):
         self.likelihood = likelihood
         self.prior = prior
+        if parameter_names is None:
+            print("No parameter names provided. Will try to trace the prior.")
+            parents = []
+            trace_prior_parent(prior, parents)
+            parameter_names = []
+            for parent in parents:
+                parameter_names.extend(parent.parameter_names)
         self.parameter_names = parameter_names
 
         seed = kwargs.get("seed", 0)
