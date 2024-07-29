@@ -5,6 +5,9 @@ import scipy.stats as stats
 class TestUnivariatePrior:
     def test_logistic(self):
         p = LogisticDistribution(["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -15,6 +18,9 @@ class TestUnivariatePrior:
 
     def test_standard_normal(self):
         p = StandardNormalDistribution(["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -26,6 +32,9 @@ class TestUnivariatePrior:
     def test_uniform(self):
         xmin, xmax = -10.0, 10.0
         p = UniformPrior(xmin, xmax, ["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is correct in the support
         samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -33,6 +42,9 @@ class TestUnivariatePrior:
 
     def test_sine(self):
         p = SinePrior(["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -46,6 +58,9 @@ class TestUnivariatePrior:
         
     def test_cosine(self):
         p = CosinePrior(["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -58,6 +73,10 @@ class TestUnivariatePrior:
 
     def test_uniform_sphere(self):
         p = UniformSpherePrior(["x"])
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x']))
+        
         # Check that the log_prob is finite
         samples = {}
         for i in range(3):
