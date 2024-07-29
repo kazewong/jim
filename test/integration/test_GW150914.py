@@ -36,24 +36,25 @@ Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
 q_prior = UniformPrior(
     0.125,
     1.0,
-    parameter_names=["q"],
+    parameter_names=["q"], # Need name transformation in likelihood to work
 )
 s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
 s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
+# Current likelihood sampling will fail and give nan because of large number
 dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 cos_iota_prior = UniformPrior(
     -1.0,
     1.0,
-    parameter_names=["cos_iota"],
+    parameter_names=["cos_iota"], # Need name transformation in likelihood to work
 )
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
 sin_dec_prior = UniformPrior(
     -1.0,
     1.0,
-    parameter_names=["sin_dec"],
+    parameter_names=["sin_dec"], # Need name transformation in likelihood to work
 )
 
 prior = CombinePrior(
