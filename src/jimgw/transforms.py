@@ -207,5 +207,5 @@ class ParetoTransform(UnivariateTransform):
         self.xmin = xmin
         self.xmax = xmax
         self.transform_func = lambda x: self.xmin * jnp.exp(
-            x * jnp.log(self.xmax) - x * jnp.log(self.xmin)
+            x * jnp.log(self.xmax / self.xmin)
         )
