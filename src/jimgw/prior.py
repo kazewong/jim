@@ -348,6 +348,8 @@ class PowerLawPrior(SequentialTransformPrior):
         self.xmax = xmax
         self.xmin = xmin
         self.alpha = alpha
+        assert self.xmin < self.xmax, "xmin must be less than xmax"
+        assert self.xmin > 0.0, "x must be positive"
         if self.alpha == -1.0:
             transform = ParetoTransform(
                 (self.parameter_names, self.parameter_names), xmin, xmax
