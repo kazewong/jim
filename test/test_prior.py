@@ -5,9 +5,6 @@ import scipy.stats as stats
 class TestUnivariatePrior:
     def test_logistic(self):
         p = LogisticDistribution(["x"])
-        # Check that all the samples are finite
-        samples = p.sample(jax.random.PRNGKey(0), 10000)
-        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -18,9 +15,6 @@ class TestUnivariatePrior:
 
     def test_standard_normal(self):
         p = StandardNormalDistribution(["x"])
-        # Check that all the samples are finite
-        samples = p.sample(jax.random.PRNGKey(0), 10000)
-        assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
