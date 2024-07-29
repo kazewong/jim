@@ -284,7 +284,7 @@ class SinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
-            CosinePrior([f"{self.parameter_names[0]}"]),
+            CosinePrior([f"{self.parameter_names[0]}-pi/2"]),
             [
                 OffsetTransform(
                     (
