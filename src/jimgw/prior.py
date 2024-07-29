@@ -250,11 +250,25 @@ class UniformPrior(SequentialTransformPrior):
         super().__init__(
             LogisticDistribution(self.parameter_names),
             [
-                LogitTransform((self.parameter_names, self.parameter_names)),
-                ScaleTransform(
-                    (self.parameter_names, self.parameter_names), xmax - xmin
+                LogitTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base"],
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                    )
                 ),
-                OffsetTransform((self.parameter_names, self.parameter_names), xmin),
+                ScaleTransform(
+                    (
+                        (
+                            [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                            [f"{self.parameter_names[0]}-({xmin})"],
+                        ),
+                        xmax - xmin,
+                    ),
+                ),
+                OffsetTransform(
+                    ([f"{self.parameter_names[0]}-({xmin})"], self.parameter_names),
+                    xmin,
+                ),
             ],
         )
 
@@ -275,7 +289,12 @@ class SinePrior(SequentialTransformPrior):
             CosinePrior([f"{self.parameter_names[0]}"]),
             [
                 OffsetTransform(
-                    (([f"{self.parameter_names[0]}"], [f"{self.parameter_names[0]}"])),
+                    (
+                        (
+                            [f"{self.parameter_names[0]}-pi/2"],
+                            [f"{self.parameter_names[0]}"],
+                        )
+                    ),
                     jnp.pi / 2,
                 )
             ],
@@ -295,10 +314,10 @@ class CosinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, [f"sin_{self.parameter_names[0]}"]),
+            UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"]),
             [
                 ArcSineTransform(
-                    ([f"sin_{self.parameter_names[0]}"], [self.parameter_names[0]])
+                    ([f"sin({self.parameter_names[0]})"], [self.parameter_names[0]])
                 )
             ],
         )
@@ -308,7 +327,7 @@ class CosinePrior(SequentialTransformPrior):
 class UniformSpherePrior(CombinePrior):
 
     def __repr__(self):
-        return f"UniformSphere(parameter_names={self.parameter_names})"
+        return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
         self.parameter_names = parameter_names
@@ -334,7 +353,7 @@ class PowerLawPrior(SequentialTransformPrior):
     alpha: float
 
     def __repr__(self):
-        return f"PowerLaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
+        return f"PowerLawPrior(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
 
     def __init__(
         self,
@@ -352,35 +371,45 @@ class PowerLawPrior(SequentialTransformPrior):
         assert self.xmin > 0.0, "x must be positive"
         if self.alpha == -1.0:
             transform = ParetoTransform(
-                (self.parameter_names, self.parameter_names), xmin, xmax
+                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
+                xmin,
+                xmax,
             )
         else:
             transform = PowerLawTransform(
-                (self.parameter_names, self.parameter_names), xmin, xmax, alpha
+                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
+                xmin,
+                xmax,
+                alpha,
             )
         super().__init__(
             LogisticDistribution(self.parameter_names),
             [
-                LogitTransform((self.parameter_names, self.parameter_names)),
+                LogitTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base"],
+                        [f"{self.parameter_names[0]}_before_transform"],
+                    )
+                ),
                 transform,
             ],
         )
 
 
 @jaxtyped(typechecker=typechecker)
-class UniformComponenChirpMassPrior(PowerLawPrior):
+class UniformInComponentsChirpMassPrior(PowerLawPrior):
     """
     A prior in the range [xmin, xmax) for chirp mass which assumes the
-    component mass to be uniform.
+    component masses to be uniformly distributed.
 
-    p(\cal M) ~ \cal M
+    p(M_c) ~ M_c
     """
 
     def __repr__(self):
-        return f"UniformComponentChirpMass(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
+        return f"UniformInComponentsChirpMassPrior(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
 
-    def __init__(self, xmin: float, xmax: float, parameter_names: list[str]):
-        super().__init__(xmin, xmax, 1.0, parameter_names)
+    def __init__(self, xmin: float, xmax: float):
+        super().__init__(xmin, xmax, 1.0, ["M_c"])
 
 
 def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
@@ -586,85 +615,6 @@ def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
 #             jnp.zeros_like(0),
 #         )
 #         return output + jnp.log(jnp.sin(zenith))
-
-
-# @jaxtyped(typechecker=typechecker)
-# class PowerLaw(Prior):
-#     """
-#     A prior following the power-law with alpha in the range [xmin, xmax).
-#     p(x) ~ x^{\alpha}
-#     """
-
-#     xmin: float = 0.0
-#     xmax: float = 1.0
-#     alpha: float = 0.0
-#     normalization: float = 1.0
-
-#     def __repr__(self):
-#         return f"Powerlaw(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
-
-#     def __init__(
-#         self,
-#         xmin: float,
-#         xmax: float,
-#         alpha: Union[Int, float],
-#         naming: list[str],
-#         transforms: dict[str, tuple[str, Callable]] = {},
-#         **kwargs,
-#     ):
-#         super().__init__(naming, transforms)
-#         if alpha < 0.0:
-#             assert xmin > 0.0, "With negative alpha, xmin must > 0"
-#         assert self.n_dim == 1, "Powerlaw needs to be 1D distributions"
-#         self.xmax = xmax
-#         self.xmin = xmin
-#         self.alpha = alpha
-#         if alpha == -1:
-#             self.normalization = float(1.0 / jnp.log(self.xmax / self.xmin))
-#         else:
-#             self.normalization = (1 + self.alpha) / (
-#                 self.xmax ** (1 + self.alpha) - self.xmin ** (1 + self.alpha)
-#             )
-
-#     def sample(
-#         self, rng_key: PRNGKeyArray, n_samples: int
-#     ) -> dict[str, Float[Array, " n_samples"]]:
-#         """
-#         Sample from a power-law distribution.
-
-#         Parameters
-#         ----------
-#         rng_key : PRNGKeyArray
-#             A random key to use for sampling.
-#         n_samples : int
-#             The number of samples to draw.
-
-#         Returns
-#         -------
-#         samples : dict
-#             Samples from the distribution. The keys are the names of the parameters.
-
-#         """
-#         q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
-#         if self.alpha == -1:
-#             samples = self.xmin * jnp.exp(q_samples * jnp.log(self.xmax / self.xmin))
-#         else:
-#             samples = (
-#                 self.xmin ** (1.0 + self.alpha)
-#                 + q_samples
-#                 * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-#             ) ** (1.0 / (1.0 + self.alpha))
-#         return self.add_name(samples[None])
-
-#     def log_prob(self, x: dict[str, Float]) -> Float:
-#         variable = x[self.naming[0]]
-#         log_in_range = jnp.where(
-#             (variable >= self.xmax) | (variable <= self.xmin),
-#             jnp.zeros_like(variable) - jnp.inf,
-#             jnp.zeros_like(variable),
-#         )
-#         log_p = self.alpha * jnp.log(variable) + jnp.log(self.normalization)
-#         return log_p + log_in_range
 
 
 # @jaxtyped(typechecker=typechecker)
