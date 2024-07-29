@@ -64,3 +64,33 @@ class TestUnivariatePrior:
             samples.update(trace_prior_parent(p)[i].sample(jax.random.PRNGKey(0), 10000))
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
+    
+    def test_power_law(self):
+        from bilby.core.prior.analytical import PowerLaw
+        def func(alpha):
+            xmin = 1.0
+            xmax = 20.0
+            p = PowerLawPrior(xmin, xmax, alpha, ["x"])
+            # Check that all the samples are finite
+            powerlaw_samples = p.sample(jax.random.PRNGKey(0), 10000)
+            assert jnp.all(jnp.isfinite(powerlaw_samples['x']))
+            
+            # Check that all the log_probs are finite
+            samples = trace_prior_parent(p)[0].sample(jax.random.PRNGKey(0), 10000)['x']
+            base_log_p = jax.vmap(p.log_prob, [0])({'x':samples})
+            assert jnp.all(jnp.isfinite(log_p))
+            
+            # Check that the log_prob is correct in the support
+            samples = jnp.linspace(xmin, xmax, 1000)
+            transformed_samples = jax.vmap(p.transform)({'x': samples})['x']
+            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), PowerLaw(alpha, xmin, xmax).ln_prob(transformed_samples))
+        
+        # Test Pareto Transform
+        func(-1.0)
+        # Test other values of alpha
+        positive_alpha = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+        for alpha_val in positive_alpha:
+            func(alpha_val)
+        negative_alpha = [-0.5, -1.5, -2.0, -2.5, -3.0, -3.5, -4.0, -4.5, -5.0]
+        for alpha_val in negative_alpha:
+            func(alpha_val)
