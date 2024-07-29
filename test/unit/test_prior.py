@@ -96,20 +96,20 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(powerlaw_samples['x']))
             
             # Check that all the log_probs are finite
-            samples = (trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000))['x']
-            base_log_p = jax.vmap(p.log_prob, [0])({'x':samples})
+            samples = (trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000))['x_base']
+            base_log_p = jax.vmap(p.log_prob, [0])({'x_base':samples})
             assert jnp.all(jnp.isfinite(base_log_p))
             
             # Check that the log_prob is correct in the support
             samples = jnp.linspace(-10.0, 10.0, 1000)
-            transformed_samples = jax.vmap(p.transform)({'x': samples})['x']
+            transformed_samples = jax.vmap(p.transform)({'x_base': samples})['x']
             # cut off the samples that are outside the support
             samples = samples[transformed_samples >= xmin]
             transformed_samples = transformed_samples[transformed_samples >= xmin]
             samples = samples[transformed_samples <= xmax]
             transformed_samples = transformed_samples[transformed_samples <= xmax]
             # log pdf of powerlaw
-            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), powerlaw_log_pdf(transformed_samples, alpha, xmin, xmax), atol=1e-4)
+            assert jnp.allclose(jax.vmap(p.log_prob)({'x_base':samples}), powerlaw_log_pdf(transformed_samples, alpha, xmin, xmax), atol=1e-4)
 
         # Test Pareto Transform
         func(-1.0)
