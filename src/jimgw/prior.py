@@ -278,7 +278,7 @@ class SinePrior(SequentialTransformPrior):
                     (([f"{self.parameter_names[0]}"], [f"{self.parameter_names[0]}"])),
                     jnp.pi / 2,
                 )
-            ]
+            ],
         )
 
 
