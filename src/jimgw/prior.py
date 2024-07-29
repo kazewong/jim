@@ -248,7 +248,7 @@ class UniformPrior(SequentialTransformPrior):
         self.xmax = xmax
         self.xmin = xmin
         super().__init__(
-            LogisticDistribution(self.parameter_names),
+            LogisticDistribution([f"{self.parameter_names[0]}_base"]),
             [
                 LogitTransform(
                     (
@@ -258,12 +258,10 @@ class UniformPrior(SequentialTransformPrior):
                 ),
                 ScaleTransform(
                     (
-                        (
-                            [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
-                            [f"{self.parameter_names[0]}-({xmin})"],
-                        ),
-                        xmax - xmin,
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                        [f"{self.parameter_names[0]}-({xmin})"],
                     ),
+                    xmax - xmin,
                 ),
                 OffsetTransform(
                     ([f"{self.parameter_names[0]}-({xmin})"], self.parameter_names),
@@ -383,7 +381,7 @@ class PowerLawPrior(SequentialTransformPrior):
                 alpha,
             )
         super().__init__(
-            LogisticDistribution(self.parameter_names),
+            LogisticDistribution([f"{self.parameter_names[0]}_base"]),
             [
                 LogitTransform(
                     (
