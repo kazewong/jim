@@ -80,7 +80,13 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
     
     def test_power_law(self):
-        from bilby.core.prior.analytical import PowerLaw
+        def powerlaw_log_pdf(x, alpha, xmin, xmax):
+            if alpha == -1.0:
+                normalization = 1./(jnp.log(xmax) - jnp.log(xmin))
+            else:
+                normalization = (1.0 + alpha) / (xmax**(1.0 + alpha) - xmin**(1.0 + alpha))
+            return jnp.log(normalization) + alpha * jnp.log(x)
+        
         def func(alpha):
             xmin = 0.05
             xmax = 10.0
@@ -102,11 +108,13 @@ class TestUnivariatePrior:
             transformed_samples = transformed_samples[transformed_samples >= xmin]
             samples = samples[transformed_samples <= xmax]
             transformed_samples = transformed_samples[transformed_samples <= xmax]
-            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), PowerLaw(alpha, xmin, xmax).ln_prob(transformed_samples), atol=1e-4)
+            # log pdf of powerlaw
+            assert jnp.allclose(jax.vmap(p.log_prob)({'x':samples}), powerlaw_log_pdf(transformed_samples, alpha, xmin, xmax), atol=1e-4)
 
         # Test Pareto Transform
         func(-1.0)
         # Test other values of alpha
+        print("Testing PowerLawPrior")
         positive_alpha = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
         for alpha_val in positive_alpha:
             func(alpha_val)
