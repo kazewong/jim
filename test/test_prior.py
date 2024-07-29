@@ -78,7 +78,7 @@ class TestUnivariatePrior:
             # Check that all the log_probs are finite
             samples = trace_prior_parent(p)[0].sample(jax.random.PRNGKey(0), 10000)['x']
             base_log_p = jax.vmap(p.log_prob, [0])({'x':samples})
-            assert jnp.all(jnp.isfinite(log_p))
+            assert jnp.all(jnp.isfinite(base_log_p))
             
             # Check that the log_prob is correct in the support
             samples = jnp.linspace(xmin, xmax, 1000)
