@@ -10,18 +10,27 @@ from jaxtyping import Float
 class Transform(ABC):
     """
     Base class for transform.
-
-    The idea of transform should be used on distribtuion,
+    The purpose of this class is purely for keeping name
     """
 
     name_mapping: tuple[list[str], list[str]]
-    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
     ):
         self.name_mapping = name_mapping
+
+    def propagate_name(self, x: list[str]) -> list[str]:
+        input_set = set(x)
+        from_set = set(self.name_mapping[0])
+        to_set = set(self.name_mapping[1])
+        return list(input_set - from_set | to_set)
+
+class BijectiveTransform(Transform):
+
+    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+    inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         return self.transform(x)
@@ -62,13 +71,64 @@ class Transform(ABC):
                 The transformed dictionary.
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
+        """
+        Inverse transform the input y to original coordinate x.
 
-    def propagate_name(self, x: list[str]) -> list[str]:
-        input_set = set(x)
-        from_set = set(self.name_mapping[0])
-        to_set = set(self.name_mapping[1])
-        return list(input_set - from_set | to_set)
+        Parameters
+        ----------
+        y : dict[str, Float]
+                The transformed dictionary.
 
+        Returns
+        -------
+        x : dict[str, Float]
+                The original dictionary.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+        """
+        Pull back the input y to original coordinate x and return the log Jacobian determinant.
+
+        Parameters
+        ----------
+        y : dict[str, Float]
+                The transformed dictionary.
+
+        Returns
+        -------
+        x : dict[str, Float]
+                The original dictionary.
+        log_det : Float
+                The log Jacobian determinant.
+        """
+        raise NotImplementedError    
+
+class NonBijectiveTransform(Transform):
+    
+    def __call__(self, x: dict[str, Float]) -> dict[str, Float]:
+        return self.forward(x)
+    
+    @abstractmethod
+    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
+        """
+        Push forward the input x to transformed coordinate y.
+
+        Parameters
+        ----------
+        x : dict[str, Float]
+                The input dictionary.
+
+        Returns
+        -------
+        y : dict[str, Float]
+                The transformed dictionary.
+        """
+        raise NotImplementedError
 
 class UnivariateTransform(Transform):
 
@@ -94,7 +154,7 @@ class UnivariateTransform(Transform):
         return x
 
 
-class ScaleTransform(UnivariateTransform):
+class ScaleTransform(BijectiveTransform):
     scale: Float
 
     def __init__(
@@ -105,6 +165,15 @@ class ScaleTransform(UnivariateTransform):
         super().__init__(name_mapping)
         self.scale = scale
         self.transform_func = lambda x: x * self.scale
+        self.inverse_transform_func = lambda x: x / self.scale
+    
+    def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+        input_params = x.pop(self.name_mapping[0][0])
+        assert_rank(input_params, 0)
+        output_params = self.transform_func(input_params)
+        jacobian = jnp.log(jnp.abs(self.scale))
+        x[self.name_mapping[1][0]] = output_params
+        return x, jacobian
 
 
 class OffsetTransform(UnivariateTransform):
