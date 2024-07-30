@@ -8,6 +8,7 @@ from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
 from jimgw.transforms import (
     Transform,
+    NtoNTransform,
     LogitTransform,
     ScaleTransform,
     OffsetTransform,
@@ -149,7 +150,7 @@ class SequentialTransformPrior(Prior):
     """
 
     base_prior: Prior
-    transforms: list[Transform]
+    transforms: list[NtoNTransform]
 
     def __repr__(self):
         return f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
@@ -157,7 +158,7 @@ class SequentialTransformPrior(Prior):
     def __init__(
         self,
         base_prior: Prior,
-        transforms: list[Transform],
+        transforms: list[NtoNTransform],
     ):
 
         self.base_prior = base_prior

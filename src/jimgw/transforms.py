@@ -27,13 +27,10 @@ class Transform(ABC):
         to_set = set(self.name_mapping[1])
         return list(input_set - from_set | to_set)
 
-class BijectiveTransform(Transform):
+
+class NtoNTransform(Transform):
 
     transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
-    inverse_transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
-
-    def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
-        return self.transform(x)
 
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
@@ -55,7 +52,11 @@ class BijectiveTransform(Transform):
         input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
         output_params = self.transform_func(input_params)
         jacobian = jnp.array(jax.jacfwd(self.transform_func)(input_params))
-        jax.tree.map(lambda key, value: x.update({key: value}), self.name_mapping[1], output_params)
+        jax.tree.map(
+            lambda key, value: x.update({key: value}),
+            self.name_mapping[1],
+            output_params,
+        )
         return x, jnp.log(jnp.linalg.det(jacobian))
 
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
@@ -74,9 +75,21 @@ class BijectiveTransform(Transform):
         """
         input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
         output_params = self.transform_func(input_params)
-        jax.tree.map(lambda key, value: x.update({key: value}), self.name_mapping[1], output_params)
+        jax.tree.map(
+            lambda key, value: x.update({key: value}),
+            self.name_mapping[1],
+            output_params,
+        )
         return x
-    
+
+
+class BijectiveTransform(NtoNTransform):
+
+    inverse_transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+
+    def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+        return self.transform(x)
+
     def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
         """
         Inverse transform the input y to original coordinate x.
@@ -94,7 +107,11 @@ class BijectiveTransform(Transform):
         output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
         input_params = self.inverse_transform_func(output_params)
         jacobian = jnp.array(jax.jacfwd(self.inverse_transform_func)(output_params))
-        jax.tree.map(lambda key, value: y.update({key: value}), self.name_mapping[0], input_params)
+        jax.tree.map(
+            lambda key, value: y.update({key: value}),
+            self.name_mapping[0],
+            input_params,
+        )
         return y, jnp.log(jnp.linalg.det(jacobian))
 
     def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
@@ -115,14 +132,21 @@ class BijectiveTransform(Transform):
         """
         output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
         input_params = self.inverse_transform_func(output_params)
-        jax.tree.map(lambda key, value: y.update({key: value}), self.name_mapping[0], input_params)
+        jax.tree.map(
+            lambda key, value: y.update({key: value}),
+            self.name_mapping[0],
+            input_params,
+        )
         return y
 
-class NonBijectiveTransform(Transform):
-    
+
+class NtoMTransform(Transform):
+
+    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " m_dim"]]
+
     def __call__(self, x: dict[str, Float]) -> dict[str, Float]:
         return self.forward(x)
-    
+
     @abstractmethod
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         """
@@ -140,6 +164,7 @@ class NonBijectiveTransform(Transform):
         """
         raise NotImplementedError
 
+
 class ScaleTransform(BijectiveTransform):
     scale: Float
 
@@ -152,6 +177,7 @@ class ScaleTransform(BijectiveTransform):
         self.scale = scale
         self.transform_func = lambda x: [x[0] * self.scale]
         self.inverse_transform_func = lambda x: [x[0] / self.scale]
+
 
 class OffsetTransform(BijectiveTransform):
     offset: Float
