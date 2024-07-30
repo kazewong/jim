@@ -13,8 +13,8 @@ from jimgw.transforms import (
     ScaleTransform,
     OffsetTransform,
     ArcSineTransform,
-    PowerLawTransform,
-    ParetoTransform,
+    # PowerLawTransform,
+    # ParetoTransform,
 )
 
 

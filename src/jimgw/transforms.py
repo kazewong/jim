@@ -229,8 +229,8 @@ class ArcSineTransform(BijectiveTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
-        self.transform_func = lambda x: jnp.arcsin(x)
-        self.inverse_transform_func = lambda x: jnp.sin(x)
+        self.transform_func = lambda x: [jnp.arcsin(x[0])]
+        self.inverse_transform_func = lambda x: [jnp.sin(x[0])]
 
 
 # class PowerLawTransform(UnivariateTransform):
