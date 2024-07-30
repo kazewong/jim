@@ -4,7 +4,7 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from chex import assert_rank
-from jaxtyping import Float
+from jaxtyping import Float, Array
 
 
 class Transform(ABC):
@@ -29,13 +29,12 @@ class Transform(ABC):
 
 class BijectiveTransform(Transform):
 
-    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
-    inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+    inverse_transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
 
     def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         return self.transform(x)
 
-    @abstractmethod
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
         Transform the input x to transformed coordinate y and return the log Jacobian determinant.
@@ -53,9 +52,12 @@ class BijectiveTransform(Transform):
         log_det : Float
                 The log Jacobian determinant.
         """
-        raise NotImplementedError
+        input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
+        output_params = self.transform_func(input_params)
+        jacobian = jnp.array(jax.jacfwd(self.transform_func)(input_params))
+        jax.tree.map(lambda key, value: x.update({key: value}), self.name_mapping[1], output_params)
+        return x, jnp.log(jnp.linalg.det(jacobian))
 
-    @abstractmethod
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         """
         Push forward the input x to transformed coordinate y.
@@ -70,9 +72,11 @@ class BijectiveTransform(Transform):
         y : dict[str, Float]
                 The transformed dictionary.
         """
-        raise NotImplementedError
+        input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
+        output_params = self.transform_func(input_params)
+        jax.tree.map(lambda key, value: x.update({key: value}), self.name_mapping[1], output_params)
+        return x
     
-    @abstractmethod
     def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
         """
         Inverse transform the input y to original coordinate x.
@@ -87,9 +91,12 @@ class BijectiveTransform(Transform):
         x : dict[str, Float]
                 The original dictionary.
         """
-        raise NotImplementedError
+        output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
+        input_params = self.inverse_transform_func(output_params)
+        jacobian = jnp.array(jax.jacfwd(self.inverse_transform_func)(output_params))
+        jax.tree.map(lambda key, value: y.update({key: value}), self.name_mapping[0], input_params)
+        return y, jnp.log(jnp.linalg.det(jacobian))
 
-    @abstractmethod
     def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
         Pull back the input y to original coordinate x and return the log Jacobian determinant.
@@ -106,7 +113,10 @@ class BijectiveTransform(Transform):
         log_det : Float
                 The log Jacobian determinant.
         """
-        raise NotImplementedError    
+        output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
+        input_params = self.inverse_transform_func(output_params)
+        jax.tree.map(lambda key, value: y.update({key: value}), self.name_mapping[0], input_params)
+        return y
 
 class NonBijectiveTransform(Transform):
     
@@ -130,30 +140,6 @@ class NonBijectiveTransform(Transform):
         """
         raise NotImplementedError
 
-class UnivariateTransform(Transform):
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-
-    def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
-        input_params = x.pop(self.name_mapping[0][0])
-        assert_rank(input_params, 0)
-        output_params = self.transform_func(input_params)
-        jacobian = jax.jacfwd(self.transform_func)(input_params)
-        x[self.name_mapping[1][0]] = output_params
-        return x, jnp.log(jacobian)
-
-    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
-        input_params = x.pop(self.name_mapping[0][0])
-        assert_rank(input_params, 0)
-        output_params = self.transform_func(input_params)
-        x[self.name_mapping[1][0]] = output_params
-        return x
-
-
 class ScaleTransform(BijectiveTransform):
     scale: Float
 
@@ -164,19 +150,10 @@ class ScaleTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.scale = scale
-        self.transform_func = lambda x: x * self.scale
-        self.inverse_transform_func = lambda x: x / self.scale
-    
-    def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
-        input_params = x.pop(self.name_mapping[0][0])
-        assert_rank(input_params, 0)
-        output_params = self.transform_func(input_params)
-        jacobian = jnp.log(jnp.abs(self.scale))
-        x[self.name_mapping[1][0]] = output_params
-        return x, jacobian
+        self.transform_func = lambda x: [x[0] * self.scale]
+        self.inverse_transform_func = lambda x: [x[0] / self.scale]
 
-
-class OffsetTransform(UnivariateTransform):
+class OffsetTransform(BijectiveTransform):
     offset: Float
 
     def __init__(
@@ -186,10 +163,11 @@ class OffsetTransform(UnivariateTransform):
     ):
         super().__init__(name_mapping)
         self.offset = offset
-        self.transform_func = lambda x: x + self.offset
+        self.transform_func = lambda x: [x[0] + self.offset]
+        self.inverse_transform_func = lambda x: [x[0] - self.offset]
 
 
-class LogitTransform(UnivariateTransform):
+class LogitTransform(BijectiveTransform):
     """
     Logit transform following
 
@@ -205,10 +183,11 @@ class LogitTransform(UnivariateTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
-        self.transform_func = lambda x: 1 / (1 + jnp.exp(-x))
+        self.transform_func = lambda x: [1 / (1 + jnp.exp(-x[0]))]
+        self.inverse_transform_func = lambda x: [jnp.log(x[0] / (1 - x[0]))]
 
 
-class ArcSineTransform(UnivariateTransform):
+class ArcSineTransform(BijectiveTransform):
     """
     ArcSine transformation
 
@@ -225,56 +204,57 @@ class ArcSineTransform(UnivariateTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: jnp.arcsin(x)
+        self.inverse_transform_func = lambda x: jnp.sin(x)
 
 
-class PowerLawTransform(UnivariateTransform):
-    """
-    PowerLaw transformation
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
+# class PowerLawTransform(UnivariateTransform):
+#     """
+#     PowerLaw transformation
+#     Parameters
+#     ----------
+#     name_mapping : tuple[list[str], list[str]]
+#             The name mapping between the input and output dictionary.
+#     """
 
-    xmin: Float
-    xmax: Float
-    alpha: Float
+#     xmin: Float
+#     xmax: Float
+#     alpha: Float
 
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        xmin: Float,
-        xmax: Float,
-        alpha: Float,
-    ):
-        super().__init__(name_mapping)
-        self.xmin = xmin
-        self.xmax = xmax
-        self.alpha = alpha
-        self.transform_func = lambda x: (
-            self.xmin ** (1.0 + self.alpha)
-            + x * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-        ) ** (1.0 / (1.0 + self.alpha))
+#     def __init__(
+#         self,
+#         name_mapping: tuple[list[str], list[str]],
+#         xmin: Float,
+#         xmax: Float,
+#         alpha: Float,
+#     ):
+#         super().__init__(name_mapping)
+#         self.xmin = xmin
+#         self.xmax = xmax
+#         self.alpha = alpha
+#         self.transform_func = lambda x: (
+#             self.xmin ** (1.0 + self.alpha)
+#             + x * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+#         ) ** (1.0 / (1.0 + self.alpha))
 
 
-class ParetoTransform(UnivariateTransform):
-    """
-    Pareto transformation: Power law when alpha = -1
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
+# class ParetoTransform(UnivariateTransform):
+#     """
+#     Pareto transformation: Power law when alpha = -1
+#     Parameters
+#     ----------
+#     name_mapping : tuple[list[str], list[str]]
+#             The name mapping between the input and output dictionary.
+#     """
 
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        xmin: Float,
-        xmax: Float,
-    ):
-        super().__init__(name_mapping)
-        self.xmin = xmin
-        self.xmax = xmax
-        self.transform_func = lambda x: self.xmin * jnp.exp(
-            x * jnp.log(self.xmax / self.xmin)
-        )
+#     def __init__(
+#         self,
+#         name_mapping: tuple[list[str], list[str]],
+#         xmin: Float,
+#         xmax: Float,
+#     ):
+#         super().__init__(name_mapping)
+#         self.xmin = xmin
+#         self.xmax = xmax
+#         self.transform_func = lambda x: self.xmin * jnp.exp(
+#             x * jnp.log(self.xmax / self.xmin)
+#         )
