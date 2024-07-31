@@ -163,6 +163,46 @@ def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     return M, eta
 
 
+def Mc_q_to_eta(M_c: Float, q: Float) -> Float:
+    """
+    Transforming the chirp mass M_c and mass ratio q to the symmetric mass ratio eta.
+
+    Parameters
+    ----------
+    M_c : Float
+            Chirp mass.
+    q : Float
+            Mass ratio.
+
+    Returns
+    -------
+    eta : Float
+            Symmetric mass ratio.
+    """
+    eta = q / (1 + q) ** 2
+    return eta
+
+
+def eta_to_q(eta: Float) -> Float:
+    """
+    Transforming the symmetric mass ratio eta to the mass ratio q.
+
+    Copied and modified from bilby/gw/conversion.py
+
+    Parameters
+    ----------
+    eta : Float
+            Symmetric mass ratio.
+
+    Returns
+    -------
+    q : Float
+            Mass ratio.
+    """
+    temp = 1 / eta / 2 - 1
+    return temp - (temp**2 - 1) ** 0.5
+
+
 def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
     """
     Transforming the right ascension ra and declination dec to the polar angle

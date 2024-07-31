@@ -5,6 +5,8 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Float
 
+from jimgw.single_event.utils import Mc_q_to_m1_m2, m1_m2_to_Mc_q, Mc_q_to_eta, eta_to_q
+
 
 class Transform(ABC):
     """
@@ -255,6 +257,74 @@ class ArcSineTransform(BijectiveTransform):
             name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
+
+
+class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
+    """
+    Transform chirp mass and mass ratio to component masses
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            Mc = x[name_mapping[0][0]]
+            q = x[name_mapping[0][1]]
+            m1, m2 = Mc_q_to_m1_m2(Mc, q)
+            return {name_mapping[1][0]: m1, name_mapping[1][1]: m2}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            m1 = x[name_mapping[1][0]]
+            m2 = x[name_mapping[1][1]]
+            Mc, q = m1_m2_to_Mc_q(m1, m2)
+            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
+    """
+    Transform chirp mass and mass ratio to chirp mass and symmetric mass ratio
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            Mc = x[name_mapping[0][0]]
+            q = x[name_mapping[0][1]]
+            eta = Mc_q_to_eta(Mc, q)
+            return {name_mapping[1][0]: Mc, name_mapping[1][1]: eta}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            Mc = x[name_mapping[1][0]]
+            eta = x[name_mapping[1][1]]
+            q = eta_to_q(Mc, eta)
+            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+
+        self.inverse_transform_func = named_inverse_transform
 
 
 # class PowerLawTransform(UnivariateTransform):
