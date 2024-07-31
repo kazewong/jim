@@ -7,8 +7,7 @@ from flowMC.nfmodel.base import Distribution
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
 from jimgw.transforms import (
-    Transform,
-    NtoNTransform,
+    BijectiveTransform,
     LogitTransform,
     ScaleTransform,
     OffsetTransform,
@@ -61,7 +60,7 @@ class Prior(Distribution):
     ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
 
-    def log_prob(self, x: dict[str, Array]) -> Float:
+    def log_prob(self, z: dict[str, Array]) -> Float:
         raise NotImplementedError
 
 
@@ -99,7 +98,7 @@ class LogisticDistribution(Prior):
         samples = jnp.log(samples / (1 - samples))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
+    def log_prob(self, z: dict[str, Float]) -> Float:
         variable = x[self.parameter_names[0]]
         return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
@@ -139,7 +138,7 @@ class StandardNormalDistribution(Prior):
         samples = jax.random.normal(rng_key, (n_samples,))
         return self.add_name(samples[None])
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
+    def log_prob(self, z: dict[str, Float]) -> Float:
         variable = x[self.parameter_names[0]]
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
@@ -147,10 +146,12 @@ class StandardNormalDistribution(Prior):
 class SequentialTransformPrior(Prior):
     """
     Transform a prior distribution by applying a sequence of transforms.
+    The space before the transform is named as x,
+    and the space after the transform is named as z
     """
 
     base_prior: Prior
-    transforms: list[NtoNTransform]
+    transforms: list[BijectiveTransform]
 
     def __repr__(self):
         return f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
@@ -158,7 +159,7 @@ class SequentialTransformPrior(Prior):
     def __init__(
         self,
         base_prior: Prior,
-        transforms: list[NtoNTransform],
+        transforms: list[BijectiveTransform],
     ):
 
         self.base_prior = base_prior
@@ -174,14 +175,16 @@ class SequentialTransformPrior(Prior):
         output = self.base_prior.sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
+    def log_prob(self, z: dict[str, Float]) -> Float:
         """
-        log_prob has to be evaluated in the space of the base_prior.
+        Evaluating the probability of the transformed variable z.
+        This is what flowMC should sample from
         """
-        output = self.base_prior.log_prob(x)
-        for transform in self.transforms:
-            x, log_jacobian = transform.transform(x)
+        output = 0
+        for transform in reversed(self.transforms):
+            z, log_jacobian = transform.inverse(z)
             output -= log_jacobian
+        output += self.base_prior.log_prob(z)
         return output
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
@@ -223,10 +226,10 @@ class CombinePrior(Prior):
             output.update(prior.sample(subkey, n_samples))
         return output
 
-    def log_prob(self, x: dict[str, Float]) -> Float:
+    def log_prob(self, z: dict[str, Float]) -> Float:
         output = 0.0
         for prior in self.base_prior:
-            output += prior.log_prob(x)
+            output += prior.log_prob(z)
         return output
 
 
