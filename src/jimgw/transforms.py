@@ -233,7 +233,7 @@ class ArcSineTransform(BijectiveTransform):
         self.inverse_transform_func = lambda x: [jnp.sin(x[0])]
 
 
-class PowerLawTransform(UnivariateTransform):
+class PowerLawTransform(BijectiveTransform):
     """
     PowerLaw transformation
     Parameters
