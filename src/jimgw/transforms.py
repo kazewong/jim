@@ -4,7 +4,8 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 from chex import assert_rank
-from jaxtyping import Float, Array
+from beartype import beartype as typechecker
+from jaxtyping import Float, Array, jaxtyped
 
 
 class Transform(ABC):
@@ -256,6 +257,115 @@ class ArcSineTransform(BijectiveTransform):
             name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
+
+
+@jaxtyped(typechecker=typechecker)
+class BoundToBound(BijectiveTransform):
+
+    """
+    Bound to bound transformation
+    """
+
+    original_lower_bound: Float[Array, " n_dim"]
+    original_upper_bound: Float[Array, " n_dim"]
+    target_lower_bound: Float[Array, " n_dim"]
+    target_upper_bound: Float[Array, " n_dim"]
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        original_lower_bound: Float[Array, " n_dim"],
+        original_upper_bound: Float[Array, " n_dim"],
+        target_lower_bound: Float[Array, " n_dim"],
+        target_upper_bound: Float[Array, " n_dim"],
+    ):
+        super().__init__(name_mapping)
+        self.original_lower_bound = original_lower_bound
+        self.original_upper_bound = original_upper_bound
+        self.target_lower_bound = target_lower_bound
+        self.target_upper_bound = target_upper_bound
+
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: (x[name_mapping[0][i]] - self.original_lower_bound[i])
+            * (self.target_upper_bound[i] - self.target_lower_bound[i])
+            / (self.original_upper_bound[i] - self.original_lower_bound[i])
+            + self.target_lower_bound[i]
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: (x[name_mapping[1][i]] - self.target_lower_bound[i])
+            * (self.original_upper_bound[i] - self.original_lower_bound[i])
+            / (self.target_upper_bound[i] - self.target_lower_bound[i])
+            + self.original_lower_bound[i]
+            for i in range(len(name_mapping[1]))
+        }
+
+class BoundToUnbound(BijectiveTransform):
+    """
+    Bound to unbound transformation
+    """
+
+    original_lower_bound: Float
+    original_upper_bound: Float
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        original_lower_bound: Float,
+        original_upper_bound: Float,
+    ):
+        
+        def logit(x):
+            return jnp.log(x / (1 - x))
+
+        super().__init__(name_mapping)
+        self.original_lower_bound = original_lower_bound
+        self.original_upper_bound = original_upper_bound
+
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: logit(
+                (x[name_mapping[0][i]] - self.original_lower_bound)
+                / (self.original_upper_bound - self.original_lower_bound)
+            )
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: (
+                self.original_upper_bound - self.original_lower_bound
+            )
+            / (
+                1
+                + jnp.exp(-x[name_mapping[1][i]])
+            )
+            + self.original_lower_bound[i]
+            for i in range(len(name_mapping[1]))
+        }
+
+class SingleSidedUnboundTransform(BijectiveTransform):
+    """
+    Unbound upper limit transformation
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: jnp.exp(x[name_mapping[0][i]])
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: jnp.log(x[name_mapping[1][i]])
+            for i in range(len(name_mapping[1]))
+        }
+
 
 
 # class PowerLawTransform(UnivariateTransform):
