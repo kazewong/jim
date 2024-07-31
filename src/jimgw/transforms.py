@@ -1,11 +1,9 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Float, Array
-
-from jimgw.single_event.utils import m1_m2_to_Mc_q, Mc_q_to_m1_m2
+from jaxtyping import Float
 
 
 class Transform(ABC):
@@ -29,7 +27,38 @@ class Transform(ABC):
         return list(input_set - from_set | to_set)
 
 
-class NtoNTransform(Transform):
+class NtoMTransform(Transform):
+
+    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+
+    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
+        """
+        Push forward the input x to transformed coordinate y.
+
+        Parameters
+        ----------
+        x : dict[str, Float]
+                The input dictionary.
+
+        Returns
+        -------
+        y : dict[str, Float]
+                The transformed dictionary.
+        """
+        x_copy = x.copy()
+        output_params = self.transform_func(x_copy)
+        jax.tree.map(
+            lambda key: x_copy.pop(key),
+            self.name_mapping[0],
+        )
+        jax.tree.map(
+            lambda key: x_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return x_copy
+
+
+class NtoNTransform(NtoMTransform):
 
     transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
@@ -70,39 +99,10 @@ class NtoNTransform(Transform):
         )
         return x_copy, jacobian
 
-    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
-        """
-        Push forward the input x to transformed coordinate y.
-
-        Parameters
-        ----------
-        x : dict[str, Float]
-                The input dictionary.
-
-        Returns
-        -------
-        y : dict[str, Float]
-                The transformed dictionary.
-        """
-        x_copy = x.copy()
-        output_params = self.transform_func(x_copy)
-        jax.tree.map(
-            lambda key: x_copy.pop(key),
-            self.name_mapping[0],
-        )
-        jax.tree.map(
-            lambda key: x_copy.update({key: output_params[key]}),
-            list(output_params.keys()),
-        )
-        return x_copy
-
 
 class BijectiveTransform(NtoNTransform):
 
     inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
-
-    def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
-        return self.transform(x)
 
     def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
         """
@@ -163,31 +163,6 @@ class BijectiveTransform(NtoNTransform):
         return y_copy
 
 
-class NtoMTransform(Transform):
-
-    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " m_dim"]]
-
-    def __call__(self, x: dict[str, Float]) -> dict[str, Float]:
-        return self.forward(x)
-
-    @abstractmethod
-    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
-        """
-        Push forward the input x to transformed coordinate y.
-
-        Parameters
-        ----------
-        x : dict[str, Float]
-                The input dictionary.
-
-        Returns
-        -------
-        y : dict[str, Float]
-                The transformed dictionary.
-        """
-        raise NotImplementedError
-
-
 class ScaleTransform(BijectiveTransform):
     scale: Float
 
@@ -230,7 +205,7 @@ class OffsetTransform(BijectiveTransform):
 
 class LogitTransform(BijectiveTransform):
     """
-    Logit transformation
+    Logit transform following
 
     Parameters
     ----------
@@ -280,26 +255,6 @@ class ArcSineTransform(BijectiveTransform):
             name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
-
-
-class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
-    """
-    Transform component masses to chirp mass and mass ratio.
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        assert name_mapping == (["m_1", "m_2"], ["M_c", "q"])
-        super().__init__(name_mapping)
-        self.transform_func = lambda x: m1_m2_to_Mc_q(x[0], x[1])
-        self.inverse_transform_func = lambda x: Mc_q_to_m1_m2(x[0], x[1])
 
 
 # class PowerLawTransform(UnivariateTransform):

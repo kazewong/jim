@@ -8,6 +8,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
+from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
 class Jim(object):
@@ -19,22 +20,33 @@ class Jim(object):
     prior: Prior
 
     # Name of parameters to sample from
-    parameter_names: list[str]
+    sample_transforms: list[BijectiveTransform]
+    likelihood_transforms: list[NtoMTransform]
     sampler: Sampler
 
     def __init__(
         self,
         likelihood: LikelihoodBase,
         prior: Prior,
-        parameter_names: list[str] | None = None,
+        sample_transforms: list[BijectiveTransform] = [],
+        likelihood_transforms: list[NtoMTransform] = [],
         **kwargs,
     ):
         self.likelihood = likelihood
         self.prior = prior
-        if parameter_names is None:
-            print("No parameter names provided. Using prior names.")
-            parameter_names = prior.parameter_names
-        self.parameter_names = parameter_names
+
+        self.sample_transforms = sample_transforms
+        self.likelihood_transforms = likelihood_transforms
+
+        if len(sample_transforms) == 0:
+            print(
+                "No sample transforms provided. Using prior parameters as sampling parameters"
+            )
+
+        if len(likelihood_transforms) == 0:
+            print(
+                "No likelihood transforms provided. Using prior parameters as likelihood parameters"
+            )
 
         seed = kwargs.get("seed", 0)
 
@@ -75,7 +87,13 @@ class Jim(object):
 
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
-        prior = self.prior.log_prob(named_params)
+        transform_jacobian = 0.0
+        for transform in self.sample_transforms:
+            named_params, jacobian = transform.inverse(named_params)
+            transform_jacobian += jacobian
+        prior = self.prior.log_prob(named_params) + transform_jacobian
+        for transform in self.likelihood_transforms:
+            named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
