@@ -257,14 +257,14 @@ class PowerLawTransform(BijectiveTransform):
         self.xmin = xmin
         self.xmax = xmax
         self.alpha = alpha
-        self.transform_func = lambda x: (
+        self.transform_func = lambda x: [(
             self.xmin ** (1.0 + self.alpha)
             + x[0] * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-        ) ** (1.0 / (1.0 + self.alpha))
-        self.inverse_transform_func = lambda x: (
+        ) ** (1.0 / (1.0 + self.alpha))]
+        self.inverse_transform_func = lambda x: [(
             (x[0] ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
             / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-        )
+        )]
 
 
 class ParetoTransform(BijectiveTransform):
@@ -285,7 +285,7 @@ class ParetoTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
-        self.transform_func = lambda x: self.xmin * jnp.exp(
+        self.transform_func = lambda x: [self.xmin * jnp.exp(
             x[0] * jnp.log(self.xmax / self.xmin)
-        )
-        self.inverse_transform_func = lambda x: (jnp.log(x[0] / self.xmin) / jnp.log(self.xmax / self.xmin))
+        )]
+        self.inverse_transform_func = lambda x: [(jnp.log(x[0] / self.xmin) / jnp.log(self.xmax / self.xmin))]
