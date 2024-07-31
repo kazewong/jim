@@ -59,9 +59,7 @@ class NtoNTransform(Transform):
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))
-        )
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         jax.tree.map(
             lambda key: x_copy.pop(key),
             self.name_mapping[0],
@@ -125,9 +123,7 @@ class BijectiveTransform(NtoNTransform):
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))
-        )
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         jax.tree.map(
             lambda key: y_copy.pop(key),
             self.name_mapping[1],
@@ -231,6 +227,7 @@ class OffsetTransform(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
 class LogitTransform(BijectiveTransform):
     """
     Logit transformation
@@ -252,9 +249,12 @@ class LogitTransform(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.log(x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]]))
+            name_mapping[0][i]: jnp.log(
+                x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]])
+            )
             for i in range(len(name_mapping[1]))
         }
+
 
 class ArcSineTransform(BijectiveTransform):
     """
@@ -281,6 +281,7 @@ class ArcSineTransform(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
 class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
     """
     Transform component masses to chirp mass and mass ratio.
@@ -299,28 +300,6 @@ class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.transform_func = lambda x: m1_m2_to_Mc_q(x[0], x[1])
         self.inverse_transform_func = lambda x: Mc_q_to_m1_m2(x[0], x[1])
-
-
-class RectangleToTriangleTransform(BijectiveTransform):
-    """
-    Transform a rectangle grid with bounds [0, 1] x [0, 1] to a triangle grid with vertices (0, 0), (1, 0), (0, 1), while preserving the area density.
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        self.transform_func = lambda x: [
-            1 - jnp.sqrt(1 - x[0]),
-            x[1] * jnp.sqrt(1 - x[0]),
-        ]
-        self.inverse_transform_func = lambda x: [1 - (1 - x[0]) ** 2, x[1] / (1 - x[0])]
 
 
 # class PowerLawTransform(UnivariateTransform):

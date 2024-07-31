@@ -7,7 +7,7 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior, trace_prior_parent
+from jimgw.prior import Prior
 
 
 class Jim(object):
@@ -75,7 +75,7 @@ class Jim(object):
 
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
-        prior = self.prior.log_prob(named_params) 
+        prior = self.prior.log_prob(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
