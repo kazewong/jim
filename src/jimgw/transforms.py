@@ -30,7 +30,7 @@ class Transform(ABC):
 
 class NtoNTransform(Transform):
 
-    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
@@ -49,15 +49,22 @@ class NtoNTransform(Transform):
         log_det : Float
                 The log Jacobian determinant.
         """
-        input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
-        output_params = self.transform_func(input_params)
-        jacobian = jnp.array(jax.jacfwd(self.transform_func)(input_params))
-        jax.tree.map(
-            lambda key, value: x.update({key: value}),
-            self.name_mapping[1],
-            output_params,
+        x_copy = x.copy()
+        output_params = self.transform_func(x_copy)
+        jacobian = jax.jacfwd(self.transform_func)(x_copy)
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(
+            jnp.linalg.det(jacobian.reshape(int(jnp.sqrt(jacobian.size)), -1))
         )
-        return x, jnp.log(jnp.linalg.det(jacobian))
+        jax.tree.map(
+            lambda key: x_copy.pop(key),
+            self.name_mapping[0],
+        )
+        jax.tree.map(
+            lambda key: x_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return x_copy, jacobian
 
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
         """
@@ -73,19 +80,22 @@ class NtoNTransform(Transform):
         y : dict[str, Float]
                 The transformed dictionary.
         """
-        input_params = jax.tree.map(lambda key: x.pop(key), self.name_mapping[0])
-        output_params = self.transform_func(input_params)
+        x_copy = x.copy()
+        output_params = self.transform_func(x_copy)
         jax.tree.map(
-            lambda key, value: x.update({key: value}),
-            self.name_mapping[1],
-            output_params,
+            lambda key: x_copy.pop(key),
+            self.name_mapping[0],
         )
-        return x
+        jax.tree.map(
+            lambda key: x_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return x_copy
 
 
 class BijectiveTransform(NtoNTransform):
 
-    inverse_transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " n_dim"]]
+    inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         return self.transform(x)
@@ -104,15 +114,22 @@ class BijectiveTransform(NtoNTransform):
         x : dict[str, Float]
                 The original dictionary.
         """
-        output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
-        input_params = self.inverse_transform_func(output_params)
-        jacobian = jnp.array(jax.jacfwd(self.inverse_transform_func)(output_params))
-        jax.tree.map(
-            lambda key, value: y.update({key: value}),
-            self.name_mapping[0],
-            input_params,
+        y_copy = y.copy()
+        output_params = self.inverse_transform_func(y_copy)
+        jacobian = jax.jacfwd(self.inverse_transform_func)(y_copy)
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(
+            jnp.linalg.det(jacobian.reshape(int(jnp.sqrt(jacobian.size)), -1))
         )
-        return y, jnp.log(jnp.linalg.det(jacobian))
+        jax.tree.map(
+            lambda key: y_copy.pop(key),
+            self.name_mapping[1],
+        )
+        jax.tree.map(
+            lambda key: y_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return y_copy, jacobian
 
     def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
@@ -130,14 +147,17 @@ class BijectiveTransform(NtoNTransform):
         log_det : Float
                 The log Jacobian determinant.
         """
-        output_params = jax.tree.map(lambda key: y.pop(key), self.name_mapping[1])
-        input_params = self.inverse_transform_func(output_params)
+        y_copy = y.copy()
+        output_params = self.inverse_transform_func(y_copy)
         jax.tree.map(
-            lambda key, value: y.update({key: value}),
-            self.name_mapping[0],
-            input_params,
+            lambda key: y_copy.pop(key),
+            self.name_mapping[1],
         )
-        return y
+        jax.tree.map(
+            lambda key: y_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return y_copy
 
 
 class NtoMTransform(Transform):
@@ -175,8 +195,14 @@ class ScaleTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.scale = scale
-        self.transform_func = lambda x: [x[0] * self.scale]
-        self.inverse_transform_func = lambda x: [x[0] / self.scale]
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: x[name_mapping[0][i]] * self.scale
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: x[name_mapping[1][i]] / self.scale
+            for i in range(len(name_mapping[1]))
+        }
 
 
 class OffsetTransform(BijectiveTransform):
@@ -189,9 +215,14 @@ class OffsetTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.offset = offset
-        self.transform_func = lambda x: [x[0] + self.offset]
-        self.inverse_transform_func = lambda x: [x[0] - self.offset]
-
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: x[name_mapping[0][i]] + self.offset
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: x[name_mapping[1][i]] - self.offset
+            for i in range(len(name_mapping[1]))
+        }
 
 class LogitTransform(BijectiveTransform):
     """
@@ -209,9 +240,14 @@ class LogitTransform(BijectiveTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
-        self.transform_func = lambda x: [1 / (1 + jnp.exp(-x[0]))]
-        self.inverse_transform_func = lambda x: [jnp.log(x[0] / (1 - x[0]))]
-
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: jnp.log(x[name_mapping[0][i]] / (1 - x[name_mapping[0][i]]))
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: 1 / (1 + jnp.exp(-x[name_mapping[1][i]]))
+            for i in range(len(name_mapping[1]))
+        }
 
 class ArcSineTransform(BijectiveTransform):
     """
@@ -229,9 +265,14 @@ class ArcSineTransform(BijectiveTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
-        self.transform_func = lambda x: [jnp.arcsin(x[0])]
-        self.inverse_transform_func = lambda x: [jnp.sin(x[0])]
-
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: jnp.arcsin(x[name_mapping[0][i]])
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
+            for i in range(len(name_mapping[1]))
+        }
 
 # class PowerLawTransform(UnivariateTransform):
 #     """
