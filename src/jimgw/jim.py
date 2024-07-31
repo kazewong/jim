@@ -7,18 +7,43 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior
+from jimgw.prior import Prior, trace_prior_parent
+from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
 class Jim(object):
     """
     Master class for interfacing with flowMC
-
     """
 
-    def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
-        self.Likelihood = likelihood
-        self.Prior = prior
+    likelihood: LikelihoodBase
+    prior: Prior
+
+    # Name of parameters to sample from
+    sample_transforms: list[BijectiveTransform]
+    likelihood_transforms: list[NtoMTransform]
+    sampler: Sampler
+
+    def __init__(
+        self,
+        likelihood: LikelihoodBase,
+        prior: Prior,
+        sample_transforms: list[BijectiveTransform] = [],
+        likelihood_transforms: list[NtoMTransform] = [],
+        **kwargs,
+    ):
+        self.likelihood = likelihood
+        self.prior = prior
+
+        self.sample_transforms = sample_transforms
+        self.likelihood_transforms = likelihood_transforms
+
+        if len(sample_transforms) == 0:
+            print("No sample transforms provided. Using prior parameters as sampling parameters")
+
+        if len(likelihood_transforms) == 0:
+            print("No likelihood transforms provided. Using prior parameters as likelihood parameters")
+
 
         seed = kwargs.get("seed", 0)
 
@@ -33,11 +58,11 @@ class Jim(object):
 
         rng_key, subkey = jax.random.split(rng_key)
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, subkey
+            self.prior.n_dim, num_layers, hidden_size, num_bins, subkey
         )
 
         self.Sampler = Sampler(
-            self.Prior.n_dim,
+            self.prior.n_dim,
             rng_key,
             None,  # type: ignore
             local_sampler,
@@ -45,16 +70,32 @@ class Jim(object):
             **kwargs,
         )
 
+    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+        """
+        Turn an array into a dictionary
+
+        Parameters
+        ----------
+        x : Array
+            An array of parameters. Shape (n_dim,).
+        """
+
+        return dict(zip(self.parameter_names, x))
+
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
-        prior_params = self.Prior.add_name(params.T)
-        prior = self.Prior.log_prob(prior_params)
-        return (
-            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
-        )
+        named_params = self.add_name(params)
+        transform_jacobian = 0.0
+        for transform in self.sample_transforms:
+            named_params, jacobian = transform.inverse(named_params)
+            transform_jacobian += jacobian
+        prior = self.prior.log_prob(named_params) + transform_jacobian
+        for transform in self.likelihood_transforms:
+            named_params = transform.forward(named_params)
+        return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
-            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
+            initial_guess_named = self.prior.sample(key, self.Sampler.n_chains)
             initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
         self.Sampler.sample(initial_guess, None)  # type: ignore
 
@@ -67,7 +108,7 @@ class Jim(object):
     ):
         key = jax.random.PRNGKey(seed)
         set_nwalkers = set_nwalkers
-        initial_guess = self.Prior.sample(key, set_nwalkers)
+        initial_guess = self.prior.sample(key, set_nwalkers)
 
         def negative_posterior(x: Float[Array, " n_dim"]):
             return -self.posterior(x, None)  # type: ignore since flowMC does not have typing info, yet
@@ -78,7 +119,7 @@ class Jim(object):
         print("Done compiling")
 
         print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose=True)
+        optimizer = EvolutionaryOptimizer(self.prior.n_dim, verbose=True)
         _ = optimizer.optimize(negative_posterior, bounds, n_loops=n_loops)
         best_fit = optimizer.get_result()[0]
         return best_fit
@@ -92,19 +133,19 @@ class Jim(object):
         train_summary = self.Sampler.get_sampler_state(training=True)
         production_summary = self.Sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, self.Prior.n_dim).T
-        training_chain = self.Prior.add_name(training_chain)
+        training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
+        training_chain = self.prior.add_name(training_chain)
         if transform:
-            training_chain = self.Prior.transform(training_chain)
+            training_chain = self.prior.transform(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, self.Prior.n_dim).T
-        production_chain = self.Prior.add_name(production_chain)
+        production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
+        production_chain = self.prior.add_name(production_chain)
         if transform:
-            production_chain = self.Prior.transform(production_chain)
+            production_chain = self.prior.transform(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -160,7 +201,7 @@ class Jim(object):
         else:
             chains = self.Sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.Prior.transform(self.Prior.add_name(chains.transpose(2, 0, 1)))
+        chains = self.prior.transform(self.prior.add_name(chains.transpose(2, 0, 1)))
         return chains
 
     def plot(self):
