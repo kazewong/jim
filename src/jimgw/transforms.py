@@ -3,8 +3,9 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from chex import assert_rank
 from jaxtyping import Float, Array
+
+from jimgw.single_event.utils import m1_m2_to_Mc_q, Mc_q_to_m1_m2
 
 
 class Transform(ABC):
@@ -231,6 +232,47 @@ class ArcSineTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.transform_func = lambda x: [jnp.arcsin(x[0])]
         self.inverse_transform_func = lambda x: [jnp.sin(x[0])]
+
+
+class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
+    """
+    Transform component masses to chirp mass and mass ratio.
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        assert name_mapping == (["m_1", "m_2"], ["M_c", "q"])
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: m1_m2_to_Mc_q(x[0], x[1])
+        self.inverse_transform_func = lambda x: Mc_q_to_m1_m2(x[0], x[1])
+
+
+def inverse(transform: BijectiveTransform) -> BijectiveTransform:
+    """
+    Inverse the transform.
+
+    Parameters
+    ----------
+    transform : BijectiveTransform
+            The transform to be inverted.
+
+    Returns
+    -------
+    BijectiveTransform
+            The inverted transform.
+    """
+    return BijectiveTransform(
+        name_mapping=transform.name_mapping,
+        transform_func=transform.inverse_transform_func,
+        inverse_transform_func=transform.transform_func,
+    )
 
 
 # class PowerLawTransform(UnivariateTransform):
