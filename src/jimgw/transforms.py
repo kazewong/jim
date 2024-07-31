@@ -28,7 +28,38 @@ class Transform(ABC):
         return list(input_set - from_set | to_set)
 
 
-class NtoNTransform(Transform):
+class NtoMTransform(Transform):
+
+    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
+
+    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
+        """
+        Push forward the input x to transformed coordinate y.
+
+        Parameters
+        ----------
+        x : dict[str, Float]
+                The input dictionary.
+
+        Returns
+        -------
+        y : dict[str, Float]
+                The transformed dictionary.
+        """
+        x_copy = x.copy()
+        output_params = self.transform_func(x_copy)
+        jax.tree.map(
+            lambda key: x_copy.pop(key),
+            self.name_mapping[0],
+        )
+        jax.tree.map(
+            lambda key: x_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return x_copy
+
+
+class NtoNTransform(NtoMTransform):
 
     transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
@@ -58,9 +89,7 @@ class NtoNTransform(Transform):
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))
-        )
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         jax.tree.map(
             lambda key: x_copy.pop(key),
             self.name_mapping[0],
@@ -71,39 +100,10 @@ class NtoNTransform(Transform):
         )
         return x_copy, jacobian
 
-    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
-        """
-        Push forward the input x to transformed coordinate y.
-
-        Parameters
-        ----------
-        x : dict[str, Float]
-                The input dictionary.
-
-        Returns
-        -------
-        y : dict[str, Float]
-                The transformed dictionary.
-        """
-        x_copy = x.copy()
-        output_params = self.transform_func(x_copy)
-        jax.tree.map(
-            lambda key: x_copy.pop(key),
-            self.name_mapping[0],
-        )
-        jax.tree.map(
-            lambda key: x_copy.update({key: output_params[key]}),
-            list(output_params.keys()),
-        )
-        return x_copy
-
 
 class BijectiveTransform(NtoNTransform):
 
     inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
-
-    def __call__(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
-        return self.transform(x)
 
     def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
         """
@@ -124,9 +124,7 @@ class BijectiveTransform(NtoNTransform):
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))
-        )
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         jax.tree.map(
             lambda key: y_copy.pop(key),
             self.name_mapping[1],
@@ -164,31 +162,6 @@ class BijectiveTransform(NtoNTransform):
             list(output_params.keys()),
         )
         return y_copy
-
-
-class NtoMTransform(Transform):
-
-    transform_func: Callable[[Float[Array, " n_dim"]], Float[Array, " m_dim"]]
-
-    def __call__(self, x: dict[str, Float]) -> dict[str, Float]:
-        return self.forward(x)
-
-    @abstractmethod
-    def forward(self, x: dict[str, Float]) -> dict[str, Float]:
-        """
-        Push forward the input x to transformed coordinate y.
-
-        Parameters
-        ----------
-        x : dict[str, Float]
-                The input dictionary.
-
-        Returns
-        -------
-        y : dict[str, Float]
-                The transformed dictionary.
-        """
-        raise NotImplementedError
 
 
 class ScaleTransform(BijectiveTransform):
@@ -230,6 +203,7 @@ class OffsetTransform(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
 class LogitTransform(BijectiveTransform):
     """
     Logit transform following
@@ -251,9 +225,12 @@ class LogitTransform(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.log(x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]]))
+            name_mapping[0][i]: jnp.log(
+                x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]])
+            )
             for i in range(len(name_mapping[1]))
         }
+
 
 class ArcSineTransform(BijectiveTransform):
     """
@@ -279,6 +256,7 @@ class ArcSineTransform(BijectiveTransform):
             name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
+
 
 # class PowerLawTransform(UnivariateTransform):
 #     """
