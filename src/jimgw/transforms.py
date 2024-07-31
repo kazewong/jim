@@ -259,10 +259,10 @@ class PowerLawTransform(BijectiveTransform):
         self.alpha = alpha
         self.transform_func = lambda x: (
             self.xmin ** (1.0 + self.alpha)
-            + x * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            + x[0] * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
         ) ** (1.0 / (1.0 + self.alpha))
         self.inverse_transform_func = lambda x: (
-            (x ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            (x[0] ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
             / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
         )
 
@@ -286,6 +286,6 @@ class ParetoTransform(BijectiveTransform):
         self.xmin = xmin
         self.xmax = xmax
         self.transform_func = lambda x: self.xmin * jnp.exp(
-            x * jnp.log(self.xmax / self.xmin)
+            x[0] * jnp.log(self.xmax / self.xmin)
         )
-        self.inverse_transform_func = lambda x: (jnp.log(x / self.xmin) / jnp.log(self.xmax / self.xmin))
+        self.inverse_transform_func = lambda x: (jnp.log(x[0] / self.xmin) / jnp.log(self.xmax / self.xmin))
