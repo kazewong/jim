@@ -196,7 +196,7 @@ class OffsetTransform(BijectiveTransform):
 
 class LogitTransform(BijectiveTransform):
     """
-    Logit transform following
+    Logit transformation
 
     Parameters
     ----------
@@ -254,25 +254,26 @@ class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
         self.inverse_transform_func = lambda x: Mc_q_to_m1_m2(x[0], x[1])
 
 
-def inverse(transform: BijectiveTransform) -> BijectiveTransform:
+class RectangleToTriangleTransform(BijectiveTransform):
     """
-    Inverse the transform.
+    Transform a rectangle grid with bounds [0, 1] x [0, 1] to a triangle grid with vertices (0, 0), (1, 0), (0, 1), while preserving the area density.
 
     Parameters
     ----------
-    transform : BijectiveTransform
-            The transform to be inverted.
-
-    Returns
-    -------
-    BijectiveTransform
-            The inverted transform.
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
     """
-    return BijectiveTransform(
-        name_mapping=transform.name_mapping,
-        transform_func=transform.inverse_transform_func,
-        inverse_transform_func=transform.transform_func,
-    )
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: [
+            1 - jnp.sqrt(1 - x[0]),
+            x[1] * jnp.sqrt(1 - x[0]),
+        ]
+        self.inverse_transform_func = lambda x: [1 - (1 - x[0]) ** 2, x[1] / (1 - x[0])]
 
 
 # class PowerLawTransform(UnivariateTransform):

@@ -37,7 +37,7 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
-def m1m2_to_Mq(m1: Float, m2: Float):
+def m1_m2_to_M_q(m1: Float, m2: Float):
     """
     Transforming the primary mass m1 and secondary mass m2 to the Total mass M
     and mass ratio q.
@@ -113,7 +113,7 @@ def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
     return m1, m2
 
 
-def m1_m2_to_M_c_q(m1: Float, m2: Float) -> tuple[Float, Float]:
+def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
     Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
     and mass ratio q.
