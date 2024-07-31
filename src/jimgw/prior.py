@@ -12,7 +12,6 @@ from jimgw.transforms import (
     ScaleTransform,
     OffsetTransform,
     ArcSineTransform,
-    RectangleToTriangleTransform,
 )
 
 
@@ -393,52 +392,6 @@ class PowerLawPrior(SequentialTransformPrior):
                     )
                 ),
                 transform,
-            ],
-        )
-
-
-@jaxtyped(typechecker=typechecker)
-class UniformComponentMassPrior(SequentialTransformPrior):
-    """
-    A prior in the range [xmin, xmax) for component masses which assumes the
-    component masses to be uniformly distributed.
-    """
-
-    xmin: float
-    xmax: float
-
-    def __repr__(self):
-        return f"UniformComponentMassPrior(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
-
-    def __init__(self, xmin: float, xmax: float, parameter_names: list[str]):
-        self.parameter_names = parameter_names
-        assert self.n_dim == 2, "UniformComponentMassPrior needs to be 2D distributions"
-        self.xmax = xmax
-        self.xmin = xmin
-        super().__init__(
-            CombinePrior(
-                [
-                    UniformPrior(xmin, xmax, ["x_1"]),
-                    UniformPrior(xmin, xmax, ["x_2"]),
-                ]
-            ),
-            [
-                ScaleTransform(
-                    (
-                        ["x_1", "x_2"],
-                        [f"x_1/({xmax-xmin})", f"x_2/({xmax-xmin})"],
-                    ),
-                    1 / (xmax - xmin),
-                ),
-                RectangleToTriangleTransform(
-                    (
-                        [
-                            f"{self.parameter_names[0]}/({xmax-xmin})",
-                            f"{self.parameter_names[1]}/({xmax-xmin})",
-                        ],
-                        [self.parameter_names[0], self.parameter_names[1]],
-                    )
-                ),
             ],
         )
 
