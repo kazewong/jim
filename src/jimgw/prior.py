@@ -99,7 +99,7 @@ class LogisticDistribution(Prior):
         return self.add_name(samples[None])
 
     def log_prob(self, z: dict[str, Float]) -> Float:
-        variable = x[self.parameter_names[0]]
+        variable = z[self.parameter_names[0]]
         return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
 
@@ -139,7 +139,7 @@ class StandardNormalDistribution(Prior):
         return self.add_name(samples[None])
 
     def log_prob(self, z: dict[str, Float]) -> Float:
-        variable = x[self.parameter_names[0]]
+        variable = z[self.parameter_names[0]]
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
 
@@ -183,7 +183,7 @@ class SequentialTransformPrior(Prior):
         output = 0
         for transform in reversed(self.transforms):
             z, log_jacobian = transform.inverse(z)
-            output -= log_jacobian
+            output += log_jacobian
         output += self.base_prior.log_prob(z)
         return output
 
