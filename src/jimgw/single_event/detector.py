@@ -392,7 +392,7 @@ class GroundBased2G(Detector):
 
         Returns
         -------
-        None
+        SNR
         """
         self.frequencies = freqs
         self.psd = self.load_psd(freqs, psd_file)
@@ -414,6 +414,8 @@ class GroundBased2G(Detector):
         print(f"For detector {self.name}:")
         print(f"The injected optimal SNR is {optimal_SNR}")
         print(f"The injected match filter SNR is {match_filter_SNR}")
+
+        return optimal_SNR, match_filter_SNR
 
     @jaxtyped(typechecker=typechecker)
     def load_psd(

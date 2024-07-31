@@ -48,10 +48,10 @@ run = SingleEventRun(
     jim_parameters={
         "n_loop_training": 10,
         "n_loop_production": 10,
-        "n_local_steps": 150,
-        "n_global_steps": 150,
+        "n_local_steps": 15,
+        "n_global_steps": 15,
         "n_chains": 500,
-        "n_epochs": 50,
+        "n_epochs": 10,
         "learning_rate": 0.001,
         "n_max_examples": 45000,
         "momentum": 0.9,
@@ -62,7 +62,7 @@ run = SingleEventRun(
         "output_thinning": 10,
         "local_sampler_arg": local_sampler_arg,
     },
-    likelihood_parameters={"name": "HeterodynedTransientLikelihoodFD", "bounds": bounds},
+    likelihood_parameters={"name": "TransientLikelihoodFD", "bounds": bounds},
     injection=True,
     injection_parameters={
         "M_c": 28.6,
@@ -94,4 +94,5 @@ run_manager.jim.sample(jax.random.PRNGKey(42))
 # plot the corner plot and diagnostic plot
 run_manager.plot_corner()
 run_manager.plot_diagnostic()
+run_manager.save_summary()
 

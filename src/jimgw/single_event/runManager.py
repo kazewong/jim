@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import corner
+import sys
 import numpy as np
 import yaml
 from astropy.time import Time
@@ -17,6 +18,7 @@ from jimgw.jim import Jim
 from jimgw.single_event.detector import Detector, detector_preset
 from jimgw.single_event.likelihood import SingleEventLiklihood, likelihood_presets
 from jimgw.single_event.waveform import Waveform, waveform_preset
+
 
 
 def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
@@ -95,9 +97,11 @@ class SingleEventRun:
     )
 
 
+
 class SingleEventPERunManager(RunManager):
     run: SingleEventRun
     jim: Jim
+    SNRs: list[float]
 
     @property
     def waveform(self):
@@ -186,9 +190,13 @@ class SingleEventPERunManager(RunManager):
                 - self.run.data_parameters["post_trigger_duration"],
             }
             key, subkey = jax.random.split(jax.random.PRNGKey(self.run.seed + 1901))
+            SNRs = []
             for detector in detectors:
-                detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
+                optimal_SNR,_ = detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
+                SNRs.append(optimal_SNR)
                 key, subkey = jax.random.split(key)
+            self.SNRs = SNRs
+        
         return likelihood_presets[name](
             detectors,
             waveform,
@@ -428,3 +436,12 @@ class SingleEventPERunManager(RunManager):
 
         plt.savefig(path)
         plt.close()
+
+    def save_summary(self, path: str = "run_manager_summary.txt", **kwargs):
+        sys.stdout = open(path,'wt')
+        self.jim.print_summary()
+        #print(self.SNRs)
+        for detector, SNR in zip(self.detectors, self.SNRs):
+            print('SNR of detector ' + detector + ' is ' + str(SNR))
+        networkSNR = jnp.sum(jnp.array(self.SNRs)**2) ** (0.5)
+        print('network SNR is', networkSNR)
