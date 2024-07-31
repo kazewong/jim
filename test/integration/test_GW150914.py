@@ -106,4 +106,4 @@ jim = Jim(
     strategies=[Adam_optimizer, "default"],
 )
 
-jim.sample(jax.random.PRNGKey(42))
+# jim.sample(jax.random.PRNGKey(42))

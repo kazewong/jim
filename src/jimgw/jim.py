@@ -32,12 +32,8 @@ class Jim(object):
         self.likelihood = likelihood
         self.prior = prior
         if parameter_names is None:
-            print("No parameter names provided. Will try to trace the prior.")
-            parents = []
-            trace_prior_parent(prior, parents)
-            parameter_names = []
-            for parent in parents:
-                parameter_names.extend(parent.parameter_names)
+            print("No parameter names provided. Using prior names.")
+            parameter_names = prior.parameter_names
         self.parameter_names = parameter_names
 
         seed = kwargs.get("seed", 0)
@@ -79,7 +75,7 @@ class Jim(object):
 
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
-        prior = self.prior.log_prob(named_params)
+        prior = self.prior.log_prob(named_params) 
         return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
