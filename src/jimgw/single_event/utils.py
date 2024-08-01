@@ -245,8 +245,8 @@ def euler_rotation(delta_x: Float[Array, " 3"]):
     return rotation
 
 
-def zenith_azimuth_to_theta_phi(
-    zenith: Float, azimuth: Float, delta_x: Float[Array, " 3"]
+def angle_rotation(
+    zenith: Float, azimuth: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to the polar angle and azimuthal angle in sky frame.
@@ -273,8 +273,6 @@ def zenith_azimuth_to_theta_phi(
     cos_azimuth = jnp.cos(azimuth)
     sin_zenith = jnp.sin(zenith)
     cos_zenith = jnp.cos(zenith)
-
-    rotation = euler_rotation(delta_x)
 
     theta = jnp.acos(
         rotation[2][0] * sin_zenith * cos_azimuth
@@ -323,7 +321,7 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
 
 
 def zenith_azimuth_to_ra_dec(
-    zenith: Float, azimuth: Float, gmst: Float, delta_x: Float[Array, " 3"]
+    zenith: Float, azimuth: Float, gmst: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.
@@ -348,7 +346,7 @@ def zenith_azimuth_to_ra_dec(
     dec : Float
             Declination.
     """
-    theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
+    theta, phi = angle_rotation(zenith, azimuth, rotation)
     ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
     return ra, dec
 
@@ -380,58 +378,8 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
     return theta, phi
 
 
-def theta_phi_to_zenith_azimuth(
-    theta: Float, phi: Float, delta_x: Float[Array, " 3"]
-) -> tuple[Float, Float]:
-    """
-    Transforming the polar angle and azimuthal angle to the zenith angle and azimuthal angle.
-
-    Parameters
-    ----------
-    theta : Float
-            Polar angle.
-    phi : Float
-            Azimuthal angle.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
-
-    Returns
-    -------
-    zenith : Float
-            Zenith angle.
-    azimuth : Float
-            Azimuthal angle.
-    """
-    sin_theta = jnp.sin(theta)
-    cos_theta = jnp.cos(theta)
-    sin_phi = jnp.sin(phi)
-    cos_phi = jnp.cos(phi)
-
-    rotation = euler_rotation(delta_x)
-    rotation = jnp.linalg.inv(rotation)
-
-    zenith = jnp.acos(
-        rotation[2][0] * sin_theta * cos_phi
-        + rotation[2][1] * sin_theta * sin_phi
-        + rotation[2][2] * cos_theta
-    )
-    azimuth = jnp.fmod(
-        jnp.atan2(
-            rotation[1][0] * sin_theta * cos_phi
-            + rotation[1][1] * sin_theta * sin_phi
-            + rotation[1][2] * cos_theta,
-            rotation[0][0] * sin_theta * cos_phi
-            + rotation[0][1] * sin_theta * sin_phi
-            + rotation[0][2] * cos_theta,
-        )
-        + 2 * jnp.pi,
-        2 * jnp.pi,
-    )
-    return zenith, azimuth
-
-
 def ra_dec_to_zenith_azimuth(
-    ra: Float, dec: Float, gmst: Float, delta_x: Float[Array, " 3"]
+    ra: Float, dec: Float, gmst: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the right ascension and declination to the zenith angle and azimuthal angle.
@@ -455,7 +403,7 @@ def ra_dec_to_zenith_azimuth(
             Azimuthal angle.
     """
     theta, phi = ra_dec_to_theta_phi(ra, dec, gmst)
-    zenith, azimuth = theta_phi_to_zenith_azimuth(theta, phi, delta_x)
+    zenith, azimuth = angle_rotation(theta, phi, rotation)
     return zenith, azimuth
 
 

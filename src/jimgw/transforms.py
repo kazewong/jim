@@ -13,6 +13,7 @@ from jimgw.single_event.utils import (
     eta_to_q,
     ra_dec_to_zenith_azimuth,
     zenith_azimuth_to_ra_dec,
+    euler_rotation,
 )
 
 
@@ -450,16 +451,28 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
     """
 
+    gmst: Float
+    rotation: Float[Array, " 3 3"]
+    rotation_inv: Float[Array, " 3 3"]
+
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
+        gmst: Float,
+        delta_x: Float,
     ):
         super().__init__(name_mapping)
+
+        self.gmst = gmst
+        self.rotation = euler_rotation(delta_x)
+        self.rotation_inv = jnp.linalg.inv(self.rotation)
 
         def named_transform(x):
             ra = x[name_mapping[0][0]]
             dec = x[name_mapping[0][1]]
-            zenith, azimuth = ra_dec_to_zenith_azimuth(ra, dec)
+            zenith, azimuth = ra_dec_to_zenith_azimuth(
+                ra, dec, self.gmst, self.rotation
+            )
             return {name_mapping[1][0]: zenith, name_mapping[1][1]: azimuth}
 
         self.transform_func = named_transform
@@ -467,7 +480,9 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         def named_inverse_transform(x):
             zenith = x[name_mapping[1][0]]
             azimuth = x[name_mapping[1][1]]
-            ra, dec = zenith_azimuth_to_ra_dec(zenith, azimuth)
+            ra, dec = zenith_azimuth_to_ra_dec(
+                zenith, azimuth, self.gmst, self.rotation_inv
+            )
             return {name_mapping[0][0]: ra, name_mapping[0][1]: dec}
 
         self.inverse_transform_func = named_inverse_transform
