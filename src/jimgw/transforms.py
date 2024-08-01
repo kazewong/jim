@@ -309,6 +309,7 @@ class BoundToBound(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class BoundToUnbound(BijectiveTransform):
     """
     Bound to unbound transformation
@@ -328,8 +329,8 @@ class BoundToUnbound(BijectiveTransform):
             return jnp.log(x / (1 - x))
 
         super().__init__(name_mapping)
-        self.original_lower_bound = original_lower_bound
-        self.original_upper_bound = original_upper_bound
+        self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
+        self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
 
         self.transform_func = lambda x: {
             name_mapping[1][i]: logit(
