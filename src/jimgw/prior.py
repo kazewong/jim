@@ -144,9 +144,9 @@ class StandardNormalDistribution(Prior):
 
 
 @jaxtyped(typechecker=typechecker)
-class SimplexDistribution(Prior):
+class LogisticSimplexDistribution(Prior):
     """
-    A 2D distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    A 2D distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1) being mapped to Logistic Distribution.
     """
 
     def __repr__(self):
@@ -180,7 +180,10 @@ class SimplexDistribution(Prior):
             jax.random.PRNGKey(0), jnp.ones(3), shape=(1000,)
         )
         samples = samples[:, :2]
-        return self.add_name(samples.T)
+        z1 = jnp.log(samples[:, 0] / (1.0 - samples[:, 0]))
+        temp = samples[:, 1] / (1.0 - samples[:, 0])
+        z2 =jnp.log(temp / (1.0 - temp))
+        return self.add_name(jnp.stack([z1, z2], axis=1).T)
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         return jnp.log(2.0)
@@ -315,6 +318,28 @@ class UniformPrior(SequentialTransformPrior):
                     xmin,
                 ),
             ],
+        )
+
+
+@jaxtyped(typechecker=typechecker)
+class SimplexPrior(SequentialTransformPrior):
+    """
+    A prior distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    """
+
+    def __repr__(self):
+        return f"SimplexPrior(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 2, "SimplexPrior needs to be 2D distributions"
+        super().__init__(
+            CombinePrior(
+                [
+                    UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}"]),
+                    UniformPrior(0.0, 1.0, [f"{self.parameter_names[1]}"]),
+                ]
+            )
         )
 
 

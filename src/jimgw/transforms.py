@@ -437,3 +437,31 @@ class ParetoTransform(BijectiveTransform):
             )
             for i in range(len(name_mapping[1]))
         }
+
+
+class UnitSimplexTransform(BijectiveTransform):
+    """
+    Unit simplex transformation
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: {
+            name_mapping[1][0]: self.inverse_logit(x[name_mapping[0][0]]),
+            name_mapping[1][1]: (1.0 - self.inverse_logit(x[name_mapping[0][0]]))*self.inverse_logit(x[name_mapping[0][1]])
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][0]: self.logit(x[name_mapping[1][0]]),
+            name_mapping[0][1]: self.logit(x[name_mapping[1][1]]/(1.0 - x[name_mapping[1][0]]))
+        }
+    
+    @staticmethod
+    def logit(x):
+        return jnp.log(x / (1. - x))
+    
+    @staticmethod
+    def inverse_logit(x):
+        return 1. / (1. + jnp.exp(-x))
