@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from chex import assert_rank
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
@@ -261,7 +260,6 @@ class ArcSineTransform(BijectiveTransform):
 
 @jaxtyped(typechecker=typechecker)
 class BoundToBound(BijectiveTransform):
-
     """
     Bound to bound transformation
     """
@@ -300,6 +298,7 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
 class BoundToUnbound(BijectiveTransform):
     """
     Bound to unbound transformation
@@ -314,7 +313,7 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-        
+
         def logit(x):
             return jnp.log(x / (1 - x))
 
@@ -330,16 +329,12 @@ class BoundToUnbound(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (
-                self.original_upper_bound - self.original_lower_bound
-            )
-            / (
-                1
-                + jnp.exp(-x[name_mapping[1][i]])
-            )
+            name_mapping[0][i]: (self.original_upper_bound - self.original_lower_bound)
+            / (1 + jnp.exp(-x[name_mapping[1][i]]))
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
+
 
 class SingleSidedUnboundTransform(BijectiveTransform):
     """
@@ -367,7 +362,6 @@ class SingleSidedUnboundTransform(BijectiveTransform):
         }
 
 
-
 class PowerLawTransform(BijectiveTransform):
     """
     PowerLaw transformation
@@ -392,14 +386,22 @@ class PowerLawTransform(BijectiveTransform):
         self.xmin = xmin
         self.xmax = xmax
         self.alpha = alpha
-        self.transform_func = lambda x: [(
-            self.xmin ** (1.0 + self.alpha)
-            + x[0] * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-        ) ** (1.0 / (1.0 + self.alpha))]
-        self.inverse_transform_func = lambda x: [(
-            (x[0] ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-            / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-        )]
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: (
+                self.xmin ** (1.0 + self.alpha)
+                + x[0]
+                * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            )
+            ** (1.0 / (1.0 + self.alpha))
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: (
+                (x[0] ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+                / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            )
+            for i in range(len(name_mapping[1]))
+        }
 
 
 class ParetoTransform(BijectiveTransform):
@@ -420,7 +422,14 @@ class ParetoTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
-        self.transform_func = lambda x: [self.xmin * jnp.exp(
-            x[0] * jnp.log(self.xmax / self.xmin)
-        )]
-        self.inverse_transform_func = lambda x: [(jnp.log(x[0] / self.xmin) / jnp.log(self.xmax / self.xmin))]
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: self.xmin
+            * jnp.exp(x[0] * jnp.log(self.xmax / self.xmin))
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: (
+                jnp.log(x[0] / self.xmin) / jnp.log(self.xmax / self.xmin)
+            )
+            for i in range(len(name_mapping[1]))
+        }
