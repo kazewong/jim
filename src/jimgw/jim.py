@@ -70,7 +70,7 @@ class Jim(object):
             self.prior.n_dim, num_layers, hidden_size, num_bins, subkey
         )
 
-        self.Sampler = Sampler(
+        self.sampler = Sampler(
             self.prior.n_dim,
             rng_key,
             None,  # type: ignore
