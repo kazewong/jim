@@ -6,7 +6,14 @@ import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
-from jimgw.single_event.utils import Mc_q_to_m1_m2, m1_m2_to_Mc_q, Mc_q_to_eta, eta_to_q
+from jimgw.single_event.utils import (
+    Mc_q_to_m1_m2,
+    m1_m2_to_Mc_q,
+    Mc_q_to_eta,
+    eta_to_q,
+    ra_dec_to_zenith_azimuth,
+    zenith_azimuth_to_ra_dec,
+)
 
 
 class Transform(ABC):
@@ -300,7 +307,7 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
-        
+
 class BoundToUnbound(BijectiveTransform):
     """
     Bound to unbound transformation
@@ -315,7 +322,7 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-      
+
         def logit(x):
             return jnp.log(x / (1 - x))
 
@@ -428,6 +435,40 @@ class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransfor
             eta = x[name_mapping[1][1]]
             q = eta_to_q(Mc, eta)
             return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
+    """
+    Transform sky frame to detector frame sky position
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            ra = x[name_mapping[0][0]]
+            dec = x[name_mapping[0][1]]
+            zenith, azimuth = ra_dec_to_zenith_azimuth(ra, dec)
+            return {name_mapping[1][0]: zenith, name_mapping[1][1]: azimuth}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            zenith = x[name_mapping[1][0]]
+            azimuth = x[name_mapping[1][1]]
+            ra, dec = zenith_azimuth_to_ra_dec(zenith, azimuth)
+            return {name_mapping[0][0]: ra, name_mapping[0][1]: dec}
 
         self.inverse_transform_func = named_inverse_transform
 

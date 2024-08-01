@@ -203,32 +203,6 @@ def eta_to_q(eta: Float) -> Float:
     return temp - (temp**2 - 1) ** 0.5
 
 
-def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
-    """
-    Transforming the right ascension ra and declination dec to the polar angle
-    theta and azimuthal angle phi.
-
-    Parameters
-    ----------
-    ra : Float
-            Right ascension.
-    dec : Float
-            Declination.
-    gmst : Float
-            Greenwich mean sidereal time.
-
-    Returns
-    -------
-    theta : Float
-            Polar angle.
-    phi : Float
-            Azimuthal angle.
-    """
-    phi = ra - gmst
-    theta = jnp.pi / 2 - dec
-    return theta, phi
-
-
 def euler_rotation(delta_x: Float[Array, " 3"]):
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
@@ -239,11 +213,10 @@ def euler_rotation(delta_x: Float[Array, " 3"]):
 
     Copied and modified from bilby-cython/geometry.pyx
     """
-    norm = jnp.power(
-        delta_x[0] * delta_x[0] + delta_x[1] * delta_x[1] + delta_x[2] * delta_x[2], 0.5
-    )
+    norm = jnp.linalg.vector_norm(delta_x)
+
     cos_beta = delta_x[2] / norm
-    sin_beta = jnp.power(1 - cos_beta**2, 0.5)
+    sin_beta = jnp.sqrt(1 - cos_beta**2)
 
     alpha = jnp.atan2(-delta_x[1] * cos_beta, delta_x[0])
     gamma = jnp.atan2(delta_x[1], delta_x[0])
@@ -318,7 +291,7 @@ def zenith_azimuth_to_theta_phi(
             + rotation[0][2] * cos_zenith,
         )
         + 2 * jnp.pi,
-        (2 * jnp.pi),
+        2 * jnp.pi,
     )
     return theta, phi
 
@@ -345,6 +318,7 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
     """
     ra = phi + gmst
     dec = jnp.pi / 2 - theta
+    ra = ra % (2 * jnp.pi)
     return ra, dec
 
 
@@ -376,8 +350,113 @@ def zenith_azimuth_to_ra_dec(
     """
     theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
     ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
-    ra = ra % (2 * jnp.pi)
     return ra, dec
+
+
+def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
+    """
+    Transforming the right ascension ra and declination dec to the polar angle
+    theta and azimuthal angle phi.
+
+    Parameters
+    ----------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    gmst : Float
+            Greenwich mean sidereal time.
+
+    Returns
+    -------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
+    """
+    phi = ra - gmst
+    theta = jnp.pi / 2 - dec
+    phi = (phi + 2 * jnp.pi) % (2 * jnp.pi)
+    return theta, phi
+
+
+def theta_phi_to_zenith_azimuth(
+    theta: Float, phi: Float, delta_x: Float[Array, " 3"]
+) -> tuple[Float, Float]:
+    """
+    Transforming the polar angle and azimuthal angle to the zenith angle and azimuthal angle.
+
+    Parameters
+    ----------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
+    delta_x : Float
+            The vector pointing from the first detector to the second detector.
+
+    Returns
+    -------
+    zenith : Float
+            Zenith angle.
+    azimuth : Float
+            Azimuthal angle.
+    """
+    sin_theta = jnp.sin(theta)
+    cos_theta = jnp.cos(theta)
+    sin_phi = jnp.sin(phi)
+    cos_phi = jnp.cos(phi)
+
+    rotation = euler_rotation(delta_x)
+    rotation = jnp.linalg.inv(rotation)
+
+    zenith = jnp.acos(
+        rotation[2][0] * sin_theta * cos_phi
+        + rotation[2][1] * sin_theta * sin_phi
+        + rotation[2][2] * cos_theta
+    )
+    azimuth = jnp.fmod(
+        jnp.atan2(
+            rotation[1][0] * sin_theta * cos_phi
+            + rotation[1][1] * sin_theta * sin_phi
+            + rotation[1][2] * cos_theta,
+            rotation[0][0] * sin_theta * cos_phi
+            + rotation[0][1] * sin_theta * sin_phi
+            + rotation[0][2] * cos_theta,
+        )
+        + 2 * jnp.pi,
+        2 * jnp.pi,
+    )
+    return zenith, azimuth
+
+
+def ra_dec_to_zenith_azimuth(
+    ra: Float, dec: Float, gmst: Float, delta_x: Float[Array, " 3"]
+) -> tuple[Float, Float]:
+    """
+    Transforming the right ascension and declination to the zenith angle and azimuthal angle.
+
+    Parameters
+    ----------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    gmst : Float
+            Greenwich mean sidereal time.
+    delta_x : Float
+            The vector pointing from the first detector to the second detector.
+
+    Returns
+    -------
+    zenith : Float
+            Zenith angle.
+    azimuth : Float
+            Azimuthal angle.
+    """
+    theta, phi = ra_dec_to_theta_phi(ra, dec, gmst)
+    zenith, azimuth = theta_phi_to_zenith_azimuth(theta, phi, delta_x)
+    return zenith, azimuth
 
 
 def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:
