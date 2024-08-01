@@ -28,10 +28,10 @@ end_pad = post_trigger_duration
 fmin = 20.0
 fmax = 1024.0
 
-ifos = ["H1", "L1"]
+ifos = [H1, L1]
 
-H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
 q_prior = UniformPrior(
@@ -85,7 +85,7 @@ likelihood_transforms = [
 ]
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=RippleIMRPhenomD(),
     trigger_time=gps,
     duration=4,
