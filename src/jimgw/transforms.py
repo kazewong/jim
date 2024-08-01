@@ -397,7 +397,10 @@ class PowerLawTransform(BijectiveTransform):
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][i]: (
-                (x[name_mapping[1][i]] ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+                (
+                    x[name_mapping[1][i]] ** (1.0 + self.alpha)
+                    - self.xmin ** (1.0 + self.alpha)
+                )
                 / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
             )
             for i in range(len(name_mapping[1]))
@@ -429,7 +432,8 @@ class ParetoTransform(BijectiveTransform):
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][i]: (
-                jnp.log(x[name_mapping[1][i]] / self.xmin) / jnp.log(self.xmax / self.xmin)
+                jnp.log(x[name_mapping[1][i]] / self.xmin)
+                / jnp.log(self.xmax / self.xmin)
             )
             for i in range(len(name_mapping[1]))
         }
