@@ -300,7 +300,7 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
-
+        
 class BoundToUnbound(BijectiveTransform):
     """
     Bound to unbound transformation
@@ -315,7 +315,7 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-
+      
         def logit(x):
             return jnp.log(x / (1 - x))
 
