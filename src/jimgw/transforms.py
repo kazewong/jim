@@ -9,7 +9,7 @@ from jaxtyping import Float, Array, jaxtyped
 from jimgw.single_event.utils import (
     Mc_q_to_m1_m2,
     m1_m2_to_Mc_q,
-    Mc_q_to_eta,
+    q_to_eta,
     eta_to_q,
     ra_dec_to_zenith_azimuth,
     zenith_azimuth_to_ra_dec,
@@ -426,7 +426,7 @@ class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransfor
         def named_transform(x):
             Mc = x[name_mapping[0][0]]
             q = x[name_mapping[0][1]]
-            eta = Mc_q_to_eta(Mc, q)
+            eta = q_to_eta(q)
             return {name_mapping[1][0]: Mc, name_mapping[1][1]: eta}
 
         self.transform_func = named_transform

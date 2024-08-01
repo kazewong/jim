@@ -163,7 +163,7 @@ def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     return M, eta
 
 
-def Mc_q_to_eta(M_c: Float, q: Float) -> Float:
+def q_to_eta(q: Float) -> Float:
     """
     Transforming the chirp mass M_c and mass ratio q to the symmetric mass ratio eta.
 
