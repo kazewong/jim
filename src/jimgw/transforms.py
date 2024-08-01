@@ -1,11 +1,20 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from chex import assert_rank
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
+
+from jimgw.single_event.utils import (
+    Mc_q_to_m1_m2,
+    m1_m2_to_Mc_q,
+    q_to_eta,
+    eta_to_q,
+    ra_dec_to_zenith_azimuth,
+    zenith_azimuth_to_ra_dec,
+    euler_rotation,
+)
 
 
 class Transform(ABC):
@@ -261,7 +270,6 @@ class ArcSineTransform(BijectiveTransform):
 
 @jaxtyped(typechecker=typechecker)
 class BoundToBound(BijectiveTransform):
-
     """
     Bound to bound transformation
     """
@@ -300,7 +308,7 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
-@jaxtyped(typechecker=typechecker)
+
 class BoundToUnbound(BijectiveTransform):
     """
     Bound to unbound transformation
@@ -315,13 +323,13 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-        
+
         def logit(x):
             return jnp.log(x / (1 - x))
 
         super().__init__(name_mapping)
-        self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
-        self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
+        self.original_lower_bound = original_lower_bound
+        self.original_upper_bound = original_upper_bound
 
         self.transform_func = lambda x: {
             name_mapping[1][i]: logit(
@@ -331,16 +339,12 @@ class BoundToUnbound(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (
-                self.original_upper_bound - self.original_lower_bound
-            )
-            / (
-                1
-                + jnp.exp(-x[name_mapping[1][i]])
-            )
+            name_mapping[0][i]: (self.original_upper_bound - self.original_lower_bound)
+            / (1 + jnp.exp(-x[name_mapping[1][i]]))
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
+
 
 class SingleSidedUnboundTransform(BijectiveTransform):
     """
@@ -367,6 +371,121 @@ class SingleSidedUnboundTransform(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
+class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
+    """
+    Transform chirp mass and mass ratio to component masses
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            Mc = x[name_mapping[0][0]]
+            q = x[name_mapping[0][1]]
+            m1, m2 = Mc_q_to_m1_m2(Mc, q)
+            return {name_mapping[1][0]: m1, name_mapping[1][1]: m2}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            m1 = x[name_mapping[1][0]]
+            m2 = x[name_mapping[1][1]]
+            Mc, q = m1_m2_to_Mc_q(m1, m2)
+            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
+    """
+    Transform chirp mass and mass ratio to chirp mass and symmetric mass ratio
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            Mc = x[name_mapping[0][0]]
+            q = x[name_mapping[0][1]]
+            eta = q_to_eta(q)
+            return {name_mapping[1][0]: Mc, name_mapping[1][1]: eta}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            Mc = x[name_mapping[1][0]]
+            eta = x[name_mapping[1][1]]
+            q = eta_to_q(Mc, eta)
+            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
+    """
+    Transform sky frame to detector frame sky position
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    gmst: Float
+    rotation: Float[Array, " 3 3"]
+    rotation_inv: Float[Array, " 3 3"]
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        gmst: Float,
+        delta_x: Float,
+    ):
+        super().__init__(name_mapping)
+
+        self.gmst = gmst
+        self.rotation = euler_rotation(delta_x)
+        self.rotation_inv = jnp.linalg.inv(self.rotation)
+
+        def named_transform(x):
+            ra = x[name_mapping[0][0]]
+            dec = x[name_mapping[0][1]]
+            zenith, azimuth = ra_dec_to_zenith_azimuth(
+                ra, dec, self.gmst, self.rotation
+            )
+            return {name_mapping[1][0]: zenith, name_mapping[1][1]: azimuth}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            zenith = x[name_mapping[1][0]]
+            azimuth = x[name_mapping[1][1]]
+            ra, dec = zenith_azimuth_to_ra_dec(
+                zenith, azimuth, self.gmst, self.rotation_inv
+            )
+            return {name_mapping[0][0]: ra, name_mapping[0][1]: dec}
+
+        self.inverse_transform_func = named_inverse_transform
 
 
 # class PowerLawTransform(UnivariateTransform):
