@@ -146,7 +146,7 @@ class Jim(object):
         train_summary = self.sampler.get_sampler_state(training=True)
         production_summary = self.sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, len(self.parameter_names)).T
+        training_chain = train_summary["chains"].reshape(-1, len(self.parameter_names))
         if self.sample_transforms:
             transformed_chain = {}
             named_sample = self.add_name(training_chain[0])
@@ -168,7 +168,7 @@ class Jim(object):
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, len(self.parameter_names)).T
+        production_chain = production_summary["chains"].reshape(-1, len(self.parameter_names))
         if self.sample_transforms:
             transformed_chain = {}
             named_sample = self.add_name(production_chain[0])
@@ -241,7 +241,7 @@ class Jim(object):
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 
         # Need rewrite to output chains instead of flattened samples
-        chains = chains.reshape(-1, len(self.parameter_names)).T
+        chains = chains.reshape(-1, len(self.parameter_names))
         if self.sample_transforms:
             transformed_chain = {}
             named_sample = self.add_name(chains[0])
