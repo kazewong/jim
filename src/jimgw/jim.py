@@ -109,13 +109,13 @@ class Jim(object):
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
-            initial_guess_named = self.prior.sample(key, self.Sampler.n_chains)
+            initial_guess_named = self.prior.sample(key, self.sampler.n_chains)
             for transform in self.sample_transforms:
                 initial_guess_named = jax.vmap(transform.forward)(initial_guess_named)
             initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T[
                 0
             ]  # This [0] should be consolidate
-        self.Sampler.sample(initial_guess, None)  # type: ignore
+        self.sampler.sample(initial_guess, None)  # type: ignore
 
     def maximize_likelihood(
         self,
@@ -148,8 +148,8 @@ class Jim(object):
 
         """
 
-        train_summary = self.Sampler.get_sampler_state(training=True)
-        production_summary = self.Sampler.get_sampler_state(training=False)
+        train_summary = self.sampler.get_sampler_state(training=True)
+        production_summary = self.sampler.get_sampler_state(training=False)
 
         training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
         training_chain = self.prior.add_name(training_chain)
@@ -215,9 +215,9 @@ class Jim(object):
 
         """
         if training:
-            chains = self.Sampler.get_sampler_state(training=True)["chains"]
+            chains = self.sampler.get_sampler_state(training=True)["chains"]
         else:
-            chains = self.Sampler.get_sampler_state(training=False)["chains"]
+            chains = self.sampler.get_sampler_state(training=False)["chains"]
 
         chains = self.prior.transform(self.prior.add_name(chains.transpose(2, 0, 1)))
         return chains
