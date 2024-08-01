@@ -7,7 +7,7 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior, trace_prior_parent
+from jimgw.prior import Prior
 from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
@@ -48,8 +48,9 @@ class Jim(object):
                 self.parameter_names = transform.propagate_name(self.parameter_names)
 
         if len(likelihood_transforms) == 0:
-            print("No likelihood transforms provided. Using prior parameters as likelihood parameters")
-
+            print(
+                "No likelihood transforms provided. Using prior parameters as likelihood parameters"
+            )
 
         seed = kwargs.get("seed", 0)
 
