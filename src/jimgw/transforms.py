@@ -424,8 +424,12 @@ class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
 
-        self.transform_func = lambda x: {name_mapping[1][0]: q_to_eta(x[name_mapping[0][0]])}
-        self.inverse_transform_func = lambda x: {name_mapping[0][0]: eta_to_q(x[name_mapping[1][0]])}
+        self.transform_func = lambda x: {
+            name_mapping[1][0]: q_to_eta(x[name_mapping[0][0]])
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][0]: eta_to_q(x[name_mapping[1][0]])
+        }
 
 
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):

@@ -36,7 +36,7 @@ L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
 q_prior = UniformPrior(
     0.125,
-    1,
+    1.,
     parameter_names=["q"],
 )
 s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
@@ -68,7 +68,7 @@ prior = CombinePrior(
 
 sample_transforms = [
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=10.0, original_upper_bound=80.0),
-    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1),
+    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1.),
     BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["s2_z"], ["s2_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["d_L"], ["d_L_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2000.0),
