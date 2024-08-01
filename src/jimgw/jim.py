@@ -137,7 +137,7 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def print_summary(self, transform: bool = True):
+    def print_summary(self):
         """
         Generate summary of the run
 
@@ -146,19 +146,45 @@ class Jim(object):
         train_summary = self.sampler.get_sampler_state(training=True)
         production_summary = self.sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
-        training_chain = self.prior.add_name(training_chain)
-        if transform:
-            training_chain = self.prior.transform(training_chain)
+        training_chain = train_summary["chains"].reshape(-1, len(self.parameter_names)).T
+        if self.sample_transforms:
+            transformed_chain = {}
+            named_sample = self.add_name(training_chain[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.inverse(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in training_chain[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.inverse(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            training_chain = transformed_chain
+        else:
+            training_chain = self.add_name(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
-        production_chain = self.prior.add_name(production_chain)
-        if transform:
-            production_chain = self.prior.transform(production_chain)
+        production_chain = production_summary["chains"].reshape(-1, len(self.parameter_names)).T
+        if self.sample_transforms:
+            transformed_chain = {}
+            named_sample = self.add_name(production_chain[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.inverse(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in production_chain[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.inverse(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            production_chain = transformed_chain
+        else:
+            production_chain = self.add_name(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -214,8 +240,24 @@ class Jim(object):
         else:
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.prior.transform(self.prior.add_name(chains.transpose(2, 0, 1)))
-        return chains
+        # Need rewrite to output chains instead of flattened samples
+        chains = chains.reshape(-1, len(self.parameter_names)).T
+        if self.sample_transforms:
+            transformed_chain = {}
+            named_sample = self.add_name(chains[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.inverse(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in chains[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.inverse(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            return transformed_chain
+        else:
+            return self.add_name(chains)
 
     def plot(self):
         pass
