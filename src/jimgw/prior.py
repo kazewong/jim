@@ -143,6 +143,49 @@ class StandardNormalDistribution(Prior):
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
 
+@jaxtyped(typechecker=typechecker)
+class SimplexDistribution(Prior):
+    """
+    A 2D distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    """
+
+    def __repr__(self):
+        return f"SimplexDistribution(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str], **kwargs):
+        super().__init__(parameter_names)
+        self.composite = False
+        assert self.n_dim == 2, "SimplexDistribution needs to be 2D distributions"
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        """
+        Sample from a simplex distribution.
+
+        Parameters
+        ----------
+        rng_key : PRNGKeyArray
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
+
+        """
+        samples = jax.random.dirichlet(
+            jax.random.PRNGKey(0), jnp.ones(3), shape=(1000,)
+        )
+        samples = samples[:, :2]
+        return self.add_name(samples.T)
+
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        return jnp.log(2.0)
+
+
 class SequentialTransformPrior(Prior):
     """
     Transform a prior distribution by applying a sequence of transforms.
