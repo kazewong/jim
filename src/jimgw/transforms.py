@@ -5,7 +5,9 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
+from astropy.time import Time
 
+from jimgw.single_event.detector import GroundBased2G
 from jimgw.single_event.utils import (
     Mc_q_to_m1_m2,
     m1_m2_to_Mc_q,
@@ -395,20 +397,17 @@ class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
         name_mapping: tuple[list[str], list[str]],
     ):
         super().__init__(name_mapping)
+        assert "M_c" in name_mapping[0] and "q" in name_mapping[0] and "m_1" in name_mapping[1] and "m_2" in name_mapping[1]
 
         def named_transform(x):
-            Mc = x[name_mapping[0][0]]
-            q = x[name_mapping[0][1]]
-            m1, m2 = Mc_q_to_m1_m2(Mc, q)
-            return {name_mapping[1][0]: m1, name_mapping[1][1]: m2}
+            m1, m2 = Mc_q_to_m1_m2(x["M_c"], x["q"])
+            return {"m_1": m1, "m_2": m2}
 
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            m1 = x[name_mapping[1][0]]
-            m2 = x[name_mapping[1][1]]
-            Mc, q = m1_m2_to_Mc_q(m1, m2)
-            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
+            Mc, q = m1_m2_to_Mc_q(x["m_1"], x["m_2"])
+            return {"M_c": Mc, "q": q}
 
         self.inverse_transform_func = named_inverse_transform
 
@@ -458,32 +457,31 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
-        gmst: Float,
-        delta_x: Float,
+        gps_time: Float,
+        ifos: GroundBased2G,
     ):
         super().__init__(name_mapping)
 
-        self.gmst = gmst
+        self.gmst = Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        delta_x = ifos[0].vertex - ifos[1].vertex
         self.rotation = euler_rotation(delta_x)
         self.rotation_inv = jnp.linalg.inv(self.rotation)
+        
+        assert "ra" in name_mapping[0] and "dec" in name_mapping[0] and "zenith" in name_mapping[1] and "azimuth" in name_mapping[1]
 
         def named_transform(x):
-            ra = x[name_mapping[0][0]]
-            dec = x[name_mapping[0][1]]
             zenith, azimuth = ra_dec_to_zenith_azimuth(
-                ra, dec, self.gmst, self.rotation
+                x["ra"], x["dec"], self.gmst, self.rotation
             )
-            return {name_mapping[1][0]: zenith, name_mapping[1][1]: azimuth}
+            return {"zenith": zenith, "azimuth": azimuth}
 
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            zenith = x[name_mapping[1][0]]
-            azimuth = x[name_mapping[1][1]]
             ra, dec = zenith_azimuth_to_ra_dec(
-                zenith, azimuth, self.gmst, self.rotation_inv
+                x["zenith"], x["azimuth"], self.gmst, self.rotation_inv
             )
-            return {name_mapping[0][0]: ra, name_mapping[0][1]: dec}
+            return {"ra": ra, "dec": dec}
 
         self.inverse_transform_func = named_inverse_transform
 
