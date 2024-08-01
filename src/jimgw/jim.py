@@ -100,21 +100,16 @@ class Jim(object):
         prior = self.prior.log_prob(named_params) + transform_jacobian
         for transform in self.likelihood_transforms:
             named_params = transform.forward(named_params)
-        named_params = jax.tree.map(
-            lambda x: x[0], named_params
-        )  # This [0] should be consolidate
         return (
-            self.likelihood.evaluate(named_params, data) + prior[0]
-        )  # This prior [0] should be consolidate
+            self.likelihood.evaluate(named_params, data) + prior
+        )
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
             initial_guess_named = self.prior.sample(key, self.sampler.n_chains)
             for transform in self.sample_transforms:
                 initial_guess_named = jax.vmap(transform.forward)(initial_guess_named)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T[
-                0
-            ]  # This [0] should be consolidate
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
         self.sampler.sample(initial_guess, None)  # type: ignore
 
     def maximize_likelihood(

@@ -338,13 +338,13 @@ class BoundToUnbound(BijectiveTransform):
 
         self.transform_func = lambda x: {
             name_mapping[1][i]: logit(
-                (x[name_mapping[0][i]] - self.original_lower_bound)
-                / (self.original_upper_bound - self.original_lower_bound)
+                (x[name_mapping[0][i]] - self.original_lower_bound[i])
+                / (self.original_upper_bound[i] - self.original_lower_bound[i])
             )
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (self.original_upper_bound - self.original_lower_bound)
+            name_mapping[0][i]: (self.original_upper_bound[i] - self.original_lower_bound[i])
             / (1 + jnp.exp(-x[name_mapping[1][i]]))
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
