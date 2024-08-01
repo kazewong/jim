@@ -407,9 +407,9 @@ class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
         self.inverse_transform_func = named_inverse_transform
 
 
-class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
+class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
     """
-    Transform chirp mass and mass ratio to chirp mass and symmetric mass ratio
+    Transform mass ratio to symmetric mass ratio
 
     Parameters
     ----------
@@ -424,21 +424,8 @@ class ChirpMassMassRatioToChirpMassSymmetricMassRatioTransform(BijectiveTransfor
     ):
         super().__init__(name_mapping)
 
-        def named_transform(x):
-            Mc = x[name_mapping[0][0]]
-            q = x[name_mapping[0][1]]
-            eta = q_to_eta(q)
-            return {name_mapping[1][0]: Mc, name_mapping[1][1]: eta}
-
-        self.transform_func = named_transform
-
-        def named_inverse_transform(x):
-            Mc = x[name_mapping[1][0]]
-            eta = x[name_mapping[1][1]]
-            q = eta_to_q(Mc, eta)
-            return {name_mapping[0][0]: Mc, name_mapping[0][1]: q}
-
-        self.inverse_transform_func = named_inverse_transform
+        self.transform_func = lambda x: {name_mapping[1][0]: q_to_eta(x[name_mapping[0][0]])}
+        self.inverse_transform_func = lambda x: {name_mapping[0][0]: eta_to_q(x[name_mapping[1][0]])}
 
 
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
