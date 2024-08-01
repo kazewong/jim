@@ -174,6 +174,7 @@ class BijectiveTransform(NtoNTransform):
         return y_copy
 
 
+@jaxtyped(typechecker=typechecker)
 class ScaleTransform(BijectiveTransform):
     scale: Float
 
@@ -194,6 +195,7 @@ class ScaleTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class OffsetTransform(BijectiveTransform):
     offset: Float
 
@@ -214,6 +216,7 @@ class OffsetTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class LogitTransform(BijectiveTransform):
     """
     Logit transform following
@@ -242,6 +245,7 @@ class LogitTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class ArcSineTransform(BijectiveTransform):
     """
     ArcSine transformation
@@ -347,6 +351,7 @@ class BoundToUnbound(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class SingleSidedUnboundTransform(BijectiveTransform):
     """
     Unbound upper limit transformation
@@ -373,6 +378,7 @@ class SingleSidedUnboundTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
     """
     Transform chirp mass and mass ratio to component masses
@@ -407,6 +413,7 @@ class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
         self.inverse_transform_func = named_inverse_transform
 
 
+@jaxtyped(typechecker=typechecker)
 class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
     """
     Transform mass ratio to symmetric mass ratio
@@ -432,6 +439,7 @@ class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     """
     Transform sky frame to detector frame sky position
