@@ -1,8 +1,9 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
+from chex import assert_rank
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
@@ -260,6 +261,7 @@ class ArcSineTransform(BijectiveTransform):
 
 @jaxtyped(typechecker=typechecker)
 class BoundToBound(BijectiveTransform):
+
     """
     Bound to bound transformation
     """
@@ -298,7 +300,6 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
-        
 @jaxtyped(typechecker=typechecker)
 class BoundToUnbound(BijectiveTransform):
     """
@@ -314,7 +315,7 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-
+        
         def logit(x):
             return jnp.log(x / (1 - x))
 
@@ -330,12 +331,16 @@ class BoundToUnbound(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (self.original_upper_bound - self.original_lower_bound)
-            / (1 + jnp.exp(-x[name_mapping[1][i]]))
+            name_mapping[0][i]: (
+                self.original_upper_bound - self.original_lower_bound
+            )
+            / (
+                1
+                + jnp.exp(-x[name_mapping[1][i]])
+            )
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
-
 
 class SingleSidedUnboundTransform(BijectiveTransform):
     """
@@ -363,78 +368,55 @@ class SingleSidedUnboundTransform(BijectiveTransform):
         }
 
 
-class PowerLawTransform(BijectiveTransform):
-    """
-    PowerLaw transformation
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
 
-    xmin: Float
-    xmax: Float
-    alpha: Float
+# class PowerLawTransform(UnivariateTransform):
+#     """
+#     PowerLaw transformation
+#     Parameters
+#     ----------
+#     name_mapping : tuple[list[str], list[str]]
+#             The name mapping between the input and output dictionary.
+#     """
 
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        xmin: Float,
-        xmax: Float,
-        alpha: Float,
-    ):
-        super().__init__(name_mapping)
-        self.xmin = xmin
-        self.xmax = xmax
-        self.alpha = alpha
-        self.transform_func = lambda x: {
-            name_mapping[1][i]: (
-                self.xmin ** (1.0 + self.alpha)
-                + x[name_mapping[0][i]]
-                * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-            )
-            ** (1.0 / (1.0 + self.alpha))
-            for i in range(len(name_mapping[0]))
-        }
-        self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (
-                (
-                    x[name_mapping[1][i]] ** (1.0 + self.alpha)
-                    - self.xmin ** (1.0 + self.alpha)
-                )
-                / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
-            )
-            for i in range(len(name_mapping[1]))
-        }
+#     xmin: Float
+#     xmax: Float
+#     alpha: Float
+
+#     def __init__(
+#         self,
+#         name_mapping: tuple[list[str], list[str]],
+#         xmin: Float,
+#         xmax: Float,
+#         alpha: Float,
+#     ):
+#         super().__init__(name_mapping)
+#         self.xmin = xmin
+#         self.xmax = xmax
+#         self.alpha = alpha
+#         self.transform_func = lambda x: (
+#             self.xmin ** (1.0 + self.alpha)
+#             + x * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+#         ) ** (1.0 / (1.0 + self.alpha))
 
 
-class ParetoTransform(BijectiveTransform):
-    """
-    Pareto transformation: Power law when alpha = -1
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
+# class ParetoTransform(UnivariateTransform):
+#     """
+#     Pareto transformation: Power law when alpha = -1
+#     Parameters
+#     ----------
+#     name_mapping : tuple[list[str], list[str]]
+#             The name mapping between the input and output dictionary.
+#     """
 
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        xmin: Float,
-        xmax: Float,
-    ):
-        super().__init__(name_mapping)
-        self.xmin = xmin
-        self.xmax = xmax
-        self.transform_func = lambda x: {
-            name_mapping[1][i]: self.xmin
-            * jnp.exp(x[name_mapping[0][i]] * jnp.log(self.xmax / self.xmin))
-            for i in range(len(name_mapping[0]))
-        }
-        self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: (
-                jnp.log(x[name_mapping[1][i]] / self.xmin)
-                / jnp.log(self.xmax / self.xmin)
-            )
-            for i in range(len(name_mapping[1]))
-        }
+#     def __init__(
+#         self,
+#         name_mapping: tuple[list[str], list[str]],
+#         xmin: Float,
+#         xmax: Float,
+#     ):
+#         super().__init__(name_mapping)
+#         self.xmin = xmin
+#         self.xmax = xmax
+#         self.transform_func = lambda x: self.xmin * jnp.exp(
+#             x * jnp.log(self.xmax / self.xmin)
+#         )
