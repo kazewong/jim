@@ -115,7 +115,7 @@ class BijectiveTransform(NtoNTransform):
 
     inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
-    def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
+    def inverse(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
         Inverse transform the input y to original coordinate x.
 
@@ -128,6 +128,8 @@ class BijectiveTransform(NtoNTransform):
         -------
         x : dict[str, Float]
                 The original dictionary.
+        log_det : Float
+                The log Jacobian determinant.
         """
         y_copy = y.copy()
         transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
@@ -145,7 +147,7 @@ class BijectiveTransform(NtoNTransform):
         )
         return y_copy, jacobian
 
-    def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+    def backward(self, y: dict[str, Float]) -> dict[str, Float]:
         """
         Pull back the input y to original coordinate x and return the log Jacobian determinant.
 
@@ -158,8 +160,6 @@ class BijectiveTransform(NtoNTransform):
         -------
         x : dict[str, Float]
                 The original dictionary.
-        log_det : Float
-                The log Jacobian determinant.
         """
         y_copy = y.copy()
         output_params = self.inverse_transform_func(y_copy)

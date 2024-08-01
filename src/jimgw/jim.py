@@ -151,13 +151,13 @@ class Jim(object):
             transformed_chain = {}
             named_sample = self.add_name(training_chain[0])
             for transform in self.sample_transforms:
-                named_sample = transform.inverse(named_sample)
+                named_sample = transform.backward(named_sample)
             for key, value in named_sample.items():
                 transformed_chain[key] = [value]
             for sample in training_chain[1:]:
                 named_sample = self.add_name(sample)
                 for transform in self.sample_transforms:
-                    named_sample = transform.inverse(named_sample)
+                    named_sample = transform.backward(named_sample)
                 for key, value in named_sample.items():
                     transformed_chain[key].append(value)
             training_chain = transformed_chain
@@ -173,13 +173,13 @@ class Jim(object):
             transformed_chain = {}
             named_sample = self.add_name(production_chain[0])
             for transform in self.sample_transforms:
-                named_sample = transform.inverse(named_sample)
+                named_sample = transform.backward(named_sample)
             for key, value in named_sample.items():
                 transformed_chain[key] = [value]
             for sample in production_chain[1:]:
                 named_sample = self.add_name(sample)
                 for transform in self.sample_transforms:
-                    named_sample = transform.inverse(named_sample)
+                    named_sample = transform.backward(named_sample)
                 for key, value in named_sample.items():
                     transformed_chain[key].append(value)
             production_chain = transformed_chain
@@ -192,7 +192,7 @@ class Jim(object):
         print("Training summary")
         print("=" * 10)
         for key, value in training_chain.items():
-            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
+            print(f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}")
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -209,7 +209,7 @@ class Jim(object):
         print("Production summary")
         print("=" * 10)
         for key, value in production_chain.items():
-            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
+            print(f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}")
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )
@@ -246,18 +246,22 @@ class Jim(object):
             transformed_chain = {}
             named_sample = self.add_name(chains[0])
             for transform in self.sample_transforms:
-                named_sample = transform.inverse(named_sample)
+                named_sample = transform.backward(named_sample)
             for key, value in named_sample.items():
                 transformed_chain[key] = [value]
             for sample in chains[1:]:
                 named_sample = self.add_name(sample)
                 for transform in self.sample_transforms:
-                    named_sample = transform.inverse(named_sample)
+                    named_sample = transform.backward(named_sample)
                 for key, value in named_sample.items():
                     transformed_chain[key].append(value)
-            return transformed_chain
+            output = transformed_chain
         else:
-            return self.add_name(chains)
+            output = self.add_name(chains)
+
+        for key in output.keys():
+            output[key] = jnp.array(output[key])
+        return output
 
     def plot(self):
         pass
