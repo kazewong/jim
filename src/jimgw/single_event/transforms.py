@@ -4,7 +4,7 @@ from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import BijectiveTransform
+from jimgw.transforms import BijectiveTransform, NtoNTransform
 from jimgw.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
@@ -15,6 +15,7 @@ from jimgw.single_event.utils import (
     ra_dec_to_zenith_azimuth,
     zenith_azimuth_to_ra_dec,
     euler_rotation,
+    spin_to_cartesian_spin,
 )
 
 
@@ -167,3 +168,54 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
             return {"ra": ra, "dec": dec}
 
         self.inverse_transform_func = named_inverse_transform
+        
+
+@jaxtyped(typechecker=typechecker)
+class SpinToCartesianSpinTransform(NtoNTransform):
+    """
+    Spin to Cartesian spin transformation
+    """
+
+    freq_ref: Float
+    
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        freq_ref: Float,
+    ):
+        super().__init__(name_mapping)
+        
+        self.freq_ref = freq_ref
+        
+        assert (
+            "theta_jn" in name_mapping[0]
+            and "phi_jl" in name_mapping[0]
+            and "theta1" in name_mapping[0]
+            and "theta2" in name_mapping[0]
+            and "phi12" in name_mapping[0]
+            and "a1" in name_mapping[0]
+            and "a2" in name_mapping[0]
+            and "iota" in name_mapping[1]
+            and "s1_x" in name_mapping[1]
+            and "s1_y" in name_mapping[1]
+            and "s1_z" in name_mapping[1]
+            and "s2_x" in name_mapping[1]
+            and "s2_y" in name_mapping[1]
+            and "s2_z" in name_mapping[1]
+        )
+        
+        def named_transform(x):
+            iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
+                x["theta_jn"], x["phi_jl"], x["theta1"], x["theta2"], x["phi12"], x["a1"], x["a2"], x['M_c'], x['q'], self.freq_ref, x['phase_c']
+            )
+            return {
+                "iota": iota,
+                "s1_x": s1x,
+                "s1_y": s1y,
+                "s1_z": s1z,
+                "s2_x": s2x,
+                "s2_y": s2y,
+                "s2_z": s2z,
+            }
+        
+        self.transform_func = named_transform
