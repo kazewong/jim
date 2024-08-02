@@ -458,8 +458,8 @@ class UnitSimplexTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: {
-            name_mapping[1][0]: self.inverse_logit(x[name_mapping[0][0]]),
-            name_mapping[1][1]: (1.0 - self.inverse_logit(x[name_mapping[0][0]]))*self.inverse_logit(x[name_mapping[0][1]])
+            name_mapping[1][0]: (1.0 - self.inverse_logit(x[name_mapping[0][0]]))*self.inverse_logit(x[name_mapping[0][1]]),
+            name_mapping[1][1]: self.inverse_logit(x[name_mapping[0][0]])
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][0]: self.logit(x[name_mapping[1][0]]),
