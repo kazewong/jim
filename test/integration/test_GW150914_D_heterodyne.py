@@ -90,6 +90,8 @@ likelihood = HeterodynedTransientLikelihoodFD(
     post_trigger_duration=2,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
+    n_steps=5,
+    popsize=10,
 )
 
 
