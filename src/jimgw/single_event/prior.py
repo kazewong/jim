@@ -1,12 +1,15 @@
-from dataclasses import field
-
-import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
-from flowMC.nfmodel.base import Distribution
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import jaxtyped
 
-from jimgw.prior import Prior, CombinePrior, UniformPrior, PowerLawPrior, SinePrior, CosinePrior
+from jimgw.prior import (
+    Prior,
+    CombinePrior,
+    UniformPrior,
+    PowerLawPrior,
+    SinePrior,
+)
+
 
 @jaxtyped(typechecker=typechecker)
 class UniformSpherePrior(CombinePrior):
@@ -30,28 +33,6 @@ class UniformSpherePrior(CombinePrior):
             ]
         )
 
-@jaxtyped(typechecker=typechecker)
-class UniformComponentMassPrior(CombinePrior):
-    """
-    A prior in the range [xmin, xmax) for component masses which assumes the
-    component masses to be uniformly distributed.
-    """
-
-    def __repr__(self):
-        return f"UniformComponentMassPrior(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
-
-    def __init__(self, xmin: float, xmax: float):
-        self.parameter_names = ["m_1", "m_2"]
-        super().__init__(
-            [
-                UniformPrior(xmin, xmax, ["m_1"]),
-                UniformPrior(xmin, xmax, ["m_2"]),
-            ]
-        )
-
-    def log_prob(self, z: dict[str, Float]) -> Float:
-        output = super().log_prob(z)
-        output += jnp.log(2.)
 
 @jaxtyped(typechecker=typechecker)
 class UniformComponentChirpMassPrior(PowerLawPrior):

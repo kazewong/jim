@@ -8,7 +8,9 @@ from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.transforms import BoundToUnbound, MassRatioToSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform
+from jimgw.transforms import BoundToUnbound
+from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform, MassRatioToSymmetricMassRatioTransform
+from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -34,14 +36,9 @@ for ifo in ifos:
     ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
-q_prior = UniformPrior(
-    0.125,
-    1.,
-    parameter_names=["q"],
-)
+q_prior = UniformPrior(0.125, 1.0, parameter_names=["q"])
 s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
 s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
-# Current likelihood sampling will fail and give nan because of large number
 dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
@@ -77,7 +74,7 @@ sample_transforms = [
     BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
     SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]],original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
 ]
 

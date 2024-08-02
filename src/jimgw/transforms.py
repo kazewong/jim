@@ -7,7 +7,6 @@ from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
 
-
 class Transform(ABC):
     """
     Base class for transform.
