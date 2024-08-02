@@ -1,4 +1,5 @@
 from jimgw.prior import *
+from jimgw.utils import trace_prior_parent
 import scipy.stats as stats
 
 
