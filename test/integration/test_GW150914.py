@@ -8,7 +8,7 @@ from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.transforms import BoundToUnbound, MassRatioToSymmetricMassRatioTransform
+from jimgw.transforms import BoundToUnbound, MassRatioToSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -76,8 +76,9 @@ sample_transforms = [
     BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = [["ra"], ["ra_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = [["dec"], ["dec_unbounded"]],original_lower_bound=-jnp.pi / 2, original_upper_bound=jnp.pi / 2)
+    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
+    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]],original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
 ]
 
 likelihood_transforms = [

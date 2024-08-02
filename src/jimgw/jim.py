@@ -94,7 +94,7 @@ class Jim(object):
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
-        for transform in self.sample_transforms:
+        for transform in reversed(self.sample_transforms):
             named_params, jacobian = transform.inverse(named_params)
             transform_jacobian += jacobian
         prior = self.prior.log_prob(named_params) + transform_jacobian
