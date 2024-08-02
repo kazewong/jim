@@ -259,8 +259,8 @@ def angle_rotation(
             Zenith angle.
     azimuth : Float
             Azimuthal angle.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
 
     Returns
     -------
@@ -334,8 +334,8 @@ def zenith_azimuth_to_ra_dec(
             Azimuthal angle.
     gmst : Float
             Greenwich mean sidereal time.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
 
     Copied and modified from bilby/gw/utils.py
 
@@ -392,8 +392,8 @@ def ra_dec_to_zenith_azimuth(
             Declination.
     gmst : Float
             Greenwich mean sidereal time.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
 
     Returns
     -------

@@ -100,9 +100,7 @@ class Jim(object):
         prior = self.prior.log_prob(named_params) + transform_jacobian
         for transform in self.likelihood_transforms:
             named_params = transform.forward(named_params)
-        return (
-            self.likelihood.evaluate(named_params, data) + prior
-        )
+        return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
@@ -169,7 +167,9 @@ class Jim(object):
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, len(self.parameter_names))
+        production_chain = production_summary["chains"].reshape(
+            -1, len(self.parameter_names)
+        )
         if self.sample_transforms:
             # Need rewrite to vectorize
             transformed_chain = {}
@@ -194,7 +194,9 @@ class Jim(object):
         print("Training summary")
         print("=" * 10)
         for key, value in training_chain.items():
-            print(f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}")
+            print(
+                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
+            )
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -211,7 +213,9 @@ class Jim(object):
         print("Production summary")
         print("=" * 10)
         for key, value in production_chain.items():
-            print(f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}")
+            print(
+                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
+            )
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )
