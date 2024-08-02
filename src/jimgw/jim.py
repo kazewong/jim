@@ -105,7 +105,7 @@ class Jim(object):
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
             initial_guess = []
-            for i in range(self.sampler.n_chains):
+            for _ in range(self.sampler.n_chains):
                 flag = True
                 while flag:
                     key = jax.random.split(key)[1]

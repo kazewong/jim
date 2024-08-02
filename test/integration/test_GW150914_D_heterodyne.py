@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jimgw.jim import Jim
 from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
 from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
+from jimgw.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform
@@ -81,12 +81,15 @@ likelihood_transforms = [
     ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "eta"]]),
 ]
 
-likelihood = TransientLikelihoodFD(
+likelihood = HeterodynedTransientLikelihoodFD(
     ifos,
+    prior=prior,
     waveform=RippleIMRPhenomD(),
     trigger_time=gps,
     duration=4,
     post_trigger_duration=2,
+    sample_transforms=sample_transforms,
+    likelihood_transforms=likelihood_transforms,
 )
 
 
