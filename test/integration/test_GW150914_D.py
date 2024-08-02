@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 
 from jimgw.jim import Jim
-from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior
+from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
@@ -41,7 +41,7 @@ m_1_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_max)[0], Mc_q_to_m1_m2(M_c_max
 m_2_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_min)[1], Mc_q_to_m1_m2(M_c_max, q_max)[1], parameter_names=["m_2"])
 s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
 s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
-dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
+dL_prior = PowerLawPrior(1.0, 2000.0, 2.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 iota_prior = SinePrior(parameter_names=["iota"])
