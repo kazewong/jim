@@ -14,6 +14,7 @@ from jimgw.transforms import (
     ArcSineTransform,
     PowerLawTransform,
     ParetoTransform,
+    UnitSimplexTransform,
 )
 
 
@@ -474,6 +475,30 @@ class PowerLawPrior(SequentialTransformPrior):
             ],
         )
 
+
+@jaxtyped(typechecker=typechecker)
+class SimplexPrior(SequentialTransformPrior):
+    """
+    A prior distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    """
+
+    def __repr__(self):
+        return f"SimplexPrior(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 2, "SimplexPrior needs to be 2D distributions"
+        super().__init__(
+            SimplexBaseDistribution([f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"]),
+            [
+                UnitSimplexTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"],
+                        [self.parameter_names[0], self.parameter_names[1]],
+                    )
+                )
+            ],
+        )
 
 # ====================== Things below may need rework ======================
 
