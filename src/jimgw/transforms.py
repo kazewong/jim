@@ -485,6 +485,51 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         self.inverse_transform_func = named_inverse_transform
 
 
+class PowerLawTransform(BijectiveTransform):
+    """
+    PowerLaw transformation
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+    """
+
+    xmin: Float
+    xmax: Float
+    alpha: Float
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        xmin: Float,
+        xmax: Float,
+        alpha: Float,
+    ):
+        super().__init__(name_mapping)
+        self.xmin = xmin
+        self.xmax = xmax
+        self.alpha = alpha
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: (
+                self.xmin ** (1.0 + self.alpha)
+                + x[name_mapping[0][i]]
+                * (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            )
+            ** (1.0 / (1.0 + self.alpha))
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: (
+                (
+                    x[name_mapping[1][i]] ** (1.0 + self.alpha)
+                    - self.xmin ** (1.0 + self.alpha)
+                )
+                / (self.xmax ** (1.0 + self.alpha) - self.xmin ** (1.0 + self.alpha))
+            )
+            for i in range(len(name_mapping[1]))
+        }
+
+
 class ParetoTransform(BijectiveTransform):
     """
     Pareto transformation: Power law when alpha = -1
