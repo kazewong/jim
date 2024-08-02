@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from chex import assert_rank
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
@@ -106,7 +105,7 @@ class BijectiveTransform(NtoNTransform):
 
     inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
-    def inverse(self, y: dict[str, Float]) -> dict[str, Float]:
+    def inverse(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         """
         Inverse transform the input y to original coordinate x.
 
@@ -119,6 +118,8 @@ class BijectiveTransform(NtoNTransform):
         -------
         x : dict[str, Float]
                 The original dictionary.
+        log_det : Float
+                The log Jacobian determinant.
         """
         y_copy = y.copy()
         transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
@@ -136,7 +137,7 @@ class BijectiveTransform(NtoNTransform):
         )
         return y_copy, jacobian
 
-    def backward(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+    def backward(self, y: dict[str, Float]) -> dict[str, Float]:
         """
         Pull back the input y to original coordinate x and return the log Jacobian determinant.
 
@@ -149,8 +150,6 @@ class BijectiveTransform(NtoNTransform):
         -------
         x : dict[str, Float]
                 The original dictionary.
-        log_det : Float
-                The log Jacobian determinant.
         """
         y_copy = y.copy()
         output_params = self.inverse_transform_func(y_copy)
@@ -165,6 +164,7 @@ class BijectiveTransform(NtoNTransform):
         return y_copy
 
 
+@jaxtyped(typechecker=typechecker)
 class ScaleTransform(BijectiveTransform):
     scale: Float
 
@@ -185,6 +185,7 @@ class ScaleTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class OffsetTransform(BijectiveTransform):
     offset: Float
 
@@ -205,6 +206,7 @@ class OffsetTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class LogitTransform(BijectiveTransform):
     """
     Logit transform following
@@ -233,6 +235,7 @@ class LogitTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
 class ArcSineTransform(BijectiveTransform):
     """
     ArcSine transformation
@@ -261,7 +264,6 @@ class ArcSineTransform(BijectiveTransform):
 
 @jaxtyped(typechecker=typechecker)
 class BoundToBound(BijectiveTransform):
-
     """
     Bound to bound transformation
     """
@@ -300,6 +302,7 @@ class BoundToBound(BijectiveTransform):
             for i in range(len(name_mapping[1]))
         }
 
+
 @jaxtyped(typechecker=typechecker)
 class BoundToUnbound(BijectiveTransform):
     """
@@ -315,7 +318,7 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-        
+
         def logit(x):
             return jnp.log(x / (1 - x))
 
@@ -325,23 +328,22 @@ class BoundToUnbound(BijectiveTransform):
 
         self.transform_func = lambda x: {
             name_mapping[1][i]: logit(
-                (x[name_mapping[0][i]] - self.original_lower_bound)
-                / (self.original_upper_bound - self.original_lower_bound)
+                (x[name_mapping[0][i]] - self.original_lower_bound[i])
+                / (self.original_upper_bound[i] - self.original_lower_bound[i])
             )
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][i]: (
-                self.original_upper_bound - self.original_lower_bound
+                self.original_upper_bound[i] - self.original_lower_bound[i]
             )
-            / (
-                1
-                + jnp.exp(-x[name_mapping[1][i]])
-            )
+            / (1 + jnp.exp(-x[name_mapping[1][i]]))
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
 
+
+@jaxtyped(typechecker=typechecker)
 class SingleSidedUnboundTransform(BijectiveTransform):
     """
     Unbound upper limit transformation

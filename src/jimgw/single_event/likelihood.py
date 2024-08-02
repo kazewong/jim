@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
 from jimgw.single_event.detector import Detector
-from jimgw.single_event.utils import log_i0
+from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 
 

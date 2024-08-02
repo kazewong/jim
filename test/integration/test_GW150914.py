@@ -9,6 +9,8 @@ from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
+from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform, MassRatioToSymmetricMassRatioTransform
+from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -28,32 +30,27 @@ end_pad = post_trigger_duration
 fmin = 20.0
 fmax = 1024.0
 
-ifos = ["H1", "L1"]
+ifos = [H1, L1]
 
-H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
-eta_prior = UniformPrior(
-    0.125,
-    0.25,
-    parameter_names=["eta"], # Need name transformation in likelihood to work
-)
+q_prior = UniformPrior(0.125, 1.0, parameter_names=["q"])
 s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
 s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
-# Current likelihood sampling will fail and give nan because of large number
 dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
-iota_prior = CosinePrior(parameter_names=["iota"])
+iota_prior = SinePrior(parameter_names=["iota"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
-dec_prior = SinePrior(parameter_names=["dec"])
+dec_prior = CosinePrior(parameter_names=["dec"])
 
 prior = CombinePrior(
     [
         Mc_prior,
-        eta_prior,
+        q_prior,
         s1z_prior,
         s2z_prior,
         dL_prior,
@@ -68,20 +65,25 @@ prior = CombinePrior(
 
 sample_transforms = [
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=10.0, original_upper_bound=80.0),
-    BoundToUnbound(name_mapping = [["eta"], ["eta_unbounded"]], original_lower_bound=0.125, original_upper_bound=0.25),
+    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1.),
     BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["s2_z"], ["s2_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["d_L"], ["d_L_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2000.0),
     BoundToUnbound(name_mapping = [["t_c"], ["t_c_unbounded"]] , original_lower_bound=-0.05, original_upper_bound=0.05),
     BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=-jnp.pi/2, original_upper_bound=jnp.pi/2),
+    BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = [["ra"], ["ra_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = [["dec"], ["dec_unbounded"]],original_lower_bound=0.0, original_upper_bound=jnp.pi)
+    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
+    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+]
+
+likelihood_transforms = [
+    MassRatioToSymmetricMassRatioTransform(name_mapping=[["q"], ["eta"]]),
 ]
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=RippleIMRPhenomD(),
     trigger_time=gps,
     duration=4,
@@ -105,6 +107,7 @@ jim = Jim(
     likelihood,
     prior,
     sample_transforms=sample_transforms,
+    likelihood_transforms=likelihood_transforms,
     n_loop_training=n_loop_training,
     n_loop_production=1,
     n_local_steps=5,

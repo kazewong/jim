@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
-from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
 
@@ -37,7 +36,7 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
-def m1m2_to_Mq(m1: Float, m2: Float):
+def m1_m2_to_M_q(m1: Float, m2: Float):
     """
     Transforming the primary mass m1 and secondary mass m2 to the Total mass M
     and mass ratio q.
@@ -56,12 +55,12 @@ def m1m2_to_Mq(m1: Float, m2: Float):
         q : Float
                 Mass ratio.
     """
-    M_tot = jnp.log(m1 + m2)
-    q = jnp.log(m2 / m1) - jnp.log(1 - m2 / m1)
+    M_tot = m1 + m2
+    q = m2 / m1
     return M_tot, q
 
 
-def Mq_to_m1m2(trans_M_tot: Float, trans_q: Float):
+def M_q_to_m1_m2(M_tot: Float, q: Float):
     """
     Transforming the Total mass M and mass ratio q to the primary mass m1 and
     secondary mass m2.
@@ -80,21 +79,45 @@ def Mq_to_m1m2(trans_M_tot: Float, trans_q: Float):
     m2 : Float
             Secondary mass.
     """
-    M_tot = jnp.exp(trans_M_tot)
-    q = 1.0 / (1 + jnp.exp(-trans_q))
     m1 = M_tot / (1 + q)
     m2 = m1 * q
     return m1, m2
 
 
-def Mc_q_to_m1m2(Mc: Float, q: Float) -> tuple[Float, Float]:
+def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the chirp mass Mc and mass ratio q to the primary mass m1 and
+    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    and mass ratio q.
+
+    Parameters
+    ----------
+    m1 : Float
+            Primary mass.
+    m2 : Float
+            Secondary mass.
+
+    Returns
+    -------
+    M_c : Float
+            Chirp mass.
+    q : Float
+            Mass ratio.
+    """
+    M_tot = m1 + m2
+    eta = m1 * m2 / M_tot**2
+    M_c = M_tot * eta ** (3.0 / 5)
+    q = m2 / m1
+    return M_c, q
+
+
+def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
+    """
+    Transforming the chirp mass M_c and mass ratio q to the primary mass m1 and
     secondary mass m2.
 
     Parameters
     ----------
-    Mc : Float
+    M_c : Float
             Chirp mass.
     q : Float
             Mass ratio.
@@ -107,36 +130,148 @@ def Mc_q_to_m1m2(Mc: Float, q: Float) -> tuple[Float, Float]:
             Secondary mass.
     """
     eta = q / (1 + q) ** 2
-    M_tot = Mc / eta ** (3.0 / 5)
+    M_tot = M_c / eta ** (3.0 / 5)
     m1 = M_tot / (1 + q)
     m2 = m1 * q
     return m1, m2
 
 
-def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
+def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the right ascension ra and declination dec to the polar angle
-    theta and azimuthal angle phi.
+    Transforming the primary mass m1 and secondary mass m2 to the total mass M
+    and symmetric mass ratio eta.
 
     Parameters
     ----------
-    ra : Float
-            Right ascension.
-    dec : Float
-            Declination.
-    gmst : Float
-            Greenwich mean sidereal time.
+    m1 : Float
+            Primary mass.
+    m2 : Float
+            Secondary mass.
 
     Returns
     -------
-    theta : Float
-            Polar angle.
-    phi : Float
-            Azimuthal angle.
+    M : Float
+            Total mass.
+    eta : Float
+            Symmetric mass ratio.
     """
-    phi = ra - gmst
-    theta = jnp.pi / 2 - dec
-    return theta, phi
+    M_tot = m1 + m2
+    eta = m1 * m2 / M_tot**2
+    return M_tot, eta
+
+
+def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
+    """
+    Transforming the total mass M and symmetric mass ratio eta to the primary mass m1
+    and secondary mass m2.
+
+    Parameters
+    ----------
+    M : Float
+            Total mass.
+    eta : Float
+            Symmetric mass ratio.
+
+    Returns
+    -------
+    m1 : Float
+            Primary mass.
+    m2 : Float
+            Secondary mass.
+    """
+    m1 = M_tot * (1 + jnp.sqrt(1 - 4 * eta)) / 2
+    m2 = M_tot * (1 - jnp.sqrt(1 - 4 * eta)) / 2
+    return m1, m2
+
+
+def m1_m2_to_Mc_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
+    """
+    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    and symmetric mass ratio eta.
+
+    Parameters
+    ----------
+    m1 : Float
+            Primary mass.
+    m2 : Float
+            Secondary mass.
+
+    Returns
+    -------
+    M_c : Float
+            Chirp mass.
+    eta : Float
+            Symmetric mass ratio.
+    """
+    M = m1 + m2
+    eta = m1 * m2 / M**2
+    M_c = M * eta ** (3.0 / 5)
+    return M_c, eta
+
+
+def Mc_eta_to_m1_m2(M_c: Float, eta: Float) -> tuple[Float, Float]:
+    """
+    Transforming the chirp mass M_c and symmetric mass ratio eta to the primary mass m1
+    and secondary mass m2.
+
+    Parameters
+    ----------
+    M_c : Float
+            Chirp mass.
+    eta : Float
+            Symmetric mass ratio.
+
+    Returns
+    -------
+    m1 : Float
+            Primary mass.
+    m2 : Float
+            Secondary mass.
+    """
+    M = M_c / eta ** (3.0 / 5)
+    m1 = M * (1 + jnp.sqrt(1 - 4 * eta)) / 2
+    m2 = M * (1 - jnp.sqrt(1 - 4 * eta)) / 2
+    return m1, m2
+
+
+def q_to_eta(q: Float) -> Float:
+    """
+    Transforming the chirp mass M_c and mass ratio q to the symmetric mass ratio eta.
+
+    Parameters
+    ----------
+    M_c : Float
+            Chirp mass.
+    q : Float
+            Mass ratio.
+
+    Returns
+    -------
+    eta : Float
+            Symmetric mass ratio.
+    """
+    eta = q / (1 + q) ** 2
+    return eta
+
+
+def eta_to_q(eta: Float) -> Float:
+    """
+    Transforming the symmetric mass ratio eta to the mass ratio q.
+
+    Copied and modified from bilby/gw/conversion.py
+
+    Parameters
+    ----------
+    eta : Float
+            Symmetric mass ratio.
+
+    Returns
+    -------
+    q : Float
+            Mass ratio.
+    """
+    temp = 1 / eta / 2 - 1
+    return temp - (temp**2 - 1) ** 0.5
 
 
 def euler_rotation(delta_x: Float[Array, " 3"]):
@@ -149,11 +284,10 @@ def euler_rotation(delta_x: Float[Array, " 3"]):
 
     Copied and modified from bilby-cython/geometry.pyx
     """
-    norm = jnp.power(
-        delta_x[0] * delta_x[0] + delta_x[1] * delta_x[1] + delta_x[2] * delta_x[2], 0.5
-    )
+    norm = jnp.linalg.vector_norm(delta_x)
+
     cos_beta = delta_x[2] / norm
-    sin_beta = jnp.power(1 - cos_beta**2, 0.5)
+    sin_beta = jnp.sqrt(1 - cos_beta**2)
 
     alpha = jnp.atan2(-delta_x[1] * cos_beta, delta_x[0])
     gamma = jnp.atan2(delta_x[1], delta_x[0])
@@ -182,8 +316,8 @@ def euler_rotation(delta_x: Float[Array, " 3"]):
     return rotation
 
 
-def zenith_azimuth_to_theta_phi(
-    zenith: Float, azimuth: Float, delta_x: Float[Array, " 3"]
+def angle_rotation(
+    zenith: Float, azimuth: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to the polar angle and azimuthal angle in sky frame.
@@ -196,8 +330,8 @@ def zenith_azimuth_to_theta_phi(
             Zenith angle.
     azimuth : Float
             Azimuthal angle.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
 
     Returns
     -------
@@ -210,8 +344,6 @@ def zenith_azimuth_to_theta_phi(
     cos_azimuth = jnp.cos(azimuth)
     sin_zenith = jnp.sin(zenith)
     cos_zenith = jnp.cos(zenith)
-
-    rotation = euler_rotation(delta_x)
 
     theta = jnp.acos(
         rotation[2][0] * sin_zenith * cos_azimuth
@@ -228,7 +360,7 @@ def zenith_azimuth_to_theta_phi(
             + rotation[0][2] * cos_zenith,
         )
         + 2 * jnp.pi,
-        (2 * jnp.pi),
+        2 * jnp.pi,
     )
     return theta, phi
 
@@ -255,11 +387,12 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
     """
     ra = phi + gmst
     dec = jnp.pi / 2 - theta
+    ra = ra % (2 * jnp.pi)
     return ra, dec
 
 
 def zenith_azimuth_to_ra_dec(
-    zenith: Float, azimuth: Float, gmst: Float, delta_x: Float[Array, " 3"]
+    zenith: Float, azimuth: Float, gmst: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
     Transforming the azimuthal angle and zenith angle in Earth frame to right ascension and declination.
@@ -272,8 +405,8 @@ def zenith_azimuth_to_ra_dec(
             Azimuthal angle.
     gmst : Float
             Greenwich mean sidereal time.
-    delta_x : Float
-            The vector pointing from the first detector to the second detector.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
 
     Copied and modified from bilby/gw/utils.py
 
@@ -284,26 +417,62 @@ def zenith_azimuth_to_ra_dec(
     dec : Float
             Declination.
     """
-    theta, phi = zenith_azimuth_to_theta_phi(zenith, azimuth, delta_x)
+    theta, phi = angle_rotation(zenith, azimuth, rotation)
     ra, dec = theta_phi_to_ra_dec(theta, phi, gmst)
-    ra = ra % (2 * jnp.pi)
     return ra, dec
 
 
-def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:
+def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Float]:
     """
-    A numerically stable method to evaluate log of
-    a modified Bessel function of order 0.
-    It is used in the phase-marginalized likelihood.
+    Transforming the right ascension ra and declination dec to the polar angle
+    theta and azimuthal angle phi.
 
     Parameters
-    ==========
-    x: array-like
-        Value(s) at which to evaluate the function
+    ----------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    gmst : Float
+            Greenwich mean sidereal time.
 
     Returns
-    =======
-    array-like:
-        The natural logarithm of the bessel function
+    -------
+    theta : Float
+            Polar angle.
+    phi : Float
+            Azimuthal angle.
     """
-    return jnp.log(i0e(x)) + x
+    phi = ra - gmst
+    theta = jnp.pi / 2 - dec
+    phi = (phi + 2 * jnp.pi) % (2 * jnp.pi)
+    return theta, phi
+
+
+def ra_dec_to_zenith_azimuth(
+    ra: Float, dec: Float, gmst: Float, rotation: Float[Array, " 3 3"]
+) -> tuple[Float, Float]:
+    """
+    Transforming the right ascension and declination to the zenith angle and azimuthal angle.
+
+    Parameters
+    ----------
+    ra : Float
+            Right ascension.
+    dec : Float
+            Declination.
+    gmst : Float
+            Greenwich mean sidereal time.
+    rotation : Float[Array, " 3 3"]
+            The rotation matrix.
+
+    Returns
+    -------
+    zenith : Float
+            Zenith angle.
+    azimuth : Float
+            Azimuthal angle.
+    """
+    theta, phi = ra_dec_to_theta_phi(ra, dec, gmst)
+    zenith, azimuth = angle_rotation(theta, phi, rotation)
+    return zenith, azimuth

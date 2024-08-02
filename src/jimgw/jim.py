@@ -7,7 +7,7 @@ from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior, trace_prior_parent
+from jimgw.prior import Prior
 from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
@@ -41,15 +41,18 @@ class Jim(object):
         self.parameter_names = prior.parameter_names
 
         if len(sample_transforms) == 0:
-            print("No sample transforms provided. Using prior parameters as sampling parameters")
+            print(
+                "No sample transforms provided. Using prior parameters as sampling parameters"
+            )
         else:
             print("Using sample transforms")
             for transform in sample_transforms:
                 self.parameter_names = transform.propagate_name(self.parameter_names)
 
         if len(likelihood_transforms) == 0:
-            print("No likelihood transforms provided. Using prior parameters as likelihood parameters")
-
+            print(
+                "No likelihood transforms provided. Using prior parameters as likelihood parameters"
+            )
 
         seed = kwargs.get("seed", 0)
 
@@ -67,7 +70,7 @@ class Jim(object):
             self.prior.n_dim, num_layers, hidden_size, num_bins, subkey
         )
 
-        self.Sampler = Sampler(
+        self.sampler = Sampler(
             self.prior.n_dim,
             rng_key,
             None,  # type: ignore
@@ -91,22 +94,21 @@ class Jim(object):
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
-        for transform in self.sample_transforms:
+        for transform in reversed(self.sample_transforms):
             named_params, jacobian = transform.inverse(named_params)
             transform_jacobian += jacobian
         prior = self.prior.log_prob(named_params) + transform_jacobian
         for transform in self.likelihood_transforms:
             named_params = transform.forward(named_params)
-        named_params = jax.tree.map(lambda x:x[0], named_params) # This [0] should be consolidate
-        return self.likelihood.evaluate(named_params, data) + prior[0] # This prior [0] should be consolidate
+        return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
         if initial_guess.size == 0:
-            initial_guess_named = self.prior.sample(key, self.Sampler.n_chains)
+            initial_guess_named = self.prior.sample(key, self.sampler.n_chains)
             for transform in self.sample_transforms:
                 initial_guess_named = jax.vmap(transform.forward)(initial_guess_named)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T[0] # This [0] should be consolidate
-        self.Sampler.sample(initial_guess, None)  # type: ignore
+            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
+        self.sampler.sample(initial_guess, None)  # type: ignore
 
     def maximize_likelihood(
         self,
@@ -133,28 +135,58 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def print_summary(self, transform: bool = True):
+    def print_summary(self):
         """
         Generate summary of the run
 
         """
 
-        train_summary = self.Sampler.get_sampler_state(training=True)
-        production_summary = self.Sampler.get_sampler_state(training=False)
+        train_summary = self.sampler.get_sampler_state(training=True)
+        production_summary = self.sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
-        training_chain = self.prior.add_name(training_chain)
-        if transform:
-            training_chain = self.prior.transform(training_chain)
+        training_chain = train_summary["chains"].reshape(-1, len(self.parameter_names))
+        if self.sample_transforms:
+            # Need rewrite to vectorize
+            transformed_chain = {}
+            named_sample = self.add_name(training_chain[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.backward(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in training_chain[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.backward(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            training_chain = transformed_chain
+        else:
+            training_chain = self.add_name(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
-        production_chain = self.prior.add_name(production_chain)
-        if transform:
-            production_chain = self.prior.transform(production_chain)
+        production_chain = production_summary["chains"].reshape(
+            -1, len(self.parameter_names)
+        )
+        if self.sample_transforms:
+            # Need rewrite to vectorize
+            transformed_chain = {}
+            named_sample = self.add_name(production_chain[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.backward(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in production_chain[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.backward(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            production_chain = transformed_chain
+        else:
+            production_chain = self.add_name(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -162,7 +194,9 @@ class Jim(object):
         print("Training summary")
         print("=" * 10)
         for key, value in training_chain.items():
-            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
+            print(
+                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
+            )
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -179,7 +213,9 @@ class Jim(object):
         print("Production summary")
         print("=" * 10)
         for key, value in production_chain.items():
-            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
+            print(
+                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
+            )
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )
@@ -206,12 +242,32 @@ class Jim(object):
 
         """
         if training:
-            chains = self.Sampler.get_sampler_state(training=True)["chains"]
+            chains = self.sampler.get_sampler_state(training=True)["chains"]
         else:
-            chains = self.Sampler.get_sampler_state(training=False)["chains"]
+            chains = self.sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.prior.transform(self.prior.add_name(chains.transpose(2, 0, 1)))
-        return chains
+        # Need rewrite to output chains instead of flattened samples and vectorize
+        chains = chains.reshape(-1, len(self.parameter_names))
+        if self.sample_transforms:
+            transformed_chain = {}
+            named_sample = self.add_name(chains[0])
+            for transform in self.sample_transforms:
+                named_sample = transform.backward(named_sample)
+            for key, value in named_sample.items():
+                transformed_chain[key] = [value]
+            for sample in chains[1:]:
+                named_sample = self.add_name(sample)
+                for transform in self.sample_transforms:
+                    named_sample = transform.backward(named_sample)
+                for key, value in named_sample.items():
+                    transformed_chain[key].append(value)
+            output = transformed_chain
+        else:
+            output = self.add_name(chains)
+
+        for key in output.keys():
+            output[key] = jnp.array(output[key])
+        return output
 
     def plot(self):
         pass
