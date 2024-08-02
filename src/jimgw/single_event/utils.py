@@ -2,6 +2,8 @@ import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
+from jimgw.constants import Msun
+
 
 def inner_product(
     h1: Float[Array, " n_sample"],
