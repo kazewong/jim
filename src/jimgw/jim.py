@@ -102,13 +102,21 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
-        if initial_guess.size == 0:
-            initial_guess_named = self.prior.sample(key, self.sampler.n_chains)
-            for transform in self.sample_transforms:
-                initial_guess_named = jax.vmap(transform.forward)(initial_guess_named)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
-        self.sampler.sample(initial_guess, None)  # type: ignore
+    def sample(self, key: PRNGKeyArray, initial_position: Array = jnp.array([])):
+        if initial_position.size == 0:
+            initial_guess = []
+            for _ in range(self.sampler.n_chains):
+                flag = True
+                while flag:
+                    key = jax.random.split(key)[1]
+                    guess = self.prior.sample(key, 1)
+                    for transform in self.sample_transforms:
+                        guess = transform.forward(guess)
+                    guess = jnp.array([i for i in guess.values()]).T[0]
+                    flag = not jnp.all(jnp.isfinite(guess))
+                initial_guess.append(guess)
+            initial_position = jnp.array(initial_guess)
+        self.sampler.sample(initial_position, None)  # type: ignore
 
     def maximize_likelihood(
         self,
