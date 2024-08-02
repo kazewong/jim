@@ -150,7 +150,7 @@ class SimplexBaseDistribution(Prior):
     """
 
     def __repr__(self):
-        return f"SimplexDistribution(parameter_names={self.parameter_names})"
+        return f"SimplexBaseDistribution(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
