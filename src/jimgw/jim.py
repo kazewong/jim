@@ -210,7 +210,7 @@ class Jim(object):
 
         """
         if training:
-            chains = self.sampler.get_sampler_state(training=True)["chains"] # (500, 10100, 15)
+            chains = self.sampler.get_sampler_state(training=True)["chains"]
         else:
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 

@@ -168,7 +168,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
             return {"ra": ra, "dec": dec}
 
         self.inverse_transform_func = named_inverse_transform
-        
+
 
 @jaxtyped(typechecker=typechecker)
 class SpinToCartesianSpinTransform(NtoNTransform):
@@ -177,16 +177,16 @@ class SpinToCartesianSpinTransform(NtoNTransform):
     """
 
     freq_ref: Float
-    
+
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
         freq_ref: Float,
     ):
         super().__init__(name_mapping)
-        
+
         self.freq_ref = freq_ref
-        
+
         assert (
             "theta_jn" in name_mapping[0]
             and "phi_jl" in name_mapping[0]
@@ -203,10 +203,20 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             and "s2_y" in name_mapping[1]
             and "s2_z" in name_mapping[1]
         )
-        
+
         def named_transform(x):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
-                x["theta_jn"], x["phi_jl"], x["theta_1"], x["theta_2"], x["phi_12"], x["a_1"], x["a_2"], x['M_c'], x['q'], self.freq_ref, x['phase_c']
+                x["theta_jn"],
+                x["phi_jl"],
+                x["theta_1"],
+                x["theta_2"],
+                x["phi_12"],
+                x["a_1"],
+                x["a_2"],
+                x["M_c"],
+                x["q"],
+                self.freq_ref,
+                x["phase_c"],
             )
             return {
                 "iota": iota,
@@ -217,5 +227,5 @@ class SpinToCartesianSpinTransform(NtoNTransform):
                 "s2_y": s2y,
                 "s2_z": s2z,
             }
-        
+
         self.transform_func = named_transform
