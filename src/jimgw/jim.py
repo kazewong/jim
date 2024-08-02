@@ -135,7 +135,7 @@ class Jim(object):
         best_fit = optimizer.get_result()[0]
         return best_fit
 
-    def print_summary(self):
+    def print_summary(self, transform: bool = True):
         """
         Generate summary of the run
 
@@ -144,49 +144,21 @@ class Jim(object):
         train_summary = self.sampler.get_sampler_state(training=True)
         production_summary = self.sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, len(self.parameter_names))
-        if self.sample_transforms:
-            # Need rewrite to vectorize
-            transformed_chain = {}
-            named_sample = self.add_name(training_chain[0])
-            for transform in self.sample_transforms:
-                named_sample = transform.backward(named_sample)
-            for key, value in named_sample.items():
-                transformed_chain[key] = [value]
-            for sample in training_chain[1:]:
-                named_sample = self.add_name(sample)
-                for transform in self.sample_transforms:
-                    named_sample = transform.backward(named_sample)
-                for key, value in named_sample.items():
-                    transformed_chain[key].append(value)
-            training_chain = transformed_chain
-        else:
-            training_chain = self.add_name(training_chain)
+        training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
+        training_chain = self.add_name(training_chain)
+        if transform:
+            for sample_transform in self.sample_transforms:
+                training_chain = sample_transform.backward(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(
-            -1, len(self.parameter_names)
-        )
-        if self.sample_transforms:
-            # Need rewrite to vectorize
-            transformed_chain = {}
-            named_sample = self.add_name(production_chain[0])
-            for transform in self.sample_transforms:
-                named_sample = transform.backward(named_sample)
-            for key, value in named_sample.items():
-                transformed_chain[key] = [value]
-            for sample in production_chain[1:]:
-                named_sample = self.add_name(sample)
-                for transform in self.sample_transforms:
-                    named_sample = transform.backward(named_sample)
-                for key, value in named_sample.items():
-                    transformed_chain[key].append(value)
-            production_chain = transformed_chain
-        else:
-            production_chain = self.add_name(production_chain)
+        production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
+        production_chain = self.add_name(production_chain)
+        if transform:
+            for sample_transform in self.sample_transforms:
+                production_chain = sample_transform.backward(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -194,9 +166,7 @@ class Jim(object):
         print("Training summary")
         print("=" * 10)
         for key, value in training_chain.items():
-            print(
-                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
-            )
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {training_log_prob.mean():.3f} +/- {training_log_prob.std():.3f}"
         )
@@ -213,9 +183,7 @@ class Jim(object):
         print("Production summary")
         print("=" * 10)
         for key, value in production_chain.items():
-            print(
-                f"{key}: {jnp.array(value).mean():.3f} +/- {jnp.array(value).std():.3f}"
-            )
+            print(f"{key}: {value.mean():.3f} +/- {value.std():.3f}")
         print(
             f"Log probability: {production_log_prob.mean():.3f} +/- {production_log_prob.std():.3f}"
         )
@@ -246,28 +214,11 @@ class Jim(object):
         else:
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 
-        # Need rewrite to output chains instead of flattened samples and vectorize
-        chains = chains.reshape(-1, len(self.parameter_names))
-        if self.sample_transforms:
-            transformed_chain = {}
-            named_sample = self.add_name(chains[0])
-            for transform in self.sample_transforms:
-                named_sample = transform.backward(named_sample)
-            for key, value in named_sample.items():
-                transformed_chain[key] = [value]
-            for sample in chains[1:]:
-                named_sample = self.add_name(sample)
-                for transform in self.sample_transforms:
-                    named_sample = transform.backward(named_sample)
-                for key, value in named_sample.items():
-                    transformed_chain[key].append(value)
-            output = transformed_chain
-        else:
-            output = self.add_name(chains)
-
-        for key in output.keys():
-            output[key] = jnp.array(output[key])
-        return output
+        chains = chains.transpose(2, 0, 1)
+        chains = self.add_name(chains)
+        for sample_transform in self.sample_transforms:
+            chains = sample_transform.backward(chains)
+        return chains
 
     def plot(self):
         pass
