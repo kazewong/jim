@@ -186,6 +186,8 @@ class LogisticSimplexDistribution(Prior):
         return self.add_name(jnp.stack([z1, z2], axis=1).T)
 
     def log_prob(self, z: dict[str, Float]) -> Float:
+        z1 = z[self.parameter_names[0]]
+        z2 = z[self.parameter_names[1]]
         return jnp.log(2.0)
 
 
