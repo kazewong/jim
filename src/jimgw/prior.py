@@ -144,7 +144,7 @@ class StandardNormalDistribution(Prior):
 
 
 @jaxtyped(typechecker=typechecker)
-class LogisticSimplexDistribution(Prior):
+class SimplexBaseDistribution(Prior):
     """
     A 2D distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1) being mapped to Logistic Distribution.
     """
