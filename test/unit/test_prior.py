@@ -1,4 +1,5 @@
 from jimgw.prior import *
+from jimgw.utils import trace_prior_parent
 import scipy.stats as stats
 
 
@@ -30,7 +31,6 @@ class TestUnivariatePrior:
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is correct in the support
-        samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.allclose(log_prob, jnp.log(1.0 / (xmax - xmin)))
 
@@ -40,7 +40,6 @@ class TestUnivariatePrior:
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
-        samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
         # Check that the log_prob is correct in the support
@@ -48,7 +47,7 @@ class TestUnivariatePrior:
         y = jax.vmap(p.base_prior.base_prior.transform)(x)
         y = jax.vmap(p.base_prior.transform)(y)
         y = jax.vmap(p.transform)(y)
-        assert jnp.allclose(jax.vmap(p.log_prob)(x), jnp.log(jnp.sin(y['x'])/2.0))
+        assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y['x'])/2.0))
         
     def test_cosine(self):
         p = CosinePrior(["x"])
@@ -56,14 +55,13 @@ class TestUnivariatePrior:
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples['x']))
         # Check that the log_prob is finite
-        samples = trace_prior_parent(p, [])[0].sample(jax.random.PRNGKey(0), 10000)
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
         # Check that the log_prob is correct in the support
         x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.base_prior.transform)(x)
         y = jax.vmap(p.transform)(y)
-        assert jnp.allclose(jax.vmap(p.log_prob)(x), jnp.log(jnp.cos(y['x'])/2.0))
+        assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y['x'])/2.0))
 
     def test_uniform_sphere(self):
         p = UniformSpherePrior(["x"])
@@ -73,12 +71,10 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(samples['x_theta']))
         assert jnp.all(jnp.isfinite(samples['x_phi']))
         # Check that the log_prob is finite
-        samples = {}
-        for i in range(3):
-            samples.update(trace_prior_parent(p, [])[i].sample(jax.random.PRNGKey(0), 10000))
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
     
+
     def test_power_law(self):
         def powerlaw_log_pdf(x, alpha, xmin, xmax):
             if alpha == -1.0:
@@ -96,14 +92,12 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(powerlaw_samples['x']))
             
             # Check that all the log_probs are finite
-            samples = p.sample(jax.random.PRNGKey(0), 10000)
-            log_p = jax.vmap(p.log_prob, [0])(samples)
+            log_p = jax.vmap(p.log_prob, [0])(powerlaw_samples)
             assert jnp.all(jnp.isfinite(log_p))
             
             # Check that the log_prob is correct in the support
-            samples = p.sample(jax.random.PRNGKey(0), 10000)
-            log_prob = jax.vmap(p.log_prob)(samples)
-            standard_log_prob = powerlaw_log_pdf(samples['x'], alpha, xmin, xmax)
+            log_prob = jax.vmap(p.log_prob)(powerlaw_samples)
+            standard_log_prob = powerlaw_log_pdf(powerlaw_samples['x'], alpha, xmin, xmax)
             # log pdf of powerlaw
             assert jnp.allclose(log_prob, standard_log_prob, atol=1e-4)
 

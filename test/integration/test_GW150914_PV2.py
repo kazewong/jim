@@ -4,12 +4,12 @@ import jax
 import jax.numpy as jnp
 
 from jimgw.jim import Jim
-from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior
+from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform, MassRatioToSymmetricMassRatioTransform
+from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform, MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform
 from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
 
@@ -36,13 +36,17 @@ for ifo in ifos:
     ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 Mc_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
-q_prior = UniformPrior(0.125, 1.0, parameter_names=["q"])
-s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
-s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
-dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
+q_prior = UniformPrior(0.125, 1., parameter_names=["q"])
+theta_jn_prior = SinePrior(parameter_names=["theta_jn"])
+phi_jl_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_jl"])
+theta_1_prior = SinePrior(parameter_names=["theta_1"])
+theta_2_prior = SinePrior(parameter_names=["theta_2"])
+phi_12_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_12"])
+a_1_prior = UniformPrior(0.0, 1.0, parameter_names=["a_1"])
+a_2_prior = UniformPrior(0.0, 1.0, parameter_names=["a_2"])
+dL_prior = PowerLawPrior(10.0, 2000.0, 2.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
-iota_prior = SinePrior(parameter_names=["iota"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
 dec_prior = CosinePrior(parameter_names=["dec"])
@@ -51,12 +55,16 @@ prior = CombinePrior(
     [
         Mc_prior,
         q_prior,
-        s1z_prior,
-        s2z_prior,
+        theta_jn_prior,
+        phi_jl_prior,
+        theta_1_prior,
+        theta_2_prior,
+        phi_12_prior,
+        a_1_prior,
+        a_2_prior,
         dL_prior,
         t_c_prior,
         phase_c_prior,
-        iota_prior,
         psi_prior,
         ra_prior,
         dec_prior,
@@ -66,19 +74,23 @@ prior = CombinePrior(
 sample_transforms = [
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=10.0, original_upper_bound=80.0),
     BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1.),
-    BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = [["s2_z"], ["s2_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["theta_jn"], ["theta_jn_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["phi_jl"], ["phi_jl_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = [["theta_1"], ["theta_1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["theta_2"], ["theta_2_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["phi_12"], ["phi_12_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = [["a_1"], ["a_1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["a_2"], ["a_2_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["d_L"], ["d_L_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2000.0),
     BoundToUnbound(name_mapping = [["t_c"], ["t_c_unbounded"]] , original_lower_bound=-0.05, original_upper_bound=0.05),
     BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = [["ra"], ["ra_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = [["dec"], ["dec_unbounded"]],original_lower_bound=-jnp.pi / 2, original_upper_bound=jnp.pi / 2)
 ]
 
 likelihood_transforms = [
+    SpinToCartesianSpinTransform(name_mapping=[["theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"], ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"]], freq_ref=20.0),
     MassRatioToSymmetricMassRatioTransform(name_mapping=[["q"], ["eta"]]),
 ]
 
@@ -91,9 +103,9 @@ likelihood = TransientLikelihoodFD(
 )
 
 
-mass_matrix = jnp.eye(11)
+mass_matrix = jnp.eye(15)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-mass_matrix = mass_matrix.at[5, 5].set(1e-3)
+mass_matrix = mass_matrix.at[9, 9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
 Adam_optimizer = optimization_Adam(n_steps=5, learning_rate=0.01, noise_level=1)
