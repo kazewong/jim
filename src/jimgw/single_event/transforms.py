@@ -206,7 +206,7 @@ class SpinToCartesianSpinTransform(NtoNTransform):
         
         def named_transform(x):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
-                x["theta_jn"], x["phi_jl"], x["theta1"], x["theta2"], x["phi12"], x["a1"], x["a2"], x['M_c'], x['q'], self.freq_ref, x['phase_c']
+                x["theta_jn"], x["phi_jl"], x["theta_1"], x["theta_2"], x["phi_12"], x["a_1"], x["a_2"], x['M_c'], x['q'], self.freq_ref, x['phase_c']
             )
             return {
                 "iota": iota,
