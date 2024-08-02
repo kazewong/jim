@@ -156,6 +156,13 @@ class LogisticSimplexDistribution(Prior):
         super().__init__(parameter_names)
         self.composite = False
         assert self.n_dim == 2, "SimplexDistribution needs to be 2D distributions"
+        
+    @staticmethod
+    def unit_simplex_transform(x: Float[Array, " n_dim"]) -> Float[Array, " n_dim"]:
+        z1 = jnp.log(x[0] / (1.0 - x[0]))
+        temp = x[1] / (1.0 - x[0])
+        z2 = jnp.log(temp / (1.0 - temp))
+        return jnp.stack([z1, z2])
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -177,18 +184,18 @@ class LogisticSimplexDistribution(Prior):
 
         """
         samples = jax.random.dirichlet(
-            jax.random.PRNGKey(0), jnp.ones(3), shape=(1000,)
+            rng_key, jnp.ones(3), shape=(n_samples,)
         )
         samples = samples[:, :2]
-        z1 = jnp.log(samples[:, 0] / (1.0 - samples[:, 0]))
-        temp = samples[:, 1] / (1.0 - samples[:, 0])
-        z2 =jnp.log(temp / (1.0 - temp))
-        return self.add_name(jnp.stack([z1, z2], axis=1).T)
+        samples = jax.vmap(self.unit_simplex_transform)(samples)
+        return self.add_name(samples.T)
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         z1 = z[self.parameter_names[0]]
         z2 = z[self.parameter_names[1]]
-        return jnp.log(2.0)
+        jacobian = jax.jacfwd(self.unit_simplex_transform)(jnp.array([z1, z2]))
+        jacobian_det = jnp.abs(jnp.linalg.det(jacobian))
+        return jnp.log(2.0) + jnp.log(jacobian_det)
 
 
 class SequentialTransformPrior(Prior):
