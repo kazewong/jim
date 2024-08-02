@@ -164,6 +164,13 @@ class SimplexBaseDistribution(Prior):
         temp = x[1] / (1.0 - x[0])
         z2 = jnp.log(temp / (1.0 - temp))
         return jnp.stack([z1, z2])
+    
+    @staticmethod
+    def inverse_unit_simplex_transform(z: Float[Array, " n_dim"]) -> Float[Array, " n_dim"]:
+        x1 = 1.0 / (1.0 + jnp.exp(-z[0]))
+        temp = 1.0 / (1.0 + jnp.exp(-z[1]))
+        x2 = (1.0 - x1) * temp
+        return jnp.stack([x1, x2])
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -194,7 +201,7 @@ class SimplexBaseDistribution(Prior):
     def log_prob(self, z: dict[str, Float]) -> Float:
         z1 = z[self.parameter_names[0]]
         z2 = z[self.parameter_names[1]]
-        jacobian = jax.jacfwd(self.unit_simplex_transform)(jnp.array([z1, z2]))
+        jacobian = jax.jacfwd(self.inverse_unit_simplex_transform)(jnp.array([z1, z2]))
         jacobian_det = jnp.abs(jnp.linalg.det(jacobian))
         return jnp.log(2.0) + jnp.log(jacobian_det)
 
