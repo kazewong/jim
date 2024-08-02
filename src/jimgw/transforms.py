@@ -447,7 +447,7 @@ class ParetoTransform(BijectiveTransform):
         }
 
 
-class UnitSimplexTransform(BijectiveTransform):
+class UnitSimplexInverseTransform(BijectiveTransform):
     """
     Unit simplex transformation
     """

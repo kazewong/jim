@@ -14,7 +14,7 @@ from jimgw.transforms import (
     ArcSineTransform,
     PowerLawTransform,
     ParetoTransform,
-    UnitSimplexTransform,
+    UnitSimplexInverseTransform,
 )
 
 
@@ -498,7 +498,7 @@ class SimplexPrior(SequentialTransformPrior):
         super().__init__(
             SimplexBaseDistribution([f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"]),
             [
-                UnitSimplexTransform(
+                UnitSimplexInverseTransform(
                     (
                         [f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"],
                         [self.parameter_names[0], self.parameter_names[1]],
