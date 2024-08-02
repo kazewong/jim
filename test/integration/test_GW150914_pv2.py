@@ -42,8 +42,8 @@ phi_jl_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_jl"])
 theta_1_prior = SinePrior(parameter_names=["theta_1"])
 theta_2_prior = SinePrior(parameter_names=["theta_2"])
 phi_12_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_12"])
-a1_prior = UniformPrior(0.0, 1.0, parameter_names=["a1"])
-a2_prior = UniformPrior(0.0, 1.0, parameter_names=["a2"])
+a_1_prior = UniformPrior(0.0, 1.0, parameter_names=["a_1"])
+a_2_prior = UniformPrior(0.0, 1.0, parameter_names=["a_2"])
 dL_prior = UniformPrior(0.0, 2000.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
@@ -60,8 +60,8 @@ prior = CombinePrior(
         theta_1_prior,
         theta_2_prior,
         phi_12_prior,
-        a1_prior,
-        a2_prior,
+        a_1_prior,
+        a_2_prior,
         dL_prior,
         t_c_prior,
         phase_c_prior,
@@ -79,8 +79,8 @@ sample_transforms = [
     BoundToUnbound(name_mapping = [["theta_1"], ["theta_1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["theta_2"], ["theta_2_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["phi_12"], ["phi_12_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = [["a1"], ["a1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = [["a2"], ["a2_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["a_1"], ["a_1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["a_2"], ["a_2_unbounded"]] , original_lower_bound=0.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = [["d_L"], ["d_L_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2000.0),
     BoundToUnbound(name_mapping = [["t_c"], ["t_c_unbounded"]] , original_lower_bound=-0.05, original_upper_bound=0.05),
     BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
