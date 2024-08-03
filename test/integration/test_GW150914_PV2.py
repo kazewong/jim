@@ -9,8 +9,7 @@ from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform, MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform
-from jimgw.single_event.utils import Mc_q_to_m1_m2
+from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -139,3 +138,5 @@ jim = Jim(
 )
 
 jim.sample(jax.random.PRNGKey(42))
+jim.get_samples()
+jim.print_summary()

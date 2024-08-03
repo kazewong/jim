@@ -126,3 +126,5 @@ jim = Jim(
 )
 
 jim.sample(jax.random.PRNGKey(42))
+jim.get_samples()
+jim.print_summary()

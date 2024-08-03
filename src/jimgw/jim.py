@@ -155,7 +155,7 @@ class Jim(object):
         training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
         training_chain = self.add_name(training_chain)
         if transform:
-            for sample_transform in self.sample_transforms:
+            for sample_transform in reversed(self.sample_transforms):
                 training_chain = sample_transform.backward(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
@@ -165,7 +165,7 @@ class Jim(object):
         production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
         production_chain = self.add_name(production_chain)
         if transform:
-            for sample_transform in self.sample_transforms:
+            for sample_transform in reversed(self.sample_transforms):
                 production_chain = sample_transform.backward(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
@@ -224,7 +224,7 @@ class Jim(object):
 
         chains = chains.transpose(2, 0, 1)
         chains = self.add_name(chains)
-        for sample_transform in self.sample_transforms:
+        for sample_transform in reversed(self.sample_transforms):
             chains = sample_transform.backward(chains)
         return chains
 
