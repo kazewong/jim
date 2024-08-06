@@ -23,6 +23,15 @@ class TestUnivariatePrior:
         # Cross-check log_prob with scipy.stats.norm
         x = jnp.linspace(-10.0, 10.0, 1000)
         assert jnp.allclose(jax.vmap(p.log_prob)(p.add_name(x[None])), stats.norm.logpdf(x))
+        
+    def test_simplex_base(self):
+        p = SimplexBaseDistribution(["x", "y"])
+        # check that the log_prob is finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x'])) and jnp.all(jnp.isfinite(samples['y']))
+        # Check that the log_prob is finite
+        log_prob = jax.vmap(p.log_prob)(samples)
+        assert jnp.all(jnp.isfinite(log_prob))
 
     def test_uniform(self):
         xmin, xmax = -10.0, 10.0
@@ -111,3 +120,14 @@ class TestUnivariatePrior:
         negative_alpha = [-0.5, -1.5, -2.0, -2.5, -3.0, -3.5, -4.0, -4.5, -5.0]
         for alpha_val in negative_alpha:
             func(alpha_val)
+    
+    def test_simplex_prior(self):
+        p = SimplexPrior(["x", "y"])
+        # check that the log_prob is finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples['x'])) and jnp.all(jnp.isfinite(samples['y']))
+        # Check that the log_prob is finite
+        log_prob = jax.vmap(p.log_prob)(samples)
+        assert jnp.all(jnp.isfinite(log_prob))
+        # Check that the log_prob is correct in the support
+        assert jnp.allclose(log_prob, jnp.log(2.0), atol=1e-4)

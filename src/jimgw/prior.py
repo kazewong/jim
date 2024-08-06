@@ -14,6 +14,7 @@ from jimgw.transforms import (
     ArcSineTransform,
     PowerLawTransform,
     ParetoTransform,
+    UnitSimplexInverseTransform,
 )
 
 
@@ -141,6 +142,68 @@ class StandardNormalDistribution(Prior):
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
+
+
+@jaxtyped(typechecker=typechecker)
+class SimplexBaseDistribution(Prior):
+    """
+    A 2D distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1) being mapped to Logistic Distribution.
+    """
+
+    def __repr__(self):
+        return f"SimplexBaseDistribution(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str], **kwargs):
+        super().__init__(parameter_names)
+        self.composite = False
+        assert self.n_dim == 2, "SimplexDistribution needs to be 2D distributions"
+        
+    @staticmethod
+    def unit_simplex_transform(x: Float[Array, " n_dim"]) -> Float[Array, " n_dim"]:
+        z1 = jnp.log(x[0] / (1.0 - x[0]))
+        temp = x[1] / (1.0 - x[0])
+        z2 = jnp.log(temp / (1.0 - temp))
+        return jnp.stack([z1, z2])
+    
+    @staticmethod
+    def inverse_unit_simplex_transform(z: Float[Array, " n_dim"]) -> Float[Array, " n_dim"]:
+        x1 = 1.0 / (1.0 + jnp.exp(-z[0]))
+        temp = 1.0 / (1.0 + jnp.exp(-z[1]))
+        x2 = (1.0 - x1) * temp
+        return jnp.stack([x1, x2])
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        """
+        Sample from a simplex distribution.
+
+        Parameters
+        ----------
+        rng_key : PRNGKeyArray
+            A random key to use for sampling.
+        n_samples : int
+            The number of samples to draw.
+
+        Returns
+        -------
+        samples : dict
+            Samples from the distribution. The keys are the names of the parameters.
+
+        """
+        samples = jax.random.dirichlet(
+            rng_key, jnp.ones(3), shape=(n_samples,)
+        )
+        samples = samples[:, :2]
+        samples = jax.vmap(self.unit_simplex_transform)(samples)
+        return self.add_name(samples.T)
+
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        z1 = z[self.parameter_names[0]]
+        z2 = z[self.parameter_names[1]]
+        jacobian = jax.jacfwd(self.inverse_unit_simplex_transform)(jnp.array([z1, z2]))
+        jacobian_det = jnp.abs(jnp.linalg.det(jacobian))
+        return jnp.log(2.0) + jnp.log(jacobian_det)
 
 
 class SequentialTransformPrior(Prior):
@@ -276,6 +339,28 @@ class UniformPrior(SequentialTransformPrior):
 
 
 @jaxtyped(typechecker=typechecker)
+class SimplexPrior(SequentialTransformPrior):
+    """
+    A prior distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    """
+
+    def __repr__(self):
+        return f"SimplexPrior(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 2, "SimplexPrior needs to be 2D distributions"
+        super().__init__(
+            CombinePrior(
+                [
+                    UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}"]),
+                    UniformPrior(0.0, 1.0, [f"{self.parameter_names[1]}"]),
+                ]
+            )
+        )
+
+
+@jaxtyped(typechecker=typechecker)
 class SinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
@@ -397,6 +482,30 @@ class PowerLawPrior(SequentialTransformPrior):
             ],
         )
 
+
+@jaxtyped(typechecker=typechecker)
+class SimplexPrior(SequentialTransformPrior):
+    """
+    A prior distribution that is uniformly distributed within the triangle formed by the vertices (0, 0), (1, 0), and (0, 1).
+    """
+
+    def __repr__(self):
+        return f"SimplexPrior(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str]):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 2, "SimplexPrior needs to be 2D distributions"
+        super().__init__(
+            SimplexBaseDistribution([f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"]),
+            [
+                UnitSimplexInverseTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base", f"{self.parameter_names[1]}_base"],
+                        [self.parameter_names[0], self.parameter_names[1]],
+                    )
+                )
+            ],
+        )
 
 # ====================== Things below may need rework ======================
 
