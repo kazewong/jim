@@ -1,4 +1,4 @@
-# Jim's naming and transform system
+# Jim's parameter transform system
 
 !!! warning
     **Heavy development**: This is a work in progress and is subject to change. If you have any questions, please feel free to open an issue.
