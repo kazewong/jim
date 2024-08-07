@@ -54,6 +54,40 @@ class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+@jaxtyped(typechecker=typechecker)
+class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
+    """
+    Transform chirp mass and mass ratio to component masses
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        assert (
+            "M_c" in name_mapping[0]
+            and "q" in name_mapping[0]
+            and "m_1" in name_mapping[1]
+            and "m_2" in name_mapping[1]
+        )
+
+        def named_transform(x):
+            m1, m2 = Mc_q_to_m1_m2(x["M_c"], x["q"])
+            return {"m_1": m1, "m_2": m2}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            Mc, q = m1_m2_to_Mc_q(x["m_1"], x["m_2"])
+            return {"M_c": Mc, "q": q}
+
+        self.inverse_transform_func = named_inverse_transform
 
 @jaxtyped(typechecker=typechecker)
 class ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
@@ -91,6 +125,39 @@ class ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+class ChirpMassSymmetricMassRatioToComponentMassesTransform(BijectiveTransform):
+    """
+    Transform chirp mass and symmetric mass ratio to component masses
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        assert (
+            "M_c" in name_mapping[0]
+            and "eta" in name_mapping[0]
+            and "m_1" in name_mapping[1]
+            and "m_2" in name_mapping[1]
+        )
+
+        def named_transform(x):
+            m1, m2 = Mc_eta_to_m1_m2(x["M_c"], x["eta"])
+            return {"m_1": m1, "m_2": m2}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            Mc, eta = m1_m2_to_Mc_eta(x["m_1"], x["m_2"])
+            return {"M_c": Mc, "eta": eta}
+
+        self.inverse_transform_func = named_inverse_transform
 
 @jaxtyped(typechecker=typechecker)
 class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
@@ -114,6 +181,27 @@ class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
         self.transform_func = lambda x: {"eta": q_to_eta(x["q"])}
         self.inverse_transform_func = lambda x: {"q": eta_to_q(x["eta"])}
 
+@jaxtyped(typechecker=typechecker)
+class SymmetricMassRatioToMassRatioTransform(BijectiveTransform):
+    """
+    Transform symmetric mass ratio to mass ratio
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        assert "eta" == name_mapping[0][0] and "q" == name_mapping[1][0]
+
+        self.transform_func = lambda x: {"q": eta_to_q(x["eta"])}
+        self.inverse_transform_func = lambda x: {"eta": q_to_eta(x["q"])}
 
 @jaxtyped(typechecker=typechecker)
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
