@@ -54,6 +54,7 @@ class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+
 @jaxtyped(typechecker=typechecker)
 class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
     """
@@ -88,6 +89,7 @@ class ChirpMassMassRatioToComponentMassesTransform(BijectiveTransform):
             return {"M_c": Mc, "q": q}
 
         self.inverse_transform_func = named_inverse_transform
+
 
 @jaxtyped(typechecker=typechecker)
 class ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
@@ -125,6 +127,7 @@ class ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+
 class ChirpMassSymmetricMassRatioToComponentMassesTransform(BijectiveTransform):
     """
     Transform chirp mass and symmetric mass ratio to component masses
@@ -159,6 +162,7 @@ class ChirpMassSymmetricMassRatioToComponentMassesTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+
 @jaxtyped(typechecker=typechecker)
 class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
     """
@@ -181,6 +185,7 @@ class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
         self.transform_func = lambda x: {"eta": q_to_eta(x["q"])}
         self.inverse_transform_func = lambda x: {"q": eta_to_q(x["eta"])}
 
+
 @jaxtyped(typechecker=typechecker)
 class SymmetricMassRatioToMassRatioTransform(BijectiveTransform):
     """
@@ -202,6 +207,7 @@ class SymmetricMassRatioToMassRatioTransform(BijectiveTransform):
 
         self.transform_func = lambda x: {"q": eta_to_q(x["eta"])}
         self.inverse_transform_func = lambda x: {"eta": q_to_eta(x["q"])}
+
 
 @jaxtyped(typechecker=typechecker)
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
