@@ -171,6 +171,60 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
+class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
+    """
+    Transform the geocentric arrival time to detector arrival time
+
+    In the geocentric convention, the arrival time of the signal at the
+    center of Earth is gps_time + t_c
+
+    In the detector convention, the arrival time of the signal at the
+    detecotr is gps_time + time_delay_from_geo_to_det + t_det
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    gmst: Float
+    t_c: Float
+    t_det: Float
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        gps_time: Float,
+        ifo: GroundBased2G,
+    ):
+        super().__init__(name_mapping)
+
+        self.gmst = (
+            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
+        self.ifo = ifo
+
+        assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
+
+        def named_transform(x):
+            t_det = x["t_c"] + self.ifo.delay_from_geocenter(x["ra"], x["dec"], self.gmst)
+            return {
+                "t_det": t_det,
+            }
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            t_c = x["t_det"] - self.ifo.delay_from_geocenter(x["ra"], x["dec"], self.gmst)
+            return {
+                "t_c": t_c,
+            }
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+@jaxtyped(typechecker=typechecker)
 class SpinToCartesianSpinTransform(NtoNTransform):
     """
     Spin to Cartesian spin transformation
