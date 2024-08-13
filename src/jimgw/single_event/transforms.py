@@ -233,10 +233,10 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
     Transform the geocentric arrival phase to detector arrival phase
 
     In the geocentric convention, the arrival phase of the signal at the
-    center of Earth is phi_c / 2 (in ripple, phi_c is the orbital phase)
+    center of Earth is phase_c / 2 (in ripple, phase_c is the orbital phase)
 
     In the detector convention, the arrival phase of the signal at the
-    detecotr is phi_det = phi_c / 2 + arg R_det
+    detecotr is phase_det = phase_c / 2 + arg R_det
 
     Parameters
     ----------
@@ -261,7 +261,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
         )
         self.ifo = ifo
 
-        assert "phi_c" in name_mapping[0] and "phi_det" in name_mapping[1]
+        assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
 
         def _calc_R_det(x):
             ra, dec, psi, iota = x["ra"], x["dec"], x["psi"], x["iota"]
@@ -276,18 +276,18 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
 
         def named_transform(x):
             R_det = _calc_R_det(x)
-            phi_det = jnp.angle(R_det) + x["phi_c"] / 2.0
+            phase_det = jnp.angle(R_det) + x["phase_c"] / 2.0
             return {
-                "phi_det": phi_det % (2. * jnp.pi),
+                "phase_det": phase_det % (2. * jnp.pi),
             }
 
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
             R_det = _calc_R_det(x)
-            phi_c = (-jnp.angle(R_det) + x["phi_det"]) * 2.0
+            phase_c = (-jnp.angle(R_det) + x["phase_det"]) * 2.0
             return {
-                "phi_c": phi_c % (2. * jnp.pi),
+                "phase_c": phase_c % (2. * jnp.pi),
             }
 
         self.inverse_transform_func = named_inverse_transform
