@@ -228,6 +228,72 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
+class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
+    """
+    Transform the geocentric arrival phase to detector arrival phase
+
+    In the geocentric convention, the arrival phase of the signal at the
+    center of Earth is phi_c / 2 (in ripple, phi_c is the orbital phase)
+
+    In the detector convention, the arrival phase of the signal at the
+    detecotr is phi_det = phi_c / 2 + arg R_det
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    gmst: Float
+    ifo: GroundBased2G
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        gps_time: Float,
+        ifo: GroundBased2G,
+    ):
+        super().__init__(name_mapping)
+
+        self.gmst = (
+            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
+        self.ifo = ifo
+
+        assert "phi_c" in name_mapping[0] and "phi_det" in name_mapping[1]
+
+        def _calc_R_det(x):
+            ra, dec, psi, iota = x["ra"], x["dec"], x["psi"], x["iota"]
+            p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
+            c_iota_term = jnp.cos(iota)
+
+            antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, self.gmst)
+            p_mode_term = p_iota_term * antenna_pattern["p"]
+            c_mode_term = c_iota_term * antenna_pattern["c"]
+
+            return p_mode_term - 1j * c_mode_term
+
+        def named_transform(x):
+            R_det = _calc_R_det(x)
+            phi_det = jnp.angle(R_det) + x["phi_c"] / 2.0
+            return {
+                "phi_det": phi_det,
+            }
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            R_det = _calc_R_det(x)
+            phi_c = (-jnp.angle(R_det) + x["phi_det"]) * 2.0
+            return {
+                "phi_c": phi_c,
+            }
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+@jaxtyped(typechecker=typechecker)
 class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
     """
     Transform the luminosity distance to network SNR weighted distance
@@ -257,10 +323,8 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
 
         assert "d_L" in name_mapping[0] and "d_hat" in name_mapping[1]
 
-        def named_transform(x):
-            d_L, M_c, ra, dec, psi, iota = (
-                x["d_L"],
-                x["M_c"],
+        def _calc_R_dets(x):
+            ra, dec, psi, iota = (
                 x["ra"],
                 x["dec"],
                 x["psi"],
@@ -268,14 +332,22 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
             )
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
-            R_ks2 = 0.0
+            R_dets2 = 0.0
             for ifo in self.ifos:
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
                 c_mode_term = c_iota_term * antenna_pattern["c"]
-                R_ks2 += p_mode_term**2 + c_mode_term**2
-            R_ks = jnp.sqrt(R_ks2)
-            d_hat = d_L / jnp.power(M_c, 5.0 / 6.0) / R_ks
+                R_dets2 += p_mode_term**2 + c_mode_term**2
+
+            return jnp.sqrt(R_dets2)
+
+        def named_transform(x):
+            d_L, M_c = (
+                x["d_L"],
+                x["M_c"],
+            )
+            R_dets = _calc_R_dets(x)
+            d_hat = d_L / jnp.power(M_c, 5.0 / 6.0) / R_dets
             return {
                 "d_hat": d_hat,
             }
@@ -283,24 +355,12 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            d_hat, M_c, ra, dec, psi, iota = (
+            d_hat, M_c = (
                 x["d_hat"],
                 x["M_c"],
-                x["ra"],
-                x["dec"],
-                x["psi"],
-                x["iota"],
             )
-            p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
-            c_iota_term = jnp.cos(iota)
-            R_ks2 = 0.0
-            for ifo in self.ifos:
-                antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
-                p_mode_term = p_iota_term * antenna_pattern["p"]
-                c_mode_term = c_iota_term * antenna_pattern["c"]
-                R_ks2 += p_mode_term**2 + c_mode_term**2
-            R_ks = jnp.sqrt(R_ks2)
-            d_L = d_hat * jnp.power(M_c, 5.0 / 6.0) * R_ks
+            R_dets = _calc_R_dets(x)
+            d_L = d_hat * jnp.power(M_c, 5.0 / 6.0) * R_dets
             return {
                 "d_L": d_L,
             }
