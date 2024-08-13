@@ -208,7 +208,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
 
         def named_transform(x):
             t_det = x["t_c"] + self.ifo.delay_from_geocenter(
-                x["ra"], x["dec"], self.gmst
+                x["ra"][0], x["dec"][0], self.gmst
             )
             return {
                 "t_det": t_det,
@@ -217,8 +217,9 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
+            import pdb; pdb.set_trace()
             t_c = x["t_det"] - self.ifo.delay_from_geocenter(
-                x["ra"], x["dec"], self.gmst
+                x["ra"][0], x["dec"][0], self.gmst
             )
             return {
                 "t_c": t_c,
@@ -268,7 +269,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
 
-            antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, self.gmst)
+            antenna_pattern = self.ifo.antenna_pattern(ra[0], dec[0], psi[0], self.gmst)
             p_mode_term = p_iota_term * antenna_pattern["p"]
             c_mode_term = c_iota_term * antenna_pattern["c"]
 
@@ -278,7 +279,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
             R_det = _calc_R_det(x)
             phase_det = jnp.angle(R_det) + x["phase_c"] / 2.0
             return {
-                "phase_det": phase_det % (2. * jnp.pi),
+                "phase_det": phase_det % (2.0 * jnp.pi),
             }
 
         self.transform_func = named_transform
@@ -287,7 +288,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
             R_det = _calc_R_det(x)
             phase_c = (-jnp.angle(R_det) + x["phase_det"]) * 2.0
             return {
-                "phase_c": phase_c % (2. * jnp.pi),
+                "phase_c": phase_c % (2.0 * jnp.pi),
             }
 
         self.inverse_transform_func = named_inverse_transform
