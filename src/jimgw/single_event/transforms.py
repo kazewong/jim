@@ -278,7 +278,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
             R_det = _calc_R_det(x)
             phi_det = jnp.angle(R_det) + x["phi_c"] / 2.0
             return {
-                "phi_det": phi_det,
+                "phi_det": phi_det % (2. * jnp.pi),
             }
 
         self.transform_func = named_transform
@@ -287,7 +287,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
             R_det = _calc_R_det(x)
             phi_c = (-jnp.angle(R_det) + x["phi_det"]) * 2.0
             return {
-                "phi_c": phi_c,
+                "phi_c": phi_c % (2. * jnp.pi),
             }
 
         self.inverse_transform_func = named_inverse_transform
