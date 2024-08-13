@@ -189,8 +189,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
     """
 
     gmst: Float
-    t_c: Float
-    t_det: Float
+    ifo: GroundBased2G
 
     def __init__(
         self,
@@ -241,6 +240,7 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
     """
 
     gmst: Float
+    ifos: list[GroundBased2G]
 
     def __init__(
         self,
