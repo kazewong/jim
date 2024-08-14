@@ -4,7 +4,11 @@ from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import ConditionalBijectiveTransform, BijectiveTransform, NtoNTransform
+from jimgw.transforms import (
+    ConditionalBijectiveTransform,
+    BijectiveTransform,
+    NtoNTransform,
+)
 from jimgw.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
@@ -171,7 +175,9 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class GeocentricArrivalTimeToDetectorArrivalTimeTransform(ConditionalBijectiveTransform):
+class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+    ConditionalBijectiveTransform
+):
     """
     Transform the geocentric arrival time to detector arrival time
 
@@ -206,10 +212,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(ConditionalBijectiveTr
         self.ifo = ifo
 
         assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
-        assert (
-            "ra" in conditional_names
-            and "dec" in conditional_names
-        )
+        assert "ra" in conditional_names and "dec" in conditional_names
 
         def _calc_delay(x):
             ra, dec = x["ra"], x["dec"]
@@ -239,7 +242,9 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(ConditionalBijectiveTr
 
 
 @jaxtyped(typechecker=typechecker)
-class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(ConditionalBijectiveTransform):
+class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
+    ConditionalBijectiveTransform
+):
     """
     Transform the geocentric arrival phase to detector arrival phase
 
@@ -287,7 +292,9 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(ConditionalBijective
             c_iota_term = jnp.cos(iota)
 
             if hasattr(ra, "shape") and len(ra.shape) > 0:
-                antenna_pattern = self.ifo.antenna_pattern(ra[0], dec[0], psi[0], self.gmst)
+                antenna_pattern = self.ifo.antenna_pattern(
+                    ra[0], dec[0], psi[0], self.gmst
+                )
             else:
                 antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, self.gmst)
             p_mode_term = p_iota_term * antenna_pattern["p"]
