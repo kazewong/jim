@@ -160,7 +160,8 @@ class BijectiveTransform(NtoNTransform):
             list(output_params.keys()),
         )
         return y_copy
-    
+
+
 class ConditionalBijectiveTransform(BijectiveTransform):
 
     conditional_names: list[str]
@@ -181,8 +182,14 @@ class ConditionalBijectiveTransform(BijectiveTransform):
         )
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
-        jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian_copy = {
+            key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[0]}
+            for key1 in self.name_mapping[1]
+        }
+        jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        )
         jax.tree.map(
             lambda key: x_copy.pop(key),
             self.name_mapping[0],
@@ -192,7 +199,7 @@ class ConditionalBijectiveTransform(BijectiveTransform):
             list(output_params.keys()),
         )
         return x_copy, jacobian
-       
+
     def inverse(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
         y_copy = y.copy()
         transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
@@ -201,8 +208,14 @@ class ConditionalBijectiveTransform(BijectiveTransform):
         )
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
-        jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian_copy = {
+            key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[1]}
+            for key1 in self.name_mapping[0]
+        }
+        jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        )
         jax.tree.map(
             lambda key: y_copy.pop(key),
             self.name_mapping[1],
