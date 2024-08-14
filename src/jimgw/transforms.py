@@ -61,8 +61,6 @@ class NtoMTransform(Transform):
 
 class NtoNTransform(NtoMTransform):
 
-    transform_func: Callable[[dict[str, Float]], dict[str, Float]]
-
     @property
     def n_dim(self) -> int:
         return len(self.name_mapping[0])
@@ -162,6 +160,58 @@ class BijectiveTransform(NtoNTransform):
             list(output_params.keys()),
         )
         return y_copy
+    
+class ConditionalBijectiveTransform(BijectiveTransform):
+
+    conditional_names: list[str]
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        conditional_names: list[str],
+    ):
+        super().__init__(name_mapping)
+        self.conditional_names = conditional_names
+
+    def transform(self, x: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+        x_copy = x.copy()
+        transform_params = dict((key, x_copy[key]) for key in self.name_mapping[0])
+        transform_params.update(
+            dict((key, x_copy[key]) for key in self.conditional_names)
+        )
+        output_params = self.transform_func(transform_params)
+        jacobian = jax.jacfwd(self.transform_func)(transform_params)
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jax.tree.map(
+            lambda key: x_copy.pop(key),
+            self.name_mapping[0],
+        )
+        jax.tree.map(
+            lambda key: x_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return x_copy, jacobian
+       
+    def inverse(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
+        y_copy = y.copy()
+        transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
+        transform_params.update(
+            dict((key, y_copy[key]) for key in self.conditional_names)
+        )
+        output_params = self.inverse_transform_func(transform_params)
+        jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jax.tree.map(
+            lambda key: y_copy.pop(key),
+            self.name_mapping[1],
+        )
+        jax.tree.map(
+            lambda key: y_copy.update({key: output_params[key]}),
+            list(output_params.keys()),
+        )
+        return y_copy, jacobian
 
 
 @jaxtyped(typechecker=typechecker)
