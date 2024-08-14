@@ -4,7 +4,7 @@ from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import BijectiveTransform, NtoNTransform
+from jimgw.transforms import ConditionalBijectiveTransform, BijectiveTransform, NtoNTransform
 from jimgw.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
@@ -171,7 +171,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
+class GeocentricArrivalTimeToDetectorArrivalTimeTransform(ConditionalBijectiveTransform):
     """
     Transform the geocentric arrival time to detector arrival time
 
@@ -194,10 +194,11 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
+        conditional_names: list[str],
         gps_time: Float,
         ifo: GroundBased2G,
     ):
-        super().__init__(name_mapping)
+        super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
@@ -205,11 +206,22 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
         self.ifo = ifo
 
         assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
+        assert (
+            "ra" in conditional_names
+            and "dec" in conditional_names
+        )
+
+        def _calc_delay(x):
+            ra, dec = x["ra"], x["dec"]
+            if hasattr(ra, "shape") and len(ra.shape) > 0:
+                delay = self.ifo.delay_from_geocenter(ra[0], dec[0], self.gmst)
+            else:
+                delay = self.ifo.delay_from_geocenter(ra, dec, self.gmst)
+            return delay
 
         def named_transform(x):
-            t_det = x["t_c"] + self.ifo.delay_from_geocenter(
-                x["ra"][0], x["dec"][0], self.gmst
-            )
+            delay = _calc_delay(x)
+            t_det = x["t_c"] + delay
             return {
                 "t_det": t_det,
             }
@@ -217,10 +229,8 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            import pdb; pdb.set_trace()
-            t_c = x["t_det"] - self.ifo.delay_from_geocenter(
-                x["ra"][0], x["dec"][0], self.gmst
-            )
+            delay = _calc_delay(x)
+            t_c = x["t_det"] - delay
             return {
                 "t_c": t_c,
             }
@@ -229,7 +239,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
+class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(ConditionalBijectiveTransform):
     """
     Transform the geocentric arrival phase to detector arrival phase
 
@@ -252,10 +262,11 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
+        conditional_names: list[str],
         gps_time: Float,
         ifo: GroundBased2G,
     ):
-        super().__init__(name_mapping)
+        super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
@@ -263,13 +274,22 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(BijectiveTransform):
         self.ifo = ifo
 
         assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
+        assert (
+            "ra" in conditional_names
+            and "dec" in conditional_names
+            and "psi" in conditional_names
+            and "iota" in conditional_names
+        )
 
         def _calc_R_det(x):
             ra, dec, psi, iota = x["ra"], x["dec"], x["psi"], x["iota"]
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
 
-            antenna_pattern = self.ifo.antenna_pattern(ra[0], dec[0], psi[0], self.gmst)
+            if hasattr(ra, "shape") and len(ra.shape) > 0:
+                antenna_pattern = self.ifo.antenna_pattern(ra[0], dec[0], psi[0], self.gmst)
+            else:
+                antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, self.gmst)
             p_mode_term = p_iota_term * antenna_pattern["p"]
             c_mode_term = c_iota_term * antenna_pattern["c"]
 
