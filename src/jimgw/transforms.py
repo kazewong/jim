@@ -418,17 +418,26 @@ class SingleSidedUnboundTransform(BijectiveTransform):
 
     """
 
+    original_lower_bound: Float
+
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
+        original_lower_bound: Float,
     ):
         super().__init__(name_mapping)
+        self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
+
         self.transform_func = lambda x: {
-            name_mapping[1][i]: jnp.exp(x[name_mapping[0][i]])
+            name_mapping[1][i]: jnp.log(
+                x[name_mapping[0][i]] - self.original_lower_bound[i]
+            )
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.log(x[name_mapping[1][i]])
+            name_mapping[0][i]: jnp.exp(
+                x[name_mapping[1][i]] + self.original_lower_bound[i]
+            )
             for i in range(len(name_mapping[1]))
         }
 
