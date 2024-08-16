@@ -315,7 +315,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
 
 @jaxtyped(typechecker=typechecker)
-class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
+class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
     """
     Transform the luminosity distance to network SNR weighted distance
 
@@ -332,10 +332,11 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
     def __init__(
         self,
         name_mapping: tuple[list[str], list[str]],
+        conditional_names: list[str],
         gps_time: Float,
         ifos: list[GroundBased2G],
     ):
-        super().__init__(name_mapping)
+        super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
@@ -343,14 +344,16 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
         self.ifos = ifos
 
         assert "d_L" in name_mapping[0] and "d_hat" in name_mapping[1]
+        assert (
+            "ra" in conditional_names
+            and "dec" in conditional_names
+            and "psi" in conditional_names
+            and "iota" in conditional_names
+            and "M_c" in conditional_names
+        )
 
-        def _calc_R_dets(x):
-            ra, dec, psi, iota = (
-                x["ra"],
-                x["dec"],
-                x["psi"],
-                x["iota"],
-            )
+        @jnp.vectorize
+        def _calc_R_dets(ra, dec, psi, iota):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
             R_dets2 = 0.0
@@ -367,7 +370,7 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
                 x["d_L"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x)
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
             d_hat = d_L / jnp.power(M_c, 5.0 / 6.0) / R_dets
             return {
                 "d_hat": d_hat,
@@ -380,7 +383,7 @@ class DistanceToSNRWeightedDistanceTransform(BijectiveTransform):
                 x["d_hat"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x)
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
             d_L = d_hat * jnp.power(M_c, 5.0 / 6.0) * R_dets
             return {
                 "d_L": d_L,
