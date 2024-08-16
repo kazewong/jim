@@ -214,17 +214,10 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
         assert "ra" in conditional_names and "dec" in conditional_names
 
-        def _calc_delay(x):
-            ra, dec = x["ra"], x["dec"]
-            if hasattr(ra, "shape") and len(ra.shape) > 0:
-                delay = self.ifo.delay_from_geocenter(ra[0], dec[0], self.gmst)
-            else:
-                delay = self.ifo.delay_from_geocenter(ra, dec, self.gmst)
-            return delay
-
         def named_transform(x):
-            delay = _calc_delay(x)
-            t_det = x["t_c"] + delay
+            t_det = x["t_c"] + jnp.vectorize(self.ifo.delay_from_geocenter)(
+                x["ra"], x["dec"], self.gmst
+            )
             return {
                 "t_det": t_det,
             }
@@ -232,8 +225,9 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            delay = _calc_delay(x)
-            t_c = x["t_det"] - delay
+            t_c = x["t_det"] - jnp.vectorize(self.ifo.delay_from_geocenter)(
+                x["ra"], x["dec"], self.gmst
+            )
             return {
                 "t_c": t_c,
             }
@@ -286,25 +280,22 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             and "iota" in conditional_names
         )
 
-        def _calc_R_det(x):
-            ra, dec, psi, iota = x["ra"], x["dec"], x["psi"], x["iota"]
+        @jnp.vectorize
+        def _calc_R_det_arg(ra, dec, psi, iota, gmst):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
 
-            if hasattr(ra, "shape") and len(ra.shape) > 0:
-                antenna_pattern = self.ifo.antenna_pattern(
-                    ra[0], dec[0], psi[0], self.gmst
-                )
-            else:
-                antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, self.gmst)
+            antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, gmst)
             p_mode_term = p_iota_term * antenna_pattern["p"]
             c_mode_term = c_iota_term * antenna_pattern["c"]
 
-            return p_mode_term - 1j * c_mode_term
+            return jnp.angle(p_mode_term - 1j * c_mode_term)
 
         def named_transform(x):
-            R_det = _calc_R_det(x)
-            phase_det = jnp.angle(R_det) + x["phase_c"] / 2.0
+            R_det_arg = _calc_R_det_arg(
+                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
+            )
+            phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
                 "phase_det": phase_det % (2.0 * jnp.pi),
             }
@@ -312,8 +303,10 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            R_det = _calc_R_det(x)
-            phase_c = (-jnp.angle(R_det) + x["phase_det"]) * 2.0
+            R_det_arg = _calc_R_det_arg(
+                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
+            )
+            phase_c = (-R_det_arg + x["phase_det"]) * 2.0
             return {
                 "phase_c": phase_c % (2.0 * jnp.pi),
             }
