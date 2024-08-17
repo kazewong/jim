@@ -4,7 +4,12 @@ from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import BijectiveTransform, NtoNTransform
+from jimgw.transforms import (
+    BijectiveTransform,
+    NtoNTransform,
+    reverse_bijective_transform,
+    create_bijective_transform,
+)
 from jimgw.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
@@ -17,157 +22,6 @@ from jimgw.single_event.utils import (
     euler_rotation,
     spin_to_cartesian_spin,
 )
-
-
-@jaxtyped(typechecker=typechecker)
-class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
-    """
-    Transform chirp mass and mass ratio to component masses
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        assert (
-            "m_1" in name_mapping[0]
-            and "m_2" in name_mapping[0]
-            and "M_c" in name_mapping[1]
-            and "q" in name_mapping[1]
-        )
-
-        def named_transform(x):
-            Mc, q = m1_m2_to_Mc_q(x["m_1"], x["m_2"])
-            return {"M_c": Mc, "q": q}
-
-        self.transform_func = named_transform
-
-        def named_inverse_transform(x):
-            m1, m2 = Mc_q_to_m1_m2(x["M_c"], x["q"])
-            return {"m_1": m1, "m_2": m2}
-
-        self.inverse_transform_func = named_inverse_transform
-
-
-@jaxtyped(typechecker=typechecker)
-class ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
-    """
-    Transform mass ratio to symmetric mass ratio
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        assert (
-            "m_1" in name_mapping[0]
-            and "m_2" in name_mapping[0]
-            and "M_c" in name_mapping[1]
-            and "eta" in name_mapping[1]
-        )
-
-        def named_transform(x):
-            Mc, eta = m1_m2_to_Mc_eta(x["m_1"], x["m_2"])
-            return {"M_c": Mc, "eta": eta}
-
-        self.transform_func = named_transform
-
-        def named_inverse_transform(x):
-            m1, m2 = Mc_eta_to_m1_m2(x["M_c"], x["q"])
-            return {"m_1": m1, "m_2": m2}
-
-        self.inverse_transform_func = named_inverse_transform
-
-
-@jaxtyped(typechecker=typechecker)
-class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
-    """
-    Transform mass ratio to symmetric mass ratio
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        assert "q" == name_mapping[0][0] and "eta" == name_mapping[1][0]
-
-        self.transform_func = lambda x: {"eta": q_to_eta(x["q"])}
-        self.inverse_transform_func = lambda x: {"q": eta_to_q(x["eta"])}
-
-
-@jaxtyped(typechecker=typechecker)
-class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
-    """
-    Transform sky frame to detector frame sky position
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    gmst: Float
-    rotation: Float[Array, " 3 3"]
-    rotation_inv: Float[Array, " 3 3"]
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-        gps_time: Float,
-        ifos: GroundBased2G,
-    ):
-        super().__init__(name_mapping)
-
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
-        delta_x = ifos[0].vertex - ifos[1].vertex
-        self.rotation = euler_rotation(delta_x)
-        self.rotation_inv = jnp.linalg.inv(self.rotation)
-
-        assert (
-            "ra" in name_mapping[0]
-            and "dec" in name_mapping[0]
-            and "zenith" in name_mapping[1]
-            and "azimuth" in name_mapping[1]
-        )
-
-        def named_transform(x):
-            zenith, azimuth = ra_dec_to_zenith_azimuth(
-                x["ra"], x["dec"], self.gmst, self.rotation
-            )
-            return {"zenith": zenith, "azimuth": azimuth}
-
-        self.transform_func = named_transform
-
-        def named_inverse_transform(x):
-            ra, dec = zenith_azimuth_to_ra_dec(
-                x["zenith"], x["azimuth"], self.gmst, self.rotation_inv
-            )
-            return {"ra": ra, "dec": dec}
-
-        self.inverse_transform_func = named_inverse_transform
 
 
 @jaxtyped(typechecker=typechecker)
@@ -229,3 +83,81 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             }
 
         self.transform_func = named_transform
+
+
+@jaxtyped(typechecker=typechecker)
+class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
+    """
+    Transform sky frame to detector frame sky position
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    gmst: Float
+    rotation: Float[Array, " 3 3"]
+    rotation_inv: Float[Array, " 3 3"]
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        gps_time: Float,
+        ifos: GroundBased2G,
+    ):
+        super().__init__(name_mapping)
+
+        self.gmst = (
+            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
+        delta_x = ifos[0].vertex - ifos[1].vertex
+        self.rotation = euler_rotation(delta_x)
+        self.rotation_inv = jnp.linalg.inv(self.rotation)
+
+        assert (
+            "ra" in name_mapping[0]
+            and "dec" in name_mapping[0]
+            and "zenith" in name_mapping[1]
+            and "azimuth" in name_mapping[1]
+        )
+
+        def named_transform(x):
+            zenith, azimuth = ra_dec_to_zenith_azimuth(
+                x["ra"], x["dec"], self.gmst, self.rotation
+            )
+            return {"zenith": zenith, "azimuth": azimuth}
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            ra, dec = zenith_azimuth_to_ra_dec(
+                x["zenith"], x["azimuth"], self.gmst, self.rotation_inv
+            )
+            return {"ra": ra, "dec": dec}
+
+        self.inverse_transform_func = named_inverse_transform
+
+
+# Pre-made bijective transforms:
+ComponentMassesToChirpMassMassRatioTransform = create_bijective_transform(
+    (["m_1", "m_2"], ["M_c", "q"]), m1_m2_to_Mc_q, Mc_q_to_m1_m2
+)
+ChirpMassMassRatioToComponentMassesTransform = reverse_bijective_transform(
+    ComponentMassesToChirpMassMassRatioTransform
+)
+
+ComponentMassesToChirpMassSymmetricMassRatioTransform = create_bijective_transform(
+    (["m_1", "m_2"], ["M_c", "eta"]), m1_m2_to_Mc_eta, Mc_eta_to_m1_m2
+)
+ChirpMassSymmetricMassRatioToComponentMassesTransform = reverse_bijective_transform(
+    ComponentMassesToChirpMassSymmetricMassRatioTransform
+)
+
+MassRatioToSymmetricMassRatioTransform = create_bijective_transform(
+    (["q"], ["eta"]), q_to_eta, eta_to_q
+)
+SymmetricMassRatioToMassRatioTransform = reverse_bijective_transform(
+    MassRatioToSymmetricMassRatioTransform
+)
