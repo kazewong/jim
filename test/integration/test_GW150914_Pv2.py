@@ -1,3 +1,7 @@
+import os 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.10"
+
 import time
 
 import jax
@@ -11,6 +15,8 @@ from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform
 from flowMC.strategy.optimization import optimization_Adam
+
+from flowMC.utils.postprocessing import plot_summary
 
 jax.config.update("jax_enable_x64", True)
 
@@ -90,7 +96,7 @@ sample_transforms = [
 
 likelihood_transforms = [
     SpinToCartesianSpinTransform(name_mapping=[["theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"], ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"]], freq_ref=20.0),
-    MassRatioToSymmetricMassRatioTransform(name_mapping=[["q"], ["eta"]]),
+    MassRatioToSymmetricMassRatioTransform,
 ]
 
 likelihood = TransientLikelihoodFD(
@@ -140,3 +146,5 @@ jim = Jim(
 jim.sample(jax.random.PRNGKey(42))
 jim.get_samples()
 jim.print_summary()
+
+plot_summary(jim.sampler)

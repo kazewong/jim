@@ -467,13 +467,13 @@ def create_bijective_transform(
     def named_transform_func(x_named: dict[str, Float]) -> dict[str, Float]:
         x_array = jnp.array([x_named[key] for key in name_mapping[0]])
         y_array = transform_func_array(*x_array)
-        y_named = dict(zip(name_mapping[1], y_array))
+        y_named = dict(zip(name_mapping[1], jnp.atleast_1d(y_array)))
         return y_named
 
     def named_inverse_transform_func(y_named: dict[str, Float]) -> dict[str, Float]:
         y_array = jnp.array([y_named[key] for key in name_mapping[1]])
         x_array = inverse_transform_func_array(*y_array)
-        x_named = dict(zip(name_mapping[0], x_array))
+        x_named = dict(zip(name_mapping[0], jnp.atleast_1d(x_array)))
         return x_named
 
     new_transform = BijectiveTransform(name_mapping)
