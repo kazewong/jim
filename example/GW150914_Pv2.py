@@ -173,5 +173,5 @@ plt.savefig("GW1500914_pv2.jpeg")
 ###########################################
 ############# Save the Run ################
 ###########################################
-import pickle
-pickle.dump(result, open("GW150914_pv2.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+# import pickle
+# pickle.dump(result, open("GW150914_pv2.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
