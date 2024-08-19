@@ -168,7 +168,7 @@ labels = list(transformed_chain.keys())
 samples = np.array(list(result.values())).reshape(int(len(labels)), -1) # flatten the array
 transposed_array = samples.T # transpose the array
 figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
-plt.savefig("GW1500914_pv2.jpeg")
+plt.savefig("GW1500914_Pv2.jpeg")
 
 ###########################################
 ############# Save the Run ################
