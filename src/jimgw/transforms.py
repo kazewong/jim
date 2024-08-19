@@ -435,9 +435,8 @@ class SingleSidedUnboundTransform(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.exp(
-                x[name_mapping[1][i]] + self.original_lower_bound[i]
-            )
+            name_mapping[0][i]: jnp.exp(x[name_mapping[1][i]])
+            + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
 
