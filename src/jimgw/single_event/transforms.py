@@ -328,6 +328,8 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
 
     gmst: Float
     ifos: list[GroundBased2G]
+    d_L_min: Float
+    d_L_max: Float
 
     def __init__(
         self,
@@ -335,6 +337,8 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         conditional_names: list[str],
         gps_time: Float,
         ifos: list[GroundBased2G],
+        d_L_min: Float,
+        d_L_max: Float,
     ):
         super().__init__(name_mapping, conditional_names)
 
@@ -342,8 +346,10 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
         self.ifos = ifos
+        self.d_L_min = d_L_min
+        self.d_L_max = d_L_max
 
-        assert "d_L" in name_mapping[0] and "d_hat" in name_mapping[1]
+        assert "d_L" in name_mapping[0] and "d_hat_unbounded" in name_mapping[1]
         assert (
             "ra" in conditional_names
             and "dec" in conditional_names
@@ -371,20 +377,38 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["M_c"],
             )
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
-            d_hat = d_L / jnp.power(M_c, 5.0 / 6.0) / R_dets
+
+            scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
+            d_hat = scale_factor * d_L
+
+            d_hat_min = scale_factor * self.d_L_min
+            d_hat_max = scale_factor * self.d_L_max
+
+            y = (d_hat - d_hat_min) / (d_hat_max - d_hat_min)
+            d_hat_unbounded = jnp.log(y / (1.0 - y))
+
             return {
-                "d_hat": d_hat,
+                "d_hat_unbounded": d_hat_unbounded,
             }
 
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            d_hat, M_c = (
-                x["d_hat"],
+            d_hat_unbounded, M_c = (
+                x["d_hat_unbounded"],
                 x["M_c"],
             )
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
-            d_L = d_hat * jnp.power(M_c, 5.0 / 6.0) * R_dets
+
+            scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
+
+            d_hat_min = scale_factor * self.d_L_min
+            d_hat_max = scale_factor * self.d_L_max
+
+            d_hat = (d_hat_max - d_hat_min) / (
+                1.0 + jnp.exp(-d_hat_unbounded)
+            ) + d_hat_min
+            d_L = d_hat / scale_factor
             return {
                 "d_L": d_L,
             }
