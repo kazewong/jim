@@ -160,7 +160,7 @@ production_summary = jim.sampler.get_sampler_state(training=False)
 production_chain = production_summary["chains"].reshape(-1, len(jim.parameter_names)).T
 if jim.sample_transforms:
     transformed_chain = jim.add_name(production_chain)
-    for transform in jim.sample_transforms:
+    for transform in reversed(jim.sample_transforms):
         transformed_chain = transform.backward(transformed_chain)
 result = transformed_chain
 labels = list(transformed_chain.keys())
