@@ -7,7 +7,7 @@ from jimgw.jim import Jim
 from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomD
+from jimgw.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform
 from flowMC.strategy.optimization import optimization_Adam
@@ -95,7 +95,7 @@ likelihood_transforms = [
 
 likelihood = TransientLikelihoodFD(
     ifos,
-    waveform=RippleIMRPhenomD(),
+    waveform=RippleIMRPhenomPv2(),
     trigger_time=gps,
     duration=4,
     post_trigger_duration=2,
