@@ -332,7 +332,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             R_det_arg = _calc_R_det_arg(
                 x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
             )
-            phase_c = (-R_det_arg + x["phase_det"]) * 2.0
+            phase_c = -R_det_arg + x["phase_det"] * 2.0
             return {
                 "phase_c": phase_c % (2.0 * jnp.pi),
             }
