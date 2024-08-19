@@ -1,13 +1,14 @@
-import time
-
 import jax
 import jax.numpy as jnp
 
 from jimgw.jim import Jim
-from jimgw.prior import Composite, Unconstrained_Uniform
+from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
+from jimgw.transforms import BoundToUnbound
+from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform
+from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -15,8 +16,6 @@ jax.config.update("jax_enable_x64", True)
 ###########################################
 ########## First we grab data #############
 ###########################################
-
-total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
 gps = 1126259462.4
@@ -27,69 +26,63 @@ end_pad = post_trigger_duration
 fmin = 20.0
 fmax = 1024.0
 
-ifos = ["H1", "L1"]
+ifos = [H1, L1]
 
-H1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
-Mc_prior = Unconstrained_Uniform(10.0, 80.0, naming=["M_c"])
-q_prior = Unconstrained_Uniform(
-    0.125,
-    1.0,
-    naming=["q"],
-    transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
-)
-s1z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s1_z"])
-s2z_prior = Unconstrained_Uniform(-1.0, 1.0, naming=["s2_z"])
-dL_prior = Unconstrained_Uniform(0.0, 2000.0, naming=["d_L"])
-t_c_prior = Unconstrained_Uniform(-0.05, 0.05, naming=["t_c"])
-phase_c_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["phase_c"])
-cos_iota_prior = Unconstrained_Uniform(
-    -1.0,
-    1.0,
-    naming=["cos_iota"],
-    transforms={
-        "cos_iota": (
-            "iota",
-            lambda params: jnp.arccos(
-                jnp.arcsin(jnp.sin(params["cos_iota"] / 2 * jnp.pi)) * 2 / jnp.pi
-            ),
-        )
-    },
-)
-psi_prior = Unconstrained_Uniform(0.0, jnp.pi, naming=["psi"])
-ra_prior = Unconstrained_Uniform(0.0, 2 * jnp.pi, naming=["ra"])
-sin_dec_prior = Unconstrained_Uniform(
-    -1.0,
-    1.0,
-    naming=["sin_dec"],
-    transforms={
-        "sin_dec": (
-            "dec",
-            lambda params: jnp.arcsin(
-                jnp.arcsin(jnp.sin(params["sin_dec"] / 2 * jnp.pi)) * 2 / jnp.pi
-            ),
-        )
-    },
-)
+M_c_min, M_c_max = 10.0, 80.0
+q_min, q_max = 0.125, 1.0
+m_1_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_max)[0], Mc_q_to_m1_m2(M_c_max, q_min)[0], parameter_names=["m_1"])
+m_2_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_min)[1], Mc_q_to_m1_m2(M_c_max, q_max)[1], parameter_names=["m_2"])
+s1z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s1_z"])
+s2z_prior = UniformPrior(-1.0, 1.0, parameter_names=["s2_z"])
+dL_prior = PowerLawPrior(1.0, 2000.0, 2.0, parameter_names=["d_L"])
+t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
+phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
+iota_prior = SinePrior(parameter_names=["iota"])
+psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
+ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
+dec_prior = CosinePrior(parameter_names=["dec"])
 
-prior = Composite(
+prior = CombinePrior(
     [
-        Mc_prior,
-        q_prior,
+        m_1_prior,
+        m_2_prior,
         s1z_prior,
         s2z_prior,
         dL_prior,
         t_c_prior,
         phase_c_prior,
-        cos_iota_prior,
+        iota_prior,
         psi_prior,
         ra_prior,
-        sin_dec_prior,
+        dec_prior,
     ]
 )
+
+sample_transforms = [
+    ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
+    BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=M_c_min, original_upper_bound=M_c_max),
+    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=q_min, original_upper_bound=q_max),
+    BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["s2_z"], ["s2_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = [["d_L"], ["d_L_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2000.0),
+    BoundToUnbound(name_mapping = [["t_c"], ["t_c_unbounded"]] , original_lower_bound=-0.05, original_upper_bound=0.05),
+    BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
+    BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+]
+
+likelihood_transforms = [
+    ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "eta"]]),
+]
+
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=RippleIMRPhenomD(),
     trigger_time=gps,
     duration=4,
@@ -104,19 +97,16 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
 Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
 
-import optax
-n_epochs = 20
+n_epochs = 30
 n_loop_training = 100
-total_epochs = n_epochs * n_loop_training
-start = total_epochs//10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 1e-4, 4.0, total_epochs - start, transition_begin=start
-)
+learning_rate = 1e-4
 
 
 jim = Jim(
     likelihood,
     prior,
+    sample_transforms=sample_transforms,
+    likelihood_transforms=likelihood_transforms,
     n_loop_training=n_loop_training,
     n_loop_production=20,
     n_local_steps=10,
@@ -132,7 +122,31 @@ jim = Jim(
     train_thinning=1,
     output_thinning=10,
     local_sampler_arg=local_sampler_arg,
-    strategies=[Adam_optimizer,"default"],
+    strategies=[Adam_optimizer, "default"],
 )
 
 jim.sample(jax.random.PRNGKey(42))
+jim.get_samples()
+jim.print_summary()
+
+
+###########################################
+########## Visualize the Data #############
+###########################################
+import corner
+import matplotlib.pyplot as plt
+import numpy as np
+
+production_summary = jim.sampler.get_sampler_state(training=False)
+production_chain = production_summary["chains"].reshape(-1, len(jim.parameter_names)).T
+if jim.sample_transforms:
+    transformed_chain = jim.add_name(production_chain)
+    for transform in jim.sample_transforms:
+        transformed_chain = transform.backward(transformed_chain)
+result = transformed_chain
+labels = list(transformed_chain.keys())
+
+samples = np.array(list(result.values())).reshape(int(len(labels)), -1) # flatten the array
+transposed_array = samples.T # transpose the array
+figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
+plt.savefig("GW1500914_D.jpeg")
