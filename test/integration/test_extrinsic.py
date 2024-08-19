@@ -23,7 +23,7 @@ gps = 1126259462.4
 ifos = [H1, L1, V1]
 
 M_c_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
-dL_prior = PowerLawPrior(10.0, 200.0, -2.0, parameter_names=["d_L"])
+dL_prior = PowerLawPrior(10.0, 2000.0, 2.0, parameter_names=["d_L"])
 t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 iota_prior = SinePrior(parameter_names=["iota"])
@@ -44,33 +44,7 @@ prior = CombinePrior(
     ]
 )
 
-# calculate the d_hat range
-@jnp.vectorize
-def calc_R_dets(ra, dec, psi, iota):
-    gmst = (
-        Time(gps, format="gps").sidereal_time("apparent", "greenwich").rad
-    )
-    p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
-    c_iota_term = jnp.cos(iota)
-    R_dets2 = 0.0
-    for ifo in ifos:
-        antenna_pattern = ifo.antenna_pattern(ra, dec, psi, gmst)
-        p_mode_term = p_iota_term * antenna_pattern["p"]
-        c_mode_term = c_iota_term * antenna_pattern["c"]
-        R_dets2 += p_mode_term**2 + c_mode_term**2
-
-    return jnp.sqrt(R_dets2)
-
-key1, key2, key3, key4 = jax.random.split(jax.random.PRNGKey(1234), 4)
-# generate 10000 samples for each
-ra_samples = ra_prior.sample(key1, 10000)["ra"]
-dec_samples = dec_prior.sample(key2, 10000)["dec"]
-psi_samples = psi_prior.sample(key3, 10000)["psi"]
-iota_samples = iota_prior.sample(key4, 10000)["iota"]
-R_dets_samples = calc_R_dets(ra_samples, dec_samples, psi_samples, iota_samples)
-
 d_hat_min = dL_prior.xmin / jnp.power(M_c_prior.xmax, 5. / 6.)
-d_hat_max = dL_prior.xmax / jnp.power(M_c_prior.xmin, 5. / 6.) / jnp.amin(R_dets_samples)
 
 sample_transforms = [
     # all the user reparametrization transform
