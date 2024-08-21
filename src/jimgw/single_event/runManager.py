@@ -71,7 +71,7 @@ class SingleEventRun:
         str, dict[str, Union[str, float, int, bool]]
     ]  # Transform cannot be included in this way, add it to preset if used often.
     jim_parameters: dict[str, Union[str, float, int, bool, dict]]
-    injection_parameters: dict[str, float]  
+    injection_parameters: dict[str, float]
     injection: bool = False
     likelihood_parameters: dict[str, Union[str, float, int, bool, PyTree]] = field(
         default_factory=lambda: {"name": "TransientLikelihoodFD"}
