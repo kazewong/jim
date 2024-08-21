@@ -58,9 +58,12 @@ class SingleEventRun:
             "f_sampling": 4096.0,
         }
     )
-    sample_transforms: list[dict[str, Union[str, float, int, bool]]] = field(default_factory=lambda: [])
-    likelihood_transforms: list[dict[str, Union[str, float, int, bool]]] = field(default_factory=lambda: [])
-
+    sample_transforms: list[dict[str, Union[str, float, int, bool]]] = field(
+        default_factory=lambda: []
+    )
+    likelihood_transforms: list[dict[str, Union[str, float, int, bool]]] = field(
+        default_factory=lambda: []
+    )
 
 
 class SingleEventPERunManager(RunManager):
@@ -101,7 +104,13 @@ class SingleEventPERunManager(RunManager):
         local_prior = self.initialize_prior()
         local_likelihood = self.initialize_likelihood(local_prior)
         sample_transforms, likelihood_transforms = self.initialize_transforms()
-        self.jim = Jim(local_likelihood, local_prior, sample_transforms, likelihood_transforms, **self.run.jim_parameters)
+        self.jim = Jim(
+            local_likelihood,
+            local_prior,
+            sample_transforms,
+            likelihood_transforms,
+            **self.run.jim_parameters,
+        )
 
     def save(self, path: str):
         output_dict = asdict(self.run)
@@ -158,11 +167,11 @@ class SingleEventPERunManager(RunManager):
             key, subkey = jax.random.split(jax.random.PRNGKey(self.run.seed + 1901))
             SNRs = []
             for detector in detectors:
-                optimal_SNR,_ = detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
+                optimal_SNR, _ = detector.inject_signal(subkey, freqs, h_sky, detector_parameters)  # type: ignore
                 SNRs.append(optimal_SNR)
                 key, subkey = jax.random.split(key)
             self.SNRs = SNRs
-        
+
         return likelihood_presets[name](
             detectors,
             waveform,
@@ -174,10 +183,12 @@ class SingleEventPERunManager(RunManager):
     def initialize_prior(self) -> prior.CombinePrior:
         priors = []
         for name, parameters in self.run.priors.items():
-            assert isinstance(parameters, dict), "Prior parameters must be a dictionary."
+            assert isinstance(
+                parameters, dict
+            ), "Prior parameters must be a dictionary."
             assert "name" in parameters, "Prior name must be provided."
             assert isinstance(parameters["name"], str), "Prior name must be a string."
-            try :
+            try:
                 prior_class = getattr(single_event_prior, parameters["name"])
             except AttributeError:
                 try:
@@ -187,17 +198,23 @@ class SingleEventPERunManager(RunManager):
             parameters.pop("name")
             priors.append(prior_class(parameter_names=[name], **parameters))
         return prior.CombinePrior(priors)
-    
-    def initialize_transforms(self) -> tuple[list[transforms.BijectiveTransform], list[transforms.NtoMTransform]]:
+
+    def initialize_transforms(
+        self,
+    ) -> tuple[list[transforms.BijectiveTransform], list[transforms.NtoMTransform]]:
         sample_transforms = []
         likelihood_transforms = []
         if self.run.sample_transforms:
             for transform in self.run.sample_transforms:
                 assert isinstance(transform, dict), "Transform must be a dictionary."
                 assert "name" in transform, "Transform name must be provided."
-                assert isinstance(transform["name"], str), "Transform name must be a string."
+                assert isinstance(
+                    transform["name"], str
+                ), "Transform name must be a string."
                 try:
-                    transform_class = getattr(single_event_transforms, transform["name"])
+                    transform_class = getattr(
+                        single_event_transforms, transform["name"]
+                    )
                 except AttributeError:
                     try:
                         transform_class = getattr(transforms, transform["name"])
@@ -209,9 +226,13 @@ class SingleEventPERunManager(RunManager):
             for transform in self.run.likelihood_transforms:
                 assert isinstance(transform, dict), "Transform must be a dictionary."
                 assert "name" in transform, "Transform name must be provided."
-                assert isinstance(transform["name"], str), "Transform name must be a string."
+                assert isinstance(
+                    transform["name"], str
+                ), "Transform name must be a string."
                 try:
-                    transform_class = getattr(single_event_transforms, transform["name"])
+                    transform_class = getattr(
+                        single_event_transforms, transform["name"]
+                    )
                 except AttributeError:
                     try:
                         transform_class = getattr(transforms, transform["name"])
@@ -438,9 +459,9 @@ class SingleEventPERunManager(RunManager):
     def save_summary(self, path: str = None, **kwargs):
         if path is None:
             path = self.run.path + "run_manager_summary.txt"
-        sys.stdout = open(path, 'wt')
+        sys.stdout = open(path, "wt")
         self.jim.print_summary()
         for detector, SNR in zip(self.detectors, self.SNRs):
-            print('SNR of detector ' + detector + ' is ' + str(SNR))
-        networkSNR = jnp.sum(jnp.array(self.SNRs)**2) ** (0.5)
-        print('network SNR is', networkSNR)
+            print("SNR of detector " + detector + " is " + str(SNR))
+        networkSNR = jnp.sum(jnp.array(self.SNRs) ** 2) ** (0.5)
+        print("network SNR is", networkSNR)
