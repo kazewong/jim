@@ -71,9 +71,7 @@ class SingleEventRun:
         str, dict[str, Union[str, float, int, bool]]
     ]  # Transform cannot be included in this way, add it to preset if used often.
     jim_parameters: dict[str, Union[str, float, int, bool, dict]]
-    injection_parameters: dict[str, float] = field(
-        default_factory=lambda: {}
-    )       
+    injection_parameters: dict[str, float]  
     injection: bool = False
     likelihood_parameters: dict[str, Union[str, float, int, bool, PyTree]] = field(
         default_factory=lambda: {"name": "TransientLikelihoodFD"}
@@ -124,9 +122,6 @@ class SingleEventPERunManager(RunManager):
         else:
             print("Neither run instance nor path provided.")
             raise ValueError
-
-        if self.run.injection and not self.run.injection_parameters:
-            raise ValueError("Injection mode requires injection parameters.")
 
         local_prior = self.initialize_prior()
         local_likelihood = self.initialize_likelihood(local_prior)
