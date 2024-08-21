@@ -373,7 +373,7 @@ class GroundBased2G(Detector):
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
         psd_file: str = "",
-    ) -> None:
+    ) -> tuple[Float, Float]:
         """
         Inject a signal into the detector data.
 

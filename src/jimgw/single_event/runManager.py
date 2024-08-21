@@ -12,7 +12,9 @@ from astropy.time import Time
 from jaxlib.xla_extension import ArrayImpl
 from jaxtyping import Array, Float, PyTree
 
-from jimgw import prior
+from jimgw import prior, transforms
+from jimgw.single_event import prior as single_event_prior
+from jimgw.single_event import transforms as single_event_transforms
 from jimgw.base import RunManager
 from jimgw.jim import Jim
 from jimgw.single_event.detector import Detector, detector_preset
@@ -20,50 +22,11 @@ from jimgw.single_event.likelihood import SingleEventLiklihood, likelihood_prese
 from jimgw.single_event.waveform import Waveform, waveform_preset
 
 
-
 def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
     return dumper.represent_list(data.tolist())
 
 
 yaml.add_representer(ArrayImpl, jaxarray_representer)  # type: ignore
-
-prior_presets = {
-    "Unconstrained_Uniform": prior.Unconstrained_Uniform,
-    "Uniform": prior.Uniform,
-    "Sphere": prior.Sphere,
-    "AlignedSpin": prior.AlignedSpin,
-    "PowerLaw": prior.PowerLaw,
-    "Composite": prior.Composite,
-    "MassRatio": lambda **kwargs: prior.Uniform(
-        0.125,
-        1.0,
-        naming=["q"],
-        transforms={"q": ("eta", lambda params: params["q"] / (1 + params["q"]) ** 2)},
-    ),
-    "CosIota": lambda **kwargs: prior.Uniform(
-        -1.0,
-        1.0,
-        naming=["cos_iota"],
-        transforms={
-            "cos_iota": (
-                "iota",
-                lambda params: jnp.arccos(params["cos_iota"]),
-            )
-        },
-    ),
-    "SinDec": lambda **kwargs: prior.Uniform(
-        -1.0,
-        1.0,
-        naming=["sin_dec"],
-        transforms={
-            "sin_dec": (
-                "dec",
-                lambda params: jnp.arcsin(params["sin_dec"]),
-            )
-        },
-    ),
-    "EarthFrame": prior.EarthFrame,
-}
 
 
 @dataclass
@@ -75,7 +38,7 @@ class SingleEventRun:
         str, dict[str, Union[str, float, int, bool]]
     ]  # Transform cannot be included in this way, add it to preset if used often.
     jim_parameters: dict[str, Union[str, float, int, bool, dict]]
-    path: str = "./experiment"
+    path: str = "single_event_run"
     injection_parameters: dict[str, float] = field(default_factory=lambda: {})
     injection: bool = False
     likelihood_parameters: dict[str, Union[str, float, int, bool, PyTree]] = field(
@@ -135,7 +98,8 @@ class SingleEventPERunManager(RunManager):
 
         local_prior = self.initialize_prior()
         local_likelihood = self.initialize_likelihood(local_prior)
-        self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
+        sample_transforms, likelihood_transforms = self.initialize_transforms()
+        self.jim = Jim(local_likelihood, local_prior, sample_transforms, likelihood_transforms, **self.run.jim_parameters), 
 
     def save(self, path: str):
         output_dict = asdict(self.run)
@@ -149,7 +113,7 @@ class SingleEventPERunManager(RunManager):
 
     ### Initialization functions ###
 
-    def initialize_likelihood(self, prior: prior.Prior) -> SingleEventLiklihood:
+    def initialize_likelihood(self, prior: prior.CombinePrior) -> SingleEventLiklihood:
         """
         Since prior contains information about types, naming and ranges of parameters,
         some of the likelihood class require the prior to be initialized, such as the
@@ -205,23 +169,52 @@ class SingleEventPERunManager(RunManager):
             **self.run.data_parameters,
         )
 
-    def initialize_prior(self) -> prior.Prior:
+    def initialize_prior(self) -> prior.CombinePrior:
         priors = []
         for name, parameters in self.run.priors.items():
-            if parameters["name"] not in prior_presets:
-                raise ValueError(f"Prior {name} not recognized.")
-            if parameters["name"] == "EarthFrame":
-                priors.append(
-                    prior.EarthFrame(
-                        gps=self.run.data_parameters["trigger_time"],
-                        ifos=self.run.detectors,
-                    )
-                )
-            else:
-                priors.append(
-                    prior_presets[parameters["name"]](naming=[name], **parameters)
-                )
-        return prior.Composite(priors)
+            assert isinstance(parameters, dict), "Prior parameters must be a dictionary."
+            assert "name" in parameters, "Prior name must be provided."
+            assert isinstance(parameters["name"], str), "Prior name must be a string."
+            try :
+                prior_class = getattr(single_event_prior, parameters["name"])
+            except AttributeError:
+                try:
+                    prior_class = getattr(prior, parameters["name"])
+                except AttributeError:
+                    raise ValueError(f"{parameters['name']} not recognized.")
+            parameters.pop("name")
+            priors.append(prior_class(parameter_names=[name], **parameters))
+        return prior.CombinePrior(priors)
+    
+    def initialize_transforms(self) -> tuple[list[prior.BijectiveTransform], list[prior.NtoMTransform]]:
+        sample_transforms = []
+        likelihood_transforms = []
+        for transform in self.run.sample_transforms:
+            assert isinstance(transform, dict), "Transform must be a dictionary."
+            assert "name" in transform, "Transform name must be provided."
+            assert isinstance(transform["name"], str), "Transform name must be a string."
+            try:
+                transform_class = getattr(single_event_transforms, transform["name"])
+            except AttributeError:
+                try:
+                    transform_class = getattr(transforms, transform["name"])
+                except AttributeError:
+                    raise ValueError(f"{transform['name']} not recognized.")
+            transform.pop("name")
+            sample_transforms.append(transform_class(**transform))
+        for transform in self.run.likelihood_transforms:
+            assert isinstance(transform, dict), "Transform must be a dictionary."
+            assert "name" in transform, "Transform name must be provided."
+            assert isinstance(transform["name"], str), "Transform name must be a string."
+            try:
+                transform_class = getattr(single_event_transforms, transform["name"])
+            except AttributeError:
+                try:
+                    transform_class = getattr(transforms, transform["name"])
+                except AttributeError:
+                    raise ValueError(f"{transform['name']} not recognized.")
+            transform.pop("name")
+            likelihood_transforms.append(transform_class(**transform))
 
     def initialize_detector(self) -> list[Detector]:
         """
@@ -437,10 +430,11 @@ class SingleEventPERunManager(RunManager):
         plt.savefig(path)
         plt.close()
 
-    def save_summary(self, path: str = "run_manager_summary.txt", **kwargs):
-        sys.stdout = open(path,'wt')
+    def save_summary(self, path: str = None, **kwargs):
+        if path is None:
+            path = self.run.path + "run_manager_summary.txt"
+        sys.stdout = open(path, 'wt')
         self.jim.print_summary()
-        #print(self.SNRs)
         for detector, SNR in zip(self.detectors, self.SNRs):
             print('SNR of detector ' + detector + ' is ' + str(SNR))
         networkSNR = jnp.sum(jnp.array(self.SNRs)**2) ** (0.5)
