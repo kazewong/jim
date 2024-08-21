@@ -58,6 +58,8 @@ class SingleEventRun:
             "f_sampling": 4096.0,
         }
     )
+    sample_transforms: list[dict[str, Union[str, float, int, bool]]] = field(default_factory=lambda: [])
+    likelihood_transforms: list[dict[str, Union[str, float, int, bool]]] = field(default_factory=lambda: [])
 
 
 
@@ -99,7 +101,7 @@ class SingleEventPERunManager(RunManager):
         local_prior = self.initialize_prior()
         local_likelihood = self.initialize_likelihood(local_prior)
         sample_transforms, likelihood_transforms = self.initialize_transforms()
-        self.jim = Jim(local_likelihood, local_prior, sample_transforms, likelihood_transforms, **self.run.jim_parameters), 
+        self.jim = Jim(local_likelihood, local_prior, sample_transforms, likelihood_transforms, **self.run.jim_parameters)
 
     def save(self, path: str):
         output_dict = asdict(self.run)
@@ -186,35 +188,38 @@ class SingleEventPERunManager(RunManager):
             priors.append(prior_class(parameter_names=[name], **parameters))
         return prior.CombinePrior(priors)
     
-    def initialize_transforms(self) -> tuple[list[prior.BijectiveTransform], list[prior.NtoMTransform]]:
+    def initialize_transforms(self) -> tuple[list[transforms.BijectiveTransform], list[transforms.NtoMTransform]]:
         sample_transforms = []
         likelihood_transforms = []
-        for transform in self.run.sample_transforms:
-            assert isinstance(transform, dict), "Transform must be a dictionary."
-            assert "name" in transform, "Transform name must be provided."
-            assert isinstance(transform["name"], str), "Transform name must be a string."
-            try:
-                transform_class = getattr(single_event_transforms, transform["name"])
-            except AttributeError:
+        if self.run.sample_transforms:
+            for transform in self.run.sample_transforms:
+                assert isinstance(transform, dict), "Transform must be a dictionary."
+                assert "name" in transform, "Transform name must be provided."
+                assert isinstance(transform["name"], str), "Transform name must be a string."
                 try:
-                    transform_class = getattr(transforms, transform["name"])
+                    transform_class = getattr(single_event_transforms, transform["name"])
                 except AttributeError:
-                    raise ValueError(f"{transform['name']} not recognized.")
-            transform.pop("name")
-            sample_transforms.append(transform_class(**transform))
-        for transform in self.run.likelihood_transforms:
-            assert isinstance(transform, dict), "Transform must be a dictionary."
-            assert "name" in transform, "Transform name must be provided."
-            assert isinstance(transform["name"], str), "Transform name must be a string."
-            try:
-                transform_class = getattr(single_event_transforms, transform["name"])
-            except AttributeError:
+                    try:
+                        transform_class = getattr(transforms, transform["name"])
+                    except AttributeError:
+                        raise ValueError(f"{transform['name']} not recognized.")
+                transform.pop("name")
+                sample_transforms.append(transform_class(**transform))
+        if self.run.likelihood_transforms:
+            for transform in self.run.likelihood_transforms:
+                assert isinstance(transform, dict), "Transform must be a dictionary."
+                assert "name" in transform, "Transform name must be provided."
+                assert isinstance(transform["name"], str), "Transform name must be a string."
                 try:
-                    transform_class = getattr(transforms, transform["name"])
+                    transform_class = getattr(single_event_transforms, transform["name"])
                 except AttributeError:
-                    raise ValueError(f"{transform['name']} not recognized.")
-            transform.pop("name")
-            likelihood_transforms.append(transform_class(**transform))
+                    try:
+                        transform_class = getattr(transforms, transform["name"])
+                    except AttributeError:
+                        raise ValueError(f"{transform['name']} not recognized.")
+                transform.pop("name")
+                likelihood_transforms.append(transform_class(**transform))
+        return sample_transforms, likelihood_transforms
 
     def initialize_detector(self) -> list[Detector]:
         """
@@ -396,7 +401,7 @@ class SingleEventPERunManager(RunManager):
         """
         plot diagnostic plot of the samples.
         """
-        summary = self.jim.Sampler.get_sampler_state(training=True)
+        summary = self.jim.sampler.get_sampler_state(training=True)
         chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
         log_prob = np.array(log_prob)
 
