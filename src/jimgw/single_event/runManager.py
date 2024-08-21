@@ -456,8 +456,8 @@ class SingleEventPERunManager(RunManager):
         plt.savefig(path)
         plt.close()
 
-    def save_summary(self, path: str = None, **kwargs):
-        if path is None:
+    def save_summary(self, path: str = "", **kwargs):
+        if path == "":
             path = self.run.path + "run_manager_summary.txt"
         sys.stdout = open(path, "wt")
         self.jim.print_summary()
