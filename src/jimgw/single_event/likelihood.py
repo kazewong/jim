@@ -27,6 +27,21 @@ class SingleEventLiklihood(LikelihoodBase):
 
 
 class ZeroLikelihood(LikelihoodBase):
+    """
+    A likelihood class that always returns a log-likelihood of zero.
+
+    This class is primarily used for testing or debugging purposes.
+
+    Methods
+    -------
+    __init__() -> None
+        Initializes the ZeroLikelihood object. No parameters are required or set.
+
+    evaluate(params: dict[str, Float], data: dict) -> Float
+        Evaluates the likelihood for a given set of parameters and data,
+        always returning 0.0. This method does not perform any computation
+        based on the input parameters or data, making it useful for debugging.
+    """
 
     def __init__(self):
         pass
