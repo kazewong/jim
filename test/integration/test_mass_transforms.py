@@ -95,33 +95,11 @@ local_sampler_arg = {"step_size": step * jnp.eye(2)}
 jim = Jim(likelihood, 
           combine_prior, 
           likelihood_transforms=[mass_transform],
-          n_chains = 200,
+          n_chains = 50,
           parameter_names=['M_c', 'q'],
-          n_loop_training=20,
-          n_loop_production=5,
+          n_loop_training=2,
+          n_loop_production=2,
           local_sampler_arg=local_sampler_arg)
 
 jim.sample(jax.random.PRNGKey(0))
 jim.print_summary()
-    
-# Go from Mc, q samples to m1, m2 samples
-chains_named = jim.get_samples()
-m1m2_named = mass_transform.forward(chains_named)
-m1, m2 = m1m2_named['m_1'], m1m2_named['m_2']
-
-### Prior space:
-chains = np.array([chains_named['M_c'], chains_named['q']]).T
-chains = np.reshape(chains, (-1, 2))
-corner.corner(chains, truths = np.array([true_mc, true_q]), **default_corner_kwargs)
-
-plt.savefig("./figures/test_mass_transform_before.png", bbox_inches = 'tight')
-plt.close()
-
-### Transformed space:
-chains = np.array([m1, m2]).T
-chains = np.reshape(chains, (-1, 2))
-
-corner.corner(chains, truths = np.array([true_m1, true_m2]), **default_corner_kwargs)
-
-plt.savefig("./figures/test_mass_transform_after.png", bbox_inches = 'tight')
-plt.close()

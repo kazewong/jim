@@ -95,7 +95,6 @@ likelihood = TransientLikelihoodFD(
     post_trigger_duration=2,
 )
 
-
 mass_matrix = jnp.eye(11)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
@@ -103,14 +102,9 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
 Adam_optimizer = optimization_Adam(n_steps=5, learning_rate=0.01, noise_level=1)
 
-
-n_epochs = 20
-n_loop_training = 10
-total_epochs = n_epochs * n_loop_training
-start = total_epochs//10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 5e-4, 4.0, total_epochs - start, transition_begin=start
-)
+n_epochs = 2
+n_loop_training = 1
+learning_rate = 1e-4
 
 jim = Jim(
     likelihood,
@@ -118,19 +112,19 @@ jim = Jim(
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
     n_loop_training=n_loop_training,
-    n_loop_production=4,
-    n_local_steps=10,
-    n_global_steps=1000,
-    n_chains=500,
+    n_loop_production=1,
+    n_local_steps=5,
+    n_global_steps=5,
+    n_chains=4,
     n_epochs=n_epochs,
     learning_rate=learning_rate,
-    n_max_examples=30000,
-    n_flow_samples=100000,
+    n_max_examples=30,
+    n_flow_samples=100,
     momentum=0.9,
-    batch_size=30000,
+    batch_size=100,
     use_global=True,
     train_thinning=1,
-    output_thinning=10,
+    output_thinning=1,
     local_sampler_arg=local_sampler_arg,
     strategies=[Adam_optimizer, "default"],
 )
@@ -138,4 +132,3 @@ jim = Jim(
 jim.sample(jax.random.PRNGKey(42))
 jim.get_samples()
 jim.print_summary()
-plot_summary(jim.sampler)
