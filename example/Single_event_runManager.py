@@ -31,7 +31,6 @@ bounds = jnp.array(
 
 run = SingleEventRun(
     seed=0,
-    path="test_data/GW150914/",
     detectors=["H1", "L1"],
     priors={
         "M_c": {"name": "Uniform", "xmin": 10.0, "xmax": 80.0},
