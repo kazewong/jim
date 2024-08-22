@@ -43,11 +43,8 @@ class TestUnivariatePrior:
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
         # Check that the log_prob is correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
-        y = jax.vmap(p.base_prior.base_prior.transform)(x)
-        y = jax.vmap(p.base_prior.transform)(y)
-        y = jax.vmap(p.transform)(y)
-        assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y['x'])/2.0))
+        samples = samples['x']
+        assert jnp.allclose(log_prob, jnp.log(jnp.sin(samples)/2.0))
         
     def test_cosine(self):
         p = CosinePrior(["x"])
@@ -57,11 +54,8 @@ class TestUnivariatePrior:
         # Check that the log_prob is finite
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
-        # Check that the log_prob is correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
-        y = jax.vmap(p.base_prior.transform)(x)
-        y = jax.vmap(p.transform)(y)
-        assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y['x'])/2.0))
+        samples = samples['x']
+        assert jnp.allclose(log_prob, jnp.log(jnp.cos(samples)/2.0))
 
     def test_uniform_sphere(self):
         p = UniformSpherePrior(["x"])
