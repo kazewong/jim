@@ -138,6 +138,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+
 @jaxtyped(typechecker=typechecker)
 class ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
     """
@@ -235,11 +236,15 @@ class MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
 
 
 ChirpMassMassRatioToComponentMassesTransform = reverse_bijective_transform(
-    ComponentMassesToChirpMassMassRatioTransform(name_mapping=(["m_1", "m_2"], ["M_c", "q"]))
+    ComponentMassesToChirpMassMassRatioTransform(
+        name_mapping=(["m_1", "m_2"], ["M_c", "q"])
+    )
 )
 
 ChirpMassSymmetricMassRatioToComponentMassesTransform = reverse_bijective_transform(
-    ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=(["m_1", "m_2"], ["M_c", "eta"]))
+    ComponentMassesToChirpMassSymmetricMassRatioTransform(
+        name_mapping=(["m_1", "m_2"], ["M_c", "eta"])
+    )
 )
 
 SymmetricMassRatioToMassRatioTransform = reverse_bijective_transform(
