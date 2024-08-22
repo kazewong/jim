@@ -447,42 +447,6 @@ class ParetoTransform(BijectiveTransform):
         }
 
 
-def create_bijective_transform(
-    name_mapping: tuple[list[str], list[str]],
-    transform_func_array: Callable[[Float], Float],
-    inverse_transform_func_array: Callable[[Float], Float],
-) -> BijectiveTransform:
-    """
-    Utility function to create a BijectiveTransform object given a name_mapping and the forward and backward transform functions which take arrays as input, e.g. coming from the utils module.
-
-    Args:
-        name_mapping (tuple[list[str], list[str]]): The name_mapping to be used in the named transforms.
-        transform_func_array (Callable[[Float], Float]): The forward function method taking an array as input.
-        inverse_transform_func_array (Callable[[Float], Float]): The inverse function method taking an array as input.
-
-    Returns:
-        BijectiveTransform: The BijectiveTransform object.
-    """
-
-    def named_transform_func(x_named: dict[str, Float]) -> dict[str, Float]:
-        x_array = jnp.array([x_named[key] for key in name_mapping[0]])
-        y_array = transform_func_array(*x_array)
-        y_named = dict(zip(name_mapping[1], jnp.atleast_1d(y_array)))
-        return y_named
-
-    def named_inverse_transform_func(y_named: dict[str, Float]) -> dict[str, Float]:
-        y_array = jnp.array([y_named[key] for key in name_mapping[1]])
-        x_array = inverse_transform_func_array(*y_array)
-        x_named = dict(zip(name_mapping[0], jnp.atleast_1d(x_array)))
-        return x_named
-
-    new_transform = BijectiveTransform(name_mapping)
-    new_transform.transform_func = named_transform_func
-    new_transform.inverse_transform_func = named_inverse_transform_func
-
-    return new_transform
-
-
 def reverse_bijective_transform(
     original_transform: BijectiveTransform,
 ) -> BijectiveTransform:

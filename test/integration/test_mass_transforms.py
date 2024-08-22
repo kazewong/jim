@@ -95,7 +95,7 @@ local_sampler_arg = {"step_size": step * jnp.eye(2)}
 jim = Jim(likelihood, 
           combine_prior, 
           likelihood_transforms=[mass_transform],
-          n_chains = 50,
+          n_chains = 10,
           parameter_names=['M_c', 'q'],
           n_loop_training=2,
           n_loop_production=2,

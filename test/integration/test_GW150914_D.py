@@ -68,7 +68,7 @@ prior = CombinePrior(
 )
 
 sample_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform,
+    ComponentMassesToChirpMassMassRatioTransform(name_mapping=(["m_1", "m_2"], ["M_c", "q"])),
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=M_c_min, original_upper_bound=M_c_max),
     BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=q_min, original_upper_bound=q_max),
     BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
@@ -84,7 +84,7 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    ComponentMassesToChirpMassSymmetricMassRatioTransform,
+    ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=(["m_1", "m_2"], ["M_c", "eta"])),
 ]
 
 likelihood = TransientLikelihoodFD(
