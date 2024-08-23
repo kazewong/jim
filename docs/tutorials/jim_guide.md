@@ -7,7 +7,7 @@ The parameterization of some fundamental quantities can have significant impacts
 
 On the other hand, defining a prior in the component mass space is much more intuitive. The common prior of choice is uniform in the component mass space with some maximum and minimum mass. One may want to define the prior in the component mass space then sample in the chirp mass space. To make the problem even worse, there is yet another set of paraemeters one may want to choose, which is the set of parameters the model may want to take. For example, the waveform generator in ripple takes the symmetric mass ratio $\eta$ as input instead of the mass ratio.
 
-So in a general setting, there could be three sets of parametrizations we can choose for our problem: a parameterization which we want to define our prior in $\vec{\theta_{prior}}$, a parameterization which we want the sampler to see $\vec{z}$, and a parameterization which the model takes $\vec{\theta_{model}}$. To facilitate the transformation between these parameterizations, we introduce a naming system and a transform system to handle this.
+So in a general setting, there could be three sets of parametrizations we can choose for our problem: a parameterization $\vec{\theta}_{prior}$ which we want to define our prior in, a parameterization $\vec{z}$ which we want the sampler to see, and a parameterization $\vec{\theta}_{model}$ which the model takes. To facilitate the transformation between these parameterizations, we introduce a naming system and a transform system to handle this.
 
 A sketch of the transform system is shown below:
 ![A sketch of the transform system](prior_system_diagram.png)
@@ -62,21 +62,27 @@ prior = CombinePrior(
 The `CombinePrior` object takes a list of `jimgw.prior` objects as argument and combines them into one single prior object that can be fed to the Jim sampler as input.
 
 # Transforms
-In a general setting, there could be three sets of parametrizations we can choose for our problem: a parameterization which we want to define our prior in $\vec{\theta_{prior}}$, a parameterization which we want the sampler to see $\vec{z}$, and a parameterization which the model takes $\vec{\theta_{model}}$. To facilitate the transformation between these parameterizations, we introduce a naming system and a transform system to handle this. 
+In general, there could be three sets of parametrizations we need to work with in our problem:
 
-## Setting up Sample Transforms
-As we could have two different sets of parameterization for defining the prior and for the sampler to see, we need to set up transformations which transform from the parameter set $\vec{\theta_{prior}}$ to $\vec{z}$.
+1. A parameterization $\vec{\theta_{prior}}$ which we want to define our prior in
+2. a parameterization $\vec{z}$ which we want the sampler to see 
+3. a parameterization $\vec{\theta_{model}}$ which the model takes
 
-### Bound-to-unbound Transforms
-In general, we want the sampler to see a set of parametrization that does not includes any hard bounds, namely that it is well defined in the whole real space. This is to prevent the situation where the samples could walk out of the bound into the parameter space where it is not well defined. However, it is often the case that parametrization we used to define prior $\vec{\theta_{prior}}$ contains hard bound. Therefore, we need a bound-to-unbound transform to transform the parametrization into another parametrization $z$ without a hard bound. 
+To handle these different parameterizations, Jim provides a naming system and a transform system to facilitate the necessary transformations between the different parameterizations.
 
-In a nutshell, bound-to-unbound transform utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infty, +\infty)$. The logit function is given by:
+## Setting up Sample Transformations
+As mentioned earlier, we may have different parameterizations for defining the priors (θ_prior) and for the sampler to see (z). Therefore, we have to set up sample transformations that can convert between these two parameterizations.
+
+### Bound-to-unbound Transformations
+In general, we want the sampler to sample in an unconstrained parameter space, in which the set of parameters $z$ are well-defined over the entire real space. This prevents the samples from crossing into regions of the parameter space where the value is not well-defined.
+
+However, the parameterization that we use to define the priors, $θ_prior$, often contain parameters with hard bounds. Therefore, we need a bound-to-unbound transformation to map the bounded parameters into an unbounded representation. In a nutshell, bound-to-unbound transformation in Jim utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infty, +\infty)$. The logit function is given by:
 
 $$
 logit(\theta) = \ln{\frac{\theta}{1-\theta}}
 $$
 
-To set up bound-to-unbound transform, we use the transformation class `BoundToUnbound` provided in `jimgw.transforms`:
+To set up bound-to-unbound transformation, we call the transformation class `BoundToUnbound` provided in `jimgw.transforms`:
 
 ```
 from jimgw.transforms import BoundToUnbound
@@ -86,10 +92,10 @@ sample_transform = [
 ]
 ```
 
-Basically, we want to fit all the sample transformations from parametrization $\vec{\theta_{prior}}$ to $\vec{z}$ in a list, which will be passed into the `Jim` object later. When executing the transformation, the transformations will be performed in the sequence the same as how it is arranged in the list. 
+These sample transformations are now contained in the list `sample_transform`, which will be passed to the `Jim` sampler. When the transformations are executed in `Jim`, they will be applied in the order as they appear in the list.
 
 ### Other Sample Transforms
-We can also find other transformation that is specifically made for parameter estimation of compact binary coalescence in `jimgw.single_event.transforms`. For example, if we have defined prior on component masses $m_1$ and $m_2$, but we wish to sample on chirp mass $M_c$ and mass ratio $q$ instead. We could contain the function `ComponentMassesToChirpMassMassRatioTransform` in the sample transform list:
+Other than bound-to-unbound transformations `BoundToUnbound`, Jim also provides transformations in `jimgw.single_event.transforms` for compact binary coalescence (CBC) parameter estimation problems. In these problems, we may want to sample on different parameters than the ones we used to define the priors. For example, if we have defined prior on component masses $m_1$ and $m_2$, but wish to sample on chirp mass $M_c$ and mass ratio $q$ instead. We could contain the function `ComponentMassesToChirpMassMassRatioTransform` in the sample transform list:
 
 ```
 from jimgw.single_event.transforms import ComponentMassesToChirpMassMassRatioTransform
@@ -100,13 +106,13 @@ sample_transforms = [
 ]
 ```
 
-Again, you should always include a `boundToUnbound` transform in the end.
+Again, we should always include a `boundToUnbound` transform at the end of the list of `sample_transform`.
 
 
-## Setting up Likelihood Transform
-Again, as the parameterization the model takes can be different from the parameterization for defining the prior, we need to set up likelihood transformations which transform from the parameter set $\vec{\theta_{prior}}$ to $\vec{\theta_{model}}$.
+## Setting up Likelihood Transformations
+Again, the parameterization $\vec{\theta_{model}}$ used by the model may be different from the parameterization $\vec{\theta_{prior}}$ used to define the prior. Therefore, we need to set up likelihood transformations that map from the parameterization $\vec{\theta_{model}}$ to the parameterization $\vec{\theta_{prior}}$.
 
-Setting up likelihood transforms is similar to setting up sample transform. We need to define a list of transformation that transform from the parameter set $\vec{\theta_{prior}}$ to $\vec{\theta_{model}}$.
+Similar to the sample transformations, we need to define a list of transformations that will map from $\vec{\theta_{prior}}$ space to $\vec{\theta_{model}}$ space.
 
 ```
 likelihood_transforms = [
