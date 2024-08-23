@@ -70,7 +70,11 @@ As we could have two different sets of parameterization for defining the prior a
 ### Bound-to-unbound Transforms
 In general, we want the sampler to see a set of parametrization that does not includes any hard bounds, namely that it is well defined in the whole real space. This is to prevent the situation where the samples could walk out of the bound into the parameter space where it is not well defined. However, it is often the case that parametrization we used to define prior $\vec{\theta_{prior}}$ contains hard bound. Therefore, we need a bound-to-unbound transform to transform the parametrization into another parametrization $z$ without a hard bound. 
 
-In a nutshell, bound-to-unbound transform utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infity, +\infity)$.
+In a nutshell, bound-to-unbound transform utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infty, +\infty)$. The logit function is given by:
+
+$$
+logit(\theta) = \ln{\frac{\theta}{1-\theta}}
+$$
 
 To set up bound-to-unbound transform, we use the transform class `BoundToUnbound`:
 
