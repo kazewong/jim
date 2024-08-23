@@ -71,6 +71,7 @@ In general, there could be three sets of parametrizations we need to work with i
 To handle these different parameterizations, Jim provides a naming system and a transform system to facilitate the necessary transformations between the different parameterizations.
 
 ## Setting up Sample Transformations
+![Sample Transformations](sample_transform.png)
 As mentioned earlier, we may have different parameterizations for defining the priors (θ_prior) and for the sampler to see (z). Therefore, we have to set up sample transformations that can convert between these two parameterizations.
 
 ### Bound-to-unbound Transformations
@@ -110,6 +111,7 @@ Again, we should always include a `boundToUnbound` transform at the end of the l
 
 
 ## Setting up Likelihood Transformations
+![Likelihood transformation](likelihood_transform.png)
 Again, the parameterization $\vec{\theta_{model}}$ used by the model may be different from the parameterization $\vec{\theta_{prior}}$ used to define the prior. Therefore, we need to set up likelihood transformations that map from the parameterization $\vec{\theta_{model}}$ to the parameterization $\vec{\theta_{prior}}$.
 
 Similar to the sample transformations, we need to define a list of transformations that will map from $\vec{\theta_{prior}}$ space to $\vec{\theta_{model}}$ space.
