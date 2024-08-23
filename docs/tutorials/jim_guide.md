@@ -6,7 +6,7 @@
 
 
 A sketch of the transform system is shown below:
-![A sketch of the transform system](prior_system_diagram.jpg)
+![A sketch of the transform system](prior_system_diagram.png)
 
 
 ## Setting up Priors
