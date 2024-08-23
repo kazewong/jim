@@ -76,7 +76,7 @@ $$
 logit(\theta) = \ln{\frac{\theta}{1-\theta}}
 $$
 
-To set up bound-to-unbound transform, we use the transform class `BoundToUnbound`:
+To set up bound-to-unbound transform, we use the transformation class `BoundToUnbound` provided in `jimgw.transforms`:
 
 ```
 from jimgw.transforms import BoundToUnbound
@@ -86,8 +86,21 @@ sample_transform = [
 ]
 ```
 
-### Other Sample Transforms
+Basically, we want to fit all the sample transformations from parametrization $\vec{\theta_{prior}}$ to $\vec{z}$ in a list, which will be passed into the `Jim` object later. When executing the transformation, the transformations will be performed in the sequence the same as how it is arranged in the list. 
 
+### Other Sample Transforms
+We can also find other transformation that is specifically made for parameter estimation of compact binary coalescence in `jimgw.single_event.transforms`. For example, if we have defined prior on component masses $m_1$ and $m_2$, but we wish to sample on chirp mass $M_c$ and mass ratio $q$ instead. We could contain the function `ComponentMassesToChirpMassMassRatioTransform` in the sample transform list:
+
+```
+from jimgw.single_event.transforms import ComponentMassesToChirpMassMassRatioTransform
+sample_transforms = [
+    ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
+    BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=10.0, original_upper_bound=80.0),
+    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1.),
+]
+```
+
+Again, you should always include a `boundToUnbound` transform in the end.
 
 
 ## Setting up Likelihood Transform
