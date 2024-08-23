@@ -75,7 +75,7 @@ To handle these different parameterizations, Jim provides a naming system and a 
 
 ## Setting up Sample Transformations
 ![Sample Transformations](sample_transform.png)
-As mentioned earlier, we may have different parameterizations for defining the priors (θ_prior) and for the sampler to see (z). Therefore, we have to set up sample transformations that can convert between these two parameterizations.
+As mentioned earlier, we may have different parameterizations for defining the priors ($\theta_{prior}$) and for the sampler to see ($z$). Therefore, we have to set up sample transformations that can convert between these two parameterizations.
 
 ### Bound-to-unbound Transformations
 In general, we want the sampler to sample in an unconstrained parameter space, in which the set of parameters $z$ are well-defined over the entire real space. This prevents the samples from crossing into regions of the parameter space where the value is not well-defined.
