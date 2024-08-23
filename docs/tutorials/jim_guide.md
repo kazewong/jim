@@ -104,4 +104,12 @@ Again, you should always include a `boundToUnbound` transform in the end.
 
 
 ## Setting up Likelihood Transform
+Again, as the parameterization the model takes can be different from the parameterization for defining the prior, we need to set up likelihood transformations which transform from the parameter set $\vec{\theta_{prior}}$ to $\vec{\theta_{model}}$.
 
+Setting up likelihood transforms is similar to setting up sample transform. We need to define a list of transformation that transform from the parameter set $\vec{\theta_{prior}}$ to $\vec{\theta_{model}}$.
+
+```
+likelihood_transforms = [
+    ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
+]
+```
