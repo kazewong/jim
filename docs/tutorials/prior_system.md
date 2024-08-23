@@ -80,7 +80,7 @@ As mentioned earlier, we may have different parameterizations for defining the p
 ### Bound-to-unbound Transformations
 In general, we want the sampler to sample in an unconstrained parameter space, in which the set of parameters $z$ are well-defined over the entire real space. This prevents the samples from crossing into regions of the parameter space where the value is not well-defined.
 
-However, the parameterization that we use to define the priors, $θ_prior$, often contain parameters with hard bounds. Therefore, we need a bound-to-unbound transformation to map the bounded parameters into an unbounded representation. In a nutshell, bound-to-unbound transformation in Jim utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infty, +\infty)$. The logit function is given by:
+However, the parameterization that we use to define the priors, $\theta_{prior}$, often contain parameters with hard bounds. Therefore, we need a bound-to-unbound transformation to map the bounded parameters into an unbounded representation. In a nutshell, bound-to-unbound transformation in Jim utilize the logit function to map real numbers from $(0, 1)$ to real numbers in $(-\infty, +\infty)$. The logit function is given by:
 
 $$
 logit(\theta) = \ln{\frac{\theta}{1-\theta}}
