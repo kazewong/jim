@@ -119,5 +119,8 @@ Similar to the sample transformations, we need to define a list of transformatio
 ```
 likelihood_transforms = [
     ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
+    MassRatioToSymmetricMassRatioTransform(name_mapping=[["q"], ["eta"]]),
 ]
 ```
+
+Again when the transformations are executed in `Jim`, they will be applied in the order as they appear in the list.
