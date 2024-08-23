@@ -7,7 +7,7 @@ The parameterization of some fundamental quantities can have significant impacts
 
 On the other hand, defining a prior in the component mass space is much more intuitive. The common prior of choice is uniform in the component mass space with some maximum and minimum mass. One may want to define the prior in the component mass space then sample in the chirp mass space. To make the problem even worse, there is yet another set of paraemeters one may want to choose, which is the set of parameters the model may want to take. For example, the waveform generator in ripple takes the symmetric mass ratio $\eta$ as input instead of the mass ratio.
 
-So in a general setting, there could be three sets of parametrizations we can choose for our problem: a parameterization $\vec{\theta}_{prior}$ which we want to define our prior in, a parameterization $\vec{z}$ which we want the sampler to see, and a parameterization $\vec{\theta}_{model}$ which the model takes. To facilitate the transformation between these parameterizations, we introduce a naming system and a transform system to handle this.
+So in a general setting, there could be three sets of parametrizations we can choose for our problem: a parameterization $\vec{\theta_{prior}}$ which we want to define our prior in, a parameterization $\vec{z}$ which we want the sampler to see, and a parameterization $\vec{\theta}_{model}$ which the model takes. To facilitate the transformation between these parameterizations, we introduce a naming system and a transform system to handle this.
 
 A sketch of the transform system is shown below:
 ![A sketch of the transform system](prior_system_diagram.png)
