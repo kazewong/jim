@@ -304,7 +304,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names))
+            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names and "M_c" in conditional_names and "q" in conditional_names))
         )
         
         if "iota" in conditional_names:
@@ -400,7 +400,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names))
+            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names and "phase_c" in conditional_names))
             and "M_c" in conditional_names
         )
 
