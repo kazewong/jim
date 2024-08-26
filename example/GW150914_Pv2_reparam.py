@@ -172,3 +172,9 @@ samples = np.array(list(result.values())).reshape(int(len(labels)), -1) # flatte
 transposed_array = samples.T # transpose the array
 figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
 plt.savefig("GW1500914_Pv2_testing_reparam.jpeg")
+
+###########################################
+############# Save the Run ################
+###########################################
+import pickle
+pickle.dump(result, open("GW150914_Pv2_reparam.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
