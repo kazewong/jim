@@ -78,8 +78,8 @@ prior = CombinePrior(
 sample_transforms = [
     # all the user reparametrization transform
     ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
-    DistanceToSNRWeightedDistanceTransform(name_mapping=[["d_L"], ["d_hat_unbounded"]], conditional_names=["M_c", "q", "ra", "dec", "psi", "theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2", "phase_c"], gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
-    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(name_mapping = [["phase_c"], ["phase_det"]], conditional_names=["ra", "dec", "psi", "M_c", "q", "theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"], gps_time=gps, ifo=ifos[0]),
+    DistanceToSNRWeightedDistanceTransform(name_mapping=[["d_L"], ["d_hat_unbounded"]], conditional_names=["M_c", "q", "ra", "dec", "psi", "theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2", "phase_c"], gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax, freq_ref=f_ref),
+    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(name_mapping = [["phase_c"], ["phase_det"]], conditional_names=["ra", "dec", "psi", "M_c", "q", "theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"], gps_time=gps, ifo=ifos[0], freq_ref=f_ref),
     GeocentricArrivalTimeToDetectorArrivalTimeTransform(name_mapping = [["t_c"], ["t_det_unbounded"]], tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, conditional_names=["ra", "dec"], gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
     # all the bound to unbound transform

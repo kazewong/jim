@@ -284,6 +284,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
     gmst: Float
     ifo: GroundBased2G
+    freq_ref: Float
 
     def __init__(
         self,
@@ -291,6 +292,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         conditional_names: list[str],
         gps_time: Float,
         ifo: GroundBased2G,
+        freq_ref: Float = None,
     ):
         super().__init__(name_mapping, conditional_names)
 
@@ -298,6 +300,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
         self.ifo = ifo
+        self.freq_ref = freq_ref
 
         assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
         assert (
@@ -374,6 +377,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
     ifos: list[GroundBased2G]
     dL_min: Float
     dL_max: Float
+    freq_ref: Float
 
     def __init__(
         self,
