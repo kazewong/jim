@@ -339,8 +339,9 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             return jnp.angle(p_mode_term - 1j * c_mode_term)
 
         def named_transform(x):
+            iota = self.get_iota(x)
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], self.get_iota(x), self.gmst
+                x["ra"], x["dec"], x["psi"], iota, self.gmst
             )
             phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
@@ -350,8 +351,9 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
+            iota = self.get_iota(x)
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], self.get_iota(x), self.gmst
+                x["ra"], x["dec"], x["psi"], iota, self.gmst
             )
             phase_c = -R_det_arg + x["phase_det"] * 2.0
             return {
@@ -443,7 +445,8 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_L"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], self.get_iota(x))
+            iota = self.get_iota(x)
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], iota)
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
             d_hat = scale_factor * d_L
@@ -465,7 +468,8 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_hat_unbounded"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], self.get_iota(x))
+            iota = self.get_iota(x)
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], iota)
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
 
