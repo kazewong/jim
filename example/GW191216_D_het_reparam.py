@@ -31,7 +31,7 @@ ifos = [H1, V1]
 for ifo in ifos:
     ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=duration*4, tukey_alpha=0.2)
 
-M_c_min, M_c_max = 10.0, 80.0
+M_c_min, M_c_max = 5.0, 15.0
 q_min, q_max = 0.125, 1.0
 m_1_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_max)[0], Mc_q_to_m1_m2(M_c_max, q_min)[0], parameter_names=["m_1"])
 m_2_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_min)[1], Mc_q_to_m1_m2(M_c_max, q_max)[1], parameter_names=["m_2"])
