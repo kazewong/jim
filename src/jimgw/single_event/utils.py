@@ -572,7 +572,7 @@ def spin_to_iota(
         cos_angle = jnp.cos(angle)
         sin_angle = jnp.sin(angle)
         rotation_matrix = jnp.array(
-            [[cos_angle, 0, sin_angle], [0, 1, 0], [-sin_angle, 0, cos_angle]]
+            [[cos_angle, jnp.zeros_like(angle), sin_angle], [jnp.zeros_like(angle), jnp.ones_like(angle), jnp.zeros_like(angle)], [-sin_angle, jnp.zeros_like(angle), cos_angle]]
         )
         rotated_vec = jnp.dot(rotation_matrix, vec)
         return rotated_vec
@@ -584,7 +584,7 @@ def spin_to_iota(
         cos_angle = jnp.cos(angle)
         sin_angle = jnp.sin(angle)
         rotation_matrix = jnp.array(
-            [[cos_angle, -sin_angle, 0], [sin_angle, cos_angle, 0], [0, 0, 1]]
+            [[cos_angle, -sin_angle, jnp.zeros_like(angle)], [sin_angle, cos_angle, jnp.zeros_like(angle)], [jnp.zeros_like(angle), jnp.zeros_like(angle), jnp.ones_like(angle)]]
         )
         rotated_vec = jnp.dot(rotation_matrix, vec)
         return rotated_vec
@@ -613,7 +613,7 @@ def spin_to_iota(
     Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
     s1 = m1 * m1 * chi1 * s1hat
     s2 = m2 * m2 * chi2 * s2hat
-    J = s1 + s2 + jnp.array([0.0, 0.0, Lmag])
+    J = s1 + s2 + jnp.array([jnp.zeros_like(Lmag), jnp.zeros_like(Lmag), Lmag])
 
     Jhat = J / jnp.linalg.norm(J)
     theta0 = jnp.arccos(Jhat[2])
@@ -625,7 +625,7 @@ def spin_to_iota(
     LNh = rotate_z(phiJL - jnp.pi, LNh)
 
     # Compute iota
-    N = jnp.array([0.0, jnp.sin(thetaJN), jnp.cos(thetaJN)])
+    N = jnp.array([jnp.zeros_like(thetaJN), jnp.sin(thetaJN), jnp.cos(thetaJN)])
     iota = jnp.arccos(jnp.dot(N, LNh))
     
     return iota
