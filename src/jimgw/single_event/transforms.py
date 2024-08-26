@@ -20,6 +20,7 @@ from jimgw.single_event.utils import (
     zenith_azimuth_to_ra_dec,
     euler_rotation,
     spin_to_cartesian_spin,
+    spin_to_iota,
 )
 
 
@@ -303,8 +304,25 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and "iota" in conditional_names
+            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names))
         )
+        
+        if "iota" in conditional_names:
+            self.get_iota = lambda x: x["iota"]
+        else:
+            self.get_iota = lambda x: spin_to_iota(
+                x["theta_jn"],
+                x["phi_jl"],
+                x["theta_1"],
+                x["theta_2"],
+                x["phi_12"],
+                x["a_1"],
+                x["a_2"],
+                x["M_c"],
+                x["q"],
+                self.freq_ref,
+                x["phase_c"],
+            )
 
         @jnp.vectorize
         def _calc_R_det_arg(ra, dec, psi, iota, gmst):
@@ -319,7 +337,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_transform(x):
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
+                x["ra"], x["dec"], x["psi"], self.get_iota(x), self.gmst
             )
             phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
@@ -330,7 +348,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_inverse_transform(x):
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
+                x["ra"], x["dec"], x["psi"], self.get_iota(x), self.gmst
             )
             phase_c = -R_det_arg + x["phase_det"] * 2.0
             return {
@@ -365,6 +383,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         ifos: list[GroundBased2G],
         dL_min: Float,
         dL_max: Float,
+        freq_ref: Float = None,
     ):
         super().__init__(name_mapping, conditional_names)
 
@@ -374,16 +393,34 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         self.ifos = ifos
         self.dL_min = dL_min
         self.dL_max = dL_max
+        self.freq_ref = freq_ref
 
         assert "d_L" in name_mapping[0] and "d_hat_unbounded" in name_mapping[1]
         assert (
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and "iota" in conditional_names
+            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names))
             and "M_c" in conditional_names
         )
 
+        if "iota" in conditional_names:
+            self.get_iota = lambda x: x["iota"]
+        else:
+            self.get_iota = lambda x: spin_to_iota(
+                x["theta_jn"],
+                x["phi_jl"],
+                x["theta_1"],
+                x["theta_2"],
+                x["phi_12"],
+                x["a_1"],
+                x["a_2"],
+                x["M_c"],
+                x["q"],
+                self.freq_ref,
+                x["phase_c"],
+            )
+        
         @jnp.vectorize
         def _calc_R_dets(ra, dec, psi, iota):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
@@ -402,7 +439,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_L"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], self.get_iota(x))
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
             d_hat = scale_factor * d_L
@@ -424,7 +461,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_hat_unbounded"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], self.get_iota(x))
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
 
