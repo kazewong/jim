@@ -37,7 +37,7 @@ class SpinToCartesianSpinTransform(NtoNTransform):
     ):
         name_mapping = (
             ["theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"],
-            ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"]
+            ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"],
         )
         super().__init__(name_mapping)
 
@@ -68,7 +68,6 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             }
 
         self.transform_func = named_transform
-        
 
 
 @jaxtyped(typechecker=typechecker)
@@ -135,6 +134,7 @@ class _ComponentMassesToChirpMassMassRatioTransform(BijectiveTransform):
 
         self.inverse_transform_func = named_inverse_transform
 
+
 @jaxtyped(typechecker=typechecker)
 class _ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform):
     """
@@ -144,7 +144,6 @@ class _ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform)
     def __init__(self):
         name_mapping = (["m_1", "m_2"], ["M_c", "eta"])
         super().__init__(name_mapping)
-
 
         def named_transform(x):
             Mc, eta = m1_m2_to_Mc_eta(x["m_1"], x["m_2"])
@@ -158,6 +157,7 @@ class _ComponentMassesToChirpMassSymmetricMassRatioTransform(BijectiveTransform)
 
         self.inverse_transform_func = named_inverse_transform
 
+
 @jaxtyped(typechecker=typechecker)
 class _MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
     """
@@ -170,14 +170,25 @@ class _MassRatioToSymmetricMassRatioTransform(BijectiveTransform):
 
         self.transform_func = lambda x: {"eta": q_to_eta(x["q"])}
         self.inverse_transform_func = lambda x: {"q": eta_to_q(x["eta"])}
-        
+
     def __repr__(self):
         return f"{self.__class__.__name__[1:]}()"
 
-ComponentMassesToChirpMassMassRatioTransform = _ComponentMassesToChirpMassMassRatioTransform()
-ComponentMassesToChirpMassSymmetricMassRatioTransform = _ComponentMassesToChirpMassSymmetricMassRatioTransform()
+
+ComponentMassesToChirpMassMassRatioTransform = (
+    _ComponentMassesToChirpMassMassRatioTransform()
+)
+ComponentMassesToChirpMassSymmetricMassRatioTransform = (
+    _ComponentMassesToChirpMassSymmetricMassRatioTransform()
+)
 MassRatioToSymmetricMassRatioTransform = _MassRatioToSymmetricMassRatioTransform()
 
-ChirpMassMassRatioToComponentMassesTransform = reverse_bijective_transform(ComponentMassesToChirpMassMassRatioTransform)
-ChirpMassSymmetricMassRatioToComponentMassesTransform = reverse_bijective_transform(ComponentMassesToChirpMassSymmetricMassRatioTransform)
-SymmetricMassRatioToMassRatioTransform = reverse_bijective_transform(MassRatioToSymmetricMassRatioTransform)
+ChirpMassMassRatioToComponentMassesTransform = reverse_bijective_transform(
+    ComponentMassesToChirpMassMassRatioTransform
+)
+ChirpMassSymmetricMassRatioToComponentMassesTransform = reverse_bijective_transform(
+    ComponentMassesToChirpMassSymmetricMassRatioTransform
+)
+SymmetricMassRatioToMassRatioTransform = reverse_bijective_transform(
+    MassRatioToSymmetricMassRatioTransform
+)
