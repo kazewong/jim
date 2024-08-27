@@ -1,0 +1,36 @@
+Training summary
+==========
+dec: 1.220 +/- 0.662
+ra: 1.921 +/- 1.016
+psi: 1.620 +/- 0.999
+iota: 1.795 +/- 0.476
+phase_c: 3.246 +/- 1.320
+t_c: -0.025 +/- 0.014
+d_L: 1275.296 +/- 587.710
+s2_z: 0.456 +/- 0.274
+s1_z: -0.647 +/- 0.287
+q: 0.515 +/- 0.104
+M_c: 43.083 +/- 21.050
+Log probability: nan +/- nan
+Local acceptance: 0.625 +/- 0.484
+Global acceptance: 0.188 +/- 0.390
+Max loss: 17.043, Min loss: 16.057
+Production summary
+==========
+dec: 1.214 +/- 0.660
+ra: 1.921 +/- 1.012
+psi: 1.557 +/- 0.996
+iota: 1.739 +/- 0.466
+phase_c: 2.765 +/- 0.979
+t_c: -0.021 +/- 0.013
+d_L: 1253.182 +/- 568.411
+s2_z: 0.425 +/- 0.176
+s1_z: -0.651 +/- 0.273
+q: 0.489 +/- 0.082
+M_c: 42.606 +/- 20.566
+Log probability: nan +/- nan
+Local acceptance: 0.750 +/- 0.433
+Global acceptance: 0.062 +/- 0.242
+SNR of detector H1 is 29.763917711763696
+SNR of detector L1 is 51.11730418963541
+network SNR is 59.15124331041875

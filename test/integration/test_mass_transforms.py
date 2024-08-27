@@ -1,5 +1,5 @@
 import os 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.10"
 
 import numpy as np
@@ -85,7 +85,8 @@ combine_prior = CombinePrior([mc_prior, q_prior])
 likelihood = MyLikelihood(true_m1, true_m2)
 mass_transform = ChirpMassMassRatioToComponentMassesTransform
 
-print(mass_transform.name_mapping)
+print("Checking mass_transform repr")
+print(repr(mass_transform))
 
 # Other stuff we have to give to Jim to make it work
 step = 5e-3
