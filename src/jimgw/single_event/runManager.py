@@ -102,8 +102,8 @@ class SingleEventPERunManager(RunManager):
             raise ValueError("Injection mode requires injection parameters.")
 
         local_prior = self.initialize_prior()
-        local_likelihood = self.initialize_likelihood(local_prior)
         sample_transforms, likelihood_transforms = self.initialize_transforms()
+        local_likelihood = self.initialize_likelihood(local_prior, sample_transforms, likelihood_transforms)
         self.jim = Jim(
             local_likelihood,
             local_prior,
@@ -124,7 +124,7 @@ class SingleEventPERunManager(RunManager):
 
     ### Initialization functions ###
 
-    def initialize_likelihood(self, prior: prior.CombinePrior) -> SingleEventLiklihood:
+    def initialize_likelihood(self, prior: prior.CombinePrior, sample_transforms: transforms.Transform, likelihood_transforms: transforms.Transform) -> SingleEventLiklihood:
         """
         Since prior contains information about types, naming and ranges of parameters,
         some of the likelihood class require the prior to be initialized, such as the
@@ -176,6 +176,8 @@ class SingleEventPERunManager(RunManager):
             detectors,
             waveform,
             prior=prior,
+            sample_transforms=sample_transforms,
+            likelihood_transforms=likelihood_transforms,
             **self.run.likelihood_parameters,
             **self.run.data_parameters,
         )
