@@ -463,7 +463,9 @@ class SingleEventPERunManager(RunManager):
             path = self.run.path + "run_manager_summary.txt"
         sys.stdout = open(path, "wt")
         self.jim.print_summary()
-        for detector, SNR in zip(self.detectors, self.SNRs):
-            print("SNR of detector " + detector + " is " + str(SNR))
-        networkSNR = jnp.sum(jnp.array(self.SNRs) ** 2) ** (0.5)
-        print("network SNR is", networkSNR)
+        if self.run.injection:
+            for detector, SNR in zip(self.detectors, self.SNRs):
+                print("SNR of detector " + detector + " is " + str(SNR))
+            networkSNR = jnp.sum(jnp.array(self.SNRs) ** 2) ** (0.5)
+            print("network SNR is", networkSNR)
+        sys.stdout.close()
