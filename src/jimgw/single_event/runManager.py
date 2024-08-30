@@ -195,6 +195,7 @@ class SingleEventPERunManager(RunManager):
                     prior_class = getattr(prior, parameters["name"])
                 except AttributeError:
                     raise ValueError(f"{parameters['name']} not recognized.")
+            parameters = parameters.copy()
             parameters.pop("name")
             priors.append(prior_class(parameter_names=[name], **parameters))
         return prior.CombinePrior(priors)
