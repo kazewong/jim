@@ -196,6 +196,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         prior: Optional[Prior] = None,
         sample_transforms: list[BijectiveTransform] = [],
         likelihood_transforms: list[NtoMTransform] = [],
+        parameters_to_keep: list[str] = [],
         **kwargs,
     ) -> None:
         super().__init__(
@@ -265,6 +266,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 prior=prior,
                 sample_transforms=sample_transforms,
                 likelihood_transforms=likelihood_transforms,
+                parameters_to_keep=parameters_to_keep,
                 popsize=popsize,
                 n_steps=n_steps,
             )
@@ -553,6 +555,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         prior: Prior,
         likelihood_transforms: list[NtoMTransform],
         sample_transforms: list[BijectiveTransform],
+        parameters_to_keep: list[str],
         popsize: int = 100,
         n_steps: int = 2000,
     ):
@@ -564,8 +567,13 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
+            named_params_copy = named_params.copy()
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
+            jax.tree.map(
+                lambda key: named_params.update({key: named_params_copy[key]}),
+                parameters_to_keep,
+            )
             return -self.evaluate_original(named_params, {})
 
         print("Starting the optimizer")
@@ -596,8 +604,13 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         named_params = dict(zip(parameter_names, best_fit))
         for transform in reversed(sample_transforms):
             named_params = transform.backward(named_params)
+        named_params_copy = named_params.copy()
         for transform in likelihood_transforms:
             named_params = transform.forward(named_params)
+        jax.tree.map(
+            lambda key: named_params.update({key: named_params_copy[key]}),
+            parameters_to_keep,
+        )
         return named_params
 
 
