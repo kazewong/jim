@@ -103,7 +103,9 @@ class SingleEventPERunManager(RunManager):
 
         local_prior = self.initialize_prior()
         sample_transforms, likelihood_transforms = self.initialize_transforms()
-        local_likelihood = self.initialize_likelihood(local_prior, sample_transforms, likelihood_transforms)
+        local_likelihood = self.initialize_likelihood(
+            local_prior, sample_transforms, likelihood_transforms
+        )
         self.jim = Jim(
             local_likelihood,
             local_prior,
@@ -124,7 +126,12 @@ class SingleEventPERunManager(RunManager):
 
     ### Initialization functions ###
 
-    def initialize_likelihood(self, prior: prior.CombinePrior, sample_transforms: transforms.Transform, likelihood_transforms: transforms.Transform) -> SingleEventLiklihood:
+    def initialize_likelihood(
+        self,
+        prior: prior.CombinePrior,
+        sample_transforms: transforms.Transform,
+        likelihood_transforms: transforms.Transform,
+    ) -> SingleEventLiklihood:
         """
         Since prior contains information about types, naming and ranges of parameters,
         some of the likelihood class require the prior to be initialized, such as the
@@ -473,4 +480,4 @@ class SingleEventPERunManager(RunManager):
             networkSNR = jnp.sum(jnp.array(self.SNRs) ** 2) ** (0.5)
             print("network SNR is", networkSNR)
         sys.stdout.close()
-        sys.stdout=orig_stdout 
+        sys.stdout = orig_stdout
