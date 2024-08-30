@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import corner
 import sys
+import os
 import numpy as np
 import yaml
 from astropy.time import Time
@@ -481,3 +482,48 @@ class SingleEventPERunManager(RunManager):
             print("network SNR is", networkSNR)
         sys.stdout.close()
         sys.stdout = orig_stdout
+
+
+class MultipleEventPERunManager:
+    """
+    Class to manage multiple events run.
+    """
+    run_config_path: str
+    output_path: str
+    
+    def __init__(self, run_config_path: str, output_path: str = "output") -> None:
+        """
+        Arguments:
+            run_config_path (str): load the run configuration from the path.
+            output_path (str, optional): save the output to this path. Defaults to "output".
+        """
+        
+        self.run_config_path = run_config_path
+        self.output_path = output_path
+    
+    def run(self, plot_corner: bool = True, plot_diagnostic: bool = True, save_summary: bool = True):
+        """
+        Loop over all the configuration files in the run_config_path and run the PE for each configuration.
+        """
+        
+        if plot_corner and not os.path.exists("corner_plots"):
+            os.makedirs("corner_plots")
+        if plot_diagnostic and not os.path.exists("diagnostic_plots"):
+            os.makedirs("diagnostic_plots")
+        if save_summary and not os.path.exists("summaries"):
+            os.makedirs("summaries")
+        
+        config_directory = os.fsencode(self.run_config_path)
+        for file in os.listdir(config_directory):
+            filename = os.fsdecode(file)
+            if filename.endswith(".yaml"):
+                config_path = os.path.join(self.run_config_path, filename)
+                run_manager = SingleEventPERunManager(path=config_path)
+                run_manager.sample()
+                
+                if plot_corner:
+                    run_manager.plot_corner("corner_plots/" + filename + "_corner.jpeg")
+                if plot_diagnostic:
+                    run_manager.plot_diagnostic("diagnostic_plots/" + filename + "_diagnostic.jpeg")
+                if save_summary:
+                    run_manager.save_summary("summaries/" + filename + "_summary.txt")
