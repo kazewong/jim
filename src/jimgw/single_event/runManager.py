@@ -223,6 +223,7 @@ class SingleEventPERunManager(RunManager):
                         transform_class = getattr(transforms, transform["name"])
                     except AttributeError:
                         raise ValueError(f"{transform['name']} not recognized.")
+                transform = transform.copy()
                 transform.pop("name")
                 sample_transforms.append(transform_class(**transform))
         if self.run.likelihood_transforms:
@@ -241,6 +242,7 @@ class SingleEventPERunManager(RunManager):
                         transform_class = getattr(transforms, transform["name"])
                     except AttributeError:
                         raise ValueError(f"{transform['name']} not recognized.")
+                transform = transform.copy()
                 transform.pop("name")
                 likelihood_transforms.append(transform_class(**transform))
         return sample_transforms, likelihood_transforms
