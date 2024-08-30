@@ -464,6 +464,7 @@ class SingleEventPERunManager(RunManager):
     def save_summary(self, path: str = "", **kwargs):
         if path == "":
             path = self.run.path + "run_manager_summary.txt"
+        orig_stdout = sys.stdout
         sys.stdout = open(path, "wt")
         self.jim.print_summary()
         if self.run.injection:
@@ -472,3 +473,4 @@ class SingleEventPERunManager(RunManager):
             networkSNR = jnp.sum(jnp.array(self.SNRs) ** 2) ** (0.5)
             print("network SNR is", networkSNR)
         sys.stdout.close()
+        sys.stdout=orig_stdout 
