@@ -508,24 +508,36 @@ class MultipleEventPERunManager:
         Loop over all the configuration files in the run_config_path and run the PE for each configuration.
         """
         
-        if plot_corner and not os.path.exists("corner_plots"):
-            os.makedirs("corner_plots")
-        if plot_diagnostic and not os.path.exists("diagnostic_plots"):
-            os.makedirs("diagnostic_plots")
-        if save_summary and not os.path.exists("summaries"):
-            os.makedirs("summaries")
+        if plot_corner and not os.path.exists(self.output_path+"/corner_plots"):
+            os.makedirs(self.output_path+"/corner_plots")
+        if plot_diagnostic and not os.path.exists(self.output_path+"/diagnostic_plots"):
+            os.makedirs(self.output_path+"/diagnostic_plots")
+        if save_summary and not os.path.exists(self.output_path+"/summaries"):
+            os.makedirs(self.output_path+"/summaries")
+        if not os.path.exists(self.output_path+"/error_log"):
+            os.makedirs(self.output_path+"/error_log")
         
         config_directory = os.fsencode(self.run_config_path)
         for file in os.listdir(config_directory):
             filename = os.fsdecode(file)
-            if filename.endswith(".yaml"):
-                config_path = os.path.join(self.run_config_path, filename)
-                run_manager = SingleEventPERunManager(path=config_path)
-                run_manager.sample()
-                
-                if plot_corner:
-                    run_manager.plot_corner("corner_plots/" + filename + "_corner.jpeg")
-                if plot_diagnostic:
-                    run_manager.plot_diagnostic("diagnostic_plots/" + filename + "_diagnostic.jpeg")
-                if save_summary:
-                    run_manager.save_summary("summaries/" + filename + "_summary.txt")
+            
+            try:
+                if filename.endswith(".yaml"):
+                    config_path = os.path.join(self.run_config_path, filename)
+                    run_manager = SingleEventPERunManager(path=config_path)
+                    run_manager.sample()
+                    
+                    if plot_corner:
+                        run_manager.plot_corner(self.output_path+"/corner_plots/" + filename + "_corner.jpeg")
+                    if plot_diagnostic:
+                        run_manager.plot_diagnostic(self.output_path+"/diagnostic_plots/" + filename + "_diagnostic.jpeg")
+                    if save_summary:
+                        run_manager.save_summary(self.output_path+"/summaries/" + filename + "_summary.txt")
+                        
+            except Exception as e:
+                orig_stdout = sys.stdout
+                sys.stdout = open(self.output_path+"/error_log/"+filename+"error_log.txt", "wt")
+                print(f"Error in running {filename}. Error: {e}")
+                sys.stdout.close()
+                sys.stdout = orig_stdout
+                continue
