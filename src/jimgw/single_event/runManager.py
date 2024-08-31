@@ -123,6 +123,8 @@ class SingleEventPERunManager(RunManager):
     def load_from_path(self, path: str) -> SingleEventRun:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
+        if "jim_parameters" in data and "local_sampler_arg" in data["jim_parameters"] and "step_size" in data["jim_parameters"]["local_sampler_arg"]:
+            data["jim_parameters"]["local_sampler_arg"]["step_size"] = jnp.array(data["jim_parameters"]["local_sampler_arg"]["step_size"])
         return SingleEventRun(**data)
 
     ### Initialization functions ###
