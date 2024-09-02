@@ -5,11 +5,11 @@ import jax.numpy as jnp
 import pandas as pd
 import glob
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC import Sampler
+from flowMC.Sampler import Sampler
 from flowMC.proposal.MALA import MALA
 import corner
 from jimgw.population.population_likelihood import PopulationLikelihood
-from jimgw.population.utils import create_model
+from jimgw.population.utils import create_model, extract_data_from_npz_files, extract_data_from_npz_files_m1_m2
 
 
 def parse_args():
@@ -18,88 +18,19 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, required=True, help='Directory containing the NPZ data files.')
     return parser.parse_args()
 
-def mtotal_from_mchirp_eta(mchirp, eta):
-    """Returns the total mass from the chirp mass and symmetric mass ratio."""
-    return mchirp / eta**(3./5.)
-
-def mass1_from_mtotal_eta(mtotal, eta):
-    """Returns the primary mass from the total mass and symmetric mass ratio."""
-    return 0.5 * mtotal * (1.0 + (1.0 - 4.0 * eta)**0.5)
-
-def mass1_from_mchirp_eta(mchirp, eta):
-    """Returns the primary mass from the chirp mass and symmetric mass ratio."""
-    mtotal = mtotal_from_mchirp_eta(mchirp, eta)
-    return mass1_from_mtotal_eta(mtotal, eta)
-
-def prior_alpha(alpha):
-    return jax.lax.cond(alpha > 0, lambda: 0.0, lambda: -jnp.inf)
-
-def prior_x_min_x_max(x_min, x_max):
-    cond_1 = (x_max > x_min)
-    cond_2 = (x_min >= 5) & (x_min <= 20)
-    cond_3 = (x_max >= 50) & (x_max <= 100)
-    
-    return jax.lax.cond(cond_1 & cond_2 & cond_3, lambda: 0.0, lambda: -jnp.inf)
-
 def main():
-    # Parse command-line arguments
     args = parse_args()
-    
-    # For sampling events
-    directory = args.data_dir  # Use the data directory from command-line argument
-    key = jax.random.PRNGKey(42)
-    mass_result_dict = []
-    npz_files = glob.glob(directory + '/*.npz')
-
-    num_files_to_sample = 100
-    key, subkey = jax.random.split(key)
-    sample_indices = jax.random.choice(subkey, len(npz_files), shape=(num_files_to_sample,), replace=False)
-    sampled_npz_files = [npz_files[i] for i in sample_indices]
-
-    for npz_file in sampled_npz_files:
-        print("Loading file:", npz_file)
-        with np.load(npz_file, allow_pickle=True) as data:
-            chains = data['chains']
-            reshaped_chains = chains.reshape(-1, 11)
-            event_df = pd.DataFrame(reshaped_chains, columns=[
-                'M_c', 'eta', 's1_z', 's2_z', 'd_L', 't_c', 'phase_c', 
-                'iota', 'psi', 'ra', 'dec'
-            ])
-            
-            # Randomly sample rows within each file in a reproducible manner
-            key, subkey = jax.random.split(key)
-            sample_indices = jax.random.choice(subkey, event_df.shape[0], shape=(5000,), replace=False)
-            sampled_df = event_df.iloc[sample_indices]
-            
-            # Extract M_c and eta using sampled indices
-            mc_sampled = sampled_df['M_c'].values
-            eta_sampled = sampled_df['eta'].values
-            
-            # Compute mass1
-            mass1_sampled = mass1_from_mchirp_eta(mc_sampled, eta_sampled)
-            
-            # Append to the result dictionary
-            mass_array = jnp.array(mass1_sampled)
-            mass_result_dict.append(mass_array)
-
-    # Stack all results into a single array
-    mass_array = jnp.stack(mass_result_dict)
+    mass1_array, mass2_array = extract_data_from_npz_files_m1_m2(args.data_dir, num_samples=5000)
     
     def pop_likelihood(pop_params ,data):
             model = create_model(args.pop_model)
-            likelihood = PopulationLikelihood(mass_array, model, pop_params)
-            log_likelihood = likelihood.evaluate(mass_array, pop_params)
+            likelihood = PopulationLikelihood(mass1_array, model, pop_params)
+            log_likelihood = likelihood.evaluate(mass1_array, pop_params)
             return log_likelihood
     
-    
-    # def log_likelihood(pop_params, data):
-    #         likelihood = PopulationLikelihood(mass_array,TruncatedPowerLawModel, pop_params)
-    #         log_likelihood = likelihood.evaluate(mass_array, pop_params)
-    #         return log_likelihood 
-
 
     n_dim = 3
-    n_chains = 1000
+    n_chains = 10
 
     rng_key = jax.random.PRNGKey(42)  
 
@@ -137,12 +68,12 @@ def main():
     model = MaskedCouplingRQSpline(n_layers=3, hidden_size=[64, 64], num_bins=8, n_features=n_dim, key=jax.random.PRNGKey(0))
 
     step_size = 1
-    MALA_Sampler = MALA(pop_likelihood, True, {"step_size": step_size})
+    MALA_Sampler = MALA(pop_likelihood, True, step_size= step_size)
 
-    rng_key_set = initialize_rng_keys(n_chains, seed=42)
+    rng_key, subkey = jax.random.split(jax.random.PRNGKey(42))
 
     nf_sampler = Sampler(n_dim,
-                         rng_key_set,
+                         subkey,
                          pop_likelihood,
                          MALA_Sampler,
                          model,
