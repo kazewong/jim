@@ -190,6 +190,11 @@ class SequentialTransformPrior(Prior):
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
             x = transform.forward(x)
+            # poping the original parameters
+            jax.tree.map(
+                lambda key: x.pop(key),
+                transform.name_mapping[0],
+            )
         return x
 
 
