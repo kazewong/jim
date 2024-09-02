@@ -1,13 +1,12 @@
 import argparse
-import pandas as pd
 import numpy as np
 import jax
 import jax.numpy as jnp
+import pandas as pd
 import glob
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.sampler.MALA import MALA
-from flowMC.sampler.Sampler import Sampler
-from flowMC.utils.PRNG_keys import initialize_rng_keys
+from flowMC import Sampler
+from flowMC.proposal.MALA import MALA
 import corner
 from jimgw.population.population_likelihood import PopulationLikelihood
 from jimgw.population.utils import create_model
