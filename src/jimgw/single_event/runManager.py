@@ -129,7 +129,7 @@ class SingleEventPERunManager(RunManager):
                 )
             except KeyError as e:
                 print(f"Key {e} not found.")
-            
+
         return SingleEventRun(**data)
 
     ### Initialization functions ###
