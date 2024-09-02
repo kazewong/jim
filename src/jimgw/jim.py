@@ -112,6 +112,10 @@ class Jim(object):
                     guess = self.prior.sample(key, 1)
                     for transform in self.sample_transforms:
                         guess = transform.forward(guess)
+                        jax.tree.map(
+                            lambda key: guess.pop(key),
+                            transform.name_mapping[0],
+                        )
                     guess = jnp.array([i for i in guess.values()]).T[0]
                     flag = not jnp.all(jnp.isfinite(guess))
                 initial_guess.append(guess)
