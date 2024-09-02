@@ -140,13 +140,13 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
 
     def __init__(
         self,
-        name_mapping: tuple[list[str], list[str]],
-        conditional_names: list[str],
         gps_time: Float,
         ifo: GroundBased2G,
         tc_min: Float,
         tc_max: Float,
     ):
+        name_mapping = [["t_c"], ["t_det_unbounded"]]
+        conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
@@ -155,9 +155,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         self.ifo = ifo
         self.tc_min = tc_min
         self.tc_max = tc_max
-
-        assert "t_c" in name_mapping[0] and "t_det_unbounded" in name_mapping[1]
-        assert "ra" in conditional_names and "dec" in conditional_names
 
         @jnp.vectorize
         def time_delay(ra, dec, gmst):
@@ -225,25 +222,17 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
     def __init__(
         self,
-        name_mapping: tuple[list[str], list[str]],
-        conditional_names: list[str],
         gps_time: Float,
         ifo: GroundBased2G,
     ):
+        name_mapping = [["phase_c"], ["phase_det"]]
+        conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
         self.ifo = ifo
-
-        assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
-        assert (
-            "ra" in conditional_names
-            and "dec" in conditional_names
-            and "psi" in conditional_names
-            and "iota" in conditional_names
-        )
 
         @jnp.vectorize
         def _calc_R_det_arg(ra, dec, psi, iota, gmst):
@@ -298,13 +287,13 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
 
     def __init__(
         self,
-        name_mapping: tuple[list[str], list[str]],
-        conditional_names: list[str],
         gps_time: Float,
         ifos: list[GroundBased2G],
         dL_min: Float,
         dL_max: Float,
     ):
+        name_mapping = [["d_L"], ["d_hat_unbounded"]]
+        conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
         self.gmst = (
@@ -313,15 +302,6 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         self.ifos = ifos
         self.dL_min = dL_min
         self.dL_max = dL_max
-
-        assert "d_L" in name_mapping[0] and "d_hat_unbounded" in name_mapping[1]
-        assert (
-            "ra" in conditional_names
-            and "dec" in conditional_names
-            and "psi" in conditional_names
-            and "iota" in conditional_names
-            and "M_c" in conditional_names
-        )
 
         @jnp.vectorize
         def _calc_R_dets(ra, dec, psi, iota):
