@@ -24,7 +24,6 @@ class Jim(object):
     likelihood_transforms: list[NtoMTransform]
     parameter_names: list[str]
     sampler: Sampler
-    parameters_to_keep: list[str]
 
     def __init__(
         self,
@@ -32,7 +31,6 @@ class Jim(object):
         prior: Prior,
         sample_transforms: list[BijectiveTransform] = [],
         likelihood_transforms: list[NtoMTransform] = [],
-        parameters_to_keep: list[str] = [],
         **kwargs,
     ):
         self.likelihood = likelihood
@@ -41,7 +39,6 @@ class Jim(object):
         self.sample_transforms = sample_transforms
         self.likelihood_transforms = likelihood_transforms
         self.parameter_names = prior.parameter_names
-        self.parameters_to_keep = parameters_to_keep
 
         if len(sample_transforms) == 0:
             print(
@@ -101,17 +98,8 @@ class Jim(object):
             named_params, jacobian = transform.inverse(named_params)
             transform_jacobian += jacobian
         prior = self.prior.log_prob(named_params) + transform_jacobian
-
-        # make a copy of the named_params
-        named_params_copy = named_params.copy()
-        # do the likelihood transform
         for transform in self.likelihood_transforms:
             named_params = transform.forward(named_params)
-        # add back the parameters
-        jax.tree.map(
-            lambda key: named_params.update({key: named_params_copy[key]}),
-            self.parameters_to_keep,
-        )
         return self.likelihood.evaluate(named_params, data) + prior
 
     def sample(self, key: PRNGKeyArray, initial_position: Array = jnp.array([])):
