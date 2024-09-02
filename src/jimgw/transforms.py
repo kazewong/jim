@@ -445,3 +445,19 @@ class ParetoTransform(BijectiveTransform):
             )
             for i in range(len(name_mapping[1]))
         }
+
+
+def reverse_bijective_transform(
+    original_transform: BijectiveTransform,
+) -> BijectiveTransform:
+
+    reversed_name_mapping = (
+        original_transform.name_mapping[1],
+        original_transform.name_mapping[0],
+    )
+    reversed_transform = BijectiveTransform(name_mapping=reversed_name_mapping)
+    reversed_transform.transform_func = original_transform.inverse_transform_func
+    reversed_transform.inverse_transform_func = original_transform.transform_func
+    reversed_transform.__repr__ = lambda: f"Reversed{repr(original_transform)}"
+
+    return reversed_transform
