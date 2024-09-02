@@ -128,9 +128,12 @@ class SingleEventPERunManager(RunManager):
             and "local_sampler_arg" in data["jim_parameters"]
             and "step_size" in data["jim_parameters"]["local_sampler_arg"]
         ):
-            data["jim_parameters"]["local_sampler_arg"]["step_size"] = jnp.array(
-                data["jim_parameters"]["local_sampler_arg"]["step_size"]
-            )
+            try:
+                data["jim_parameters"]["local_sampler_arg"]["step_size"] = jnp.array(
+                    data["jim_parameters"]["local_sampler_arg"]["step_size"]
+                )
+            except Exception as e:
+                print(f"Error in loading step_size: {e}")
         return SingleEventRun(**data)
 
     ### Initialization functions ###
