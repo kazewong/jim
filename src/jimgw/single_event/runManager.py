@@ -128,7 +128,7 @@ class SingleEventPERunManager(RunManager):
                     data["jim_parameters"]["local_sampler_arg"]["step_size"]
                 )
             except KeyError as e:
-                print(f"Key {e} not found.")
+                print("No local sampler argument provided in the configuration.")
 
         return SingleEventRun(**data)
 
