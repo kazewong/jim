@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import corner
 import sys
+import os
 import numpy as np
 import yaml
 from astropy.time import Time
@@ -122,6 +123,13 @@ class SingleEventPERunManager(RunManager):
     def load_from_path(self, path: str) -> SingleEventRun:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
+            try:
+                data["jim_parameters"]["local_sampler_arg"]["step_size"] = jnp.array(
+                    data["jim_parameters"]["local_sampler_arg"]["step_size"]
+                )
+            except KeyError as e:
+                print("No local sampler argument provided in the configuration.")
+
         return SingleEventRun(**data)
 
     ### Initialization functions ###
@@ -481,3 +489,82 @@ class SingleEventPERunManager(RunManager):
             print("network SNR is", networkSNR)
         sys.stdout.close()
         sys.stdout = orig_stdout
+
+
+class MultipleEventPERunManager:
+    """
+    Class to manage multiple events run.
+    """
+
+    run_config_path: str
+    output_path: str
+
+    def __init__(self, run_config_path: str, output_path: str = "output") -> None:
+        """
+        Arguments:
+            run_config_path (str): load the run configuration from the path.
+            output_path (str, optional): save the output to this path. Defaults to "output".
+        """
+
+        self.run_config_path = run_config_path
+        self.output_path = output_path
+
+    def run(
+        self,
+        plot_corner: bool = True,
+        plot_diagnostic: bool = True,
+        save_summary: bool = True,
+    ):
+        """
+        Loop over all the configuration files in the run_config_path and run the PE for each configuration.
+        """
+
+        if plot_corner and not os.path.exists(self.output_path + "/corner_plots"):
+            os.makedirs(self.output_path + "/corner_plots")
+        if plot_diagnostic and not os.path.exists(
+            self.output_path + "/diagnostic_plots"
+        ):
+            os.makedirs(self.output_path + "/diagnostic_plots")
+        if save_summary and not os.path.exists(self.output_path + "/summaries"):
+            os.makedirs(self.output_path + "/summaries")
+        if not os.path.exists(self.output_path + "/error_log"):
+            os.makedirs(self.output_path + "/error_log")
+
+        config_directory = os.fsencode(self.run_config_path)
+        for file in os.listdir(config_directory):
+            filename = os.fsdecode(file)
+
+            try:
+                if filename.endswith(".yaml"):
+                    config_path = os.path.join(self.run_config_path, filename)
+                    run_manager = SingleEventPERunManager(path=config_path)
+                    run_manager.sample()
+
+                    if plot_corner:
+                        run_manager.plot_corner(
+                            self.output_path
+                            + "/corner_plots/"
+                            + filename
+                            + "_corner.jpeg"
+                        )
+                    if plot_diagnostic:
+                        run_manager.plot_diagnostic(
+                            self.output_path
+                            + "/diagnostic_plots/"
+                            + filename
+                            + "_diagnostic.jpeg"
+                        )
+                    if save_summary:
+                        run_manager.save_summary(
+                            self.output_path + "/summaries/" + filename + "_summary.txt"
+                        )
+
+            except Exception as e:
+                orig_stdout = sys.stdout
+                sys.stdout = open(
+                    self.output_path + "/error_log/" + filename + "error_log.txt", "wt"
+                )
+                print(f"Error in running {filename}. Error: {e}")
+                sys.stdout.close()
+                sys.stdout = orig_stdout
+                continue
