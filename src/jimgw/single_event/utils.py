@@ -710,6 +710,86 @@ def spin_to_cartesian_spin(
     return iota, S1[0], S1[1], S1[2], S2[0], S2[1], S2[2]
 
 
+def spin_to_iota(
+    thetaJN: Float,
+    phiJL: Float,
+    theta1: Float,
+    theta2: Float,
+    phi12: Float,
+    chi1: Float,
+    chi2: Float,
+    M_c: Float,
+    q: Float,
+    fRef: Float,
+    phiRef: Float,
+) -> tuple[Float, Float, Float, Float, Float, Float, Float]:
+
+    def rotate_y(angle, vec):
+        """
+        Rotate the vector (x, y, z) about y-axis
+        """
+        cos_angle = jnp.cos(angle)
+        sin_angle = jnp.sin(angle)
+        rotation_matrix = jnp.array(
+            [[cos_angle, jnp.zeros_like(angle), sin_angle], [jnp.zeros_like(angle), jnp.ones_like(angle), jnp.zeros_like(angle)], [-sin_angle, jnp.zeros_like(angle), cos_angle]]
+        )
+        rotated_vec = jnp.dot(rotation_matrix, vec)
+        return rotated_vec
+
+    def rotate_z(angle, vec):
+        """
+        Rotate the vector (x, y, z) about z-axis
+        """
+        cos_angle = jnp.cos(angle)
+        sin_angle = jnp.sin(angle)
+        rotation_matrix = jnp.array(
+            [[cos_angle, -sin_angle, jnp.zeros_like(angle)], [sin_angle, cos_angle, jnp.zeros_like(angle)], [jnp.zeros_like(angle), jnp.zeros_like(angle), jnp.ones_like(angle)]]
+        )
+        rotated_vec = jnp.dot(rotation_matrix, vec)
+        return rotated_vec
+
+    LNh = jnp.array([0.0, 0.0, 1.0])
+
+    s1hat = jnp.array(
+        [
+            jnp.sin(theta1) * jnp.cos(phiRef),
+            jnp.sin(theta1) * jnp.sin(phiRef),
+            jnp.cos(theta1),
+        ]
+    )
+    s2hat = jnp.array(
+        [
+            jnp.sin(theta2) * jnp.cos(phi12 + phiRef),
+            jnp.sin(theta2) * jnp.sin(phi12 + phiRef),
+            jnp.cos(theta2),
+        ]
+    )
+
+    m1, m2 = Mc_q_to_m1_m2(M_c, q)
+    eta = q / (1 + q) ** 2
+    v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
+
+    Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
+    s1 = m1 * m1 * chi1 * s1hat
+    s2 = m2 * m2 * chi2 * s2hat
+    J = s1 + s2 + jnp.array([jnp.zeros_like(Lmag), jnp.zeros_like(Lmag), Lmag])
+
+    Jhat = J / jnp.linalg.norm(J)
+    theta0 = jnp.arccos(Jhat[2])
+
+    # Rotation 2:
+    LNh = rotate_y(-theta0, LNh)
+
+    # Rotation 3:
+    LNh = rotate_z(phiJL - jnp.pi, LNh)
+
+    # Compute iota
+    N = jnp.array([jnp.zeros_like(thetaJN), jnp.sin(thetaJN), jnp.cos(thetaJN)])
+    iota = jnp.arccos(jnp.dot(N, LNh))
+    
+    return iota
+
+
 def zenith_azimuth_to_ra_dec(
     zenith: Float, azimuth: Float, gmst: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:

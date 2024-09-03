@@ -111,7 +111,7 @@ class Jim(object):
                     key = jax.random.split(key)[1]
                     guess = self.prior.sample(key, 1)
                     for transform in self.sample_transforms:
-                        guess = transform.forward(guess)
+                        guess = jax.vmap(transform.forward)(guess)
                     guess = jnp.array([i for i in guess.values()]).T[0]
                     flag = not jnp.all(jnp.isfinite(guess))
                 initial_guess.append(guess)
