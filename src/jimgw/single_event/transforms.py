@@ -243,9 +243,23 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names and "M_c" in conditional_names and "q" in conditional_names))
+            and (
+                "iota" in conditional_names
+                or (
+                    "theta_jn" in conditional_names
+                    and "phi_jl" in conditional_names
+                    and "theta_1" in conditional_names
+                    and "theta_2" in conditional_names
+                    and "phi_12" in conditional_names
+                    and "a_1" in conditional_names
+                    and "a_2" in conditional_names
+                    and "q" in conditional_names
+                    and "M_c" in conditional_names
+                    and "q" in conditional_names
+                )
+            )
         )
-        
+
         if "iota" in conditional_names:
             self.get_iota = lambda x: x["iota"]
         else:
@@ -260,7 +274,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
                 x["M_c"],
                 x["q"],
                 self.freq_ref,
-                x["phase_c"],
+                0.0,
             )
 
         @jnp.vectorize
@@ -276,9 +290,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_transform(x):
             iota = self.get_iota(x)
-            R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], iota, self.gmst
-            )
+            R_det_arg = _calc_R_det_arg(x["ra"], x["dec"], x["psi"], iota, self.gmst)
             phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
                 "phase_det": phase_det % (2.0 * jnp.pi),
@@ -288,9 +300,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_inverse_transform(x):
             iota = self.get_iota(x)
-            R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], iota, self.gmst
-            )
+            R_det_arg = _calc_R_det_arg(x["ra"], x["dec"], x["psi"], iota, self.gmst)
             phase_c = (-R_det_arg + x["phase_det"]) * 2.0
             return {
                 "phase_c": phase_c % (2.0 * jnp.pi),
@@ -342,7 +352,19 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             "ra" in conditional_names
             and "dec" in conditional_names
             and "psi" in conditional_names
-            and ("iota" in conditional_names or ("theta_jn" in conditional_names and "phi_jl" in conditional_names and "theta_1" in conditional_names and "theta_2" in conditional_names and "phi_12" in conditional_names and "a_1" in conditional_names and "a_2" in conditional_names and "q" in conditional_names and "phase_c" in conditional_names))
+            and (
+                "iota" in conditional_names
+                or (
+                    "theta_jn" in conditional_names
+                    and "phi_jl" in conditional_names
+                    and "theta_1" in conditional_names
+                    and "theta_2" in conditional_names
+                    and "phi_12" in conditional_names
+                    and "a_1" in conditional_names
+                    and "a_2" in conditional_names
+                    and "q" in conditional_names
+                )
+            )
             and "M_c" in conditional_names
         )
 
@@ -360,9 +382,9 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["M_c"],
                 x["q"],
                 self.freq_ref,
-                x["phase_c"],
+                0.0,
             )
-        
+
         @jnp.vectorize
         def _calc_R_dets(ra, dec, psi, iota):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
