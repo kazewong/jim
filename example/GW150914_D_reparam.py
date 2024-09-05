@@ -63,11 +63,11 @@ prior = CombinePrior(
 
 sample_transforms = [
     # all the user reparametrization transform
-    ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
-    DistanceToSNRWeightedDistanceTransform(name_mapping=[["d_L"], ["d_hat_unbounded"]], conditional_names=["M_c","ra", "dec", "psi", "iota"], gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
-    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(name_mapping = [["phase_c"], ["phase_det"]], conditional_names=["ra", "dec", "psi", "iota"], gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(name_mapping = [["t_c"], ["t_det_unbounded"]], tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, conditional_names=["ra", "dec"], gps_time=gps, ifo=ifos[0]),
-    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
+    ComponentMassesToChirpMassMassRatioTransform,
+    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
+    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     # all the bound to unbound transform
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=M_c_min, original_upper_bound=M_c_max),
     BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=q_min, original_upper_bound=q_max),
@@ -81,7 +81,7 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "eta"]]),
+    ComponentMassesToChirpMassSymmetricMassRatioTransform,
 ]
 
 likelihood = TransientLikelihoodFD(
@@ -154,8 +154,8 @@ transposed_array = samples.T # transpose the array
 figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
 plt.savefig("GW1500914_D_reparam.jpeg")
 
-###########################################
-############# Save the Run ################
-###########################################
-import pickle
-pickle.dump(result, open("GW150914_D_reparam.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+############################################
+############## Save the Run ################
+############################################
+#import pickle
+#pickle.dump(result, open("GW150914_D_reparam.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
