@@ -2,14 +2,12 @@ import argparse
 import numpy as np
 import jax
 import jax.numpy as jnp
-import pandas as pd
-import glob
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.Sampler import Sampler
 from flowMC.proposal.MALA import MALA
 import corner
 from jimgw.population.population_likelihood import PopulationLikelihood
-from jimgw.population.utils import create_model, extract_data_from_npz_files, extract_data_from_npz_files_m1_m2
+from jimgw.population.utils import create_model, extract_data_from_npz_files
 
 
 def parse_args():
@@ -20,7 +18,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    mass1_array, mass2_array = extract_data_from_npz_files_m1_m2(args.data_dir, num_samples=5000)
+    mass1_array = extract_data_from_npz_files(args.data_dir,"m_1", num_samples=5000, random_seed=42) 
     
     def pop_likelihood(pop_params ,data):
             model = create_model(args.pop_model)
@@ -77,8 +75,8 @@ def main():
                          pop_likelihood,
                          MALA_Sampler,
                          model,
-                         n_local_steps=1000,
-                         n_global_steps=1000,
+                         n_local_steps=10,
+                         n_global_steps=10,
                          n_epochs=30,
                          learning_rate=1e-3,
                          batch_size=1000,
