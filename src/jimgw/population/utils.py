@@ -47,8 +47,6 @@ def extract_data_from_npz_files(data_dir, column_name, num_samples=50, random_se
                 raise ValueError(f"Column '{column_name}' not found in the data.")
             
             extracted_data = data_dict[column_name].reshape(-1,)
-            print(extracted_data)
-            print(extracted_data.shape)
 
             if isinstance(extracted_data, np.ndarray):
                 extracted_data = jax.device_put(extracted_data) 

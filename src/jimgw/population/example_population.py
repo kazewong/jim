@@ -20,22 +20,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    mass1_array = extract_data_from_npz_files(args.data_dir,"m_1", num_samples=5000, random_seed=42) 
-
-    """
-    need changes for the pop_likelihood
-    """
-    # def pop_likelihood(pop_params ,data):
-    #         model = create_model(args.pop_model)
-    #         likelihood = PopulationLikelihood(mass1_array, model, pop_params)
-    #         log_likelihood = likelihood.evaluate(mass1_array, pop_params)
-    #         return log_likelihood
-        
     model = create_model(args.pop_model)
-    pop_params = ["m_min",1,2]
-    pop_likelihood = PopulationLikelihood(mass1_array, model, pop_params)
+    pop_likelihood = PopulationLikelihood(args.data_dir, "m_1", 5000, model)
  
-    mass_matrix = jnp.eye(11)
+    mass_matrix = jnp.eye(model.get_pop_params_dimension())
     mass_matrix = mass_matrix.at[1, 1].set(1e-3)
     mass_matrix = mass_matrix.at[5, 5].set(1e-3)
     local_sampler_arg = {"step_size": mass_matrix * 3e-3}
@@ -48,7 +36,9 @@ def main():
     m_min_prior = UniformPrior(10.,80.,parameter_names = ["m_min"])
     m_max_prior = UniformPrior(10.,80.,parameter_names = ["m_max"])
     alpha_prior = UniformPrior(0.,10.,parameter_names = ["alpha"])
+    
     prior = CombinePrior([m_min_prior, m_max_prior, alpha_prior])
+    
     sample_transforms = [BoundToUnbound(name_mapping = [["m_min"], ["m_min_unbounded"]], original_lower_bound=10, original_upper_bound=80),
                          BoundToUnbound(name_mapping = [["m_max"], ["m_max_unbounded"]], original_lower_bound=10, original_upper_bound=80),
                          BoundToUnbound(name_mapping = [["alpha"], ["alpha_unbounded"]], original_lower_bound=0, original_upper_bound  =10)]
@@ -87,7 +77,7 @@ def main():
     )
 
     jim.sample(jax.random.PRNGKey(42))
-    samples =jim.get_samples()
+    jim.get_samples()
     jim.print_summary()
 
 if __name__ == "__main__":
