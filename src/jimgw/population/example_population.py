@@ -25,12 +25,16 @@ def main():
     """
     need changes for the pop_likelihood
     """
-    def pop_likelihood(pop_params ,data):
-            model = create_model(args.pop_model)
-            likelihood = PopulationLikelihood(mass1_array, model, pop_params)
-            log_likelihood = likelihood.evaluate(mass1_array, pop_params)
-            return log_likelihood
-    
+    # def pop_likelihood(pop_params ,data):
+    #         model = create_model(args.pop_model)
+    #         likelihood = PopulationLikelihood(mass1_array, model, pop_params)
+    #         log_likelihood = likelihood.evaluate(mass1_array, pop_params)
+    #         return log_likelihood
+        
+    model = create_model(args.pop_model)
+    pop_params = ["m_min",1,2]
+    pop_likelihood = PopulationLikelihood(mass1_array, model, pop_params)
+ 
     mass_matrix = jnp.eye(11)
     mass_matrix = mass_matrix.at[1, 1].set(1e-3)
     mass_matrix = mass_matrix.at[5, 5].set(1e-3)

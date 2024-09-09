@@ -9,11 +9,12 @@ class PopulationLikelihood(LikelihoodBase):
         self.mass_array = mass_array
         self.population_model = model_class(*pop_params)
 
-    def evaluate(self, posteriors: dict, pop_params: dict) -> Float:
-        model_output = self.population_model.evaluate(posteriors, pop_params)
+    def evaluate(self, pop_params: dict[str, Float],posteriors: dict) -> Float:
+        model_output = self.population_model.evaluate(pop_params, posteriors)
         log_likelihood = jnp.sum(jnp.log(jnp.mean(model_output, axis=1)))
         return log_likelihood
-        
+    
+
         
         
         
