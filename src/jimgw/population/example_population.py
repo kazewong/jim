@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jimgw.jim import Jim
 from flowMC.strategy.optimization import optimization_Adam
 from jimgw.population.population_likelihood import PopulationLikelihood
-from jimgw.population.utils import create_model, extract_data_from_npz_files
+from jimgw.population.utils import create_model
 import argparse
 from jimgw.prior import UniformPrior, CombinePrior
 from jimgw.transforms import BoundToUnbound
@@ -23,10 +23,7 @@ def main():
     model = create_model(args.pop_model)
     pop_likelihood = PopulationLikelihood(args.data_dir, "m_1", 5000, model)
  
-    mass_matrix = jnp.eye(model.get_pop_params_dimension())
-    mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-    mass_matrix = mass_matrix.at[5, 5].set(1e-3)
-    local_sampler_arg = {"step_size": mass_matrix * 3e-3}
+    local_sampler_arg = {"step_size": 3e-3}
 
     Adam_optimizer = optimization_Adam(n_steps=5, learning_rate=0.01, noise_level=1)
     

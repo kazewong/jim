@@ -29,8 +29,6 @@ class TruncatedPowerLawModel(PopulationModelBase):
     def evaluate(self, pop_params: dict[str, Float], data: dict) -> Float:
         return self.truncated_power_law(data, pop_params["m_min"], pop_params["m_max"],pop_params["alpha"])
     
-    def get_pop_params_dimension():
-        return 3
     
     
  
