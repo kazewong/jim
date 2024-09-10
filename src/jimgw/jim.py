@@ -104,6 +104,7 @@ class Jim(object):
 
     def sample(self, key: PRNGKeyArray, initial_position: Array = jnp.array([])):
         if initial_position.size == 0:
+            print("Initial guess not provided, sampling initial guess")
             initial_guess = []
             for _ in range(self.sampler.n_chains):
                 flag = True
@@ -116,6 +117,7 @@ class Jim(object):
                     flag = not jnp.all(jnp.isfinite(guess))
                 initial_guess.append(guess)
             initial_position = jnp.array(initial_guess)
+        print("Starting sample")
         self.sampler.sample(initial_position, None)  # type: ignore
 
     def maximize_likelihood(

@@ -62,7 +62,7 @@ prior = CombinePrior(
 )
 
 sample_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "q"]]),
+    ComponentMassesToChirpMassMassRatioTransform,
     BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=M_c_min, original_upper_bound=M_c_max),
     BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=q_min, original_upper_bound=q_max),
     BoundToUnbound(name_mapping = [["s1_z"], ["s1_z_unbounded"]] , original_lower_bound=-1.0, original_upper_bound=1.0),
@@ -72,13 +72,13 @@ sample_transforms = [
     BoundToUnbound(name_mapping = [["phase_c"], ["phase_c_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = [["iota"], ["iota_unbounded"]], original_lower_bound=0., original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    SkyFrameToDetectorFrameSkyPositionTransform(name_mapping = [["ra", "dec"], ["zenith", "azimuth"]], gps_time=gps, ifos=ifos),
+    SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(name_mapping = [["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
 ]
 
 likelihood_transforms = [
-    ComponentMassesToChirpMassSymmetricMassRatioTransform(name_mapping=[["m_1", "m_2"], ["M_c", "eta"]]),
+    ComponentMassesToChirpMassSymmetricMassRatioTransform,
 ]
 
 likelihood = TransientLikelihoodFD(
@@ -98,7 +98,7 @@ local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
 
 n_epochs = 30
-n_loop_training = 100
+n_loop_training = 20
 learning_rate = 1e-4
 
 
@@ -123,36 +123,9 @@ jim = Jim(
     output_thinning=10,
     local_sampler_arg=local_sampler_arg,
     strategies=[Adam_optimizer, "default"],
+    verbose=True
 )
 
 jim.sample(jax.random.PRNGKey(42))
 jim.get_samples()
 jim.print_summary()
-
-
-###########################################
-########## Visualize the Data #############
-###########################################
-import corner
-import matplotlib.pyplot as plt
-import numpy as np
-
-production_summary = jim.sampler.get_sampler_state(training=False)
-production_chain = production_summary["chains"].reshape(-1, len(jim.parameter_names)).T
-if jim.sample_transforms:
-    transformed_chain = jim.add_name(production_chain)
-    for transform in reversed(jim.sample_transforms):
-        transformed_chain = transform.backward(transformed_chain)
-result = transformed_chain
-labels = list(transformed_chain.keys())
-
-samples = np.array(list(result.values())).reshape(int(len(labels)), -1) # flatten the array
-transposed_array = samples.T # transpose the array
-figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
-plt.savefig("GW1500914_D.jpeg")
-
-###########################################
-############# Save the Run ################
-###########################################
-import pickle
-pickle.dump(result, open("GW150914_D.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
