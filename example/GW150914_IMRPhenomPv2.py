@@ -38,9 +38,11 @@ for ifo in ifos:
     ifo.load_data(gps, start_pad, end_pad, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
 
 M_c_min, M_c_max = 10.0, 80.0
-q_min, q_max = 0.125, 1.0
-m_1_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_max)[0], Mc_q_to_m1_m2(M_c_max, q_min)[0], parameter_names=["m_1"])
-m_2_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_min)[1], Mc_q_to_m1_m2(M_c_max, q_max)[1], parameter_names=["m_2"])
+eta_min, eta_max = 0.2, 0.25
+# m_1_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_max)[0], Mc_q_to_m1_m2(M_c_max, q_min)[0], parameter_names=["m_1"])
+# m_2_prior = UniformPrior(Mc_q_to_m1_m2(M_c_min, q_min)[1], Mc_q_to_m1_m2(M_c_max, q_max)[1], parameter_names=["m_2"])
+M_c_prior = UniformPrior(M_c_min, M_c_max, parameter_names=["M_c"])
+eta_prior = UniformPrior(eta_min, eta_max, parameter_names=["eta"])
 theta_jn_prior = SinePrior(parameter_names=["theta_jn"])
 phi_jl_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_jl"])
 theta_1_prior = SinePrior(parameter_names=["theta_1"])
@@ -57,8 +59,10 @@ dec_prior = CosinePrior(parameter_names=["dec"])
 
 prior = CombinePrior(
     [
-        m_1_prior,
-        m_2_prior,
+        # m_1_prior,
+        # m_2_prior,
+        M_c_prior,
+        eta_prior,
         theta_jn_prior,
         phi_jl_prior,
         theta_1_prior,
@@ -76,9 +80,9 @@ prior = CombinePrior(
 )
 
 sample_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform,
-    BoundToUnbound(name_mapping = [["M_c"], ["M_c_unbounded"]], original_lower_bound=10.0, original_upper_bound=80.0),
-    BoundToUnbound(name_mapping = [["q"], ["q_unbounded"]], original_lower_bound=0.125, original_upper_bound=1.),
+    # ComponentMassesToChirpMassMassRatioTransform,
+    BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
+    BoundToUnbound(name_mapping = (["eta"], ["eta_unbounded"]), original_lower_bound=eta_min, original_upper_bound=eta_max),
     BoundToUnbound(name_mapping = [["theta_jn"], ["theta_jn_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = [["phi_jl"], ["phi_jl_unbounded"]] , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = [["theta_1"], ["theta_1_unbounded"]] , original_lower_bound=0.0, original_upper_bound=jnp.pi),
@@ -96,7 +100,7 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform,
+    # ComponentMassesToChirpMassMassRatioTransform,
     SpinToCartesianSpinTransform(freq_ref=f_ref),
     MassRatioToSymmetricMassRatioTransform,
 ]
