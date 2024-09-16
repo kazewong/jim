@@ -83,7 +83,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     def __init__(
         self,
         gps_time: Float,
-        ifos: GroundBased2G,
+        ifos: list[GroundBased2G],
     ):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
