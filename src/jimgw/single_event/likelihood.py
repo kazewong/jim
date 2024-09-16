@@ -558,14 +558,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
     ):
         parameter_names = prior.parameter_names
         for transform in sample_transforms:
-            parameter_names = transform.propagate_name(parameter_names)
+            parameter_names = jax.vmap(transform.propagate_name)(parameter_names)
 
         def y(x):
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
-                named_params = transform.backward(named_params)
+                named_params = jax.vmap(transform.backward)(named_params)
             for transform in likelihood_transforms:
-                named_params = transform.forward(named_params)
+                named_params = jax.vmap(transform.forward)(named_params)
             return -self.evaluate_original(named_params, {})
 
         print("Starting the optimizer")
@@ -605,9 +605,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         named_params = dict(zip(parameter_names, best_fit))
         for transform in reversed(sample_transforms):
-            named_params = transform.backward(named_params)
+            named_params = jax.vmap(transform.backward)(named_params)
         for transform in likelihood_transforms:
-            named_params = transform.forward(named_params)
+            named_params = jax.vmap(transform.forward)(named_params)
         return named_params
 
 
