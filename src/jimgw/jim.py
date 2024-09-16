@@ -107,7 +107,7 @@ class Jim(object):
             initial_position = jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
         
             while not jax.tree.reduce(jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)).all():
-                non_finite_index = jnp.any(~jax.tree.reduce(jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)),axis=1)
+                non_finite_index = jnp.where(jnp.any(~jax.tree.reduce(jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)),axis=1))[0]
 
                 key, subkey = jax.random.split(key)
                 guess = self.prior.sample(subkey, self.sampler.n_chains)
