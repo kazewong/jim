@@ -134,3 +134,24 @@ jim = Jim(
 jim.sample(jax.random.PRNGKey(42))
 # jim.get_samples()
 # jim.print_summary()
+
+###########################################
+########## Visualize the Data #############
+###########################################
+# import corner
+# import matplotlib.pyplot as plt
+# import numpy as np
+
+# production_summary = jim.sampler.get_sampler_state(training=False)
+# production_chain = production_summary["chains"].reshape(-1, len(jim.parameter_names)).T
+# if jim.sample_transforms:
+#     transformed_chain = jim.add_name(production_chain)
+#     for transform in reversed(jim.sample_transforms):
+#         transformed_chain = transform.backward(transformed_chain)
+# result = transformed_chain
+# labels = list(transformed_chain.keys())
+
+# samples = np.array(list(result.values())).reshape(int(len(labels)), -1) # flatten the array
+# transposed_array = samples.T # transpose the array
+# figure = corner.corner(transposed_array, labels=labels, plot_datapoints=False, title_quantiles=[0.16, 0.5, 0.84], show_titles=True, title_fmt='g', use_math_text=True)
+# plt.savefig("GW1500914_D_heterodyne.jpeg")
