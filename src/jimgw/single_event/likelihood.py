@@ -589,19 +589,13 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             )
 
             key, subkey = jax.random.split(key)
-            guess = prior.sample(subkey, popsize)
+            guess = prior.sample(subkey, non_finite_index.sum())
             for transform in sample_transforms:
                 guess = jax.vmap(transform.forward)(guess)
             guess = jnp.array(
                 jax.tree.leaves({key: guess[key] for key in parameter_names})
             ).T
-            finite_guess = jnp.where(
-                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-            )[0]
-            common_length = min(len(finite_guess), len(non_finite_index))
-            initial_position = initial_position.at[
-                non_finite_index[:common_length]
-            ].set(guess[:common_length])
+            initial_position = initial_position.at[non_finite_index].set(guess)
 
         rng_key, optimized_positions, summary = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position
