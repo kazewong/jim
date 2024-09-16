@@ -9,7 +9,7 @@ from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform, ComponentMassesToChirpMassMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform
+from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SpinToCartesianSpinTransform, ComponentMassesToChirpMassMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, SymmetricMassRatioToMassRatioTransform
 from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
 
@@ -101,6 +101,7 @@ sample_transforms = [
 
 likelihood_transforms = [
     # ComponentMassesToChirpMassMassRatioTransform,
+    SymmetricMassRatioToMassRatioTransform,
     SpinToCartesianSpinTransform(freq_ref=f_ref),
     MassRatioToSymmetricMassRatioTransform,
 ]
@@ -150,8 +151,8 @@ jim = Jim(
 )
 
 jim.sample(jax.random.PRNGKey(42))
-jim.get_samples()
-jim.print_summary()
+# jim.get_samples()
+# jim.print_summary()
 
 ###########################################
 ########## Visualize the Data #############
