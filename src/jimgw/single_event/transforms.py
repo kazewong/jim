@@ -298,8 +298,6 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
 
     def __init__(
         self,
-        name_mapping: tuple[list[str], list[str]],
-        conditional_names: list[str],
         gps_time: Float,
         ifos: list[GroundBased2G],
         dL_min: Float,
