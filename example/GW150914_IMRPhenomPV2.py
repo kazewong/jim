@@ -156,6 +156,8 @@ learning_rate = optax.polynomial_schedule(
 jim = Jim(
     likelihood,
     prior,
+    sample_transforms=sample_transforms,
+    likelihood_transforms=likelihood_transforms,
     n_loop_training=n_loop_training,
     n_loop_production=20,
     n_local_steps=10,
