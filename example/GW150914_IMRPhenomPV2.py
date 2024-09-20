@@ -20,8 +20,10 @@ from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
     SpinToCartesianSpinTransform,
-    MassRatioToSymmetricMassRatioTransform
-
+    MassRatioToSymmetricMassRatioTransform,
+    DistanceToSNRWeightedDistanceTransform,
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform,
+    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 from jimgw.single_event.utils import Mc_q_to_m1_m2
 from flowMC.strategy.optimization import optimization_Adam
@@ -106,7 +108,10 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    # ComponentMassesToChirpMassMassRatioTransform,
+    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
+    GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
     BoundToUnbound(name_mapping = (["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
     BoundToUnbound(name_mapping = (["theta_jn"], ["theta_jn_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
@@ -116,11 +121,8 @@ sample_transforms = [
     BoundToUnbound(name_mapping = (["phi_12"], ["phi_12_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = (["a_1"], ["a_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = (["a_2"], ["a_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = (["d_L"], ["d_L_unbounded"]) , original_lower_bound=10.0, original_upper_bound=2000.0),
-    BoundToUnbound(name_mapping = (["t_c"], ["t_c_unbounded"]) , original_lower_bound=-0.05, original_upper_bound=0.05),
-    BoundToUnbound(name_mapping = (["phase_c"], ["phase_c_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = (["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = (["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(name_mapping = (["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = (["azimuth"], ["azimuth_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
 ]
