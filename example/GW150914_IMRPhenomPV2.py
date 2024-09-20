@@ -175,8 +175,5 @@ jim = Jim(
     # strategies=[Adam_optimizer,"default"],
 )
 
-# import numpy as np
 
-# # chains = np.load('./GW150914_init.npz')['chain']
-
-# jim.sample(jax.random.PRNGKey(42))  # ,initial_guess=chains)
+jim.sample(jax.random.PRNGKey(42))
