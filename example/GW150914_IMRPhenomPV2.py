@@ -108,11 +108,11 @@ prior = CombinePrior(prior)
 sample_transforms = [
     # ComponentMassesToChirpMassMassRatioTransform,
     BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
-    BoundToUnbound(name_mapping = (["eta"], ["eta_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
+    BoundToUnbound(name_mapping = (["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
     BoundToUnbound(name_mapping = (["theta_jn"], ["theta_jn_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = (["phi_jl"], ["phi_jl_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["theta_1"], ["theta_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["theta_2"], ["theta_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = (["tilt_1"], ["tilt_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = (["tilt_2"], ["tilt_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = (["phi_12"], ["phi_12_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = (["a_1"], ["a_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
     BoundToUnbound(name_mapping = (["a_2"], ["a_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
@@ -126,8 +126,8 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    MassRatioToSymmetricMassRatioTransform,
     SpinToCartesianSpinTransform(freq_ref=20.),
+    MassRatioToSymmetricMassRatioTransform,
 ]
 
 

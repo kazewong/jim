@@ -275,6 +275,7 @@ def eta_to_q(eta: Float) -> Float:
     temp = 1 / eta / 2 - 1
     return temp - (temp**2 - 1) ** 0.5
 
+
 def euler_rotation(delta_x: Float[Array, " 3"]):
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
@@ -395,8 +396,8 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
 def spin_to_cartesian_spin(
     thetaJN: Float,
     phiJL: Float,
-    theta1: Float,
-    theta2: Float,
+    tilt1: Float,
+    tilt2: Float,
     phi12: Float,
     chi1: Float,
     chi2: Float,
@@ -417,9 +418,9 @@ def spin_to_cartesian_spin(
         Zenith angle between the total angular momentum and the line of sight
     phiJL: Float
         Difference between total and orbital angular momentum azimuthal angles
-    theta1: Float
+    tilt1: Float
         Zenith angle between the spin and orbital angular momenta for the primary object
-    theta2: Float
+    tilt2: Float
         Zenith angle between the spin and orbital angular momenta for the secondary object
     phi12: Float
         Difference between the azimuthal angles of the individual spin vector projections
@@ -483,16 +484,16 @@ def spin_to_cartesian_spin(
 
     s1hat = jnp.array(
         [
-            jnp.sin(theta1) * jnp.cos(phiRef),
-            jnp.sin(theta1) * jnp.sin(phiRef),
-            jnp.cos(theta1),
+            jnp.sin(tilt1) * jnp.cos(phiRef),
+            jnp.sin(tilt1) * jnp.sin(phiRef),
+            jnp.cos(tilt1),
         ]
     )
     s2hat = jnp.array(
         [
-            jnp.sin(theta2) * jnp.cos(phi12 + phiRef),
-            jnp.sin(theta2) * jnp.sin(phi12 + phiRef),
-            jnp.cos(theta2),
+            jnp.sin(tilt2) * jnp.cos(phi12 + phiRef),
+            jnp.sin(tilt2) * jnp.sin(phi12 + phiRef),
+            jnp.cos(tilt2),
         ]
     )
 

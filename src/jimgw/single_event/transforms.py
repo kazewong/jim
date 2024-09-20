@@ -37,7 +37,7 @@ class SpinToCartesianSpinTransform(NtoNTransform):
         freq_ref: Float,
     ):
         name_mapping = (
-            ["theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"],
+            ["theta_jn", "phi_jl", "tilt_1", "tilt_2", "phi_12", "a_1", "a_2"],
             ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"],
         )
         super().__init__(name_mapping)
@@ -48,8 +48,8 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
                 x["theta_jn"],
                 x["phi_jl"],
-                x["theta_1"],
-                x["theta_2"],
+                x["tilt_1"],
+                x["tilt_2"],
                 x["phi_12"],
                 x["a_1"],
                 x["a_2"],
