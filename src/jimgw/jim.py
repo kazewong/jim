@@ -104,19 +104,38 @@ class Jim(object):
 
     def sample(self, key: PRNGKeyArray, initial_position: Array = jnp.array([])):
         if initial_position.size == 0:
-            initial_position = jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
-        
-            while not jax.tree.reduce(jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)).all():
-                non_finite_index = jnp.where(jnp.any(~jax.tree.reduce(jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)),axis=1))[0]
+            initial_position = (
+                jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
+            )
+
+            while not jax.tree.reduce(
+                jnp.logical_and,
+                jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+            ).all():
+                non_finite_index = jnp.where(
+                    jnp.any(
+                        ~jax.tree.reduce(
+                            jnp.logical_and,
+                            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                        ),
+                        axis=1,
+                    )
+                )[0]
 
                 key, subkey = jax.random.split(key)
                 guess = self.prior.sample(subkey, self.sampler.n_chains)
                 for transform in self.sample_transforms:
                     guess = jax.vmap(transform.forward)(guess)
-                guess = jnp.array(jax.tree.leaves({key: guess[key] for key in self.parameter_names})).T
-                finite_guess = jnp.where(jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess),axis=1))[0]
+                guess = jnp.array(
+                    jax.tree.leaves({key: guess[key] for key in self.parameter_names})
+                ).T
+                finite_guess = jnp.where(
+                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+                )[0]
                 common_length = min(len(finite_guess), len(non_finite_index))
-                initial_position = initial_position.at[non_finite_index[:common_length]].set(guess[:common_length])
+                initial_position = initial_position.at[
+                    non_finite_index[:common_length]
+                ].set(guess[:common_length])
         self.sampler.sample(initial_position, None)  # type: ignore
 
     def maximize_likelihood(
@@ -157,7 +176,7 @@ class Jim(object):
         training_chain = self.add_name(training_chain)
         if transform:
             for sample_transform in reversed(self.sample_transforms):
-                training_chain = sample_transform.backward(training_chain)
+                training_chain = jax.vmap(sample_transform.backward)(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
@@ -167,7 +186,7 @@ class Jim(object):
         production_chain = self.add_name(production_chain)
         if transform:
             for sample_transform in reversed(self.sample_transforms):
-                production_chain = sample_transform.backward(production_chain)
+                production_chain = jax.vmap(sample_transform.backward)(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -223,10 +242,10 @@ class Jim(object):
         else:
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 
-        chains = chains.transpose(2, 0, 1)
+        chains = chains.reshape(-1, self.prior.n_dim)
         chains = self.add_name(chains)
         for sample_transform in reversed(self.sample_transforms):
-            chains = sample_transform.backward(chains)
+            chains = jax.vmap(sample_transform.backward)(chains)
         return chains
 
     def plot(self):
