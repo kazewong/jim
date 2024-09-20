@@ -25,4 +25,8 @@ jobs:
         python -m pip install pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install .
+    - id: changed-files
+      uses: tj-actions/changed-files@v36
     - uses: pre-commit/action@v3.0.0
+      with:
+        extra_args: pip-compile --files ${{ steps.changed-files.outputs.all_changed_files }}
