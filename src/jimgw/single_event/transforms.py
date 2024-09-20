@@ -145,7 +145,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         tc_min: Float,
         tc_max: Float,
     ):
-        name_mapping = [["t_c"], ["t_det_unbounded"]]
+        name_mapping = (["t_c"], ["t_det_unbounded"])
         conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
@@ -159,7 +159,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         assert "t_c" in name_mapping[0] and "t_det_unbounded" in name_mapping[1]
         assert "ra" in conditional_names and "dec" in conditional_names
 
-        @jnp.vectorize
         def time_delay(ra, dec, gmst):
             return self.ifo.delay_from_geocenter(ra, dec, gmst)
 
@@ -181,9 +180,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
 
         def named_inverse_transform(x):
 
-            time_shift = jnp.vectorize(self.ifo.delay_from_geocenter)(
-                x["ra"], x["dec"], self.gmst
-            )
+            time_shift = self.ifo.delay_from_geocenter(x["ra"], x["dec"], self.gmst)
 
             t_det_min = self.tc_min + time_shift
             t_det_max = self.tc_max + time_shift
@@ -228,7 +225,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         gps_time: Float,
         ifo: GroundBased2G,
     ):
-        name_mapping = [["phase_c"], ["phase_det"]]
+        name_mapping = (["phase_c"], ["phase_det"])
         conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
@@ -245,7 +242,6 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             and "iota" in conditional_names
         )
 
-        @jnp.vectorize
         def _calc_R_det_arg(ra, dec, psi, iota, gmst):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
@@ -303,7 +299,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         dL_min: Float,
         dL_max: Float,
     ):
-        name_mapping = [["d_L"], ["d_hat_unbounded"]]
+        name_mapping = (["d_L"], ["d_hat_unbounded"])
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
@@ -323,7 +319,6 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             and "M_c" in conditional_names
         )
 
-        @jnp.vectorize
         def _calc_R_dets(ra, dec, psi, iota):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
