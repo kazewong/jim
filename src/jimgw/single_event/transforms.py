@@ -25,7 +25,7 @@ from jimgw.single_event.utils import (
 
 
 @jaxtyped(typechecker=typechecker)
-class SpinToCartesianSpinTransform(NtoNTransform):
+class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
     """
     Spin to Cartesian spin transformation
     """
