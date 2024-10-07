@@ -217,7 +217,7 @@ class Jim(object):
             chains = self.sampler.get_sampler_state(training=False)["chains"]
 
         chains = chains.reshape(-1, self.prior.n_dim)
-        chains = self.add_name(chains)
+        chains = jax.vmap(self.add_name)(chains)
         for sample_transform in reversed(self.sample_transforms):
             chains = jax.vmap(sample_transform.backward)(chains)
         return chains

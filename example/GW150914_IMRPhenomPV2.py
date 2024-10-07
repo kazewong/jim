@@ -19,7 +19,7 @@ from jimgw.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
-    SpinToCartesianSpinTransform,
+    SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
@@ -65,23 +65,14 @@ q_prior = UniformPrior(q_min, q_max, parameter_names=["q"])
 prior = prior + [Mc_prior, q_prior]
 
 # Spin prior
-a_1_prior = UniformPrior(0.0, 1.0, parameter_names=["a_1"])
-a_2_prior = UniformPrior(0.0, 1.0, parameter_names=["a_2"])
-theta_jn_prior = SinePrior(parameter_names=["theta_jn"])
-phi_jl_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_jl"])
-tilt_1_prior = SinePrior(parameter_names=["tilt_1"])
-tilt_2_prior = SinePrior(parameter_names=["tilt_2"])
-phi_12_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phi_12"])
-
+s1_prior = UniformSpherePrior(parameter_names=["s1"])
+s2_prior = UniformSpherePrior(parameter_names=["s2"])
+iota_prior = SinePrior(parameter_names=["iota"])
 
 prior = prior + [
-    a_1_prior,
-    a_2_prior,
-    theta_jn_prior,
-    phi_jl_prior,
-    tilt_1_prior,
-    tilt_2_prior,
-    phi_12_prior,
+    s1_prior,
+    s2_prior,
+    iota_prior,
 ]
 
 # Extrinsic prior
@@ -106,20 +97,19 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    SpinToCartesianSpinTransform(freq_ref=20.),
     DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
     GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
     BoundToUnbound(name_mapping = (["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
-    BoundToUnbound(name_mapping = (["theta_jn"], ["theta_jn_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["phi_jl"], ["phi_jl_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["tilt_1"], ["tilt_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["tilt_2"], ["tilt_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["phi_12"], ["phi_12_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["a_1"], ["a_1_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = (["a_2"], ["a_2_unbounded"]) , original_lower_bound=0.0, original_upper_bound=1.0),
+    BoundToUnbound(name_mapping = (["s1_phi"], ["s1_phi_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = (["s2_phi"], ["s2_phi_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(name_mapping = (["iota"], ["iota_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = (["s1_theta"], ["s1_theta_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = (["s2_theta"], ["s2_theta_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
+    BoundToUnbound(name_mapping = (["s1_mag"], ["s1_mag_unbounded"]) , original_lower_bound=0.0, original_upper_bound=0.99),
+    BoundToUnbound(name_mapping = (["s2_mag"], ["s2_mag_unbounded"]) , original_lower_bound=0.0, original_upper_bound=0.99),
     BoundToUnbound(name_mapping = (["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
     BoundToUnbound(name_mapping = (["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
     BoundToUnbound(name_mapping = (["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
@@ -128,6 +118,8 @@ sample_transforms = [
 
 likelihood_transforms = [
     MassRatioToSymmetricMassRatioTransform,
+    SphereSpinToCartesianSpinTransform("s1"),
+    SphereSpinToCartesianSpinTransform("s2"),
 ]
 
 

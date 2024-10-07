@@ -72,6 +72,48 @@ class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
 
 
 @jaxtyped(typechecker=typechecker)
+class SphereSpinToCartesianSpinTransform(BijectiveTransform):
+    """
+    Spin to Cartesian spin transformation
+    """
+
+    def __init__(
+        self,
+        label: str,
+    ):
+        name_mapping = (
+            [label + "_mag", label + "_theta", label + "_phi"],
+            [label + "_x", label + "_y", label + "_z"],
+        )
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            mag, theta, phi = x[label + "_mag"], x[label + "_theta"], x[label + "_phi"]
+            x = mag * jnp.sin(theta) * jnp.cos(phi)
+            y = mag * jnp.sin(theta) * jnp.sin(phi)
+            z = mag * jnp.cos(theta)
+            return {
+                label + "_x": x,
+                label + "_y": y,
+                label + "_z": z,
+            }
+
+        def named_inverse_transform(x):
+            x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
+            mag = jnp.sqrt(x**2 + y**2 + z**2)
+            theta = jnp.arccos(z / mag)
+            phi = jnp.arctan2(y, x)
+            return {
+                label + "_mag": mag,
+                label + "_theta": theta,
+                label + "_phi": phi,
+            }
+
+        self.transform_func = named_transform
+        self.inverse_transform_func = named_inverse_transform
+
+
+@jaxtyped(typechecker=typechecker)
 class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     """
     Transform sky frame to detector frame sky position
