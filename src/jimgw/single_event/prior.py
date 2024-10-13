@@ -1,15 +1,9 @@
-import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import jaxtyped
 
 from jimgw.prior import (
-    Prior,
-    CombinePrior,
-    UniformPrior,
     PowerLawPrior,
-    SinePrior,
 )
-
 
 
 @jaxtyped(typechecker=typechecker)

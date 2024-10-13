@@ -397,6 +397,7 @@ class PowerLawPrior(SequentialTransformPrior):
             ],
         )
 
+
 def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
     if prior.composite:
         if isinstance(prior.base_prior, list):
@@ -408,9 +409,6 @@ def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
         output.append(prior)
 
     return output
-
-
-
 
 
 # ====================== Things below may need rework ======================
