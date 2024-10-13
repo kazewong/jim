@@ -25,7 +25,7 @@ from jimgw.single_event.utils import (
 
 
 @jaxtyped(typechecker=typechecker)
-class SpinToCartesianSpinTransform(NtoNTransform):
+class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
     """
     Spin to Cartesian spin transformation
     """
@@ -37,7 +37,7 @@ class SpinToCartesianSpinTransform(NtoNTransform):
         freq_ref: Float,
     ):
         name_mapping = (
-            ["theta_jn", "phi_jl", "theta_1", "theta_2", "phi_12", "a_1", "a_2"],
+            ["theta_jn", "phi_jl", "tilt_1", "tilt_2", "phi_12", "a_1", "a_2"],
             ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"],
         )
         super().__init__(name_mapping)
@@ -48,8 +48,8 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
                 x["theta_jn"],
                 x["phi_jl"],
-                x["theta_1"],
-                x["theta_2"],
+                x["tilt_1"],
+                x["tilt_2"],
                 x["phi_12"],
                 x["a_1"],
                 x["a_2"],
@@ -69,6 +69,48 @@ class SpinToCartesianSpinTransform(NtoNTransform):
             }
 
         self.transform_func = named_transform
+
+
+@jaxtyped(typechecker=typechecker)
+class SphereSpinToCartesianSpinTransform(BijectiveTransform):
+    """
+    Spin to Cartesian spin transformation
+    """
+
+    def __init__(
+        self,
+        label: str,
+    ):
+        name_mapping = (
+            [label + "_mag", label + "_theta", label + "_phi"],
+            [label + "_x", label + "_y", label + "_z"],
+        )
+        super().__init__(name_mapping)
+
+        def named_transform(x):
+            mag, theta, phi = x[label + "_mag"], x[label + "_theta"], x[label + "_phi"]
+            x = mag * jnp.sin(theta) * jnp.cos(phi)
+            y = mag * jnp.sin(theta) * jnp.sin(phi)
+            z = mag * jnp.cos(theta)
+            return {
+                label + "_x": x,
+                label + "_y": y,
+                label + "_z": z,
+            }
+
+        def named_inverse_transform(x):
+            x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
+            mag = jnp.sqrt(x**2 + y**2 + z**2)
+            theta = jnp.arccos(z / mag)
+            phi = jnp.arctan2(y, x)
+            return {
+                label + "_mag": mag,
+                label + "_theta": theta,
+                label + "_phi": phi,
+            }
+
+        self.transform_func = named_transform
+        self.inverse_transform_func = named_inverse_transform
 
 
 @jaxtyped(typechecker=typechecker)

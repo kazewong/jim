@@ -331,7 +331,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], **kwargs):
+    def __init__(self, parameter_names: list[str], max_mag: float = 1.0, **kwargs):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -341,7 +341,7 @@ class UniformSpherePrior(CombinePrior):
         ]
         super().__init__(
             [
-                UniformPrior(0.0, 1.0, [self.parameter_names[0]]),
+                UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
                 SinePrior([self.parameter_names[1]]),
                 UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
@@ -396,6 +396,19 @@ class PowerLawPrior(SequentialTransformPrior):
                 transform,
             ],
         )
+
+
+def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
+    if prior.composite:
+        if isinstance(prior.base_prior, list):
+            for subprior in prior.base_prior:
+                output = trace_prior_parent(subprior, output)
+        elif isinstance(prior.base_prior, Prior):
+            output = trace_prior_parent(prior.base_prior, output)
+    else:
+        output.append(prior)
+
+    return output
 
 
 # ====================== Things below may need rework ======================
