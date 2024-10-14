@@ -38,6 +38,31 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
+def Mc_m1_to_m2(Mc: Float, m1: Float):
+
+    a = jnp.power(m1, 3.0)
+    b = 0.0
+    c = -jnp.power(Mc, 5.0)
+    d = -jnp.power(Mc, 5.0) * m1
+
+    f = ((3.0 * c / a) - ((b**2) / (a**2))) / 3.0
+    g = (((2.0 * (b**3)) / (a**3)) - ((9.0 * b * c) / (a**2)) + (27.0 * d / a)) / 27.0
+    g_squared = g**2
+    f_cubed = f**3
+    h = g_squared / 4.0 + f_cubed / 27.0
+
+    R = -(g / 2.0) + jnp.sqrt(h)
+    S = jnp.cbrt(R)
+    T = -(g / 2.0) - jnp.sqrt(h)
+    U = jnp.cbrt(T)
+
+    x1 = (S + U) - (b / (3.0 * a))
+    x2 = -(S + U) / 2 - (b / (3.0 * a)) + (S - U) * jnp.sqrt(3.0) * 0.5j
+    x3 = -(S + U) / 2 - (b / (3.0 * a)) - (S - U) * jnp.sqrt(3.0) * 0.5j
+
+    return jnp.array([x1, x2, x3])
+
+
 def m1_m2_to_M_q(m1: Float, m2: Float):
     """
     Transforming the primary mass m1 and secondary mass m2 to the Total mass M

@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from jax import lax
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
@@ -11,6 +12,7 @@ from jimgw.transforms import (
     reverse_bijective_transform,
 )
 from jimgw.single_event.utils import (
+    Mc_m1_to_m2,
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
     m1_m2_to_Mc_eta,
@@ -22,6 +24,101 @@ from jimgw.single_event.utils import (
     euler_rotation,
     spin_to_cartesian_spin,
 )
+
+
+@jaxtyped(typechecker=typechecker)
+class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform):
+    """ """
+
+    q_min: Float
+    q_max: Float
+    M_c_min: Float
+    M_c_max: Float
+    m_1_turning_point_1: Float
+    m_1_turning_point_2: Float
+
+    def __init__(
+        self,
+        q_min: Float,
+        q_max: Float,
+        M_c_min: Float,
+        M_c_max: Float,
+    ):
+        name_mapping = (
+            [
+                "m_2_quantile",
+            ],
+            [
+                "m_2",
+            ],
+        )
+        conditional_names = [
+            "m_1",
+        ]
+        super().__init__(name_mapping, conditional_names)
+
+        self.q_min = q_min
+        self.q_max = q_max
+        self.M_c_min = M_c_min
+        self.M_c_max = M_c_max
+
+        assert (M_c_min >= 0.0) & (M_c_max > 0.0), "Chirp mass range has to be positive"
+        assert (
+            M_c_max > M_c_min
+        ), "Upper bound on chirp mass has to be higher than the lower bound"
+        assert (q_min >= 0.0) & (q_max > 0.0), "Mass ratio range has to be positive"
+        assert (
+            q_max > q_min
+        ), "Upper bound on mass ratio has to be higher than the lower bound"
+        assert q_max <= 1.0, "The mass ratio is defined to be less than 1"
+
+        self.m_1_turning_point_1 = Mc_q_to_m1_m2(self.M_c_min, self.q_min)[0]
+        self.m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
+
+        def m2_range_regime_1(m_1: Float):
+            lower_bound = Mc_m1_to_m2(self.M_c_min, m_1)[0].real
+            upper_bound = self.q_max * m_1
+            return [lower_bound, upper_bound]
+
+        def m2_range_regime_2(m_1: Float):
+            lower_bound = self.q_min * m_1
+            upper_bound = self.q_max * m_1
+            return [lower_bound, upper_bound]
+
+        def m2_range_regime_3(m_1: Float):
+            lower_bound = self.q_min * m_1
+            upper_bound = Mc_m1_to_m2(self.M_c_max, m_1)[0].real
+            return [lower_bound, upper_bound]
+
+        def m1_to_m2_range(m_1: Float):
+            m2_range = lax.cond(
+                m_1 < self.m_1_turning_point_1,
+                lambda _: m2_range_regime_1(m_1),
+                lambda _: lax.cond(
+                    m_1 <= self.m_1_turning_point_2,
+                    lambda _: m2_range_regime_2(m_1),
+                    lambda _: m2_range_regime_3(m_1),
+                ),
+            )
+            return m2_range
+
+        def named_transform(x):
+            m2_range = m1_to_m2_range(x["m_1"])
+            m_2 = (m2_range[1] - m2_range[0]) * x["m_2_quantile"] + m2_range[0]
+            return {
+                "m_2": m_2,
+            }
+
+        self.transform_func = named_transform
+
+        def named_inverse_transform(x):
+            m2_range = m1_to_m2_range(x["m_1"])
+            m_2_quantile = (x["m_2"] - m2_range[0]) / (m2_range[1] - m2_range[0])
+            return {
+                "m_2_quantile": m_2_quantile,
+            }
+
+        self.inverse_transform_func = named_inverse_transform
 
 
 @jaxtyped(typechecker=typechecker)
