@@ -43,6 +43,8 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
         q_max: Float,
         M_c_min: Float,
         M_c_max: Float,
+        m_1_min: Float,
+        m_1_max: Float,
     ):
         name_mapping = (
             [
@@ -72,6 +74,16 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
         ), "Upper bound on mass ratio has to be higher than the lower bound"
         assert q_max <= 1.0, "The mass ratio is defined to be less than 1"
 
+        m_1_lower_bound = Mc_q_to_m1_m2(self.M_c_min, self.q_max)[0]
+        m_1_upper_bound = Mc_q_to_m1_m2(self.M_c_max, self.q_min)[0]
+
+        assert (
+            m_1_min >= m_1_lower_bound
+        ), f"Please increase the lower bound on m_1 to {m_1_lower_bound}"
+        assert (
+            m_1_max <= m_1_upper_bound
+        ), f"Please decrease the lower bound on m_1 to {m_1_upper_bound}"
+
         self.m_1_turning_point_1 = Mc_q_to_m1_m2(self.M_c_min, self.q_min)[0]
         self.m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
 
@@ -93,12 +105,14 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
         def m1_to_m2_range(m_1: Float):
             m2_range = lax.cond(
                 m_1 < self.m_1_turning_point_1,
-                lambda _: m2_range_regime_1(m_1),
-                lambda _: lax.cond(
-                    m_1 <= self.m_1_turning_point_2,
-                    lambda _: m2_range_regime_2(m_1),
-                    lambda _: m2_range_regime_3(m_1),
+                m2_range_regime_1,
+                lambda x: lax.cond(
+                    x <= self.m_1_turning_point_2,
+                    m2_range_regime_2,
+                    m2_range_regime_3,
+                    x,
                 ),
+                m_1,
             )
             return m2_range
 
