@@ -82,7 +82,7 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
         ), f"Please increase the lower bound on m_1 to {m_1_lower_bound}"
         assert (
             m_1_max <= m_1_upper_bound
-        ), f"Please decrease the lower bound on m_1 to {m_1_upper_bound}"
+        ), f"Please decrease the upper bound on m_1 to {m_1_upper_bound}"
 
         self.m_1_turning_point_1 = Mc_q_to_m1_m2(self.M_c_min, self.q_min)[0]
         self.m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
