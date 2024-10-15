@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from jax import lax
 from beartype import beartype as typechecker
-from jaxtyping import Float, Array, jaxtyped
+from jaxtyping import Float, Array, jaxtyped, Bool
 from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
@@ -34,8 +34,9 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
     q_max: Float
     M_c_min: Float
     M_c_max: Float
-    m_1_turning_point_1: Float
-    m_1_turning_point_2: Float
+    m_1_turning_point_lower: Float
+    m_1_turning_point_upper: Float
+    regime_2_mass_ratio: Bool
 
     def __init__(
         self,
@@ -84,16 +85,11 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
             m_1_max <= m_1_upper_bound
         ), f"Please decrease the upper bound on m_1 to {m_1_upper_bound}"
 
-        self.m_1_turning_point_1 = Mc_q_to_m1_m2(self.M_c_min, self.q_min)[0]
-        self.m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
+        m_1_turning_point_1 = Mc_q_to_m1_m2(self.M_c_min, self.q_min)[0]
+        m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
 
         def m2_range_regime_1(m_1: Float):
             lower_bound = Mc_m1_to_m2(self.M_c_min, m_1)[0].real
-            upper_bound = self.q_max * m_1
-            return [lower_bound, upper_bound]
-
-        def m2_range_regime_2(m_1: Float):
-            lower_bound = self.q_min * m_1
             upper_bound = self.q_max * m_1
             return [lower_bound, upper_bound]
 
@@ -102,12 +98,32 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
             upper_bound = Mc_m1_to_m2(self.M_c_max, m_1)[0].real
             return [lower_bound, upper_bound]
 
+        if m_1_turning_point_2 >= m_1_turning_point_1:
+            self.m_1_turning_point_lower = m_1_turning_point_1
+            self.m_1_turning_point_upper = m_1_turning_point_2
+            self.regime_2_mass_ratio = True
+        else:
+            self.m_1_turning_point_lower = m_1_turning_point_2
+            self.m_1_turning_point_upper = m_1_turning_point_1
+            self.regime_2_mass_ratio = False
+
+        def m2_range_regime_2(m_1: Float):
+            return lax.cond(
+                self.regime_2_mass_ratio,
+                lambda x: [self.q_min * x, self.q_max * x],
+                lambda x: [
+                    Mc_m1_to_m2(self.M_c_min, x)[0].real,
+                    Mc_m1_to_m2(self.M_c_max, x)[0].real,
+                ],
+                m_1,
+            )
+
         def m1_to_m2_range(m_1: Float):
             m2_range = lax.cond(
-                m_1 < self.m_1_turning_point_1,
+                m_1 < self.m_1_turning_point_lower,
                 m2_range_regime_1,
                 lambda x: lax.cond(
-                    x <= self.m_1_turning_point_2,
+                    x <= self.m_1_turning_point_upper,
                     m2_range_regime_2,
                     m2_range_regime_3,
                     x,
