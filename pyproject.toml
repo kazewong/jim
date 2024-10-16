@@ -16,6 +16,7 @@ dependencies = [
     "gwpy>=3.0.10",
     "jax>=0.4.34",
     "jaxtyping>=0.2.34",
+    "pytest>=8.3.3",
     "ripplegw>=0.0.9",
     "typed-argument-parser>=1.10.1",
 ]
