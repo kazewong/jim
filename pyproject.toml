@@ -1,6 +1,17 @@
-[build-system]
-requires = ["setuptools","wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.pyright]
-reportIncompatibleMethodOverride = "warning"
+[project]
+name = "jim"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "astropy>=6.1.4",
+    "beartype>=0.19.0",
+    "corner>=2.2.2",
+    "flowmc>=0.3.4",
+    "gwpy>=3.0.10",
+    "jax>=0.4.34",
+    "jaxtyping>=0.2.34",
+    "ripplegw>=0.0.9",
+    "typed-argument-parser>=1.10.1",
+]
