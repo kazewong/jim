@@ -1,25 +1,91 @@
-from beartype import beartype as typechecker
-from jaxtyping import jaxtyped
+from dataclasses import field
 
+import jax
+
+from beartype import beartype as typechecker
+from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+
+from jimgw.transforms import BijectiveTransform
 from jimgw.prior import (
-    PowerLawPrior,
+    Prior,
+    UniformPrior,
+    CombinePrior,
+)
+from jimgw.single_event.transforms import (
+    UniformComponentMassSecondaryMassQuantileToSecondaryMassTransform,
+)
+from jimgw.single_event.utils import (
+    Mc_q_to_m1_m2,
 )
 
 
 @jaxtyped(typechecker=typechecker)
-class UniformComponentChirpMassPrior(PowerLawPrior):
-    """
-    A prior in the range [xmin, xmax) for chirp mass which assumes the
-    component masses to be uniformly distributed.
+class ChirpMassMassRatioBoundedUniformComponentPrior(CombinePrior):
 
-    p(M_c) ~ M_c
-    """
+    M_c_min: float = 5.0
+    M_c_max: float = 15.0
+    q_min: float = 0.125
+    q_max: float = 1.0
 
-    def __repr__(self):
-        return f"UniformInComponentsChirpMassPrior(xmin={self.xmin}, xmax={self.xmax}, naming={self.parameter_names})"
+    m_1_min: float = 6.0
+    m_1_max: float = 53.0
+    m_2_min: float = 3.0
+    m_2_max: float = 17.0
 
-    def __init__(self, xmin: float, xmax: float):
-        super().__init__(xmin, xmax, 1.0, ["M_c"])
+    base_prior: list[Prior] = field(default_factory=list)
+    transform: BijectiveTransform = (
+        UniformComponentMassSecondaryMassQuantileToSecondaryMassTransform(
+            q_min=q_min,
+            q_max=q_max,
+            M_c_min=M_c_min,
+            M_c_max=M_c_max,
+            m_1_min=m_1_min,
+            m_1_max=m_1_max,
+        )
+    )
+
+    def __init__(self, q_min: Float, q_max: Float, M_c_min: Float, M_c_max: Float):
+        self.parameter_names = ["m_1", "m_2"]
+        # calculate the respective range of m1 and m2 given the Mc-q range
+        self.M_c_min = M_c_min
+        self.M_c_max = M_c_max
+        self.q_min = q_min
+        self.q_max = q_max
+        self.m_1_min = Mc_q_to_m1_m2(M_c_min, q_max)[0]
+        self.m_1_max = Mc_q_to_m1_m2(M_c_max, q_min)[0]
+        self.m_2_min = Mc_q_to_m1_m2(M_c_min, q_min)[1]
+        self.m_2_max = Mc_q_to_m1_m2(M_c_max, q_max)[1]
+        # define the prior on m1 and m2_quantile
+        m1_prior = UniformPrior(self.m_1_min, self.m_1_max, parameter_names=["m_1"])
+        m2q_prior = UniformPrior(0.0, 1.0, parameter_names=["m_2_quantile"])
+        self.base_prior = [m1_prior, m2q_prior]
+        self.transform = (
+            UniformComponentMassSecondaryMassQuantileToSecondaryMassTransform(
+                q_min=self.q_min,
+                q_max=self.q_max,
+                M_c_min=self.M_c_min,
+                M_c_max=self.M_c_max,
+                m_1_min=self.m_1_min,
+                m_1_max=self.m_1_max,
+            )
+        )
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        output = {}
+        for prior in self.base_prior:
+            rng_key, subkey = jax.random.split(rng_key)
+            output.update(prior.sample(subkey, n_samples))
+        output = jax.vmap(self.transform.forward)(output)
+        return output
+
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        z, jacobian = self.transform.inverse(z)
+        output = jacobian
+        for prior in self.base_prior:
+            output += prior.log_prob(z)
+        return output
 
 
 # ====================== Things below may need rework ======================

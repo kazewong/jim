@@ -24,10 +24,11 @@ from jimgw.single_event.transforms import (
     DistanceToSNRWeightedDistanceTransform,
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
-    UniformInComponentMassSecondaryMassTransform,
     ComponentMassesToChirpMassMassRatioTransform,
 )
-from jimgw.single_event.utils import Mc_q_to_m1_m2
+from jimgw.single_event.prior import (
+    ChirpMassMassRatioBoundedUniformComponentPrior
+) 
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -57,10 +58,14 @@ prior = []
 # Mass prior
 M_c_min, M_c_max = 10.0, 80.0
 q_min, q_max = 0.125, 1.0
-m1_prior = UniformPrior(15.0, 280.0, parameter_names=['m_1'])
-m2_prior = UniformPrior(0.0, 1.0, parameter_names=['m_2_quantile'])
+m1m2_prior = ChirpMassMassRatioBoundedUniformComponentPrior(
+    q_min=q_min,
+    q_max=q_max,
+    M_c_min=M_c_min,
+    M_c_max=M_c_max,
+)
 
-prior = prior + [m1_prior, m2_prior]
+prior = prior + [m1m2_prior]
 
 # Spin prior
 s1_prior = UniformSpherePrior(parameter_names=["s1"])
@@ -95,7 +100,6 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    UniformInComponentMassSecondaryMassTransform(q_min=q_min, q_max=q_max, M_c_min=M_c_min, M_c_max=M_c_max, m_1_min=m1_prior.xmin, m_1_max=m1_prior.xmax),
     ComponentMassesToChirpMassMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
@@ -117,7 +121,6 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    UniformInComponentMassSecondaryMassTransform(q_min=q_min, q_max=q_max, M_c_min=M_c_min, M_c_max=M_c_max, m_1_min=m1_prior.xmin, m_1_max=m1_prior.xmax),
     ComponentMassesToChirpMassMassRatioTransform,
     MassRatioToSymmetricMassRatioTransform,
     SphereSpinToCartesianSpinTransform("s1"),
@@ -133,7 +136,8 @@ likelihood = TransientLikelihoodFD(
 )
 
 
-mass_matrix = jnp.eye(15)
+n_dim = sum([ind_prior.n_dim for ind_prior in prior.base_prior])
+mass_matrix = jnp.eye(n_dim)
 mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[9, 9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}

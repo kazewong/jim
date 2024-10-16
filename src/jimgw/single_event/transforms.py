@@ -27,7 +27,9 @@ from jimgw.single_event.utils import (
 
 
 @jaxtyped(typechecker=typechecker)
-class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform):
+class UniformComponentMassSecondaryMassQuantileToSecondaryMassTransform(
+    ConditionalBijectiveTransform
+):
     """ """
 
     q_min: Float
