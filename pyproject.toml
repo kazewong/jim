@@ -22,11 +22,11 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = [
-    "mkdocs-gen-files==0.5.0",
-    "mkdocs-jupyter==0.24.2",
-    "mkdocs-literate-nav==0.6.0",
-    "mkdocs-material==9.1.18",
-    "mkdocs==1.4.3",
-    "mkdocstrings[python]==0.22.0",
-    "pymdown-extensions==10.1",
+    "mkdocs-gen-files",
+    "mkdocs-jupyter",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs",
+    "mkdocstrings[python]",
+    "pymdown-extensions",
 ]
