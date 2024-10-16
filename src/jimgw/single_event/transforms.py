@@ -89,13 +89,13 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
         m_1_turning_point_2 = Mc_q_to_m1_m2(self.M_c_max, self.q_max)[0]
 
         def m2_range_regime_1(m_1: Float):
-            lower_bound = Mc_m1_to_m2(self.M_c_min, m_1)[0].real
+            lower_bound = Mc_m1_to_m2(self.M_c_min, m_1)
             upper_bound = self.q_max * m_1
             return [lower_bound, upper_bound]
 
         def m2_range_regime_3(m_1: Float):
             lower_bound = self.q_min * m_1
-            upper_bound = Mc_m1_to_m2(self.M_c_max, m_1)[0].real
+            upper_bound = Mc_m1_to_m2(self.M_c_max, m_1)
             return [lower_bound, upper_bound]
 
         if m_1_turning_point_2 >= m_1_turning_point_1:
@@ -112,8 +112,8 @@ class UniformInComponentMassSecondaryMassTransform(ConditionalBijectiveTransform
                 self.regime_2_mass_ratio,
                 lambda x: [self.q_min * x, self.q_max * x],
                 lambda x: [
-                    Mc_m1_to_m2(self.M_c_min, x)[0].real,
-                    Mc_m1_to_m2(self.M_c_max, x)[0].real,
+                    Mc_m1_to_m2(self.M_c_min, x),
+                    Mc_m1_to_m2(self.M_c_max, x),
                 ],
                 m_1,
             )

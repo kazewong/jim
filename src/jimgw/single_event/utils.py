@@ -38,7 +38,7 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
-def Mc_m1_to_m2(Mc: Float, m1: Float):
+def Mc_m1_to_m2(Mc: Float, m1: Float) -> Float:
 
     a = jnp.power(m1, 3.0)
     b = 0.0
@@ -57,10 +57,8 @@ def Mc_m1_to_m2(Mc: Float, m1: Float):
     U = jnp.cbrt(T)
 
     x1 = (S + U) - (b / (3.0 * a))
-    x2 = -(S + U) / 2 - (b / (3.0 * a)) + (S - U) * jnp.sqrt(3.0) * 0.5j
-    x3 = -(S + U) / 2 - (b / (3.0 * a)) - (S - U) * jnp.sqrt(3.0) * 0.5j
 
-    return jnp.array([x1, x2, x3])
+    return x1.real
 
 
 def m1_m2_to_M_q(m1: Float, m2: Float):
