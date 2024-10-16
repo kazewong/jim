@@ -24,11 +24,7 @@ from jimgw.single_event.transforms import (
     DistanceToSNRWeightedDistanceTransform,
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
-    ComponentMassesToChirpMassMassRatioTransform,
 )
-from jimgw.single_event.prior import (
-    ChirpMassMassRatioBoundedUniformComponentPrior
-) 
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
@@ -58,14 +54,10 @@ prior = []
 # Mass prior
 M_c_min, M_c_max = 10.0, 80.0
 q_min, q_max = 0.125, 1.0
-m1m2_prior = ChirpMassMassRatioBoundedUniformComponentPrior(
-    q_min=q_min,
-    q_max=q_max,
-    M_c_min=M_c_min,
-    M_c_max=M_c_max,
-)
+Mc_prior = UniformPrior(M_c_min, M_c_max, parameter_names=['M_c'])
+q_prior = UniformPrior(q_min, q_max, parameter_names=['q'])
 
-prior = prior + [m1m2_prior]
+prior = prior + [Mc_prior, q_prior]
 
 # Spin prior
 s1_prior = UniformSpherePrior(parameter_names=["s1"])
@@ -100,7 +92,6 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
     GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
@@ -121,7 +112,6 @@ sample_transforms = [
 ]
 
 likelihood_transforms = [
-    ComponentMassesToChirpMassMassRatioTransform,
     MassRatioToSymmetricMassRatioTransform,
     SphereSpinToCartesianSpinTransform("s1"),
     SphereSpinToCartesianSpinTransform("s2"),
