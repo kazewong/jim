@@ -3,22 +3,55 @@ import jax.numpy as jnp
 from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler
-from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
 from jaxtyping import Array, Float, PRNGKeyArray
 
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
+from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
 class Jim(object):
     """
     Master class for interfacing with flowMC
-
     """
 
-    def __init__(self, likelihood: LikelihoodBase, prior: Prior, **kwargs):
-        self.Likelihood = likelihood
-        self.Prior = prior
+    likelihood: LikelihoodBase
+    prior: Prior
+
+    # Name of parameters to sample from
+    sample_transforms: list[BijectiveTransform]
+    likelihood_transforms: list[NtoMTransform]
+    parameter_names: list[str]
+    sampler: Sampler
+
+    def __init__(
+        self,
+        likelihood: LikelihoodBase,
+        prior: Prior,
+        sample_transforms: list[BijectiveTransform] = [],
+        likelihood_transforms: list[NtoMTransform] = [],
+        **kwargs,
+    ):
+        self.likelihood = likelihood
+        self.prior = prior
+
+        self.sample_transforms = sample_transforms
+        self.likelihood_transforms = likelihood_transforms
+        self.parameter_names = prior.parameter_names
+
+        if len(sample_transforms) == 0:
+            print(
+                "No sample transforms provided. Using prior parameters as sampling parameters"
+            )
+        else:
+            print("Using sample transforms")
+            for transform in sample_transforms:
+                self.parameter_names = transform.propagate_name(self.parameter_names)
+
+        if len(likelihood_transforms) == 0:
+            print(
+                "No likelihood transforms provided. Using prior parameters as likelihood parameters"
+            )
 
         seed = kwargs.get("seed", 0)
 
@@ -33,11 +66,11 @@ class Jim(object):
 
         rng_key, subkey = jax.random.split(rng_key)
         model = MaskedCouplingRQSpline(
-            self.Prior.n_dim, num_layers, hidden_size, num_bins, subkey
+            self.prior.n_dim, num_layers, hidden_size, num_bins, subkey
         )
 
-        self.Sampler = Sampler(
-            self.Prior.n_dim,
+        self.sampler = Sampler(
+            self.prior.n_dim,
             rng_key,
             None,  # type: ignore
             local_sampler,
@@ -45,43 +78,64 @@ class Jim(object):
             **kwargs,
         )
 
+    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+        """
+        Turn an array into a dictionary
+
+        Parameters
+        ----------
+        x : Array
+            An array of parameters. Shape (n_dim,).
+        """
+
+        return dict(zip(self.parameter_names, x))
+
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
-        prior_params = self.Prior.add_name(params.T)
-        prior = self.Prior.log_prob(prior_params)
-        return (
-            self.Likelihood.evaluate(self.Prior.transform(prior_params), data) + prior
-        )
+        named_params = self.add_name(params)
+        transform_jacobian = 0.0
+        for transform in reversed(self.sample_transforms):
+            named_params, jacobian = transform.inverse(named_params)
+            transform_jacobian += jacobian
+        prior = self.prior.log_prob(named_params) + transform_jacobian
+        for transform in self.likelihood_transforms:
+            named_params = transform.forward(named_params)
+        return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample(self, key: PRNGKeyArray, initial_guess: Array = jnp.array([])):
-        if initial_guess.size == 0:
-            initial_guess_named = self.Prior.sample(key, self.Sampler.n_chains)
-            initial_guess = jnp.stack([i for i in initial_guess_named.values()]).T
-        self.Sampler.sample(initial_guess, None)  # type: ignore
+    def sample(self, key: PRNGKeyArray, initial_position: Array = jnp.array([])):
+        if initial_position.size == 0:
+            initial_position = (
+                jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
+            )
 
-    def maximize_likelihood(
-        self,
-        bounds: Float[Array, " n_dim 2"],
-        set_nwalkers: int = 100,
-        n_loops: int = 2000,
-        seed=92348,
-    ):
-        key = jax.random.PRNGKey(seed)
-        set_nwalkers = set_nwalkers
-        initial_guess = self.Prior.sample(key, set_nwalkers)
+            while not jax.tree.reduce(
+                jnp.logical_and,
+                jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+            ).all():
+                non_finite_index = jnp.where(
+                    jnp.any(
+                        ~jax.tree.reduce(
+                            jnp.logical_and,
+                            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                        ),
+                        axis=1,
+                    )
+                )[0]
 
-        def negative_posterior(x: Float[Array, " n_dim"]):
-            return -self.posterior(x, None)  # type: ignore since flowMC does not have typing info, yet
-
-        negative_posterior = jax.jit(jax.vmap(negative_posterior))
-        print("Compiling likelihood function")
-        negative_posterior(initial_guess)
-        print("Done compiling")
-
-        print("Starting the optimizer")
-        optimizer = EvolutionaryOptimizer(self.Prior.n_dim, verbose=True)
-        _ = optimizer.optimize(negative_posterior, bounds, n_loops=n_loops)
-        best_fit = optimizer.get_result()[0]
-        return best_fit
+                key, subkey = jax.random.split(key)
+                guess = self.prior.sample(subkey, self.sampler.n_chains)
+                for transform in self.sample_transforms:
+                    guess = jax.vmap(transform.forward)(guess)
+                guess = jnp.array(
+                    jax.tree.leaves({key: guess[key] for key in self.parameter_names})
+                ).T
+                finite_guess = jnp.where(
+                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+                )[0]
+                common_length = min(len(finite_guess), len(non_finite_index))
+                initial_position = initial_position.at[
+                    non_finite_index[:common_length]
+                ].set(guess[:common_length])
+        self.sampler.sample(initial_position, None)  # type: ignore
 
     def print_summary(self, transform: bool = True):
         """
@@ -89,22 +143,24 @@ class Jim(object):
 
         """
 
-        train_summary = self.Sampler.get_sampler_state(training=True)
-        production_summary = self.Sampler.get_sampler_state(training=False)
+        train_summary = self.sampler.get_sampler_state(training=True)
+        production_summary = self.sampler.get_sampler_state(training=False)
 
-        training_chain = train_summary["chains"].reshape(-1, self.Prior.n_dim).T
-        training_chain = self.Prior.add_name(training_chain)
+        training_chain = train_summary["chains"].reshape(-1, self.prior.n_dim).T
+        training_chain = self.add_name(training_chain)
         if transform:
-            training_chain = self.Prior.transform(training_chain)
+            for sample_transform in reversed(self.sample_transforms):
+                training_chain = jax.vmap(sample_transform.backward)(training_chain)
         training_log_prob = train_summary["log_prob"]
         training_local_acceptance = train_summary["local_accs"]
         training_global_acceptance = train_summary["global_accs"]
         training_loss = train_summary["loss_vals"]
 
-        production_chain = production_summary["chains"].reshape(-1, self.Prior.n_dim).T
-        production_chain = self.Prior.add_name(production_chain)
+        production_chain = production_summary["chains"].reshape(-1, self.prior.n_dim).T
+        production_chain = self.add_name(production_chain)
         if transform:
-            production_chain = self.Prior.transform(production_chain)
+            for sample_transform in reversed(self.sample_transforms):
+                production_chain = jax.vmap(sample_transform.backward)(production_chain)
         production_log_prob = production_summary["log_prob"]
         production_local_acceptance = production_summary["local_accs"]
         production_global_acceptance = production_summary["global_accs"]
@@ -156,11 +212,14 @@ class Jim(object):
 
         """
         if training:
-            chains = self.Sampler.get_sampler_state(training=True)["chains"]
+            chains = self.sampler.get_sampler_state(training=True)["chains"]
         else:
-            chains = self.Sampler.get_sampler_state(training=False)["chains"]
+            chains = self.sampler.get_sampler_state(training=False)["chains"]
 
-        chains = self.Prior.transform(self.Prior.add_name(chains.transpose(2, 0, 1)))
+        chains = chains.reshape(-1, self.prior.n_dim)
+        chains = jax.vmap(self.add_name)(chains)
+        for sample_transform in reversed(self.sample_transforms):
+            chains = jax.vmap(sample_transform.backward)(chains)
         return chains
 
     def plot(self):

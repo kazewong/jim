@@ -12,8 +12,9 @@ from scipy.interpolate import interp1d
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
 from jimgw.single_event.detector import Detector
-from jimgw.single_event.utils import log_i0
+from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
+from jimgw.transforms import BijectiveTransform, NtoMTransform
 
 
 class SingleEventLiklihood(LikelihoodBase):
@@ -23,6 +24,15 @@ class SingleEventLiklihood(LikelihoodBase):
     def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
         self.detectors = detectors
         self.waveform = waveform
+
+
+class ZeroLikelihood(LikelihoodBase):
+
+    def __init__(self):
+        pass
+
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        return 0.0
 
 
 class TransientLikelihoodFD(SingleEventLiklihood):
@@ -184,8 +194,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self,
         detectors: list[Detector],
         waveform: Waveform,
-        prior: Prior,
-        bounds: Float[Array, " n_dim 2"],
         n_bins: int = 100,
         trigger_time: float = 0,
         duration: float = 4,
@@ -194,6 +202,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         n_steps: int = 2000,
         ref_params: dict = {},
         reference_waveform: Optional[Waveform] = None,
+        prior: Optional[Prior] = None,
+        sample_transforms: list[BijectiveTransform] = [],
+        likelihood_transforms: list[NtoMTransform] = [],
         **kwargs,
     ) -> None:
         super().__init__(
@@ -254,17 +265,24 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
         self.freq_grid_low = freq_grid[:-1]
 
-        if not ref_params:
+        if ref_params:
+            self.ref_params = ref_params
+            print(f"Reference parameters provided, which are {self.ref_params}")
+        elif prior:
             print("No reference parameters are provided, finding it...")
             ref_params = self.maximize_likelihood(
-                bounds=bounds, prior=prior, popsize=popsize, n_steps=n_steps
+                prior=prior,
+                sample_transforms=sample_transforms,
+                likelihood_transforms=likelihood_transforms,
+                popsize=popsize,
+                n_steps=n_steps,
             )
             self.ref_params = {key: float(value) for key, value in ref_params.items()}
             print(f"The reference parameters are {self.ref_params}")
         else:
-            self.ref_params = ref_params
-            print(f"Reference parameters provided, which are {self.ref_params}")
-
+            raise ValueError(
+                "Either reference parameters or parameter names must be provided"
+            )
         # safe guard for the reference parameters
         # since ripple cannot handle eta=0.25
         if jnp.isclose(self.ref_params["eta"], 0.25):
@@ -542,25 +560,71 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
     def maximize_likelihood(
         self,
         prior: Prior,
-        bounds: Float[Array, " n_dim 2"],
+        likelihood_transforms: list[NtoMTransform],
+        sample_transforms: list[BijectiveTransform],
         popsize: int = 100,
         n_steps: int = 2000,
     ):
+        parameter_names = prior.parameter_names
+        for transform in sample_transforms:
+            parameter_names = transform.propagate_name(parameter_names)
+
         def y(x):
-            return -self.evaluate_original(prior.transform(prior.add_name(x)), {})
+            named_params = dict(zip(parameter_names, x))
+            for transform in reversed(sample_transforms):
+                named_params = transform.backward(named_params)
+            for transform in likelihood_transforms:
+                named_params = transform.forward(named_params)
+            return -self.evaluate_original(named_params, {})
 
         print("Starting the optimizer")
+
         optimizer = optimization_Adam(
             n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
-        initial_position = jnp.array(
-            list(prior.sample(jax.random.PRNGKey(0), popsize).values())
-        ).T
+
+        key = jax.random.PRNGKey(0)
+        initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
+        while not jax.tree.reduce(
+            jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
+        ).all():
+            non_finite_index = jnp.where(
+                jnp.any(
+                    ~jax.tree.reduce(
+                        jnp.logical_and,
+                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                    ),
+                    axis=1,
+                )
+            )[0]
+
+            key, subkey = jax.random.split(key)
+            guess = prior.sample(subkey, popsize)
+            for transform in sample_transforms:
+                guess = jax.vmap(transform.forward)(guess)
+            guess = jnp.array(
+                jax.tree.leaves({key: guess[key] for key in parameter_names})
+            ).T
+            finite_guess = jnp.where(
+                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+            )[0]
+            common_length = min(len(finite_guess), len(non_finite_index))
+            initial_position = initial_position.at[
+                non_finite_index[:common_length]
+            ].set(guess[:common_length])
+        
         rng_key, optimized_positions, summary = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position
         )
-        best_fit = optimized_positions[jnp.nanargmin(summary["final_log_prob"])]
-        return prior.transform(prior.add_name(best_fit))
+
+        best_fit = optimized_positions[jnp.argmin(summary["final_log_prob"])]
+
+        named_params = dict(zip(parameter_names, best_fit))
+        for transform in reversed(sample_transforms):
+            named_params = transform.backward(named_params)
+        for transform in likelihood_transforms:
+            named_params = transform.forward(named_params)
+        return named_params
 
 
 likelihood_presets = {
