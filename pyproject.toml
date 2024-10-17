@@ -1,5 +1,5 @@
 [project]
-name = "jimGW"
+name = "jimgw"
 version = "0.2.0"
 description = "Gravitatioanl wave data analysis tool in Jax"
 readme = "README.md"
@@ -31,3 +31,16 @@ docs = [
     "mkdocstrings[python]",
     "pymdown-extensions",
 ]
+
+[tool.uv]
+dev-dependencies = [
+    "jimgw",
+]
+
+[tool.uv.sources]
+jimgw = { workspace = true }
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
