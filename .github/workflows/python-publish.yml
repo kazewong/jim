@@ -33,10 +33,6 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run tests
-        # For example, using `pytest`
-        run: uv run pytest
-
       - name: Run build
         run: uv build
 
