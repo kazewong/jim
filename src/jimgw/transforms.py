@@ -307,6 +307,8 @@ class SineTransform(BijectiveTransform):
     """
     Sine transformation
 
+    The original parameter is expected to be in [-pi/2, pi/2]
+
     Parameters
     ----------
     name_mapping : tuple[list[str], list[str]]
@@ -333,6 +335,8 @@ class SineTransform(BijectiveTransform):
 class CosineTransform(BijectiveTransform):
     """
     Cosine transformation
+
+    The original parameter is expected to be in [0, pi]
 
     Parameters
     ----------
