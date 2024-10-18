@@ -14,7 +14,7 @@ build:
     - asdf global uv latest
     - uv sync --extra docs --dev
     - mkdir -p $READTHEDOCS_OUTPUT/html/
-    - uv run mkdocs build -d mkdir -p $READTHEDOCS_OUTPUT/html/
+    - uv run mkdocs build -d $READTHEDOCS_OUTPUT/html/
 
 mkdocs:
   configuration: mkdocs.yml
