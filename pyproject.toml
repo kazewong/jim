@@ -3,7 +3,7 @@ name = "jimgw"
 version = "0.2.0"
 description = "Gravitatioanl wave data analysis tool in Jax"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <=3.11"
 authors = [
 	{name = "Kaze W. K. Wong", email = "kazewong.physics@gmail.com"},
 ]
