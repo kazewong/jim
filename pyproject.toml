@@ -14,7 +14,7 @@ dependencies = [
     "corner>=2.2.2",
     "flowmc>=0.3.4",
     "gwpy>=3.0.10",
-    "jax>=0.4.34",
+    "jax>=0.4.24, <=0.4.31",
     "jaxtyping>=0.2.34",
     "pytest>=8.3.3",
     "ripplegw>=0.0.9",
