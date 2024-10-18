@@ -13,6 +13,7 @@ build:
     - asdf install uv latest
     - asdf global uv latest
     - uv sync --extra docs --dev
+    - uv run mkdocs build
 
 mkdocs:
   configuration: mkdocs.yml
