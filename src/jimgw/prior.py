@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
 from flowMC.nfmodel.base import Distribution
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, PRNGKeyArray, Bool, jaxtyped
 
 from jimgw.transforms import (
     BijectiveTransform,
@@ -277,8 +277,8 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: float
-    sigma: float
+    mu: float = 0.0
+    sigma: float = 1.0
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
@@ -298,7 +298,7 @@ class GaussianPrior(SequentialTransformPrior):
             [
                 ScaleTransform(
                     (
-                        [f"({self.parameter_names[0]}-({mu}))/{sigma}"],
+                        [f"{self.parameter_names[0]}_base"],
                         [f"{self.parameter_names[0]}-({mu})"],
                     ),
                     sigma,
