@@ -550,21 +550,19 @@ class BoundToPeriodic(BijectiveTransform):
         original_upper_bound: Float,
     ):
 
-        def logit(x):
-            return jnp.log(x / (1 - x))
-
         super().__init__(name_mapping)
         self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
         self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
 
         self.transform_func = lambda x: {
-            name_mapping[1][i]: jnp.mod(
-                x[name_mapping[0][i]] - self.original_lower_bound[i],
-                self.original_upper_bound[i] - self.original_lower_bound[i],
-            )
+            name_mapping[1][i]: x[name_mapping[0][i]]
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: x[name_mapping[1][i]]
+            name_mapping[0][i]: jnp.mod(
+                x[name_mapping[1][i]],
+                self.original_upper_bound[i] - self.original_lower_bound[i],
+            )
+            + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
