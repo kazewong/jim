@@ -518,6 +518,35 @@ class ParetoTransform(BijectiveTransform):
         }
 
 
+@jaxtyped(typechecker=typechecker)
+class PeriodicTransform(BijectiveTransform):
+    """
+    Periodic transformation
+    Parameters
+    ----------
+    parameter_name : str
+            The name of the parameter to be transformed.
+    """
+
+    def __init__(
+        self,
+        parameter_name : str,
+        xmin: Float,
+        xmax: Float,
+    ):
+        super().__init__(name_mapping=([parameter_name, f"{parameter_name}_r"], [f"{parameter_name}_x", f"{parameter_name}_y"]))
+        self.xmin = xmin
+        self.xmax = xmax
+        self.transform_func = lambda x: {
+            f"{parameter_name}_x": x[f"{parameter_name}_r"] * jnp.cos(2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)),
+            f"{parameter_name}_y": x[f"{parameter_name}_r"] * jnp.sin(2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)),
+        }
+        self.inverse_transform_func = lambda x: {
+            parameter_name: self.xmin + (self.xmax - self.xmin) * (0.5 + jnp.arctan2(x[f"{parameter_name}_y"], x[f"{parameter_name}_x"]) / (2 * jnp.pi)),
+            f"{parameter_name}_r": jnp.sqrt(x[f"{parameter_name}_x"] ** 2 + x[f"{parameter_name}_y"] ** 2),
+        }
+        
+
 def reverse_bijective_transform(
     original_transform: BijectiveTransform,
 ) -> BijectiveTransform:

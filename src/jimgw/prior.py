@@ -347,6 +347,33 @@ class UniformSpherePrior(CombinePrior):
             ]
         )
 
+@jaxtyped(typechecker=typechecker)
+class UniformPeriodicPrior(CombinePrior):
+    xmin: float
+    xmax: float
+
+    def __repr__(self):
+        return f"UniformPeriodicPrior(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
+
+    def __init__(
+            self,
+            xmin: float,
+            xmax: float,
+            parameter_names: list[str],
+        ):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "UniformPeriodicPrior needs to be 1D distributions"
+        self.parameter_names = [
+            f"{self.parameter_names[0]}",
+            f"{self.parameter_names[0]}_r",
+        ]
+        super().__init__(
+            [
+                UniformPrior(xmin, xmax, [self.parameter_names[0]]),
+                StandardNormalDistribution([self.parameter_names[1]]),
+            ]
+        )
+
 
 @jaxtyped(typechecker=typechecker)
 class PowerLawPrior(SequentialTransformPrior):
