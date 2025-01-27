@@ -9,7 +9,7 @@ from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from jimgw.transforms import (
     BijectiveTransform,
     LogitTransform,
-    PeriodicTransform,
+    CartesianToPolarTransform,
     ScaleTransform,
     OffsetTransform,
     ArcSineTransform,
@@ -369,19 +369,39 @@ class UniformPeriodicPrior(SequentialTransformPrior):
         base_prior = [
             StandardNormalDistribution(
                 [
-                    f"{self.parameter_names[0]}_x",
+                    f"{self.parameter_names[0]}_base_x",
                 ]
             ),
             StandardNormalDistribution(
                 [
-                    f"{self.parameter_names[0]}_y",
+                    f"{self.parameter_names[0]}_base_y",
                 ]
             ),
         ]
 
         super().__init__(
             CombinePrior(priors=base_prior),
-            [PeriodicTransform(parameter_names[0], xmin, xmax)],
+            [
+                CartesianToPolarTransform(f"{parameter_names[0]}_base"),
+                ScaleTransform(
+                    (
+                        [
+                            f"{self.parameter_names[0]}_base_theta",
+                        ],
+                        [
+                            f"{self.parameter_names[0]}-({xmin})",
+                        ],
+                    ),
+                    xmax - xmin / 2.0 / jnp.pi,
+                ),
+                OffsetTransform(
+                    (
+                        [f"{self.parameter_names[0]}-({xmin})"],
+                        [self.parameter_names[0]],
+                    ),
+                    xmin,
+                ),
+            ],
         )
 
 

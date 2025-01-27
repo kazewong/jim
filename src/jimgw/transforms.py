@@ -523,7 +523,7 @@ class ParetoTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class PeriodicTransform(BijectiveTransform):
+class CartesianToPolarTransform(BijectiveTransform):
     """
     Periodic transformation
     Parameters
@@ -535,38 +535,27 @@ class PeriodicTransform(BijectiveTransform):
     def __init__(
         self,
         parameter_name: str,
-        xmin: Float,
-        xmax: Float,
     ):
         super().__init__(
             name_mapping=(
-                [parameter_name, f"{parameter_name}_r"],
                 [f"{parameter_name}_x", f"{parameter_name}_y"],
+                [f"{parameter_name}_theta", f"{parameter_name}_r"],
             )
         )
-        self.xmin = xmin
-        self.xmax = xmax
         self.transform_func = lambda x: {
-            parameter_name: self.xmin
-            + (self.xmax - self.xmin)
-            * (
-                0.5
-                + jnp.arctan2(x[f"{parameter_name}_y"], x[f"{parameter_name}_x"])
-                / (2 * jnp.pi)
-            ),
+            f"{parameter_name}_theta": jnp.arctan2(
+                x[f"{parameter_name}_y"], x[f"{parameter_name}_x"]
+            )
+            + jnp.pi,
             f"{parameter_name}_r": jnp.sqrt(
                 x[f"{parameter_name}_x"] ** 2 + x[f"{parameter_name}_y"] ** 2
             ),
         }
         self.inverse_transform_func = lambda x: {
             f"{parameter_name}_x": x[f"{parameter_name}_r"]
-            * jnp.cos(
-                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
-            ),
+            * jnp.cos(x[f"{parameter_name}_theta"]),
             f"{parameter_name}_y": x[f"{parameter_name}_r"]
-            * jnp.sin(
-                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
-            ),
+            * jnp.sin(x[f"{parameter_name}_theta"]),
         }
 
 
