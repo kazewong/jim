@@ -87,7 +87,9 @@ class NtoNTransform(NtoMTransform):
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        )
         jax.tree.map(
             lambda key: x_copy.pop(key),
             self.name_mapping[0],
@@ -124,7 +126,9 @@ class BijectiveTransform(NtoNTransform):
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        )
         jax.tree.map(
             lambda key: y_copy.pop(key),
             self.name_mapping[1],
@@ -530,22 +534,41 @@ class PeriodicTransform(BijectiveTransform):
 
     def __init__(
         self,
-        parameter_name : str,
+        parameter_name: str,
         xmin: Float,
         xmax: Float,
     ):
-        super().__init__(name_mapping=([parameter_name, f"{parameter_name}_r"], [f"{parameter_name}_x", f"{parameter_name}_y"]))
+        super().__init__(
+            name_mapping=(
+                [parameter_name, f"{parameter_name}_r"],
+                [f"{parameter_name}_x", f"{parameter_name}_y"],
+            )
+        )
         self.xmin = xmin
         self.xmax = xmax
         self.transform_func = lambda x: {
-            f"{parameter_name}_x": x[f"{parameter_name}_r"] * jnp.cos(2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)),
-            f"{parameter_name}_y": x[f"{parameter_name}_r"] * jnp.sin(2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)),
+            parameter_name: self.xmin
+            + (self.xmax - self.xmin)
+            * (
+                0.5
+                + jnp.arctan2(x[f"{parameter_name}_y"], x[f"{parameter_name}_x"])
+                / (2 * jnp.pi)
+            ),
+            f"{parameter_name}_r": jnp.sqrt(
+                x[f"{parameter_name}_x"] ** 2 + x[f"{parameter_name}_y"] ** 2
+            ),
         }
         self.inverse_transform_func = lambda x: {
-            parameter_name: self.xmin + (self.xmax - self.xmin) * (0.5 + jnp.arctan2(x[f"{parameter_name}_y"], x[f"{parameter_name}_x"]) / (2 * jnp.pi)),
-            f"{parameter_name}_r": jnp.sqrt(x[f"{parameter_name}_x"] ** 2 + x[f"{parameter_name}_y"] ** 2),
+            f"{parameter_name}_x": x[f"{parameter_name}_r"]
+            * jnp.cos(
+                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
+            ),
+            f"{parameter_name}_y": x[f"{parameter_name}_r"]
+            * jnp.sin(
+                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
+            ),
         }
-        
+
 
 def reverse_bijective_transform(
     original_transform: BijectiveTransform,
