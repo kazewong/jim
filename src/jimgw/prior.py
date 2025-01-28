@@ -394,7 +394,7 @@ class UniformPeriodicPrior(SequentialTransformPrior):
                             f"{self.parameter_names[0]}-({xmin})",
                         ],
                     ),
-                    xmax - xmin / 2.0 / jnp.pi,
+                    (xmax - xmin) / 2.0 / jnp.pi,
                 ),
                 OffsetTransform(
                     (
