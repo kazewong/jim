@@ -365,6 +365,8 @@ class UniformPeriodicPrior(SequentialTransformPrior):
     ):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformPeriodicPrior needs to be 1D distributions"
+        self.xmax = xmax
+        self.xmin = xmin
         # create the base prior
         base_prior = [
             StandardNormalDistribution(
