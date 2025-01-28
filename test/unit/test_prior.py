@@ -131,3 +131,8 @@ class TestMultivariatePrior:
         x.update(trace_prior_parent(p, [])[1].add_name(jnp.linspace(-10.0, 10.0, 1000)[None]))
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), log_prob_true(y['x_base_r'], xmin, xmax))
+        # Check that the log_prob is uniform for same x_base_r
+        for r in jnp.linspace(0.1, 10.0, 10):
+            x = {"x_base_r": jnp.full(1000, r), "x": jnp.linspace(xmin, xmax, 1000)}
+            assert jnp.allclose(jax.vmap(p.log_prob)(x), log_prob_true(r, xmin, xmax))
+            
