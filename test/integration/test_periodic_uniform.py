@@ -32,7 +32,7 @@ class CosLikelihood(LikelihoodBase):
         pass
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
-        return jnp.log((jnp.cos(params["test"]) + 1.0) / 4.0)
+        return jnp.log((jnp.cos(params["test"]) + 1.0) / 2.0 / jnp.pi)
 
 likelihood = CosLikelihood()
 
@@ -78,9 +78,13 @@ samples = jim.get_samples()
 #     plt.savefig("walker_history_periodic.jpg")
 # plt.close()
 
-# plt.hist(samples["test"])
+# plt.hist(samples["test"], label="Samples", density=True, bins=50)
+# x = jnp.linspace(0.0, 2.0 * jnp.pi, 1000)
+# y = (jnp.cos(x) + 1.0) / 2.0 / jnp.pi
+# plt.plot(x, y, label="Likelihood")
 # plt.ylim(0.0)
 # plt.xlim(0.0, 2.0 * jnp.pi)
+# plt.legend()
 # if prior.n_dim == 1:
 #     plt.savefig("histogram_uniform.jpg")
 # else:
