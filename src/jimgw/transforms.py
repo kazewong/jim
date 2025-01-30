@@ -571,40 +571,35 @@ class PeriodicTransform(BijectiveTransform):
 
     def __init__(
         self,
-        parameter_name: str,
+        name_mapping: tuple[list[str], list[str]],
         xmin: Float,
         xmax: Float,
     ):
-        super().__init__(
-            name_mapping=(
-                [parameter_name, f"{parameter_name}_base_r"],
-                [f"{parameter_name}_base_x", f"{parameter_name}_base_y"],
-            )
-        )
+        super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
         self.transform_func = lambda x: {
-            f"{parameter_name}_base_x": x[f"{parameter_name}_base_r"]
+            f"{name_mapping[1][0]}": x[name_mapping[0][0]]
             * jnp.cos(
-                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
+                2 * jnp.pi * (x[name_mapping[0][1]] - self.xmin) / (self.xmax - self.xmin)
             ),
-            f"{parameter_name}_base_y": x[f"{parameter_name}_base_r"]
+            f"{name_mapping[1][1]}": x[name_mapping[0][0]]
             * jnp.sin(
-                2 * jnp.pi * (x[parameter_name] - self.xmin) / (self.xmax - self.xmin)
+                2 * jnp.pi * (x[name_mapping[0][1]] - self.xmin) / (self.xmax - self.xmin)
             ),
         }
         self.inverse_transform_func = lambda x: {
-            parameter_name: self.xmin
+            name_mapping[0][1]: self.xmin
             + (self.xmax - self.xmin)
             * (
                 0.5
                 + jnp.arctan2(
-                    x[f"{parameter_name}_base_y"], x[f"{parameter_name}_base_x"]
+                    x[name_mapping[1][1]], x[name_mapping[1][0]]
                 )
                 / (2 * jnp.pi)
             ),
-            f"{parameter_name}_base_r": jnp.sqrt(
-                x[f"{parameter_name}_base_x"] ** 2 + x[f"{parameter_name}_base_y"] ** 2
+            name_mapping[0][0]: jnp.sqrt(
+                x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
             ),
         }
 

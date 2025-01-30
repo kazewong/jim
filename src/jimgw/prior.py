@@ -344,7 +344,7 @@ class UniformSpherePrior(CombinePrior):
             [
                 UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
                 SinePrior([self.parameter_names[1]]),
-                UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
+                UniformPeriodicPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
