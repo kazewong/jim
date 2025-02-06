@@ -261,7 +261,7 @@ class GroundBased2G(Detector):
         self.data = data[(freq > f_min) & (freq < f_max)]
         self.psd = psd[(freq > f_min) & (freq < f_max)]
 
-def load_data_from_file(
+    def load_data_from_file(
         self,
         ifoData,
         psdData,
