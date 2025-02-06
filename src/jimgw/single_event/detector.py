@@ -261,6 +261,59 @@ class GroundBased2G(Detector):
         self.data = data[(freq > f_min) & (freq < f_max)]
         self.psd = psd[(freq > f_min) & (freq < f_max)]
 
+def load_data_from_file(
+        self,
+        ifoData,
+        psdData,
+        duration,
+        roll_off,
+        f_min,
+        f_max,
+    ) -> None:
+        """
+        Load data from a TimeSeries object / dictionary.
+
+        Parameters
+        ----------
+        IfoData : Float
+            The TimeSeries object containing the Interferometer data
+        psdData : int
+            The TimeSeries object containing the PSD data
+        duration : Float
+            Length of the signal 
+        roll_off : Float
+            Roll off duration of the Tukey window in s
+        f_min : Float
+            Minimum frequency to fetch data
+        f_max : Float
+            Maximum frequency to fetch data
+        """
+
+        print("Fetching data from {}...".format(self.name))
+        psd_alpha = 2 * roll_off / duration
+        data_td = ifoData
+        assert isinstance(data_td, TimeSeries), "Data is not a TimeSeries object."
+        segment_length = data_td.duration.value
+        n = len(data_td)
+        delta_t = data_td.dt.value  # type: ignore
+        data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, psd_alpha)) * delta_t
+        freq = jnp.fft.rfftfreq(n, delta_t)
+        
+        print("Fetching {} PSD data...".format(self.name))
+        psd_data_td = psdData
+        assert isinstance(
+            psd_data_td, TimeSeries
+        ), "PSD data is not a TimeSeries object."
+        psd = psd_data_td.psd(
+            fftlength=duration, overlap=0, window=("tukey", psd_alpha), method="median"
+        ).value  # TODO: Check whether this is sright.
+
+        print("Finished loading data.")
+
+        self.frequencies = freq[(freq > f_min) & (freq < f_max)]
+        self.data = data[(freq > f_min) & (freq < f_max)]
+        self.psd = psd[(freq > f_min) & (freq < f_max)]
+    
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
