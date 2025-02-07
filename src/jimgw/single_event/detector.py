@@ -263,21 +263,21 @@ class GroundBased2G(Detector):
 
     def load_data_from_file(
         self,
-        ifoData,
-        psdData,
-        duration,
-        roll_off,
-        f_min,
-        f_max,
+        ifoData: TimeSeries,
+        psdData: TimeSeries,
+        duration: Float,
+        roll_off: Float,
+        f_min: Float,
+        f_max: Float,
     ) -> None:
         """
         Load data from a TimeSeries object / dictionary.
 
         Parameters
         ----------
-        IfoData : Float
+        IfoData : TimeSeries
             The TimeSeries object containing the Interferometer data
-        psdData : int
+        psdData : TimeSeries
             The TimeSeries object containing the PSD data
         duration : Float
             Length of the signal 
