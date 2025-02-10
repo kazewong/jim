@@ -3,7 +3,7 @@ import astropy.units as u  # type: ignore
 
 Msun = 4.9255e-6
 year = (1 * u.yr).cgs.value  # type: ignore
-Mpc = 1e6 * pc.value / c.value
+Mpc = 1e6 * pc.value  # m
 euler_gamma = 0.577215664901532860606512090082
 MR_sun = 1.476625061404649406193430731479084713e3
 C_SI = 299792458.0
