@@ -491,14 +491,14 @@ def spin_angles_to_cartesian_spin(
         [
             jnp.sin(tilt_1) * jnp.cos(phiRef),
             jnp.sin(tilt_1) * jnp.sin(phiRef),
-            jnp.cos(tilt_1),
+            jnp.cos(tilt_1)
         ]
     )
     s2hat = jnp.array(
         [
             jnp.sin(tilt_2) * jnp.cos(phi_12 + phiRef),
             jnp.sin(tilt_2) * jnp.sin(phi_12 + phiRef),
-            jnp.cos(tilt_2),
+            jnp.cos(tilt_2)
         ]
     )
 
@@ -622,26 +622,29 @@ def cartesian_spin_to_spin_angles(
     """
     # Starting frame: LNh along the z-axis
     LNh = jnp.array([0.0, 0.0, 1.0])
-    chi_1 = jnp.sqrt(S1x * S1x + S1y * S1y + S1z * S1z)
-    chi_2 = jnp.sqrt(S2x * S2x + S2y * S2y + S2z * S2z)
+
+    s1_vec = jnp.array([S1x, S1y, S1z])
+    s2_vec = jnp.array([S2x, S2y, S2z])
+    chi_1 = jnp.linalg.norm(s1_vec)
+    chi_2 = jnp.linalg.norm(s2_vec)
 
     # Define the spin vectors in the LNh frame
     if chi_1 > 0:
-        s1hat = jnp.array([S1x / chi_1, S1y / chi_1, S1z / chi_1])
+        s1hat = s1_vec / chi_1
     else:
         s1hat = jnp.array([0.0, 0.0, 0.0])
     if chi_2 > 0:
-        s2hat = jnp.array([S2x / chi_2, S2y / chi_2, S2z / chi_2])
+        s2hat = s2_vec / chi_2
     else:
         s2hat = jnp.array([0.0, 0.0, 0.0])
 
-    phi1 = jnp.arctan2(s1hat[1],s1hat[0])
-    phi2 = jnp.arctan2(s2hat[1],s2hat[0])
+    phi1 = jnp.arctan2(s1hat[1], s1hat[0])
+    phi2 = jnp.arctan2(s2hat[1], s2hat[0])
 
     phi_12 = phi2 - phi1
 
     if phi_12 < 0:
-        phi_12 += 2* jnp.pi
+        phi_12 += 2 * jnp.pi
 
     tilt_1 = jnp.arccos(s1hat[2])
     tilt_2 = jnp.arccos(s2hat[2])
@@ -651,30 +654,11 @@ def cartesian_spin_to_spin_angles(
     v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
 
     # Define S1, S2, J
+    S1 = m1 * m1 * s1_vec
+    S2 = m2 * m2 * s2_vec
+
     Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
-    S1 = jnp.array(
-            [
-                m1 * m1 * S1x,
-                m1 * m1 * S1y,
-                m1 * m1 * S1z,
-            ]
-    )
-
-    S2 = jnp.array(
-            [
-                m2 * m2 * S2x,
-                m2 * m2 * S2y,
-                m2 * m2 * S2z,
-            ]
-    )
-
-    J = jnp.array(
-            [
-                S1[0] + S2[0],
-                S1[1] + S2[1],
-                Lmag * LNh[2] + S1[2] + S2[2],
-            ]
-    )
+    J = S1 + S2 + Lmag * LNh
 
     # Normalize J
     Jhat = J / jnp.linalg.norm(J)
@@ -687,8 +671,7 @@ def cartesian_spin_to_spin_angles(
             [
                 jnp.sin(iota) * jnp.cos(phi0),
                 jnp.sin(iota) * jnp.sin(phi0),
-                jnp.cos(iota),
-
+                jnp.cos(iota)
             ]
     )
 
@@ -701,11 +684,9 @@ def cartesian_spin_to_spin_angles(
     LNh = rotate_y(-thetaJL, LNh)
 
     phiN = jnp.arctan2(N[1], N[0])
-
     LNh = rotate_z(0.5 * jnp.pi - phiN, LNh)
 
     phi_jl = jnp.arctan2(LNh[1], LNh[0])
-
     if phi_jl < 0:
         phi_jl += 2 * jnp.pi
 
