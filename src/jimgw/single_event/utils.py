@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
-from jimgw.constants import Msun
+from jimgw.constants import MTSUN
 
 
 def inner_product(
@@ -419,6 +419,19 @@ def rotate_z(angle, vec):
     return rotated_vec
 
 
+def Lmag_2PN(m1, m2, v0):
+    """
+    Compute the magnitude of the orbital angular momentum
+    to 2 post-Newtonian orders.
+    """
+    eta = m1 * m2 / (m1 + m2)**2
+    ## Simplified from:
+    ## (m1 + m2) * (m1 + m2) * eta = m1 * m2
+    LN = m1 * m2 / v0
+    L_2PN = 1.5 + eta / 6.0
+    return LN * (1.0 + v0 * v0 * L_2PN)
+
+
 def spin_angles_to_cartesian_spin(
     theta_jn: Float,
     phi_jl: Float,
@@ -503,11 +516,10 @@ def spin_angles_to_cartesian_spin(
     )
 
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    eta = q / (1 + q) ** 2
-    v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     #Define S1, S2, and J
-    Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
+    Lmag = Lmag_2PN(m1, m2, v0)
     s1 = m1 * m1 * chi_1 * s1hat
     s2 = m2 * m2 * chi_2 * s2hat
     J = s1 + s2 + jnp.array([0.0, 0.0, Lmag])
@@ -623,12 +635,13 @@ def cartesian_spin_to_spin_angles(
     # Starting frame: LNh along the z-axis
     LNh = jnp.array([0.0, 0.0, 1.0])
 
+    # Define the dimensionless component spin vectors and magnitudes
     s1_vec = jnp.array([S1x, S1y, S1z])
     s2_vec = jnp.array([S2x, S2y, S2z])
     chi_1 = jnp.linalg.norm(s1_vec)
     chi_2 = jnp.linalg.norm(s2_vec)
 
-    # Define the spin vectors in the LNh frame
+    # Define the spin unit vectors in the LNh frame
     if chi_1 > 0:
         s1hat = s1_vec / chi_1
     else:
@@ -638,6 +651,7 @@ def cartesian_spin_to_spin_angles(
     else:
         s2hat = jnp.array([0.0, 0.0, 0.0])
 
+    # Azimuthal and polar angles of the spin vectors
     phi1 = jnp.arctan2(s1hat[1], s1hat[0])
     phi2 = jnp.arctan2(s2hat[1], s2hat[0])
 
@@ -649,15 +663,16 @@ def cartesian_spin_to_spin_angles(
     tilt_1 = jnp.arccos(s1hat[2])
     tilt_2 = jnp.arccos(s2hat[2])
 
+    # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    eta = q / (1 + q) ** 2
-    v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
+    total_mass = m1 + m2
+    v0 = jnp.cbrt(total_mass * MTSUN * jnp.pi * fRef)
 
     # Define S1, S2, J
     S1 = m1 * m1 * s1_vec
     S2 = m2 * m2 * s2_vec
 
-    Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
+    Lmag = Lmag_2PN(m1, m2, v0)
     J = S1 + S2 + Lmag * LNh
 
     # Normalize J
@@ -666,7 +681,9 @@ def cartesian_spin_to_spin_angles(
     thetaJL = jnp.arccos(Jhat[2])
     phiJ = jnp.arctan2(Jhat[1], Jhat[0])
 
+    # Azimuthal angle from phase angle
     phi0 = 0.5 * jnp.pi - phiRef
+    # Line-of-sight vector in L-frame
     N = jnp.array(
             [
                 jnp.sin(iota) * jnp.cos(phi0),
@@ -675,8 +692,10 @@ def cartesian_spin_to_spin_angles(
             ]
     )
 
+    # Inclination w.r.t. J
     theta_jn = jnp.arccos(jnp.dot(Jhat, N))
 
+    # Rotate from L-frame to J-frame
     N = rotate_z(-phiJ, N)
     N = rotate_y(-thetaJL, N)
 
