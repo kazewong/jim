@@ -20,12 +20,13 @@ from jimgw.single_event.utils import (
     ra_dec_to_zenith_azimuth,
     zenith_azimuth_to_ra_dec,
     euler_rotation,
-    spin_to_cartesian_spin,
+    spin_angles_to_cartesian_spin,
+    cartesian_spin_to_spin_angles,
 )
 
 
 @jaxtyped(typechecker=typechecker)
-class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
+class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
     """
     Spin to Cartesian spin transformation
     """
@@ -45,7 +46,7 @@ class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
         self.freq_ref = freq_ref
 
         def named_transform(x):
-            iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_to_cartesian_spin(
+            iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_angles_to_cartesian_spin(
                 x["theta_jn"],
                 x["phi_jl"],
                 x["tilt_1"],
@@ -67,8 +68,33 @@ class PrecessingSpinToCartesianSpinTransform(NtoNTransform):
                 "s2_y": s2y,
                 "s2_z": s2z,
             }
-
+        
+        def named_inverse_transform(x):
+            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = cartesian_spin_to_spin_angles(
+                x["iota"],
+                x["s1_x"],
+                x["s1_y"],
+                x["s1_z"],
+                x["s2_x"],
+                x["s2_y"],
+                x["s2_z"],
+                x["M_c"],
+                x["q"],
+                self.freq_ref,
+                x["phase_c"],
+            )
+            return {
+                "theta_jn": theta_jn,
+                "phi_jl": phi_jl,
+                "tilt_1": tilt_1,
+                "tilt_2": tilt_2,
+                "phi_12": phi_12,
+                "a_1": a_1,
+                "a_2": a_2,
+            }
+            
         self.transform_func = named_transform
+        self.inverse_transform_func = named_inverse_transform
 
 
 @jaxtyped(typechecker=typechecker)
