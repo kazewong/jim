@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
-from jimgw.constants import Msun
+from jimgw.constants import MTSUN
 
 
 def inner_product(
@@ -499,7 +499,7 @@ def spin_to_cartesian_spin(
 
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
     eta = q / (1 + q) ** 2
-    v0 = jnp.cbrt((m1 + m2) * Msun * jnp.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     Lmag = ((m1 + m2) * (m1 + m2) * eta / v0) * (1.0 + v0 * v0 * (1.5 + eta / 6.0))
     s1 = m1 * m1 * chi1 * s1hat
