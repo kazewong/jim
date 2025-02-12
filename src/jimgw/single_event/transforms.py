@@ -28,7 +28,7 @@ from jimgw.single_event.utils import (
 @jaxtyped(typechecker=typechecker)
 class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
     """
-    Spin to Cartesian spin transformation
+    Spin angles to Cartesian spin transformation
     """
 
     freq_ref: Float
