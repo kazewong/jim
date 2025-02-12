@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
-from jimgw.constants import MTsun
+from jimgw.constants import MTSUN
 
 
 def inner_product(
@@ -516,7 +516,7 @@ def spin_angles_to_cartesian_spin(
     )
 
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    v0 = jnp.cbrt((m1 + m2) * MTsun * jnp.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     #Define S1, S2, and J
     Lmag = Lmag_2PN(m1, m2, v0)
@@ -666,7 +666,7 @@ def cartesian_spin_to_spin_angles(
     # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
     total_mass = m1 + m2
-    v0 = jnp.cbrt(total_mass * MTsun * jnp.pi * fRef)
+    v0 = jnp.cbrt(total_mass * MTSUN * jnp.pi * fRef)
 
     # Define S1, S2, J
     S1 = m1 * m1 * s1_vec
