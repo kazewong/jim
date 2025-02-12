@@ -15,6 +15,7 @@ from jimgw.transforms import (
     ArcSineTransform,
     PowerLawTransform,
     ParetoTransform,
+    RayleighTransform,
 )
 
 
@@ -332,7 +333,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], max_mag: float = 1.0, **kwargs):
+    def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -344,65 +345,37 @@ class UniformSpherePrior(CombinePrior):
             [
                 UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
                 SinePrior([self.parameter_names[1]]),
-                UniformPeriodicPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
+                UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
 
 @jaxtyped(typechecker=typechecker)
-class UniformPeriodicPrior(SequentialTransformPrior):
-    xmin: float
-    xmax: float
+class RayleighPrior(SequentialTransformPrior):
+    """
+    A prior distribution following the Rayleigh distribution with scale parameter sigma.
+    """
+
+    sigma: float
 
     def __repr__(self):
-        return f"UniformPeriodicPrior(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
+        return f"RayleighPrior(parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
         parameter_names: list[str],
+        sigma: float = 1.0,
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "UniformPeriodicPrior needs to be 1D distributions"
-        self.xmax = xmax
-        self.xmin = xmin
-        # create the base prior
-        base_prior = [
-            StandardNormalDistribution(
-                [
-                    f"{self.parameter_names[0]}_base_x",
-                ]
-            ),
-            StandardNormalDistribution(
-                [
-                    f"{self.parameter_names[0]}_base_y",
-                ]
-            ),
-        ]
-
+        assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
+        self.sigma = sigma
         super().__init__(
-            CombinePrior(priors=base_prior),
+            UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"]),
             [
-                CartesianToPolarTransform(f"{parameter_names[0]}_base"),
-                ScaleTransform(
-                    (
-                        [
-                            f"{self.parameter_names[0]}_base_theta",
-                        ],
-                        [
-                            f"{self.parameter_names[0]}-({xmin})",
-                        ],
-                    ),
-                    (xmax - xmin) / 2.0 / jnp.pi,
-                ),
-                OffsetTransform(
-                    (
-                        [f"{self.parameter_names[0]}-({xmin})"],
-                        [self.parameter_names[0]],
-                    ),
-                    xmin,
-                ),
+                RayleighTransform(
+                    ([f"{self.parameter_names[0]}_base"], self.parameter_names),
+                    sigma=sigma,
+                )
             ],
         )
 

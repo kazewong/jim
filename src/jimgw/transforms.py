@@ -87,9 +87,7 @@ class NtoNTransform(NtoMTransform):
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
-        )
+        jacobian = jnp.log(jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))))
         jax.tree.map(
             lambda key: x_copy.pop(key),
             self.name_mapping[0],
@@ -126,9 +124,7 @@ class BijectiveTransform(NtoNTransform):
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
         jacobian = jnp.array(jax.tree.leaves(jacobian))
-        jacobian = jnp.log(
-            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
-        )
+        jacobian = jnp.log(jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim))))
         jax.tree.map(
             lambda key: y_copy.pop(key),
             self.name_mapping[1],
@@ -581,11 +577,17 @@ class PeriodicTransform(BijectiveTransform):
         self.transform_func = lambda x: {
             f"{name_mapping[1][0]}": x[name_mapping[0][0]]
             * jnp.cos(
-                2 * jnp.pi * (x[name_mapping[0][1]] - self.xmin) / (self.xmax - self.xmin)
+                2
+                * jnp.pi
+                * (x[name_mapping[0][1]] - self.xmin)
+                / (self.xmax - self.xmin)
             ),
             f"{name_mapping[1][1]}": x[name_mapping[0][0]]
             * jnp.sin(
-                2 * jnp.pi * (x[name_mapping[0][1]] - self.xmin) / (self.xmax - self.xmin)
+                2
+                * jnp.pi
+                * (x[name_mapping[0][1]] - self.xmin)
+                / (self.xmax - self.xmin)
             ),
         }
         self.inverse_transform_func = lambda x: {
@@ -593,14 +595,39 @@ class PeriodicTransform(BijectiveTransform):
             + (self.xmax - self.xmin)
             * (
                 0.5
-                + jnp.arctan2(
-                    x[name_mapping[1][1]], x[name_mapping[1][0]]
-                )
+                + jnp.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]])
                 / (2 * jnp.pi)
             ),
             name_mapping[0][0]: jnp.sqrt(
                 x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
             ),
+        }
+
+
+@jaxtyped(typechecker=typechecker)
+class RayleighTransform(BijectiveTransform):
+    """
+    Transformation from Uniform(0, 1) to Rayleigh distribution with scale parameter sigma
+    Parameters
+    ----------
+    parameter_name : str
+            The name of the parameter to be transformed.
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+        sigma: Float,
+    ):
+        super().__init__(name_mapping)
+        self.sigma = sigma
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: sigma * jnp.sqrt(-2 * jnp.log(x[name_mapping[0][i]]))
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: jnp.exp(-((x[name_mapping[1][i]] / sigma) ** 2) / 2)
+            for i in range(len(name_mapping[1]))
         }
 
 

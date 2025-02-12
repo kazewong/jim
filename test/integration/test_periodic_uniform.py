@@ -1,4 +1,5 @@
-import os 
+import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.10"
 
@@ -6,16 +7,25 @@ import jax
 import jax.numpy as jnp
 
 from jimgw.jim import Jim
-from jimgw.prior import UniformPeriodicPrior, UniformPrior
+from jimgw.prior import UniformPrior, RayleighPrior, CombinePrior
 from jimgw.transforms import PeriodicTransform, BoundToUnbound
 from jimgw.base import LikelihoodBase
 from jaxtyping import Float
 
 jax.config.update("jax_enable_x64", True)
 
-prior = UniformPeriodicPrior(0.0, 2.0 * jnp.pi, ["test"])
+prior = CombinePrior(
+    [
+        RayleighPrior(["test_r"]),
+        UniformPrior(0.0, 2.0 * jnp.pi, ["test"]),
+    ]
+)
 sample_transforms = [
-    PeriodicTransform("test", 0.0, 2.0 * jnp.pi)
+    PeriodicTransform(
+        name_mapping=[["test_r", "test"], ["test_x", "test_y"]],
+        xmin=0.0,
+        xmax=2.0 * jnp.pi,
+    )
 ]
 
 # Uncomment the following code to use a uniform prior without periodicity
@@ -26,6 +36,7 @@ sample_transforms = [
 
 likelihood_transforms = []
 
+
 class CosLikelihood(LikelihoodBase):
 
     def __init__(self):
@@ -34,11 +45,12 @@ class CosLikelihood(LikelihoodBase):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         return jnp.log((jnp.cos(params["test"]) + 1.0) / 2.0 / jnp.pi)
 
+
 likelihood = CosLikelihood()
 
 mass_matrix = jnp.eye(prior.n_dim)
 
-n_local_steps=1_000
+n_local_steps = 1_000
 
 jim = Jim(
     likelihood,
@@ -62,7 +74,7 @@ jim = Jim(
     local_sampler_arg={"step_size": mass_matrix * 2e-1},
 )
 
-jim.sample(jax.random.PRNGKey(42))
+jim.sample(jax.random.PRNGKey(12345))
 jim.print_summary()
 samples = jim.get_samples()
 
