@@ -25,7 +25,7 @@ class TestTransform:
         from jimgw.single_event.utils import m1_m2_to_Mc_q
         from jimgw.single_event.utils import spin_angles_to_cartesian_spin 
         
-        # from bilby.gw.conversion import bilby_to_lalsimulation_spins as bilby_spin_transform
+        # from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
         # from bilby.gw.conversion import symmetric_mass_ratio_to_mass_ratio, chirp_mass_and_mass_ratio_to_component_masses
         # from lal import MSUN_SI
     
@@ -49,32 +49,41 @@ class TestTransform:
             
         #     inputs.append((thetaJN, phiJL, theta1, theta2, phi12, chi1, chi2, m1, m2, fRef, phiRef))
         # inputs = np.array(inputs)
-        # np.savez('spin_angles_input.npz', thetaJN= inputs[:, 0], phiJL= inputs[:, 1], theta1= inputs[:, 2], theta2= inputs[:, 3], phi12= inputs[:, 4], chi1= inputs[:, 5], chi2= inputs[:, 6], m1= inputs[:, 7], m2= inputs[:, 8], fRef= inputs[:, 9], phiRef= inputs[:, 10])
+        # np.savez('source_files/spin_angles_input.npz', thetaJN= inputs[:, 0], phiJL= inputs[:, 1], theta1= inputs[:, 2], theta2= inputs[:, 3], phi12= inputs[:, 4], chi1= inputs[:, 5], chi2= inputs[:, 6], m1= inputs[:, 7], m2= inputs[:, 8], fRef= inputs[:, 9], phiRef= inputs[:, 10])
     
         # bilby_outputs = []
         # for input in inputs:
-        #     iota, S1x, S1y, S1z, S2x, S2y, S2z = bilby_spin_transform(input[0], input[1], input[2], input[3], input[4], input[5], input[6], input[7] * MSUN_SI, input[8] * MSUN_SI, input[9], input[10])
+        #     iota, S1x, S1y, S1z, S2x, S2y, S2z = SimInspiralTransformPrecessingNewInitialConditions(input[0], input[1], input[2], input[3], input[4], input[5], input[6], input[7] * MSUN_SI, input[8] * MSUN_SI, input[9], input[10])
         #     bilby_outputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z))
         # bilby_outputs = np.array(bilby_outputs)
-        # np.savez('cartesian_spins_output_for_bilby.npz', iota= bilby_outputs[:, 0], S1x= bilby_outputs[:, 1], S1y= bilby_outputs[:, 2], S1z= bilby_outputs[:, 3], S2x= bilby_outputs[:, 4], S2y= bilby_outputs[:, 5], S2z= bilby_outputs[:, 6])
+        # np.savez('source_files/cartesian_spins_output_for_bilby.npz', iota= bilby_outputs[:, 0], S1x= bilby_outputs[:, 1], S1y= bilby_outputs[:, 2], S1z= bilby_outputs[:, 3], S2x= bilby_outputs[:, 4], S2y= bilby_outputs[:, 5], S2z= bilby_outputs[:, 6])
 
         # read inputs from binary
-        inputs = np.load("/home/user/smwong/ceph/bilby_binary_files/spin_angles_input.npz")
+        inputs = np.load("source_files/spin_angles_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
         
         #compute jimgw spins
+        all_diff = []
         for i in range(100):
-            jimgw_spins = spin_angles_to_cartesian_spin(inputs[0][i], inputs[1][i], inputs[2][i], inputs[3][i], inputs[4][i], inputs[5][i], inputs[6][i], M_c[i], q[i], inputs[9][i], inputs[10][i])
-            bilby_spins = np.load("/home/user/smwong/ceph/bilby_binary_files/cartesian_spins_output_for_bilby.npz")
+            row = [inputs[0][i], inputs[1][i], inputs[2][i], inputs[3][i], inputs[4][i], inputs[5][i], inputs[6][i], M_c[i], q[i], inputs[9][i], inputs[10][i]]
+            jimgw_spins = spin_angles_to_cartesian_spin(*row)
+            bilby_spins = np.load("source_files/cartesian_spins_output_for_bilby.npz")
             bilby_spins = np.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i] 
                       
             # compare bilby and jimgw spins
             # print("jimgw_spins:", [round(float(val), 7) for val in jimgw_spins])
             # print("bilby_spins:", [round(float(val), 7) for val in bilby_spins])
-            assert np.allclose(jimgw_spins, bilby_spins, atol=1e-4)
-    
+            
+            # assert np.allclose(jimgw_spins, bilby_spins, atol=1e-12)
+            diff = np.array(jimgw_spins) - bilby_spins
+            row.append(inputs[8][i] / inputs[7][i])
+            if np.max(diff) > 1e-7:
+                print([round(float(val), 4) for val in row])
+            all_diff.append(diff)
+        print("diff:", np.max(all_diff))
+        
     
     def test_backward_spin_transform(self):
         from jimgw.single_event.utils import m1_m2_to_Mc_q
@@ -103,28 +112,28 @@ class TestTransform:
             
         #     inputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z, m1, m2, fRef, phiRef))
         # inputs = np.array(inputs)
-        # np.savez('cartesian_spins_input.npz', iota= inputs[:, 0], S1x= inputs[:, 1], S1y= inputs[:, 2], S1z= inputs[:, 3], S2x= inputs[:, 4], S2y= inputs[:, 5], S2z= inputs[:, 6], m1= inputs[:, 7], m2= inputs[:, 8], fRef= inputs[:, 9], phiRef= inputs[:, 10])
+        # np.savez('source_files/cartesian_spins_input.npz', iota= inputs[:, 0], S1x= inputs[:, 1], S1y= inputs[:, 2], S1z= inputs[:, 3], S2x= inputs[:, 4], S2y= inputs[:, 5], S2z= inputs[:, 6], m1= inputs[:, 7], m2= inputs[:, 8], fRef= inputs[:, 9], phiRef= inputs[:, 10])
         
         # bilby_outputs = []
         # for input in inputs:
         #     thteaJN, phiJL, theta1, theta2, phi12, chi1, chi2 = SimInspiralTransformPrecessingWvf2PE(*input)
         #     bilby_outputs.append((thteaJN, phiJL, theta1, theta2, phi12, chi1, chi2))
         # bilby_outputs = np.array(bilby_outputs)
-        # np.savez('spin_angles_output_for_bilby.npz', thetaJN= bilby_outputs[:, 0], phiJL= bilby_outputs[:, 1], theta1= bilby_outputs[:, 2], theta2= bilby_outputs[:, 3], phi12= bilby_outputs[:, 4], chi1= bilby_outputs[:, 5], chi2= bilby_outputs[:, 6])
+        # np.savez('source_files/spin_angles_output_for_bilby.npz', thetaJN= bilby_outputs[:, 0], phiJL= bilby_outputs[:, 1], theta1= bilby_outputs[:, 2], theta2= bilby_outputs[:, 3], phi12= bilby_outputs[:, 4], chi1= bilby_outputs[:, 5], chi2= bilby_outputs[:, 6])
          
-        inputs = np.load("/home/user/smwong/ceph/bilby_binary_files/cartesian_spins_input.npz")
+        inputs = np.load("source_files/cartesian_spins_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q =m1_m2_to_Mc_q(inputs[7], inputs[8])
             
         #compute jimgw spins
         for i in range(100):
             jimgw_spins = cartesian_spin_to_spin_angles (inputs[0][i], inputs[1][i], inputs[2][i], inputs[3][i], inputs[4][i], inputs[5][i], inputs[6][i], M_c[i], q[i], inputs[9][i], inputs[10][i])
-            bilby_spins = np.load("/home/user/smwong/ceph/bilby_binary_files/spin_angles_output_for_bilby.npz")
+            bilby_spins = np.load("source_files/spin_angles_output_for_bilby.npz")
             bilby_spins = np.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]           
             # compare bilby and jimgw spins
             # print("jimgw_spins:", [round(float(val), 7) for val in jimgw_spins])
             # print("bilby_spins:", [round(float(val), 7) for val in bilby_spins])
-            assert np.allclose(jimgw_spins, bilby_spins, atol=1e-4)
+            assert np.allclose(jimgw_spins, bilby_spins, atol=1e-16)
 
 TestTransform().test_forward_spin_transform()           
