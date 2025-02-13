@@ -427,7 +427,7 @@ def Lmag_2PN(m1, m2, v0):
     eta = m1 * m2 / (m1 + m2)**2
     ## Simplified from:
     ## (m1 + m2) * (m1 + m2) * eta = m1 * m2
-    LN = m1 * m2 / v0
+    LN = (m1 + m2) * (m1 + m2) * eta / v0
     L_2PN = 1.5 + eta / 6.0
     return LN * (1.0 + v0 * v0 * L_2PN)
 
@@ -467,7 +467,7 @@ def spin_angles_to_cartesian_spin(
     chi_1: Float
         Primary object aligned spin:
     chi_2: Float
-        Secondary3 object aligned spin:
+        Secondary object aligned spin:
     M_c: Float
         The chirp mass
     q: Float
@@ -665,8 +665,7 @@ def cartesian_spin_to_spin_angles(
 
     # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    total_mass = m1 + m2
-    v0 = jnp.cbrt(total_mass * MTSUN * jnp.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     # Define S1, S2, J
     S1 = m1 * m1 * s1_vec
