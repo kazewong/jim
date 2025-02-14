@@ -361,33 +361,6 @@ class CosineTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class ArcSineTransform(BijectiveTransform):
-    """
-    ArcSine transformation
-
-    Parameters
-    ----------
-    name_mapping : tuple[list[str], list[str]]
-            The name mapping between the input and output dictionary.
-
-    """
-
-    def __init__(
-        self,
-        name_mapping: tuple[list[str], list[str]],
-    ):
-        super().__init__(name_mapping)
-        self.transform_func = lambda x: {
-            name_mapping[1][i]: jnp.arcsin(x[name_mapping[0][i]])
-            for i in range(len(name_mapping[0]))
-        }
-        self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
-            for i in range(len(name_mapping[1]))
-        }
-
-
-@jaxtyped(typechecker=typechecker)
 class BoundToBound(BijectiveTransform):
     """
     Bound to bound transformation
