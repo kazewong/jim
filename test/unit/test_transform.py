@@ -218,7 +218,7 @@ class TestSingleEventTransform:
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-6)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-16)
 
         # Test if the transformation from cartesian spins to spin angles is the inverse of the transformation from spin angles to cartesian spins
 
