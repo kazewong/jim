@@ -11,6 +11,7 @@ from jimgw.prior import (
     PowerLawPrior,
 )
 from jimgw.utils import trace_prior_parent
+
 import scipy.stats as stats
 
 jax.config.update("jax_enable_x64", True)
