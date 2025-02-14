@@ -47,7 +47,7 @@ class TestTransform:
         #     )
         # inputs = np.array(inputs)
         # np.savez(
-        #     "source_files/spin_angles_input.npz",
+        #     "test/unit/source_files/spin_angles_input.npz",
         #     thetaJN=inputs[:, 0],
         #     phiJL=inputs[:, 1],
         #     theta1=inputs[:, 2],
@@ -95,7 +95,7 @@ class TestTransform:
         from jimgw.single_event.utils import spin_angles_to_cartesian_spin
 
         # read inputs from binary
-        inputs = np.load("source_files/spin_angles_input.npz")
+        inputs = np.load("test/unit/source_files/spin_angles_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
@@ -154,7 +154,7 @@ class TestTransform:
         #     inputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z, m1, m2, fRef, phiRef))
         # inputs = np.array(inputs)
         # np.savez(
-        #     "source_files/cartesian_spins_input.npz",
+        #     "test/unit/source_files/cartesian_spins_input.npz",
         #     iota=inputs[:, 0],
         #     S1x=inputs[:, 1],
         #     S1y=inputs[:, 2],
@@ -190,7 +190,7 @@ class TestTransform:
         from jimgw.single_event.utils import cartesian_spin_to_spin_angles
 
         # read inputs from binary
-        inputs = np.load("source_files/cartesian_spins_input.npz")
+        inputs = np.load("test/unit/source_files/cartesian_spins_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
