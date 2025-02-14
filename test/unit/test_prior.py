@@ -1,8 +1,9 @@
+import jax
+jax.config.update("jax_enable_x64", True)
+
 from jimgw.prior import *
 from jimgw.utils import trace_prior_parent
 import scipy.stats as stats
-import jax
-jax.config.update("jax_enable_x64", True)
 
 
 class TestUnivariatePrior:
