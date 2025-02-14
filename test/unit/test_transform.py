@@ -1,6 +1,10 @@
+import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
+
 from jimgw.transforms import *
 from jimgw.single_event.transforms import *
+
 
 class TestSingleEventTransform:
     def test_spin_angles_transform(self):
@@ -125,7 +129,7 @@ class TestSingleEventTransform:
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-6)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
 
         # Test transformation from cartesian spins to spin angles
         # Uncomment the following code to generate the input and output files for the test
@@ -218,7 +222,7 @@ class TestSingleEventTransform:
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-16)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
 
         # Test if the transformation from cartesian spins to spin angles is the inverse of the transformation from spin angles to cartesian spins
 
@@ -249,7 +253,7 @@ class TestSingleEventTransform:
             jimgw_spins = jnp.concatenate([jnp.array(jimgw_spins), inputs[i][-4:]])
             jimgw_spins = spin_angles_to_cartesian_spin(*jimgw_spins)
 
-            assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7], atol=1e-4)
+            assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7])
 
     # def test_sky_location_transform(self):
     #     from bilby.gw.utils import zenith_azimuth_to_ra_dec as bilby_earth_to_sky
@@ -282,4 +286,4 @@ class TestSingleEventTransform:
     #                     - detector_preset[ifos[1]].vertex,
     #                 )
     #             )
-    #             assert np.allclose(bilby_sky_location, jimgw_sky_location, atol=1e-4)
+    #             assert np.allclose(bilby_sky_location, jimgw_sky_location)
