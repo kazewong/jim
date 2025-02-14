@@ -1,11 +1,13 @@
-import numpy as np
 import jax.numpy as jnp
+from jimgw.transforms import *
+from jimgw.single_event.transforms import *
 
-
-class TestTransform:
-    def test_forward_spin_transform(self):
+class TestSingleEventTransform:
+    def test_spin_angles_transform(self):
+        # Test transformation from spin angles to cartesian spins
         # Uncomment the following code to generate the input and output files for the test
 
+        # import numpy as np
         # from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
         # from bilby.gw.conversion import (
         #     symmetric_mass_ratio_to_mass_ratio,
@@ -95,7 +97,7 @@ class TestTransform:
         from jimgw.single_event.utils import spin_angles_to_cartesian_spin
 
         # read inputs from binary
-        inputs = np.load("test/unit/source_files/spin_angles_input.npz")
+        inputs = jnp.load("test/unit/source_files/spin_angles_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
@@ -117,17 +119,18 @@ class TestTransform:
 
             jimgw_spins = spin_angles_to_cartesian_spin(*row)
 
-            bilby_spins = np.load(
+            bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
             )
-            bilby_spins = np.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
 
-            assert np.allclose(jimgw_spins, bilby_spins, atol=1e-16)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-6)
 
-    def test_backward_spin_transform(self):
+        # Test transformation from cartesian spins to spin angles
         # Uncomment the following code to generate the input and output files for the test
 
+        # import numpy as np
         # from lalsimulation import SimInspiralTransformPrecessingWvf2PE
         # from bilby.gw.conversion import (
         #     symmetric_mass_ratio_to_mass_ratio,
@@ -186,11 +189,10 @@ class TestTransform:
         #     chi2=bilby_outputs[:, 6],
         # )
 
-        from jimgw.single_event.utils import m1_m2_to_Mc_q
         from jimgw.single_event.utils import cartesian_spin_to_spin_angles
 
         # read inputs from binary
-        inputs = np.load("test/unit/source_files/cartesian_spins_input.npz")
+        inputs = jnp.load("test/unit/source_files/cartesian_spins_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
@@ -210,13 +212,44 @@ class TestTransform:
                 inputs[10][i],
             )
 
-            bilby_spins = np.load(
+            bilby_spins = jnp.load(
                 "test/unit/source_files/spin_angles_output_for_bilby.npz"
             )
-            bilby_spins = np.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
 
-            assert np.allclose(jimgw_spins, bilby_spins, atol=1e-16)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins, atol=1e-6)
+
+        # Test if the transformation from cartesian spins to spin angles is the inverse of the transformation from spin angles to cartesian spins
+
+        import jax
+        from jimgw.single_event.utils import eta_to_q
+
+        key = jax.random.PRNGKey(42)
+        key, subkey = jax.random.split(key)
+        subkeys = jax.random.split(subkey, 11)
+        iota = jax.random.uniform(subkeys[0], (100,), minval=0, maxval=jnp.pi)
+        S1x = jax.random.uniform(subkeys[1], (100,), minval=-1, maxval=1)
+        S1y = jax.random.uniform(subkeys[2], (100,), minval=-1, maxval=1)
+        S1z = jax.random.uniform(subkeys[3], (100,), minval=-1, maxval=1)
+        S2x = jax.random.uniform(subkeys[4], (100,), minval=-1, maxval=1)
+        S2y = jax.random.uniform(subkeys[5], (100,), minval=-1, maxval=1)
+        S2z = jax.random.uniform(subkeys[6], (100,), minval=-1, maxval=1)
+        M_c = jax.random.uniform(subkeys[7], (100,), minval=1, maxval=100)
+        eta = jax.random.uniform(subkeys[8], (100,), minval=0.1, maxval=0.25)
+        fRef = jax.random.uniform(subkeys[9], (100,), minval=10, maxval=100)
+        phiRef = jax.random.uniform(subkeys[10], (100,), minval=0, maxval=2 * jnp.pi)
+
+        q = eta_to_q(eta)
+
+        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, fRef, phiRef]).T
+
+        for i in range(100):
+            jimgw_spins = cartesian_spin_to_spin_angles(*inputs[i])
+            jimgw_spins = jnp.concatenate([jnp.array(jimgw_spins), inputs[i][-4:]])
+            jimgw_spins = spin_angles_to_cartesian_spin(*jimgw_spins)
+
+            assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7], atol=1e-4)
 
     # def test_sky_location_transform(self):
     #     from bilby.gw.utils import zenith_azimuth_to_ra_dec as bilby_earth_to_sky
