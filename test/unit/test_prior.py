@@ -93,21 +93,26 @@ class TestUnivariatePrior:
         log_prob = jax.vmap(p.log_prob)(samples)
         assert jnp.all(jnp.isfinite(log_prob))
 
-    # def test_power_law(self):
-    #     xmin, xmax = 1.0, 100.0
-    #     for alpha in jnp.linspace(-2.0, 2.0, 5):
-    #         alpha = float(alpha)
-    #         p = PowerLawPrior(xmin, xmax, alpha, ["x"])
+    def test_power_law(self):
+        xmin, xmax = 0.1, 100.0
+        for alpha in jnp.linspace(-5.0, 5.0, 10):
+            alpha = float(alpha)
+            p = PowerLawPrior(xmin, xmax, alpha, ["x"])
 
-    #         # Check that all the samples are finite
-    #         samples = p.sample(jax.random.PRNGKey(0), 10000)
-    #         assert jnp.all(jnp.isfinite(samples['x']))
+            # Check that all the samples are finite
+            samples = p.sample(jax.random.PRNGKey(0), 10000)
+            assert jnp.all(jnp.isfinite(samples['x']))
 
-    #         # Check that the log_prob are finite
-    #         log_prob = jax.vmap(p.log_prob)(samples)
-    #         assert jnp.all(jnp.isfinite(log_prob))
+            # Check that the log_prob are finite
+            log_prob = jax.vmap(p.log_prob)(samples)
+            assert jnp.all(jnp.isfinite(log_prob))
 
-    #         # Check that the log_prob are correct in the support
-    #         x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
-    #         y = jax.vmap(p.transform)(x)
-    #         assert jnp.allclose(jax.vmap(p.log_prob)(y), stats.powerlaw.logpdf(y['x'], alpha, loc=xmin, scale=xmax-xmin), atol=1e-16)
+            # Check that the log_prob are correct in the support
+            x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+            y = jax.vmap(p.transform)(x)
+            if alpha < -1.0:
+                assert jnp.allclose(jax.vmap(p.log_prob)(y), alpha * jnp.log(y['x']) + jnp.log(-alpha-1) - jnp.log(xmin**(alpha+1)-xmax**(alpha+1)), atol=1e-16)
+            elif alpha > -1.0:
+                assert jnp.allclose(jax.vmap(p.log_prob)(y), alpha * jnp.log(y['x']) + jnp.log(alpha+1) - jnp.log(xmax**(alpha+1)-xmin**(alpha+1)), atol=1e-16)
+            else:
+                assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(y['x'])-jnp.log(jnp.log(xmax)-jnp.log(xmin)), atol=1e-16)
