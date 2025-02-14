@@ -23,10 +23,10 @@ class TestSingleEventTransform:
         # inputs = []
         # for _ in range(100):
         #     thetaJN = np.array(np.random.uniform(0, np.pi))
-        #     phiJL = np.array(np.random.uniform(0, np.pi))
+        #     phiJL = np.array(np.random.uniform(0, 2*np.pi))
         #     theta1 = np.array(np.random.uniform(0, np.pi))
         #     theta2 = np.array(np.random.uniform(0, np.pi))
-        #     phi12 = np.array(np.random.uniform(0, np.pi))
+        #     phi12 = np.array(np.random.uniform(0, 2*np.pi))
         #     chi1 = np.array(np.random.uniform(0, 1))
         #     chi2 = np.array(np.random.uniform(0, 1))
         #     M_c = np.array(np.random.uniform(1, 100))
@@ -99,7 +99,7 @@ class TestSingleEventTransform:
         # )
 
         from jimgw.single_event.utils import m1_m2_to_Mc_q
-        from jimgw.single_event.utils import spin_angles_to_cartesian_spin
+        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
         # read inputs from binary
         inputs = jnp.load("test/unit/source_files/spin_angles_input.npz")
@@ -122,7 +122,7 @@ class TestSingleEventTransform:
                 inputs[10][i],
             ]
 
-            jimgw_spins = spin_angles_to_cartesian_spin(*row)
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.named_transform(*row)
 
             bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
@@ -131,6 +131,7 @@ class TestSingleEventTransform:
             bilby_spins = bilby_spins[i]
 
             assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
+            # default atol: 1e-8, rtol: 1e-5
 
         # Test transformation from cartesian spins to spin angles
         # Uncomment the following code to generate the input and output files for the test
@@ -203,7 +204,7 @@ class TestSingleEventTransform:
 
         # compute jimgw spins
         for i in range(100):
-            jimgw_spins = cartesian_spin_to_spin_angles(
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.named_transform.named_inverse_transform(
                 inputs[0][i],
                 inputs[1][i],
                 inputs[2][i],
@@ -224,6 +225,7 @@ class TestSingleEventTransform:
             bilby_spins = bilby_spins[i]
 
             assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
+            # default atol: 1e-8, rtol: 1e-5
 
         # Test if the transformation from cartesian spins to spin angles is the inverse of the transformation from spin angles to cartesian spins
 
@@ -250,11 +252,12 @@ class TestSingleEventTransform:
         inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, fRef, phiRef]).T
 
         for i in range(100):
-            jimgw_spins = cartesian_spin_to_spin_angles(*inputs[i])
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.named_transform.named_inverse_transform(*inputs[i])
             jimgw_spins = jnp.concatenate([jnp.array(jimgw_spins), inputs[i][-4:]])
-            jimgw_spins = spin_angles_to_cartesian_spin(*jimgw_spins)
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.named_transform(*jimgw_spins)
 
             assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7])
+            # default atol: 1e-8, rtol: 1e-5
 
     # def test_sky_location_transform(self):
     #     from bilby.gw.utils import zenith_azimuth_to_ra_dec as bilby_earth_to_sky
