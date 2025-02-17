@@ -122,7 +122,7 @@ class TestSingleEventTransform:
                 inputs[10][i],
             ]
 
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.transform_func(*row)
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.forward(*row)
 
             bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
@@ -204,7 +204,7 @@ class TestSingleEventTransform:
 
         # compute jimgw spins
         for i in range(100):
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.inverse_transform_func(
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.backward(
                 inputs[0][i],
                 inputs[1][i],
                 inputs[2][i],
@@ -252,9 +252,9 @@ class TestSingleEventTransform:
         inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, fRef, phiRef]).T
 
         for i in range(100):
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.inverse_transform_func(*inputs[i])
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.backward(*inputs[i])
             jimgw_spins = jnp.concatenate([jnp.array(jimgw_spins), inputs[i][-4:]])
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.transform_func(*jimgw_spins)
+            jimgw_spins = SpinAnglesToCartesianSpinTransform.forward(*jimgw_spins)
 
             assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7])
             # default atol: 1e-8, rtol: 1e-5
