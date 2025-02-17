@@ -6,8 +6,8 @@ from jimgw.single_event.transforms import *
 
 jax.config.update("jax_enable_x64", True)
 
-forward_keys = ('theta_jn', 'phi_jl', 'tilt_1', 'tilt_2', 'phi_12', 'a_1', 'a_2')
-backward_keys = ('iota', 's1_x', 's1_y', 's1_z', 's2_x', 's2_y', 's2_z')
+forward_keys = ('theta_jn', 'phi_jl', 'tilt_1', 'tilt_2', 'phi_12', 'a_1', 'a_2','M_c', 'q', 'phase')
+backward_keys = ('iota', 's1_x', 's1_y', 's1_z', 's2_x', 's2_y', 's2_z', 'M_c', 'q', 'phase')
 
 
 class TestSingleEventTransform:
@@ -126,13 +126,11 @@ class TestSingleEventTransform:
             ]
             
             freq_ref = row.pop(9)
-            phase = row.pop(9)
             
             # print(dict(zip(forward_keys, row)))
 
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
-                freq_ref=freq_ref, 
-                M_c=M_c[i], q=q[i], phase=phase).transform(dict(zip(forward_keys, row)))
+                freq_ref=freq_ref).transform(dict(zip(forward_keys, row)))
             # print(type(jimgw_spins))
             bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
@@ -140,6 +138,8 @@ class TestSingleEventTransform:
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
             
+            for key in ("M_c", "q", "phase"):
+                jimgw_spins.pop(key)
             jim_spins = list(jimgw_spins.values())
             # jim_spins.extend([M_c[i], q[i], freq_ref, phase])
             # print(bilby_spins)
@@ -233,11 +233,10 @@ class TestSingleEventTransform:
             ]
             
             freq_ref = row.pop(9)
-            phase = row.pop(9)
+
             
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
-                freq_ref=freq_ref, 
-                M_c=M_c[i], q=q[i], phase=phase).inverse(dict(zip(backward_keys, row)))
+                freq_ref=freq_ref).inverse(dict(zip(backward_keys, row)))
             # print(type(jimgw_spins))
             
 
@@ -247,6 +246,8 @@ class TestSingleEventTransform:
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
             
+            for key in ("M_c", "q", "phase"):
+                jimgw_spins.pop(key)
             jimgw_spins = list(jimgw_spins.values())
             
             assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
@@ -275,15 +276,16 @@ class TestSingleEventTransform:
 
         q = eta_to_q(eta)
 
-        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, eta,fRef,phiRef]).T
-        
+        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, phiRef]).T
+        ## Jacobian will fail (with nans) if component spins are zeroes.
 
         for i in range(100):
-            jimgw_spins,_ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i], M_c=M_c[i], q=q[i], phase=phiRef[i]).inverse(dict(zip(backward_keys, inputs[i])))
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i]).inverse(dict(zip(backward_keys, inputs[i])))
+            # jimgw_spins = list(jimgw_spins.values())
+            # print([float(val) for val in jimgw_spins])
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i]).transform(jimgw_spins)
             jimgw_spins = list(jimgw_spins.values())
-            jimgw_spins,_ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i], M_c=M_c[i], q=q[i], phase=phiRef[i]).transform(dict(zip(forward_keys, jimgw_spins)))
-            jimgw_spins = list(jimgw_spins.values())
-            assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7])
+            assert jnp.allclose(jnp.array(jimgw_spins), jnp.array([*inputs[i][7:], *inputs[i][:7]]))
             # default atol: 1e-8, rtol: 1e-5
 
     # def test_sky_location_transform(self):
@@ -317,5 +319,4 @@ class TestSingleEventTransform:
     #                     - detector_preset[ifos[1]].vertex,
     #                 )
     #             )
-    #             assert np.allclose(bilby_sky_location, jimgw_sky_location)
-
+    #             assert np.allclose(bilby_sky_location, jimgw_sky_location
