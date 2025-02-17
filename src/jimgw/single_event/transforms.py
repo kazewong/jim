@@ -35,6 +35,9 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
     def __init__(
         self,
         freq_ref: Float,
+        M_c: Float,
+        q: Float,
+        phase: Float
     ):
         name_mapping = (
             ["theta_jn", "phi_jl", "tilt_1", "tilt_2", "phi_12", "a_1", "a_2"],
@@ -43,6 +46,9 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
         super().__init__(name_mapping)
 
         self.freq_ref = freq_ref
+        self.M_c = M_c
+        self.q = q
+        self.phase = phase
 
         def named_transform(x):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_angles_to_cartesian_spin(
@@ -53,10 +59,10 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
                 x["phi_12"],
                 x["a_1"],
                 x["a_2"],
-                x["M_c"],
-                x["q"],
+                self.M_c,
+                self.q,
                 self.freq_ref,
-                x["phase_c"],
+                self.phase,
             )
             return {
                 "iota": iota,
@@ -69,7 +75,7 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
             }
 
         def named_inverse_transform(x):
-            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = (
+            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = \
                 cartesian_spin_to_spin_angles(
                     x["iota"],
                     x["s1_x"],
@@ -78,12 +84,12 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
                     x["s2_x"],
                     x["s2_y"],
                     x["s2_z"],
-                    x["M_c"],
-                    x["q"],
+                    self.M_c,
+                    self.q,
                     self.freq_ref,
-                    x["phase_c"],
+                    self.phase,
                 )
-            )
+            
             return {
                 "theta_jn": theta_jn,
                 "phi_jl": phi_jl,
