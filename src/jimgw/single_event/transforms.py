@@ -25,7 +25,7 @@ from jimgw.single_event.utils import (
 
 
 @jaxtyped(typechecker=typechecker)
-class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
+class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
     """
     Spin angles to Cartesian spin transformation
     """
@@ -35,20 +35,16 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
     def __init__(
         self,
         freq_ref: Float,
-        M_c: Float,
-        q: Float,
-        phase: Float
     ):
         name_mapping = (
             ["theta_jn", "phi_jl", "tilt_1", "tilt_2", "phi_12", "a_1", "a_2"],
             ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"],
         )
-        super().__init__(name_mapping)
+        
+        conditional_names = ["M_c", "q", "phase"]
+        super().__init__(name_mapping, conditional_names)
 
         self.freq_ref = freq_ref
-        self.M_c = M_c
-        self.q = q
-        self.phase = phase
 
         def named_transform(x):
             iota, s1x, s1y, s1z, s2x, s2y, s2z = spin_angles_to_cartesian_spin(
@@ -59,10 +55,10 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
                 x["phi_12"],
                 x["a_1"],
                 x["a_2"],
-                self.M_c,
-                self.q,
+                x["M_c"],
+                x["q"],
                 self.freq_ref,
-                self.phase,
+                x["phase"],
             )
             return {
                 "iota": iota,
@@ -84,10 +80,10 @@ class SpinAnglesToCartesianSpinTransform(BijectiveTransform):
                     x["s2_x"],
                     x["s2_y"],
                     x["s2_z"],
-                    self.M_c,
-                    self.q,
+                    x["M_c"],
+                    x["q"],
                     self.freq_ref,
-                    self.phase,
+                    x["phase"],
                 )
             
             return {
