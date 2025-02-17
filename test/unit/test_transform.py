@@ -6,6 +6,9 @@ from jimgw.single_event.transforms import *
 
 jax.config.update("jax_enable_x64", True)
 
+forward_keys = ('theta_jn', 'phi_jl', 'tilt_1', 'tilt_2', 'phi_12', 'a_1', 'a_2')
+backward_keys = ('iota', 's1_x', 's1_y', 's1_z', 's2_x', 's2_y', 's2_z')
+
 
 class TestSingleEventTransform:
     def test_spin_angles_transform(self):
@@ -121,16 +124,27 @@ class TestSingleEventTransform:
                 inputs[9][i],
                 inputs[10][i],
             ]
+            
+            freq_ref = row.pop(9)
+            phase = row.pop(9)
+            
+            # print(dict(zip(forward_keys, row)))
 
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.transform(*row)
-
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
+                freq_ref=freq_ref, 
+                M_c=M_c[i], q=q[i], phase=phase).transform(dict(zip(forward_keys, row)))
+            # print(type(jimgw_spins))
             bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
             )
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
+            
+            jim_spins = list(jimgw_spins.values())
+            # jim_spins.extend([M_c[i], q[i], freq_ref, phase])
+            # print(bilby_spins)
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
+            assert jnp.allclose(jnp.array(jim_spins), bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
 
         # Test transformation from cartesian spins to spin angles
@@ -195,7 +209,6 @@ class TestSingleEventTransform:
         #     chi2=bilby_outputs[:, 6],
         # )
 
-        from jimgw.single_event.utils import cartesian_spin_to_spin_angles
 
         # read inputs from binary
         inputs = jnp.load("test/unit/source_files/cartesian_spins_input.npz")
@@ -204,7 +217,7 @@ class TestSingleEventTransform:
 
         # compute jimgw spins
         for i in range(100):
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.inverse(
+            row = [
                 inputs[0][i],
                 inputs[1][i],
                 inputs[2][i],
@@ -216,14 +229,25 @@ class TestSingleEventTransform:
                 q[i],
                 inputs[9][i],
                 inputs[10][i],
-            )
+            ]
+            
+            freq_ref = row.pop(9)
+            phase = row.pop(9)
+            
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
+                freq_ref=freq_ref, 
+                M_c=M_c[i], q=q[i], phase=phase).inverse(dict(zip(backward_keys, row)))
+            # print(type(jimgw_spins))
+            
 
             bilby_spins = jnp.load(
                 "test/unit/source_files/spin_angles_output_for_bilby.npz"
             )
             bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
             bilby_spins = bilby_spins[i]
-
+            
+            jimgw_spins = list(jimgw_spins.values())
+            
             assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
 
@@ -249,13 +273,14 @@ class TestSingleEventTransform:
 
         q = eta_to_q(eta)
 
-        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, fRef, phiRef]).T
+        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, eta,fRef,phiRef]).T
+        
 
         for i in range(100):
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.inverse(*inputs[i])
-            jimgw_spins = jnp.concatenate([jnp.array(jimgw_spins), inputs[i][-4:]])
-            jimgw_spins = SpinAnglesToCartesianSpinTransform.transform(*jimgw_spins)
-
+            jimgw_spins,_ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i], M_c=M_c[i], q=q[i], phase=phiRef[i]).inverse(dict(zip(backward_keys, inputs[i])))
+            jimgw_spins = list(jimgw_spins.values())
+            jimgw_spins,_ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef[i], M_c=M_c[i], q=q[i], phase=phiRef[i]).transform(dict(zip(forward_keys, jimgw_spins)))
+            jimgw_spins = list(jimgw_spins.values())
             assert jnp.allclose(jnp.array(jimgw_spins), inputs[i][:7])
             # default atol: 1e-8, rtol: 1e-5
 
@@ -291,3 +316,5 @@ class TestSingleEventTransform:
     #                 )
     #             )
     #             assert np.allclose(bilby_sky_location, jimgw_sky_location)
+
+TestSingleEventTransform().test_spin_angles_transform()
