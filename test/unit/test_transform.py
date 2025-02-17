@@ -130,7 +130,7 @@ class TestSingleEventTransform:
             
             # print(dict(zip(forward_keys, row)))
 
-            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
+            jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref, 
                 M_c=M_c[i], q=q[i], phase=phase).transform(dict(zip(forward_keys, row)))
             # print(type(jimgw_spins))
@@ -146,6 +146,7 @@ class TestSingleEventTransform:
 
             assert jnp.allclose(jnp.array(jim_spins), bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
+            assert not jnp.isnan(jacobian).any()
 
         # Test transformation from cartesian spins to spin angles
         # Uncomment the following code to generate the input and output files for the test
@@ -234,7 +235,7 @@ class TestSingleEventTransform:
             freq_ref = row.pop(9)
             phase = row.pop(9)
             
-            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
+            jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref, 
                 M_c=M_c[i], q=q[i], phase=phase).inverse(dict(zip(backward_keys, row)))
             # print(type(jimgw_spins))
@@ -250,6 +251,7 @@ class TestSingleEventTransform:
             
             assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
+            assert not jnp.isnan(jacobian).any()
 
         # Test if the transformation from cartesian spins to spin angles is the inverse of the transformation from spin angles to cartesian spins
 
@@ -317,4 +319,3 @@ class TestSingleEventTransform:
     #             )
     #             assert np.allclose(bilby_sky_location, jimgw_sky_location)
 
-TestSingleEventTransform().test_spin_angles_transform()
