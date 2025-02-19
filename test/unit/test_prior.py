@@ -113,7 +113,7 @@ class TestUnivariatePrior:
 
     def test_power_law(self):
         xmin, xmax = 0.1, 100.0
-        for alpha in jnp.linspace(-5.0, 5.0, 10):
+        for alpha in [-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0]:  # -1.0 is a special case
             alpha = float(alpha)
             p = PowerLawPrior(xmin, xmax, alpha, ["x"])
 
