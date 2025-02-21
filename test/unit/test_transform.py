@@ -6,12 +6,12 @@ from jimgw.single_event.transforms import *
 
 jax.config.update("jax_enable_x64", True)
 
-forward_keys = ('theta_jn', 'phi_jl', 'tilt_1', 'tilt_2', 'phi_12', 'a_1', 'a_2','M_c', 'q', 'phase')
-backward_keys = ('iota', 's1_x', 's1_y', 's1_z', 's2_x', 's2_y', 's2_z', 'M_c', 'q', 'phase')
-
 
 class TestSingleEventTransform:
     def test_spin_angles_transform(self):
+        forward_keys = ('theta_jn', 'phi_jl', 'tilt_1', 'tilt_2', 'phi_12', 'a_1', 'a_2','M_c', 'q', 'phase')
+        backward_keys = ('iota', 's1_x', 's1_y', 's1_z', 's2_x', 's2_y', 's2_z', 'M_c', 'q', 'phase')
+        
         # Test transformation from spin angles to cartesian spins
         # Uncomment the following code to generate the input and output files for the test
 
