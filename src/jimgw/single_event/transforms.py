@@ -40,8 +40,8 @@ class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
             ["theta_jn", "phi_jl", "tilt_1", "tilt_2", "phi_12", "a_1", "a_2"],
             ["iota", "s1_x", "s1_y", "s1_z", "s2_x", "s2_y", "s2_z"],
         )
-        
-        conditional_names = ["M_c", "q", "phase"]
+
+        conditional_names = ["M_c", "q", "phase_c"]
         super().__init__(name_mapping, conditional_names)
 
         self.freq_ref = freq_ref
@@ -58,7 +58,7 @@ class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
                 x["M_c"],
                 x["q"],
                 self.freq_ref,
-                x["phase"],
+                x["phase_c"],
             )
             return {
                 "iota": iota,
@@ -71,7 +71,7 @@ class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
             }
 
         def named_inverse_transform(x):
-            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = \
+            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = (
                 cartesian_spin_to_spin_angles(
                     x["iota"],
                     x["s1_x"],
@@ -83,9 +83,10 @@ class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
                     x["M_c"],
                     x["q"],
                     self.freq_ref,
-                    x["phase"],
+                    x["phase_c"],
                 )
-            
+            )
+
             return {
                 "theta_jn": theta_jn,
                 "phi_jl": phi_jl,

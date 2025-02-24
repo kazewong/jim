@@ -642,14 +642,8 @@ def cartesian_spin_to_spin_angles(
     chi_2 = jnp.linalg.norm(s2_vec)
 
     # Define the spin unit vectors in the LNh frame
-    if chi_1 > 0:
-        s1hat = s1_vec / chi_1
-    else:
-        s1hat = jnp.array([0.0, 0.0, 0.0])
-    if chi_2 > 0:
-        s2hat = s2_vec / chi_2
-    else:
-        s2hat = jnp.array([0.0, 0.0, 0.0])
+    s1hat = jnp.where(chi_1 > 0, s1_vec / chi_1, jnp.zeros_like(s1_vec))
+    s2hat = jnp.where(chi_2 > 0, s2_vec / chi_2, jnp.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
     phi1 = jnp.arctan2(s1hat[1], s1hat[0])
@@ -657,8 +651,7 @@ def cartesian_spin_to_spin_angles(
 
     phi_12 = phi2 - phi1
 
-    if phi_12 < 0:
-        phi_12 += 2 * jnp.pi
+    phi_12 = (phi_12 + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_12 < 2pi
 
     tilt_1 = jnp.arccos(s1hat[2])
     tilt_2 = jnp.arccos(s2hat[2])
@@ -701,8 +694,7 @@ def cartesian_spin_to_spin_angles(
     LNh = rotate_z(0.5 * jnp.pi - phiN, LNh)
 
     phi_jl = jnp.arctan2(LNh[1], LNh[0])
-    if phi_jl < 0:
-        phi_jl += 2 * jnp.pi
+    phi_jl = (phi_jl + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_jl < 2pi
 
     return theta_jn, phi_jl, tilt_1, tilt_2, phi_12, chi_1, chi_2
 
