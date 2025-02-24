@@ -1,6 +1,46 @@
-[build-system]
-requires = ["setuptools","wheel"]
-build-backend = "setuptools.build_meta"
+[project]
+name = "jimgw"
+version = "0.2.0"
+description = "Gravitatioanl wave data analysis tool in Jax"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+	{name = "Kaze W. K. Wong", email = "kazewong.physics@gmail.com"},
+]
+license = {file = "LICENSE"}
+dependencies = [
+    "astropy>=6.1.4",
+    "beartype>=0.19.0",
+    "corner>=2.2.2",
+    "flowmc>=0.3.4",
+    "gwpy>=3.0.10",
+    "jax>=0.4.24, <=0.4.31",
+    "jaxtyping>=0.2.34",
+    "pytest>=8.3.3",
+    "ripplegw>=0.0.9",
+    "typed-argument-parser>=1.10.1",
+]
 
-[tool.pyright]
-reportIncompatibleMethodOverride = "warning"
+[project.optional-dependencies]
+docs = [
+    "mkdocs-gen-files",
+    "mkdocs-jupyter",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs",
+    "mkdocstrings[python]",
+    "pymdown-extensions",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "jimgw",
+]
+
+[tool.uv.sources]
+jimgw = { workspace = true }
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
