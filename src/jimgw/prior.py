@@ -276,6 +276,51 @@ class UniformPrior(SequentialTransformPrior):
 
 
 @jaxtyped(typechecker=typechecker)
+class GaussianPrior(SequentialTransformPrior):
+    mu: Float = 0.0
+    sigma: Float = 1.0
+
+    def __repr__(self):
+        return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
+
+    def __init__(
+        self,
+        mu: Float,
+        sigma: Float,
+        parameter_names: list[str],
+    ):
+        """
+        A convenient wrapper distribution on top of the StandardNormalDistribution class
+        which scale and translate the distribution according to the mean and standard deviation.
+
+        Args
+            mu: The mean of the distribution.
+            sigma: The standard deviation of the distribution.
+            parameter_names: A list of names for the parameters of the prior.
+        """
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "GaussianPrior needs to be 1D distributions"
+        self.mu = mu
+        self.sigma = sigma
+        super().__init__(
+            StandardNormalDistribution([f"{self.parameter_names[0]}_base"]),
+            [
+                ScaleTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base"],
+                        [f"{self.parameter_names[0]}-({mu})"],
+                    ),
+                    sigma,
+                ),
+                OffsetTransform(
+                    ([f"{self.parameter_names[0]}-({mu})"], self.parameter_names),
+                    mu,
+                ),
+            ],
+        )
+
+
+@jaxtyped(typechecker=typechecker)
 class SinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
