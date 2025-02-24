@@ -277,18 +277,27 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: float = 0.0
-    sigma: float = 1.0
+    mu: Float = 0.0
+    sigma: Float = 1.0
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        mu: float,
-        sigma: float,
+        mu: Float,
+        sigma: Float,
         parameter_names: list[str],
     ):
+        """
+        A convenient wrapper distribution on top of the StandardNormalDistribution class
+        which scale and translate the distribution according to the mean and standard deviation.
+
+        Args
+            mu: The mean of the distribution.
+            sigma: The standard deviation of the distribution.
+            parameter_names: A list of names for the parameters of the prior.
+        """
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "GaussianPrior needs to be 1D distributions"
         self.mu = mu
