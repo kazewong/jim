@@ -74,7 +74,7 @@ class TestUnivariatePrior:
         x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
-        
+
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
         jitted_val = jax.vmap(jitted_log_prob)(y)
