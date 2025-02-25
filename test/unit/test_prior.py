@@ -32,6 +32,12 @@ class TestUnivariatePrior:
             jax.vmap(p.log_prob)(p.add_name(x[None])), stats.logistic.logpdf(x)
         )
 
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(p.add_name(x[None]))
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(p.add_name(x[None])))
+
     def test_standard_normal(self):
         p = StandardNormalDistribution(["x"])
 
@@ -45,6 +51,12 @@ class TestUnivariatePrior:
         assert jnp.allclose(
             jax.vmap(p.log_prob)(p.add_name(x[None])), stats.norm.logpdf(x)
         )
+
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(p.add_name(x[None]))
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(p.add_name(x[None])))
 
     def test_uniform(self):
         xmin, xmax = -10.0, 10.0
@@ -62,6 +74,12 @@ class TestUnivariatePrior:
         x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
+        
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(y)
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
 
     def test_sine(self):
         p = SinePrior(["x"])
@@ -81,6 +99,12 @@ class TestUnivariatePrior:
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y["x"]) / 2.0))
 
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(y)
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
+
     def test_cosine(self):
         p = CosinePrior(["x"])
 
@@ -97,6 +121,12 @@ class TestUnivariatePrior:
         y = jax.vmap(p.base_prior.transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y["x"]) / 2.0))
+
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(y)
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
 
     def test_uniform_sphere(self):
         p = UniformSpherePrior(["x"])
