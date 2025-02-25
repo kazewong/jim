@@ -149,3 +149,9 @@ class TestUnivariatePrior:
                     jax.vmap(p.log_prob)(y),
                     -jnp.log(y["x"]) - jnp.log(jnp.log(xmax) - jnp.log(xmin)),
                 )
+
+            # Check that log_prob is jittable
+            jitted_log_prob = jax.jit(p.log_prob)
+            jitted_val = jax.vmap(jitted_log_prob)(y)
+            assert jnp.all(jnp.isfinite(jitted_val))
+            assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
