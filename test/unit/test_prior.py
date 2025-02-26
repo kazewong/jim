@@ -9,6 +9,7 @@ from jimgw.prior import (
     CosinePrior,
     UniformSpherePrior,
     PowerLawPrior,
+    GaussianPrior,
 )
 from jimgw.utils import trace_prior_parent
 
@@ -185,3 +186,29 @@ class TestUnivariatePrior:
             jitted_val = jax.vmap(jitted_log_prob)(y)
             assert jnp.all(jnp.isfinite(jitted_val))
             assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
+
+    def test_gaussian(self):
+        mu, sigma = 2.0, 3.0
+        p = GaussianPrior(mu, sigma, ["x"])
+
+        # Check that all the samples are finite
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all(jnp.isfinite(samples["x"]))
+
+        # Check that the log_prob are finite
+        log_prob = jax.vmap(p.log_prob)(samples)
+        assert jnp.all(jnp.isfinite(log_prob))
+
+        # Check that the log_prob are correct in the support
+        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        y = jax.vmap(p.transform)(x)
+        assert jnp.allclose(
+            jax.vmap(p.log_prob)(y),
+            stats.norm.logpdf(y["x"], loc=mu, scale=sigma),
+        )
+
+        # Check that log_prob is jittable
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_val = jax.vmap(jitted_log_prob)(y)
+        assert jnp.all(jnp.isfinite(jitted_val))
+        assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
