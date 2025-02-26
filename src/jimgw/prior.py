@@ -9,7 +9,6 @@ from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from jimgw.transforms import (
     BijectiveTransform,
     LogitTransform,
-    CartesianToPolarTransform,
     ScaleTransform,
     OffsetTransform,
     ArcSineTransform,
@@ -356,15 +355,15 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
-    sigma: float
+    sigma: float = 1.0
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
 
     def __init__(
         self,
+        sigma: float,
         parameter_names: list[str],
-        sigma: float = 1.0,
     ):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
