@@ -355,7 +355,7 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
-    sigma: float = 1.0
+    sigma: float
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
