@@ -112,7 +112,7 @@ class TestUnivariatePrior:
             func(alpha_val)
 
     def test_Rayleigh(self):
-        p = RayleighPrior(["x"])
+        p = RayleighPrior(1.0, ["x"])
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples['x']))
