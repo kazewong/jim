@@ -276,16 +276,16 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: Float = 0.0
-    sigma: Float = 1.0
+    mu: float = 0.0
+    sigma: float = 1.0
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        mu: Float,
-        sigma: Float,
+        mu: float,
+        sigma: float,
         parameter_names: list[str],
     ):
         """
