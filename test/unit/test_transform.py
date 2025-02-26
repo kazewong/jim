@@ -178,9 +178,9 @@ class TestSingleEventTransform:
             S2x = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
             S2y = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
             S2z = jax.random.uniform(subkeys[6], (1,), minval=-1, maxval=1)
-            if jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]]) >= 1):
+            if jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) >= 1:
                 continue
-            if jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]]) >= 1):
+            if jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) >= 1:
                 continue
             break
         M_c = jax.random.uniform(subkeys[7], (1,), minval=1, maxval=100)
