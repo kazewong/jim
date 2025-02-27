@@ -77,8 +77,8 @@ class Data(ABC):
         """Whether the Fourier domain data has been computed."""
         return bool(np.any(self.fd))
 
-    def __init__(self, td: Float[Array, " n_time"],
-                 delta_t: float,
+    def __init__(self, td: Float[Array, " n_time"] = jnp.array([]),
+                 delta_t: float = 0.,
                  epoch: Optional[float] = 0.,
                  name: str = '',
                  window: Optional[Float[Array, " n_time"]] = None)\
@@ -141,11 +141,14 @@ class Data(ABC):
         logging.info(f"Computing FFT of {self.name} data")
         if window is not None:
             self.window = window
+        if len(self.n_time) > 0:
+            assert self.delta_t > 0, "Delta t must be positive"
         self.fd = jnp.fft.rfft(self.td * self.window) * self.delta_t
 
     def frequency_slice(self, f_min: float, f_max: float) -> \
             tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
+        This is the main function which interacts with the likelihood.
 
         Arguments
         ---------
@@ -162,6 +165,8 @@ class Data(ABC):
             Frequencies of the sliced data.
         """
         f = self.frequencies
+        assert (f_min >= f.min()) and (f_max <= f.max()), \
+            "Frequency range is out of bounds"
         return self.fd[(f >= f_min) & (f <= f_max)], \
             f[(f >= f_min) & (f <= f_max)]
 
