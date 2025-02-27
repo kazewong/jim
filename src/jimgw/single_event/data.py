@@ -77,9 +77,9 @@ class Data(ABC):
         """Whether the Fourier domain data has been computed."""
         return bool(np.any(self.fd))
 
-    def __init__(self, td: Float[Array, " n_time"] = jnp.array([]),
-                 delta_t: float = 0.,
-                 epoch: float = 0.,
+    def __init__(self, td: Float[Array, " n_time"],
+                 delta_t: float,
+                 epoch: Optional[float] = 0.,
                  name: str = '',
                  window: Optional[Float[Array, " n_time"]] = None)\
             -> None:
