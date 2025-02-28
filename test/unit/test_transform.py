@@ -4,33 +4,34 @@ import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
-class TestSingleEventTransform:
-    def test_spin_transform(self):
-        forward_keys = (
-            "theta_jn",
-            "phi_jl",
-            "tilt_1",
-            "tilt_2",
-            "phi_12",
-            "a_1",
-            "a_2",
-            "M_c",
-            "q",
-            "phase_c",
-        )
-        backward_keys = (
-            "iota",
-            "s1_x",
-            "s1_y",
-            "s1_z",
-            "s2_x",
-            "s2_y",
-            "s2_z",
-            "M_c",
-            "q",
-            "phase_c",
-        )
+class TestSpinTransform:
+    forward_keys = (
+        "theta_jn",
+        "phi_jl",
+        "tilt_1",
+        "tilt_2",
+        "phi_12",
+        "a_1",
+        "a_2",
+        "M_c",
+        "q",
+        "phase_c",
+    )
 
+    backward_keys = (
+        "iota",
+        "s1_x",
+        "s1_y",
+        "s1_z",
+        "s2_x",
+        "s2_y",
+        "s2_z",
+        "M_c",
+        "q",
+        "phase_c",
+    )
+
+    def test_forward_spin_transform(self):
         ##############################
         # Test transformation from spin angles to cartesian spins
         ##############################
@@ -63,7 +64,7 @@ class TestSingleEventTransform:
 
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref
-            ).transform(dict(zip(forward_keys, row)))
+            ).transform(dict(zip(self.forward_keys, row)))
             bilby_spins = jnp.load(
                 "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
             )
@@ -78,9 +79,13 @@ class TestSingleEventTransform:
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
+    def test_backward_spin_transform(self):
         ##############################
         # Test transformation from cartesian spins to spin angles
         ##############################
+
+        from jimgw.single_event.utils import m1_m2_to_Mc_q
+        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
         # read inputs from binary
         inputs = jnp.load("test/unit/source_files/cartesian_spins_input.npz")
@@ -107,7 +112,7 @@ class TestSingleEventTransform:
 
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref
-            ).inverse(dict(zip(backward_keys, row)))
+            ).inverse(dict(zip(self.backward_keys, row)))
 
             bilby_spins = jnp.load(
                 "test/unit/source_files/spin_angles_output_for_bilby.npz"
@@ -123,11 +128,13 @@ class TestSingleEventTransform:
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
+    def test_forward_backward_consistency(self):
         ##############################
         # Test that the forward and inverse transformations are consistent
         ##############################
 
         from jimgw.single_event.utils import eta_to_q
+        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
         key = jax.random.PRNGKey(42)
         key, subkey = jax.random.split(key)
@@ -152,7 +159,7 @@ class TestSingleEventTransform:
         for i in range(100):
             jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
                 freq_ref=fRef[i]
-            ).inverse(dict(zip(backward_keys, inputs[i])))
+            ).inverse(dict(zip(self.backward_keys, inputs[i])))
             jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
                 freq_ref=fRef[i]
             ).transform(jimgw_spins)
@@ -162,16 +169,22 @@ class TestSingleEventTransform:
             )
             # default atol: 1e-8, rtol: 1e-5
 
+    def test_jitted_transform(self):
+
         ##############################
         # Test that the forward transformation is jitted
         ##############################
+
+        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
         # Generate random sample
         key = jax.random.PRNGKey(123)
         key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, 11)
         iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
-        while True:
+        while True: 
+            key, subkey = jax.random.split(key)
+            subkeys = jax.random.split(subkey, 11)
             S1x = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
             S1y = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
             S1z = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
@@ -201,7 +214,7 @@ class TestSingleEventTransform:
             phiRef[0],
         ]
         freq_ref_sample = fRef[0]
-        sample_dict = dict(zip(forward_keys, sample))
+        sample_dict = dict(zip(self.forward_keys, sample))
 
         # Create a JIT compiled version of the transform.
         jit_transform = jax.jit(
@@ -262,7 +275,7 @@ class TestSingleEventTransform:
             phase_c[0],
         ]
         freq_ref_sample = f_ref[0]
-        sample_dict = dict(zip(backward_keys, sample))
+        sample_dict = dict(zip(self.backward_keys, sample))
 
         # Create a JIT compiled version of the transform.
         jit_inverse_transform = jax.jit(
@@ -288,4 +301,3 @@ class TestSingleEventTransform:
 
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
-
