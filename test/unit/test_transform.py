@@ -32,9 +32,9 @@ class TestSpinTransform:
     )
 
     def test_forward_spin_transform(self):
-        ##############################
-        # Test transformation from spin angles to cartesian spins
-        ##############################
+        """
+        Test transformation from spin angles to cartesian spins
+        """
 
         from jimgw.single_event.utils import m1_m2_to_Mc_q
         from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
@@ -80,9 +80,9 @@ class TestSpinTransform:
             assert not jnp.isnan(jacobian).any()
 
     def test_backward_spin_transform(self):
-        ##############################
-        # Test transformation from cartesian spins to spin angles
-        ##############################
+        """
+        Test transformation from cartesian spins to spin angles
+        """
 
         from jimgw.single_event.utils import m1_m2_to_Mc_q
         from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
@@ -129,9 +129,9 @@ class TestSpinTransform:
             assert not jnp.isnan(jacobian).any()
 
     def test_forward_backward_consistency(self):
-        ##############################
-        # Test that the forward and inverse transformations are consistent
-        ##############################
+        """
+        Test that the forward and inverse transformations are consistent
+        """
 
         from jimgw.single_event.utils import eta_to_q
         from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
@@ -170,10 +170,9 @@ class TestSpinTransform:
             # default atol: 1e-8, rtol: 1e-5
 
     def test_jitted_transform(self):
-
-        ##############################
-        # Test that the forward transformation is jitted
-        ##############################
+        """
+        Test that the transformations is JIT compilable
+        """
 
         from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
@@ -182,7 +181,7 @@ class TestSpinTransform:
         key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, 11)
         iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
-        while True: 
+        while True:
             key, subkey = jax.random.split(key)
             subkeys = jax.random.split(subkey, 11)
             S1x = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
@@ -191,11 +190,13 @@ class TestSpinTransform:
             S2x = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
             S2y = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
             S2z = jax.random.uniform(subkeys[6], (1,), minval=-1, maxval=1)
-            if jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) >= 1:
+            if (
+                jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) >= 1
+                or jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) >= 1
+            ):
                 continue
-            if jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) >= 1:
-                continue
-            break
+            else:
+                break
         M_c = jax.random.uniform(subkeys[7], (1,), minval=1, maxval=100)
         eta = jax.random.uniform(subkeys[8], (1,), minval=0.1, maxval=0.25)
         fRef = jax.random.uniform(subkeys[9], (1,), minval=10, maxval=100)
@@ -240,10 +241,6 @@ class TestSpinTransform:
 
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
-
-        ##############################
-        # Test that the inverse transformation is jitted
-        ##############################
 
         # Generate random sample
         key = jax.random.PRNGKey(123)

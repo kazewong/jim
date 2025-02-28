@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/home/user/smwong/jim/test/unit/test_transform.py", line 4, in <module>
-    class TestTransform:
-  File "/home/user/smwong/jim/test/unit/test_transform.py", line 75, in TestTransform
-    test_forward_spin_transform()
-TypeError: TestTransform.test_forward_spin_transform() missing 1 required positional argument: 'self'
