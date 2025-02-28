@@ -1,6 +1,9 @@
 import jax
 import jax.numpy as jnp
 
+from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
+from jimgw.single_event.utils import m1_m2_to_Mc_q
+
 jax.config.update("jax_enable_x64", True)
 
 
@@ -34,18 +37,25 @@ class TestSpinTransform:
     def test_forward_spin_transform(self):
         """
         Test transformation from spin angles to cartesian spins
-        """
 
-        from jimgw.single_event.utils import m1_m2_to_Mc_q
-        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
+        Input and output values are generated with bilby_spin.py
+        """
 
         # read inputs from binary
         inputs = jnp.load("test/unit/source_files/spin_angles_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
+        # read outputs from binary
+        bilby_spins = jnp.load(
+            "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
+        )
+        bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+
+        n = 100  # max: 100
+
         # compute jimgw spins
-        for i in range(100):
+        for i in range(n):
             row = [
                 inputs[0][i],
                 inputs[1][i],
@@ -56,44 +66,44 @@ class TestSpinTransform:
                 inputs[6][i],
                 M_c[i],
                 q[i],
-                inputs[9][i],
                 inputs[10][i],
             ]
 
-            freq_ref = row.pop(9)
+            freq_ref = inputs[9][i]
 
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref
             ).transform(dict(zip(self.forward_keys, row)))
-            bilby_spins = jnp.load(
-                "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
-            )
-            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
-            bilby_spins = bilby_spins[i]
 
             for key in ("M_c", "q", "phase_c"):
                 jimgw_spins.pop(key)
-            jim_spins = list(jimgw_spins.values())
 
-            assert jnp.allclose(jnp.array(jim_spins), bilby_spins)
+            assert jnp.allclose(jnp.array(list(jimgw_spins.values())), bilby_spins[i])
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
     def test_backward_spin_transform(self):
         """
         Test transformation from cartesian spins to spin angles
-        """
 
-        from jimgw.single_event.utils import m1_m2_to_Mc_q
-        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
+        Input and output values are generated with bilby_spin.py
+        """
 
         # read inputs from binary
         inputs = jnp.load("test/unit/source_files/cartesian_spins_input.npz")
         inputs = [inputs[key] for key in inputs.keys()]
         M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
 
+        # read outputs from binary
+        bilby_spins = jnp.load(
+            "test/unit/source_files/spin_angles_output_for_bilby.npz"
+        )
+        bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+
+        n = 100  # max: 100
+
         # compute jimgw spins
-        for i in range(100):
+        for i in range(n):
             row = [
                 inputs[0][i],
                 inputs[1][i],
@@ -104,27 +114,20 @@ class TestSpinTransform:
                 inputs[6][i],
                 M_c[i],
                 q[i],
-                inputs[9][i],
                 inputs[10][i],
             ]
 
-            freq_ref = row.pop(9)
+            freq_ref = inputs[9][i]
 
             jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
                 freq_ref=freq_ref
             ).inverse(dict(zip(self.backward_keys, row)))
 
-            bilby_spins = jnp.load(
-                "test/unit/source_files/spin_angles_output_for_bilby.npz"
-            )
-            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
-            bilby_spins = bilby_spins[i]
-
             for key in ("M_c", "q", "phase_c"):
                 jimgw_spins.pop(key)
             jimgw_spins = list(jimgw_spins.values())
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins)
+            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins[i])
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
@@ -133,74 +136,86 @@ class TestSpinTransform:
         Test that the forward and inverse transformations are consistent
         """
 
-        from jimgw.single_event.utils import eta_to_q
-        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
+        n = 10
 
         key = jax.random.PRNGKey(42)
-        key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 11)
-        iota = jax.random.uniform(subkeys[0], (100,), minval=0, maxval=jnp.pi)
-        S1x = jax.random.uniform(subkeys[1], (100,), minval=-1, maxval=1)
-        S1y = jax.random.uniform(subkeys[2], (100,), minval=-1, maxval=1)
-        S1z = jax.random.uniform(subkeys[3], (100,), minval=-1, maxval=1)
-        S2x = jax.random.uniform(subkeys[4], (100,), minval=-1, maxval=1)
-        S2y = jax.random.uniform(subkeys[5], (100,), minval=-1, maxval=1)
-        S2z = jax.random.uniform(subkeys[6], (100,), minval=-1, maxval=1)
-        M_c = jax.random.uniform(subkeys[7], (100,), minval=1, maxval=100)
-        eta = jax.random.uniform(subkeys[8], (100,), minval=0.1, maxval=0.25)
-        fRef = jax.random.uniform(subkeys[9], (100,), minval=10, maxval=100)
-        phiRef = jax.random.uniform(subkeys[10], (100,), minval=0, maxval=2 * jnp.pi)
+        for _ in range(n):
+            key, subkey = jax.random.split(key)
+            subkeys = jax.random.split(subkey, 5)
+            iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
+            M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
+            q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
+            fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
+            phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-        q = eta_to_q(eta)
+            while True:
+                key, subkey = jax.random.split(key)
+                subkeys = jax.random.split(subkey, 6)
+                S1x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
+                S1y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
+                S1z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
+                S2x = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
+                S2y = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
+                S2z = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
+                if (
+                    jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) <= 1
+                    and jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) <= 1
+                ):
+                    break
 
-        inputs = jnp.array([iota, S1x, S1y, S1z, S2x, S2y, S2z, M_c, q, phiRef]).T
-        # Jacobian will fail (with nans) if component spins are zeroes
+            sample = [
+                iota[0],
+                S1x[0],
+                S1y[0],
+                S1z[0],
+                S2x[0],
+                S2y[0],
+                S2z[0],
+                M_c[0],
+                q[0],
+                phiRef[0],
+            ]
 
-        for i in range(100):
             jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
-                freq_ref=fRef[i]
-            ).inverse(dict(zip(self.backward_keys, inputs[i])))
+                freq_ref=fRef[0]
+            ).inverse(dict(zip(self.backward_keys, sample)))
             jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
-                freq_ref=fRef[i]
+                freq_ref=fRef[0]
             ).transform(jimgw_spins)
             jimgw_spins = list(jimgw_spins.values())
             assert jnp.allclose(
-                jnp.array(jimgw_spins), jnp.array([*inputs[i][7:], *inputs[i][:7]])
+                jnp.array(jimgw_spins), jnp.array([*sample[7:], *sample[:7]])
             )
             # default atol: 1e-8, rtol: 1e-5
 
-    def test_jitted_transform(self):
+    def test_jitted_forward_transform(self):
         """
-        Test that the transformations is JIT compilable
+        Test that the forward transformation is JIT compilable
         """
-
-        from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
 
         # Generate random sample
-        key = jax.random.PRNGKey(123)
-        key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 11)
+        subkeys = jax.random.split(jax.random.PRNGKey(12), 6)
         iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
+        M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
+        q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
+        fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
+        phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
+
+        key = subkeys[5]
         while True:
             key, subkey = jax.random.split(key)
-            subkeys = jax.random.split(subkey, 11)
-            S1x = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
-            S1y = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
-            S1z = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
-            S2x = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
-            S2y = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
-            S2z = jax.random.uniform(subkeys[6], (1,), minval=-1, maxval=1)
+            subkeys = jax.random.split(subkey, 6)
+            S1x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
+            S1y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
+            S1z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
+            S2x = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
+            S2y = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
+            S2z = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
             if (
-                jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) >= 1
-                or jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) >= 1
+                jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) <= 1
+                and jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) <= 1
             ):
-                continue
-            else:
                 break
-        M_c = jax.random.uniform(subkeys[7], (1,), minval=1, maxval=100)
-        eta = jax.random.uniform(subkeys[8], (1,), minval=0.1, maxval=0.25)
-        fRef = jax.random.uniform(subkeys[9], (1,), minval=10, maxval=100)
-        phiRef = jax.random.uniform(subkeys[10], (1,), minval=0, maxval=2 * jnp.pi)
 
         sample = [
             iota[0],
@@ -211,7 +226,7 @@ class TestSpinTransform:
             S2y[0],
             S2z[0],
             M_c[0],
-            eta[0],
+            q[0],
             phiRef[0],
         ]
         freq_ref_sample = fRef[0]
@@ -242,10 +257,13 @@ class TestSpinTransform:
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
+    def test_jitted_backward_transform(self):
+        """
+        Test that the backward transformation is JIT compilable
+        """
+
         # Generate random sample
-        key = jax.random.PRNGKey(123)
-        key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 11)
+        subkeys = jax.random.split(jax.random.PRNGKey(123), 11)
 
         theta_jn = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
         phi_jl = jax.random.uniform(subkeys[1], (1,), minval=0, maxval=2 * jnp.pi)
@@ -255,7 +273,7 @@ class TestSpinTransform:
         a_1 = jax.random.uniform(subkeys[5], (1,), minval=0, maxval=1)
         a_2 = jax.random.uniform(subkeys[6], (1,), minval=0, maxval=1)
         M_c = jax.random.uniform(subkeys[7], (1,), minval=1, maxval=100)
-        q = jax.random.uniform(subkeys[8], (1,), minval=0.1, maxval=1)
+        q = jax.random.uniform(subkeys[8], (1,), minval=0.125, maxval=1)
         phase_c = jax.random.uniform(subkeys[9], (1,), minval=0, maxval=2 * jnp.pi)
         f_ref = jax.random.uniform(subkeys[10], (1,), minval=10, maxval=100)
 

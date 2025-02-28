@@ -1,10 +1,9 @@
 import numpy as np
 from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions, SimInspiralTransformPrecessingWvf2PE
 from lal import MSUN_SI
-from bilby.gw.conversion import (
-    symmetric_mass_ratio_to_mass_ratio,
-    chirp_mass_and_mass_ratio_to_component_masses,
-)
+from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_component_masses
+
+np.random.seed(12345)
 
 inputs = []
 for _ in range(100):
@@ -16,11 +15,10 @@ for _ in range(100):
     chi1 = np.array(np.random.uniform(0, 1))
     chi2 = np.array(np.random.uniform(0, 1))
     M_c = np.array(np.random.uniform(1, 100))
-    eta = np.array(np.random.uniform(0.1, 0.25))
+    q = np.array(np.random.uniform(0.125, 1))
     fRef = np.array(np.random.uniform(10, 1000))
     phiRef = np.array(np.random.uniform(0, 2 * np.pi))
 
-    q = symmetric_mass_ratio_to_mass_ratio(eta)
     m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(M_c, q)
 
     inputs.append(
@@ -85,22 +83,23 @@ np.savez(
 )
 
 
-
 inputs = []
 for _ in range(100):
     iota = np.array(np.random.uniform(0, np.pi))
-    S1x = np.array(np.random.uniform(-1, 1))
-    S1y = np.array(np.random.uniform(-1, 1))
-    S1z = np.array(np.random.uniform(-1, 1))
-    S2x = np.array(np.random.uniform(-1, 1))
-    S2y = np.array(np.random.uniform(-1, 1))
-    S2z = np.array(np.random.uniform(-1, 1))
+    while True:
+        S1x = np.array(np.random.uniform(-1, 1))
+        S1y = np.array(np.random.uniform(-1, 1))
+        S1z = np.array(np.random.uniform(-1, 1))
+        S2x = np.array(np.random.uniform(-1, 1))
+        S2y = np.array(np.random.uniform(-1, 1))
+        S2z = np.array(np.random.uniform(-1, 1))
+        if np.linalg.norm([S1x, S1y, S1z]) <= 1 and np.linalg.norm([S2x, S2y, S2z]) <= 1:
+            break
     M_c = np.array(np.random.uniform(1, 100))
-    eta = np.array(np.random.uniform(0.1, 0.25))
+    q = np.array(np.random.uniform(0.125, 1))
     fRef = np.array(np.random.uniform(10, 100))
     phiRef = np.array(np.random.uniform(0, 2 * np.pi))
 
-    q = symmetric_mass_ratio_to_mass_ratio(eta)
     m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(M_c, q)
 
     inputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z, m1, m2, fRef, phiRef))
