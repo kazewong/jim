@@ -1,5 +1,8 @@
 import numpy as np
-from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions, SimInspiralTransformPrecessingWvf2PE
+from lalsimulation import (
+    SimInspiralTransformPrecessingNewInitialConditions,
+    SimInspiralTransformPrecessingWvf2PE,
+)
 from lal import MSUN_SI
 from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_component_masses
 
@@ -8,10 +11,10 @@ np.random.seed(12345)
 inputs = []
 for _ in range(100):
     thetaJN = np.array(np.random.uniform(0, np.pi))
-    phiJL = np.array(np.random.uniform(0, 2*np.pi))
+    phiJL = np.array(np.random.uniform(0, 2 * np.pi))
     theta1 = np.array(np.random.uniform(0, np.pi))
     theta2 = np.array(np.random.uniform(0, np.pi))
-    phi12 = np.array(np.random.uniform(0, 2*np.pi))
+    phi12 = np.array(np.random.uniform(0, 2 * np.pi))
     chi1 = np.array(np.random.uniform(0, 1))
     chi2 = np.array(np.random.uniform(0, 1))
     M_c = np.array(np.random.uniform(1, 100))
@@ -93,7 +96,10 @@ for _ in range(100):
         S2x = np.array(np.random.uniform(-1, 1))
         S2y = np.array(np.random.uniform(-1, 1))
         S2z = np.array(np.random.uniform(-1, 1))
-        if np.linalg.norm([S1x, S1y, S1z]) <= 1 and np.linalg.norm([S2x, S2y, S2z]) <= 1:
+        if (
+            np.linalg.norm([S1x, S1y, S1z]) <= 1
+            and np.linalg.norm([S2x, S2y, S2z]) <= 1
+        ):
             break
     M_c = np.array(np.random.uniform(1, 100))
     q = np.array(np.random.uniform(0.125, 1))
