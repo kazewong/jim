@@ -13,6 +13,7 @@ from jimgw.transforms import (
     OffsetTransform,
     SineTransform,
     PowerLawTransform,
+    RayleighTransform,
     reverse_bijective_transform,
 )
 
@@ -381,7 +382,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], max_mag: float = 1.0, **kwargs):
+    def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -395,6 +396,36 @@ class UniformSpherePrior(CombinePrior):
                 SinePrior([self.parameter_names[1]]),
                 UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
+        )
+
+
+@jaxtyped(typechecker=typechecker)
+class RayleighPrior(SequentialTransformPrior):
+    """
+    A prior distribution following the Rayleigh distribution with scale parameter sigma.
+    """
+
+    sigma: float
+
+    def __repr__(self):
+        return f"RayleighPrior(parameter_names={self.parameter_names})"
+
+    def __init__(
+        self,
+        sigma: float,
+        parameter_names: list[str],
+    ):
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
+        self.sigma = sigma
+        super().__init__(
+            UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"]),
+            [
+                RayleighTransform(
+                    ([f"{self.parameter_names[0]}_base"], self.parameter_names),
+                    sigma=sigma,
+                )
+            ],
         )
 
 
