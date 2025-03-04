@@ -85,9 +85,9 @@ samples = jim.get_samples()
 # plt.ylim(0.0, 2.0 * jnp.pi)
 # plt.xlim(0, 300)
 # if prior.n_dim == 1:
-#     plt.savefig("walker_history_uniform.jpg")
+#     plt.savefig("figures/walker_history_uniform.jpg")
 # else:
-#     plt.savefig("walker_history_periodic.jpg")
+#     plt.savefig("figures/walker_history_periodic.jpg")
 # plt.close()
 
 # plt.hist(samples["test"], label="Samples", density=True, bins=50)
@@ -98,7 +98,7 @@ samples = jim.get_samples()
 # plt.xlim(0.0, 2.0 * jnp.pi)
 # plt.legend()
 # if prior.n_dim == 1:
-#     plt.savefig("histogram_uniform.jpg")
+#     plt.savefig("figures/histogram_uniform.jpg")
 # else:
-#     plt.savefig("histogram_periodic.jpg")
+#     plt.savefig("figures/histogram_periodic.jpg")
 # plt.close()
