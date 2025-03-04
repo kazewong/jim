@@ -11,9 +11,9 @@ from jimgw.transforms import (
     LogitTransform,
     ScaleTransform,
     OffsetTransform,
-    ArcSineTransform,
+    SineTransform,
     PowerLawTransform,
-    ParetoTransform,
+    reverse_bijective_transform,
 )
 
 
@@ -276,6 +276,51 @@ class UniformPrior(SequentialTransformPrior):
 
 
 @jaxtyped(typechecker=typechecker)
+class GaussianPrior(SequentialTransformPrior):
+    mu: float
+    sigma: float
+
+    def __repr__(self):
+        return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
+
+    def __init__(
+        self,
+        mu: float,
+        sigma: float,
+        parameter_names: list[str],
+    ):
+        """
+        A convenient wrapper distribution on top of the StandardNormalDistribution class
+        which scale and translate the distribution according to the mean and standard deviation.
+
+        Args
+            mu: The mean of the distribution.
+            sigma: The standard deviation of the distribution.
+            parameter_names: A list of names for the parameters of the prior.
+        """
+        self.parameter_names = parameter_names
+        assert self.n_dim == 1, "GaussianPrior needs to be 1D distributions"
+        self.mu = mu
+        self.sigma = sigma
+        super().__init__(
+            StandardNormalDistribution([f"{self.parameter_names[0]}_base"]),
+            [
+                ScaleTransform(
+                    (
+                        [f"{self.parameter_names[0]}_base"],
+                        [f"{self.parameter_names[0]}-({mu})"],
+                    ),
+                    sigma,
+                ),
+                OffsetTransform(
+                    ([f"{self.parameter_names[0]}-({mu})"], self.parameter_names),
+                    mu,
+                ),
+            ],
+        )
+
+
+@jaxtyped(typechecker=typechecker)
 class SinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
@@ -318,8 +363,13 @@ class CosinePrior(SequentialTransformPrior):
         super().__init__(
             UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"]),
             [
-                ArcSineTransform(
-                    ([f"sin({self.parameter_names[0]})"], [self.parameter_names[0]])
+                reverse_bijective_transform(
+                    SineTransform(
+                        (
+                            [f"{self.parameter_names[0]}"],
+                            [f"sin({self.parameter_names[0]})"],
+                        )
+                    )
                 )
             ],
         )
@@ -331,7 +381,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], **kwargs):
+    def __init__(self, parameter_names: list[str], max_mag: float = 1.0, **kwargs):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -341,7 +391,7 @@ class UniformSpherePrior(CombinePrior):
         ]
         super().__init__(
             [
-                UniformPrior(0.0, 1.0, [self.parameter_names[0]]),
+                UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
                 SinePrior([self.parameter_names[1]]),
                 UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
@@ -371,19 +421,6 @@ class PowerLawPrior(SequentialTransformPrior):
         self.alpha = alpha
         assert self.xmin < self.xmax, "xmin must be less than xmax"
         assert self.xmin > 0.0, "x must be positive"
-        if self.alpha == -1.0:
-            transform = ParetoTransform(
-                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
-                xmin,
-                xmax,
-            )
-        else:
-            transform = PowerLawTransform(
-                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
-                xmin,
-                xmax,
-                alpha,
-            )
         super().__init__(
             LogisticDistribution([f"{self.parameter_names[0]}_base"]),
             [
@@ -393,9 +430,30 @@ class PowerLawPrior(SequentialTransformPrior):
                         [f"{self.parameter_names[0]}_before_transform"],
                     )
                 ),
-                transform,
+                PowerLawTransform(
+                    (
+                        [f"{self.parameter_names[0]}_before_transform"],
+                        self.parameter_names,
+                    ),
+                    xmin,
+                    xmax,
+                    alpha,
+                ),
             ],
         )
+
+
+def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
+    if prior.composite:
+        if isinstance(prior.base_prior, list):
+            for subprior in prior.base_prior:
+                output = trace_prior_parent(subprior, output)
+        elif isinstance(prior.base_prior, Prior):
+            output = trace_prior_parent(prior.base_prior, output)
+    else:
+        output.append(prior)
+
+    return output
 
 
 # ====================== Things below may need rework ======================
