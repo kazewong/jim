@@ -303,9 +303,11 @@ class LogitTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class ArcSineTransform(BijectiveTransform):
+class SineTransform(BijectiveTransform):
     """
-    ArcSine transformation
+    Sine transformation
+
+    The original parameter is expected to be in [-pi/2, pi/2]
 
     Parameters
     ----------
@@ -320,11 +322,40 @@ class ArcSineTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: {
-            name_mapping[1][i]: jnp.arcsin(x[name_mapping[0][i]])
+            name_mapping[1][i]: jnp.sin(x[name_mapping[0][i]])
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.sin(x[name_mapping[1][i]])
+            name_mapping[0][i]: jnp.arcsin(x[name_mapping[1][i]])
+            for i in range(len(name_mapping[1]))
+        }
+
+
+@jaxtyped(typechecker=typechecker)
+class CosineTransform(BijectiveTransform):
+    """
+    Cosine transformation
+
+    The original parameter is expected to be in [0, pi]
+
+    Parameters
+    ----------
+    name_mapping : tuple[list[str], list[str]]
+            The name mapping between the input and output dictionary.
+
+    """
+
+    def __init__(
+        self,
+        name_mapping: tuple[list[str], list[str]],
+    ):
+        super().__init__(name_mapping)
+        self.transform_func = lambda x: {
+            name_mapping[1][i]: jnp.cos(x[name_mapping[0][i]])
+            for i in range(len(name_mapping[0]))
+        }
+        self.inverse_transform_func = lambda x: {
+            name_mapping[0][i]: jnp.arccos(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
 

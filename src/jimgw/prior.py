@@ -11,8 +11,9 @@ from jimgw.transforms import (
     LogitTransform,
     ScaleTransform,
     OffsetTransform,
-    ArcSineTransform,
+    SineTransform,
     PowerLawTransform,
+    reverse_bijective_transform,
 )
 
 
@@ -362,8 +363,13 @@ class CosinePrior(SequentialTransformPrior):
         super().__init__(
             UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"]),
             [
-                ArcSineTransform(
-                    ([f"sin({self.parameter_names[0]})"], [self.parameter_names[0]])
+                reverse_bijective_transform(
+                    SineTransform(
+                        (
+                            [f"{self.parameter_names[0]}"],
+                            [f"sin({self.parameter_names[0]})"],
+                        )
+                    )
                 )
             ],
         )
