@@ -13,7 +13,6 @@ from jimgw.transforms import (
     OffsetTransform,
     ArcSineTransform,
     PowerLawTransform,
-    ParetoTransform,
 )
 
 
@@ -277,16 +276,16 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: Float = 0.0
-    sigma: Float = 1.0
+    mu: float
+    sigma: float
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        mu: Float,
-        sigma: Float,
+        mu: float,
+        sigma: float,
         parameter_names: list[str],
     ):
         """
@@ -416,19 +415,6 @@ class PowerLawPrior(SequentialTransformPrior):
         self.alpha = alpha
         assert self.xmin < self.xmax, "xmin must be less than xmax"
         assert self.xmin > 0.0, "x must be positive"
-        if self.alpha == -1.0:
-            transform = ParetoTransform(
-                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
-                xmin,
-                xmax,
-            )
-        else:
-            transform = PowerLawTransform(
-                ([f"{self.parameter_names[0]}_before_transform"], self.parameter_names),
-                xmin,
-                xmax,
-                alpha,
-            )
         super().__init__(
             LogisticDistribution([f"{self.parameter_names[0]}_base"]),
             [
@@ -438,7 +424,15 @@ class PowerLawPrior(SequentialTransformPrior):
                         [f"{self.parameter_names[0]}_before_transform"],
                     )
                 ),
-                transform,
+                PowerLawTransform(
+                    (
+                        [f"{self.parameter_names[0]}_before_transform"],
+                        self.parameter_names,
+                    ),
+                    xmin,
+                    xmax,
+                    alpha,
+                ),
             ],
         )
 
