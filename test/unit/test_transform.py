@@ -20,10 +20,12 @@ class TestBasicTransforms:
         transform = ScaleTransform(name_mapping, scale)
         input_data = {"a": 2.0, "b": 4.0}
 
+        # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(list(output.values()), [2.0 * scale, 4.0 * scale])
         assert np.allclose(log_det, 2 * jnp.log(scale))
 
+        # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(list(recovered.values()), list(input_data.values()))
         assert np.allclose(inv_log_det, -2 * jnp.log(scale))
@@ -31,10 +33,12 @@ class TestBasicTransforms:
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
 
+        # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(list(jitted_output.values()), [2.0 * scale, 4.0 * scale])
         assert np.allclose(jitted_log_det, 2 * jnp.log(scale))
 
+        # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(list(jitted_recovered.values()), list(input_data.values()))
         assert np.allclose(jitted_inv_log_det, -2 * jnp.log(scale))
@@ -45,10 +49,12 @@ class TestBasicTransforms:
         transform = OffsetTransform(name_mapping, offset)
         input_data = {"x": 10.0, "y": -3.0}
 
+        # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(list(output.values()), [10.0 + offset, -3.0 + offset])
         assert np.allclose(log_det, 0.0)
 
+        # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(list(recovered.values()), list(input_data.values()))
         assert np.allclose(inv_log_det, 0.0)
@@ -56,10 +62,12 @@ class TestBasicTransforms:
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
 
+        # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(list(jitted_output.values()), [10.0 + offset, -3.0 + offset])
         assert np.allclose(jitted_log_det, 0.0)
 
+        # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(list(jitted_recovered.values()), list(input_data.values()))
         assert np.allclose(jitted_inv_log_det, 0.0)
@@ -69,10 +77,12 @@ class TestBasicTransforms:
         transform = LogitTransform(name_mapping)
         input_data = {"p": 0.6}
 
+        # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["p_logit"], 1 / (1 + jnp.exp(-0.6)))
         assert np.isfinite(log_det)
 
+        # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(recovered["p"], input_data["p"])
         assert np.isfinite(inv_log_det)
@@ -80,10 +90,12 @@ class TestBasicTransforms:
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
 
+        # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(jitted_output["p_logit"], 1 / (1 + jnp.exp(-0.6)))
         assert np.isfinite(jitted_log_det)
 
+        # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(jitted_recovered["p"], input_data["p"])
         assert np.isfinite(jitted_inv_log_det)
@@ -94,10 +106,12 @@ class TestBasicTransforms:
         angle = 0.3
         input_data = {"theta": angle}
 
+        # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["sin_theta"], jnp.sin(angle))
         assert np.isfinite(log_det)
 
+        # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(recovered["theta"], angle)
         assert np.isfinite(inv_log_det)
@@ -105,10 +119,12 @@ class TestBasicTransforms:
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
 
+        # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(jitted_output["sin_theta"], jnp.sin(angle))
         assert np.isfinite(jitted_log_det)
 
+        # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(jitted_recovered["theta"], angle)
         assert np.isfinite(jitted_inv_log_det)
@@ -119,10 +135,12 @@ class TestBasicTransforms:
         angle = 1.2
         input_data = {"theta": angle}
 
+        # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["cos_theta"], jnp.cos(angle))
         assert np.isfinite(log_det)
 
+        # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(recovered["theta"], angle)
         assert np.isfinite(inv_log_det)
@@ -130,10 +148,12 @@ class TestBasicTransforms:
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
 
+        # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(jitted_output["cos_theta"], jnp.cos(angle))
         assert np.isfinite(jitted_log_det)
 
+        # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(jitted_recovered["theta"], angle)
         assert np.isfinite(jitted_inv_log_det)
