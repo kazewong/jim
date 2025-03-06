@@ -17,6 +17,7 @@ from jimgw.transforms import (
 
 jax.config.update("jax_enable_x64", True)
 
+
 class TestBasicTransforms:
     def test_scale_transform(self):
         name_mapping = (["a", "b"], ["a_scaled", "b_scaled"])
@@ -169,15 +170,19 @@ class TestBasicTransforms:
         orig_upper = jnp.array([10.0])
         target_lower = jnp.array([100.0])
         target_upper = jnp.array([200.0])
-        transform = BoundToBound(name_mapping, orig_lower, orig_upper, target_lower, target_upper)
+        transform = BoundToBound(
+            name_mapping, orig_lower, orig_upper, target_lower, target_upper
+        )
         input_data = {"x": 5.0}  # mid-point of original range
-        
+
         # Expected: (5-0)*(200-100)/(10-0) + 100 = 150
         expected_forward = 150.0
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["x_mapped"], expected_forward)
         # For one dimension, derivative is constant:
-        expected_log_det = jnp.log((target_upper - target_lower) / (orig_upper - orig_lower))
+        expected_log_det = jnp.log(
+            (target_upper - target_lower) / (orig_upper - orig_lower)
+        )
         assert np.allclose(log_det, expected_log_det)
 
         recovered, inv_log_det = transform.inverse(output.copy())
@@ -279,8 +284,10 @@ class TestBasicTransforms:
         # For input x, forward transform:
         # output = (xmin^(1+alpha) + x*(xmax^(1+alpha) - xmin^(1+alpha)))^(1/(1+alpha))
         input_data = {"x": 0.5}
-        inner = xmin**(1.0 + alpha) + 0.5 * (xmax**(1.0 + alpha) - xmin**(1.0 + alpha))
-        expected_forward = inner**(1.0 / (1.0 + alpha))
+        inner = xmin ** (1.0 + alpha) + 0.5 * (
+            xmax ** (1.0 + alpha) - xmin ** (1.0 + alpha)
+        )
+        expected_forward = inner ** (1.0 / (1.0 + alpha))
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["x_powerlaw"], expected_forward)
         assert np.isfinite(log_det)
@@ -302,12 +309,11 @@ class TestBasicTransforms:
 class TestHelperFunctions:
     def test_reverse_bijective_transform(self):
         # Test the reverse_bijective_transform function by applying it to a simple ScaleTransform.
-        from jimgw.transforms import reverse_bijective_transform
         name_mapping = (["a", "b"], ["a_scaled", "b_scaled"])
         scale = 3.0
         original_transform = ScaleTransform(name_mapping, scale)
         input_data = {"a": 2.0, "b": 4.0}
-        
+
         # Compute output using original transform.
         output, log_det = original_transform.transform(input_data.copy())
         # Obtain reversed transform.
