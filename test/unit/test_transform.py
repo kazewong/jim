@@ -114,12 +114,12 @@ class TestBasicTransforms:
         # Test forward transformation
         output, log_det = transform.transform(input_data.copy())
         assert np.allclose(output["sin_theta"], jnp.sin(angle))
-        assert np.isfinite(log_det)
+        assert np.allclose(log_det, jnp.log(jnp.abs(jnp.cos(angle))))
 
         # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
         assert np.allclose(recovered["theta"], angle)
-        assert np.isfinite(inv_log_det)
+        assert np.allclose(inv_log_det, -jnp.log(jnp.abs(jnp.cos(angle))))
 
         jit_transform = jax.jit(lambda x: transform.transform(x))
         jit_inverse = jax.jit(lambda x: transform.inverse(x))
@@ -127,12 +127,12 @@ class TestBasicTransforms:
         # Test jitted forward transformation
         jitted_output, jitted_log_det = jit_transform(input_data)
         assert np.allclose(jitted_output["sin_theta"], jnp.sin(angle))
-        assert np.isfinite(jitted_log_det)
+        assert np.allclose(jitted_log_det, jnp.log(jnp.abs(jnp.cos(angle))))
 
         # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
         assert np.allclose(jitted_recovered["theta"], angle)
-        assert np.isfinite(jitted_inv_log_det)
+        assert np.allclose(jitted_inv_log_det, -jnp.log(jnp.abs(jnp.cos(angle))))
 
     def test_cosine_transform(self):
         name_mapping = (["theta"], ["cos_theta"])
