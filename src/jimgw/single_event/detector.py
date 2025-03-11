@@ -202,6 +202,7 @@ class GroundBased2G(Detector):
         f_min: Float,
         f_max: Float,
         psd_pad: int = 16,
+        psd_duration: int = 16,
         tukey_alpha: Float = 0.2,
         gwpy_kwargs: dict = {"cache": True},
     ) -> None:
@@ -222,6 +223,8 @@ class GroundBased2G(Detector):
             The maximum frequency to fetch data.
         psd_pad : int
             The amount of time to pad the PSD data.
+        psd_duration : int
+            The duration of the PSD data.
         tukey_alpha : Float
             The alpha parameter for the Tukey window.
 
@@ -241,7 +244,7 @@ class GroundBased2G(Detector):
         data = jnp.fft.rfft(jnp.array(data_td.value) * tukey(n, tukey_alpha)) * delta_t
         freq = jnp.fft.rfftfreq(n, delta_t)
         # TODO: Check if this is the right way to fetch PSD
-        start_psd = int(trigger_time) - gps_start_pad - 2 * psd_pad
+        start_psd = int(trigger_time) - gps_start_pad - psd_pad - psd_duration
         end_psd = int(trigger_time) - gps_start_pad - psd_pad
 
         print("Fetching PSD data...")
