@@ -15,7 +15,7 @@ import logging
 import jax
 
 
-DEG_TO_RAD = jnp.pi / 180
+DEG_TO_RAD = np.pi / 180
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -65,19 +65,19 @@ class Data(ABC):
     @property
     def times(self) -> Float[Array, " n_time"]:
         """Times of the data in seconds."""
-        return jnp.arange(self.n_time) * self.delta_t + self.epoch
+        return np.arange(self.n_time) * self.delta_t + self.epoch
 
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
         """Frequencies of the data in Hz."""
-        return jnp.fft.rfftfreq(self.n_time, self.delta_t)
+        return np.fft.rfftfreq(self.n_time, self.delta_t)
 
     @property
     def has_fd(self) -> bool:
         """Whether the Fourier domain data has been computed."""
         return bool(np.any(self.fd))
 
-    def __init__(self, td: Float[Array, " n_time"] = jnp.array([]),
+    def __init__(self, td: Float[Array, " n_time"] = np.array([]),
                  delta_t: float = 0.,
                  epoch: Optional[float] = 0.,
                  name: str = '',
@@ -100,7 +100,7 @@ class Data(ABC):
         """
         self.name = name or ''
         self.td = td
-        self.fd = jnp.zeros(self.n_freq)
+        self.fd = np.zeros(self.n_freq)
         self.delta_t = delta_t
         self.epoch = epoch
         if window is None:
@@ -127,7 +127,7 @@ class Data(ABC):
             the fraction of the segment that is tapered on each side.
         """
         logging.info(f"Setting Tukey window to {self.name} data")
-        self.window = jnp.array(tukey(self.n_time, alpha))
+        self.window = np.array(tukey(self.n_time, alpha))
 
     def fft(self, window: Optional[Float[Array, " n_time"]] = None) -> None:
         """Compute the Fourier transform of the data and store it
@@ -141,11 +141,12 @@ class Data(ABC):
         logging.info(f"Computing FFT of {self.name} data")
         if window is not None:
             self.window = window
-        if len(self.n_time) > 0:
+        if self.n_time > 0:
             assert self.delta_t > 0, "Delta t must be positive"
-        self.fd = jnp.fft.rfft(self.td * self.window) * self.delta_t
+        self.fd = np.fft.rfft(self.td * self.window) * self.delta_t
 
-    def frequency_slice(self, f_min: float, f_max: float) -> \
+    def frequency_slice(self, f_min: float, f_max: float,
+                        auto_fft: bool = True) -> \
             tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
@@ -164,6 +165,8 @@ class Data(ABC):
         f_slice: array
             Frequencies of the sliced data.
         """
+        if auto_fft and not self.has_fd:
+            self.fft()
         f = self.frequencies
         assert (f_min >= f.min()) and (f_max <= f.max()), \
             "Frequency range is out of bounds"
@@ -186,7 +189,7 @@ class Data(ABC):
         if not self.has_fd:
             self.fft()
         freq, psd = sig.welch(self.td, fs=self.sampling_frequency, **kws)
-        return PowerSpectrum(jnp.array(psd), freq, self.name)
+        return PowerSpectrum(psd, freq, self.name)
 
     @classmethod
     def from_gwosc(cls,
@@ -244,8 +247,8 @@ class PowerSpectrum(ABC):
         """Sampling frequency of the data in Hz."""
         return self.frequencies[-1] * 2
 
-    def __init__(self, values: Float[Array, " n_freq"] = jnp.array([]),
-                 frequencies: Float[Array, " n_freq"] = jnp.array([]),
+    def __init__(self, values: Float[Array, " n_freq"] = np.array([]),
+                 frequencies: Float[Array, " n_freq"] = np.array([]),
                  name: Optional[str] = None) -> None:
         self.values = values
         self.frequencies = frequencies
@@ -330,8 +333,8 @@ class PowerSpectrum(ABC):
         """
         key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
-        noise_real = jax.random.normal(key, shape=var.shape) * jnp.sqrt(var)
-        noise_imag = jax.random.normal(subkey, shape=var.shape) * jnp.sqrt(var)
+        noise_real = jax.random.normal(key, shape=var.shape) * np.sqrt(var)
+        noise_imag = jax.random.normal(subkey, shape=var.shape) * np.sqrt(var)
         return noise_real + 1j * noise_imag
 
         # WIP: this should be moved to Detector class
