@@ -1,8 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
-from jimgw.single_event.utils import m1_m2_to_Mc_q
 from jimgw.transforms import (
     ScaleTransform,
     OffsetTransform,
@@ -15,6 +13,8 @@ from jimgw.transforms import (
     PowerLawTransform,
     reverse_bijective_transform,
 )
+from jimgw.single_event.transforms import SpinAnglesToCartesianSpinTransform
+from jimgw.single_event.utils import m1_m2_to_Mc_q
 
 import numpy as np
 
