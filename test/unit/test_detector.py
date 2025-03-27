@@ -1,8 +1,10 @@
 from jimgw.single_event.detector import H1
 from jimgw.single_event.data import Data, PowerSpectrum
+import jax
 import jax.numpy as jnp
 import numpy as np
 from copy import deepcopy
+import scipy.signal as sig
 import pytest
 
 class TestDataInterface:
@@ -43,7 +45,7 @@ class TestDataInterface:
         assert bool(self.data)
 
         # check FFTing
-        # initially the FD data should be zero, and but its length should
+        # initially the FD data should be zero, but its length should
         # be correct and match np.fft.rfftfreq
         assert not self.data.has_fd
         assert np.all(self.data.fd == 0)
@@ -52,7 +54,7 @@ class TestDataInterface:
         assert self.data.n_freq == len(fftfreq)
 
         # now, requesting a frequency slice should trigger an FFT computation,
-        # the result of which will be stured in data.fd; this should be the
+        # the result of which will be stored in data.fd; this should be the
         # same as calling data.fft() with the default window
         data_copy = deepcopy(self.data)
         # manually compute the FFT with the right dimensions to compare
@@ -75,10 +77,40 @@ class TestDataInterface:
         assert np.allclose(data_slice, data_slice1)
         assert np.allclose(freq_slice, freq_slice1)
 
-        # finally check that we can produce a Welch PSD
-        psd = self.data.to_psd(nperseg=self.data.n_time//2)
-        # assert np.allclose(psd.frequencies, self.data.frequencies)
-        # assert psd.n_freq == self.data.n_freq
+    def test_psd(self):
+        """Test PSD manipulation.
+        """
+        # check basic attributes of dummy PSD
+        assert self.psd.name == 'Dummy'
+        assert self.psd.n_freq == len(self.psd.frequencies)
+        assert np.all(self.psd.frequencies >= self.psd_band[0])
+        assert np.all(self.psd.frequencies <= self.psd_band[1])
+
+        # check PSD frequency slice
+        psd_slice, freq_slice = self.psd.frequency_slice(*self.psd_band)
+        assert np.allclose(psd_slice, self.psd.values)
+        assert np.allclose(freq_slice, self.psd.frequencies)
+
+        # finally check that we can a Welch PSD from data
+        nperseg = self.data.n_time // 2
+        psd_auto = self.data.to_psd(nperseg=nperseg)
+        freq_manual, psd_manual = sig.welch(self.data.td, fs=self.f_samp,
+                                            nperseg=nperseg)
+        assert np.allclose(psd_auto.frequencies, freq_manual)
+        assert np.allclose(psd_auto.values, psd_manual)
+
+        # check interpolation of PSD to data frequency grid
+        psd_interp = self.psd.interpolate(self.data.frequencies,
+                                          fill_value=1, bounds_error=False)
+        assert isinstance(psd_interp, PowerSpectrum)
+
+        # check drawing frequency domain data from PSD
+        fd_data = self.psd.simulate_data(jax.random.PRNGKey(0))
+
+        # the variance of the simulated data should equal PSD / (4 * delta_f)
+        target_var = self.psd.values / (4 * self.psd.delta_f)
+        assert np.allclose(np.var(fd_data.real), target_var, rtol=1e-1)
+        assert np.allclose(np.var(fd_data.imag), target_var, rtol=1e-1)
     
     # def test_user_provide_data(self):
 
