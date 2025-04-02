@@ -248,9 +248,9 @@ class GroundBased2G(Detector):
         psd_data_td = TimeSeries.fetch_open_data(
             self.name, start_psd, end_psd, **gwpy_kwargs
         )
-        assert isinstance(
-            psd_data_td, TimeSeries
-        ), "PSD data is not a TimeSeries object."
+        assert isinstance(psd_data_td, TimeSeries), (
+            "PSD data is not a TimeSeries object."
+        )
         psd = psd_data_td.psd(
             fftlength=segment_length
         ).value  # TODO: Check whether this is sright.
@@ -452,8 +452,8 @@ L1 = GroundBased2G(
     longitude=-(90 + 46.0 / 60 + 27.2654 / 3600) * DEG_TO_RAD,
     xarm_azimuth=197.7165 * DEG_TO_RAD,
     yarm_azimuth=287.7165 * DEG_TO_RAD,
-    xarm_tilt=0,
-    yarm_tilt=0,
+    xarm_tilt=-3.121e-4,
+    yarm_tilt=-6.107e-4,
     elevation=-6.574,
     mode="pc",
 )
