@@ -4,6 +4,7 @@ from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
 from flowMC.proposal.MALA import MALA
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
+from typing import Optional
 
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
@@ -55,7 +56,7 @@ class Jim(object):
 
         rng_key = kwargs.get("rng_key", None)
         if rng_key is None:
-            print("No rng_key provided. Using default seed.")
+            print("No rng_key provided. Using default key with seed=0.")
             rng_key = jax.random.PRNGKey(0)
 
         num_layers = kwargs.get("num_layers", 10)
@@ -103,14 +104,18 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample(self, key: PRNGKeyArray = None, initial_position: Array = jnp.array([])):
+    def sample(
+        self,
+        key: Optional[PRNGKeyArray] = None,
+        initial_position: Array = jnp.array([]),
+    ):
         if initial_position.size == 0:
             initial_position = (
                 jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
             )
 
             if key is not None:
-                print("Overwriting rng_key")
+                print("Provided key will override the existing sampler RNG key")
                 key, self.sampler.rng_key = jax.random.split(key)
 
             while not jax.tree.reduce(
