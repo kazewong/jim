@@ -132,7 +132,7 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
             x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
             mag = jnp.sqrt(x**2 + y**2 + z**2)
             theta = jnp.arccos(z / mag)
-            phi = jnp.arctan2(y, x)
+            phi = jnp.mod(jnp.arctan2(y, x), 2.0 * jnp.pi)
             return {
                 label + "_mag": mag,
                 label + "_theta": theta,
@@ -235,7 +235,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             return self.ifo.delay_from_geocenter(ra, dec, gmst)
 
         def named_transform(x):
-
             time_shift = time_delay(x["ra"], x["dec"], self.gmst)
 
             t_det = x["t_c"] + time_shift
@@ -251,7 +250,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-
             time_shift = self.ifo.delay_from_geocenter(x["ra"], x["dec"], self.gmst)
 
             t_det_min = self.tc_min + time_shift
