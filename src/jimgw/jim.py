@@ -92,7 +92,7 @@ class Jim(object):
             self.prior.n_dim,
             n_chains,
             subkey,
-            resource_strategy_bundle,
+            resource_strategy_bundles=resource_strategy_bundle,
         )
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
@@ -160,7 +160,7 @@ class Jim(object):
                 initial_position = initial_position.at[
                     non_finite_index[:common_length]
                 ].set(guess[:common_length])
-        self.sampler.sample(initial_position, None)  # type: ignore
+        self.sampler.sample(initial_position, {})  # type: ignore
 
     def print_summary(self, transform: bool = True):
         """

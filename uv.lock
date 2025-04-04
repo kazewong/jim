@@ -627,7 +627,7 @@ wheels = [
 
 [[package]]
 name = "flowmc"
-version = "0.4.1"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chex" },
@@ -643,9 +643,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/b5/a1b749bc19bfab13e55e28a4e828cc8ca4d0a0d262fb59e3e6f76ad0ae3b/flowmc-0.4.1.tar.gz", hash = "sha256:a3f79fb9c1191f7d5b8adcb60add5f99a9f5bd1ce549d8c1dbb1eac345f782b7", size = 2627286 }
+sdist = { url = "https://files.pythonhosted.org/packages/21/67/4997cb9352d65c040eeff509ad333506a73d2ac6f2c4cf888ace19b42157/flowmc-0.4.2.tar.gz", hash = "sha256:04e99c60eb55b64aca24fcd89028149b01470d1dc4a8b93ab635d2ce11b6537a", size = 2629058 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/f0/e765ced7e728eec111ddb455232d7c4c8d8a111c9bf77818aab7404da15e/flowmc-0.4.1-py3-none-any.whl", hash = "sha256:43f60b22890742bfa6faf04366b72c65a6a0c61807fdb47648d38746658882f9", size = 38720 },
+    { url = "https://files.pythonhosted.org/packages/50/dd/3b47e51649b00d0c3af5462782420a760b97d4c7dc762739ae9f5ed1ff91/flowmc-0.4.2-py3-none-any.whl", hash = "sha256:a117b07270f64bce600a70e79196819038a852fb97a3e17bc25ed3b7857f9849", size = 39718 },
 ]
 
 [[package]]
@@ -1055,7 +1055,7 @@ requires-dist = [
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7.7.0" },
     { name = "coveralls", specifier = ">=4.0.1" },
     { name = "coveralls", marker = "extra == 'test'", specifier = ">=4.0.1" },
-    { name = "flowmc", specifier = ">=0.4.0" },
+    { name = "flowmc", specifier = ">=0.4.2" },
     { name = "gwpy", specifier = ">=3.0.10" },
     { name = "jax", specifier = ">=0.5.0" },
     { name = "jaxtyping", specifier = ">=0.2.34" },
