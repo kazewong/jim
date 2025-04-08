@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from flowMC.resource_strategy_bundles import RQSpline_MALA_Bundle
+from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Optional
@@ -44,6 +44,9 @@ class Jim(object):
         learning_rate: float = 1e-3,
         batch_size: int = 10000,
         n_max_examples: int = 10000,
+        n_temperatures: int = 5,
+        max_temperature: float = 10.0,
+        n_tempered_steps: int = 5,
         verbose: bool = False,
     ):
         self.likelihood = likelihood
@@ -67,7 +70,7 @@ class Jim(object):
                 "No likelihood transforms provided. Using prior parameters as likelihood parameters"
             )
 
-        resource_strategy_bundle = RQSpline_MALA_Bundle(
+        resource_strategy_bundle = RQSpline_MALA_PT_Bundle(
             rng_key=rng_key,
             n_chains=n_chains,
             n_dims=self.prior.n_dim,
@@ -84,6 +87,10 @@ class Jim(object):
             learning_rate=learning_rate,
             batch_size=batch_size,
             n_max_examples=n_max_examples,
+            n_temperatures = n_temperatures,
+            max_temperature = max_temperature,
+            n_tempered_steps = n_tempered_steps,
+            logprior=self.evaluate_prior,
             verbose=verbose,
         )
 
@@ -106,6 +113,14 @@ class Jim(object):
         """
 
         return dict(zip(self.parameter_names, x))
+    
+    def evaluate_prior(self, params: Float[Array, " n_dim"], data: dict):
+        named_params = self.add_name(params)
+        transform_jacobian = 0.0
+        for transform in reversed(self.sample_transforms):
+            named_params, jacobian = transform.inverse(named_params)
+            transform_jacobian += jacobian
+        return self.prior.log_prob(named_params) + transform_jacobian
 
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
@@ -237,9 +252,9 @@ class Jim(object):
 
         """
         if training:
-            chains = self.sampler.get_sampler_state(training=True)["chains"]
+            chains = self.sampler.resources["positions_training"].data
         else:
-            chains = self.sampler.get_sampler_state(training=False)["chains"]
+            chains = self.sampler.resources["positions_production"].data
 
         chains = chains.reshape(-1, self.prior.n_dim)
         chains = jax.vmap(self.add_name)(chains)
