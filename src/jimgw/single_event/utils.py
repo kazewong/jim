@@ -548,8 +548,6 @@ def Lmag_2PN(m1: Float, m2: Float, v0: Float) -> Float:
         Magnitude of the orbital angular momentum.
     """
     eta = m1 * m2 / (m1 + m2) ** 2
-    ## Simplified from:
-    ## (m1 + m2) * (m1 + m2) * eta = m1 * m2
     LN = (m1 + m2) * (m1 + m2) * eta / v0
     L_2PN = 1.5 + eta / 6.0
     return LN * (1.0 + v0 * v0 * L_2PN)
