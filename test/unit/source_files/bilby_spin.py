@@ -1,157 +1,107 @@
-import jax.numpy as jnp
 import numpy as np
+from numpy.random import uniform
 from lalsimulation import (
     SimInspiralTransformPrecessingNewInitialConditions,
     SimInspiralTransformPrecessingWvf2PE,
 )
 from lal import MSUN_SI
-from bilby.gw.conversion import (
-    chirp_mass_and_mass_ratio_to_component_masses,
-    symmetric_mass_ratio_to_mass_ratio,
-)
 
+outdir = "test/unit/source_files"
+N_samples = 100
 np.random.seed(12345)
 
 # The following script generates spin angles input files and the cartesian spin outputs for lal
 # This is for testing the forward transform of SpinAnglesToCartesianSpinTransform in JIM
 fRefs = [10, 30, 50]
 for fRef in fRefs:
-    inputs = []
-    for _ in range(100):
-        thetaJN = np.array(np.random.uniform(0, np.pi))
-        phiJL = np.array(np.random.uniform(0, 2 * np.pi))
-        theta1 = np.array(np.random.uniform(0, np.pi))
-        theta2 = np.array(np.random.uniform(0, np.pi))
-        phi12 = np.array(np.random.uniform(0, 2 * np.pi))
-        chi1 = np.array(np.random.uniform(0, 1))
-        chi2 = np.array(np.random.uniform(0, 1))
-        M_c = np.array(np.random.uniform(1, 100))
-        eta = np.array(np.random.uniform(0.1, 0.25))
-        phiRef = np.array(np.random.uniform(0, 2 * np.pi))
+    m1, m2 = uniform(1, 70, (2, N_samples))
+    input_dict = {
+        'thetaJN': uniform(0, np.pi, N_samples),
+        'phiJL': uniform(0, 2 * np.pi, N_samples),
+        'theta1': uniform(0, np.pi, N_samples),
+        'theta2': uniform(0, np.pi, N_samples),
+        'phi12': uniform(0, 2 * np.pi, N_samples),
+        'chi1': uniform(0, 1, N_samples),
+        'chi2': uniform(0, 1, N_samples),
+        'm1': np.where(m1 >= m2, m1, m2),
+        'm2': np.where(m1 >= m2, m2, m1),
+        'fRef': np.ones(N_samples) * fRef,
+        'phiRef': uniform(0, 2 * np.pi, N_samples),
+    }
 
-        q = symmetric_mass_ratio_to_mass_ratio(eta)
-        m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(M_c, q)
+    assert np.all(input_dict['m1'] >= input_dict['m2'])
 
-        inputs.append(
-            (
-                thetaJN,
-                phiJL,
-                theta1,
-                theta2,
-                phi12,
-                chi1,
-                chi2,
-                m1,
-                m2,
-                fRef,
-                phiRef,
-            )
-        )
-    inputs = np.array(inputs)
     np.savez(
-        f"test/unit/source_files/spin_angles_input/spin_angles_input_fRef_{fRef}.npz",
-        thetaJN=inputs[:, 0],
-        phiJL=inputs[:, 1],
-        theta1=inputs[:, 2],
-        theta2=inputs[:, 3],
-        phi12=inputs[:, 4],
-        chi1=inputs[:, 5],
-        chi2=inputs[:, 6],
-        m1=inputs[:, 7],
-        m2=inputs[:, 8],
-        fRef=inputs[:, 9],
-        phiRef=inputs[:, 10],
+        f"{outdir}/spin_angles_input/spin_angles_input_fRef_{fRef}.npz",
+        **input_dict
     )
+
+    input_dict['m1'] *= MSUN_SI
+    input_dict['m2'] *= MSUN_SI
+
+    input_array = np.array(list(input_dict.values())).T
 
     bilby_outputs = []
-    for input in inputs:
-        iota, S1x, S1y, S1z, S2x, S2y, S2z = (
-            SimInspiralTransformPrecessingNewInitialConditions(
-                input[0],
-                input[1],
-                input[2],
-                input[3],
-                input[4],
-                input[5],
-                input[6],
-                input[7] * MSUN_SI,
-                input[8] * MSUN_SI,
-                input[9],
-                input[10],
-            )
-        )
-        bilby_outputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z))
-    bilby_outputs = np.array(bilby_outputs)
-    np.savez(
-        f"test/unit/source_files/cartesian_spins_output_for_bilby/cartesian_spins_output_for_bilby_fRef_{fRef}.npz",
-        iota=bilby_outputs[:, 0],
-        S1x=bilby_outputs[:, 1],
-        S1y=bilby_outputs[:, 2],
-        S1z=bilby_outputs[:, 3],
-        S2x=bilby_outputs[:, 4],
-        S2y=bilby_outputs[:, 5],
-        S2z=bilby_outputs[:, 6],
-    )
+    for row in input_array:
+        bilby_outputs.append(
+            SimInspiralTransformPrecessingNewInitialConditions(*row))
 
+    bilby_outputs = np.array(bilby_outputs).T
+
+    np.savez(
+        f"{outdir}/cartesian_spins_output_for_bilby/cartesian_spins_output_for_bilby_fRef_{fRef}.npz",
+        iota=bilby_outputs[0],
+        S1x = bilby_outputs[1],
+        S1y = bilby_outputs[2],
+        S1z = bilby_outputs[3],
+        S2x = bilby_outputs[4],
+        S2y = bilby_outputs[5],
+        S2z = bilby_outputs[6]
+    )
 
 # The following script generates cartesian angles input files and the spin angles outputs for lal
 # This is for testing the inverse transform of SpinAnglesToCartesianSpinTransform in JIM
-
-fRefs = [10, 30, 50]
 for fRef in fRefs:
-    inputs = []
-    for _ in range(100):
-        iota = np.array(np.random.uniform(0, np.pi))
-        while True:
-            S1x = np.array(np.random.uniform(-1, 1))
-            S1y = np.array(np.random.uniform(-1, 1))
-            S1z = np.array(np.random.uniform(-1, 1))
-            S2x = np.array(np.random.uniform(-1, 1))
-            S2y = np.array(np.random.uniform(-1, 1))
-            S2z = np.array(np.random.uniform(-1, 1))
-            if (
-                jnp.linalg.norm(jnp.array([S1x, S1y, S1z])) <= 1
-                or jnp.linalg.norm(jnp.array([S2x, S2y, S2z])) <= 1
-            ):
-                break
-            M_c = np.array(np.random.uniform(1, 100))
-            eta = np.array(np.random.uniform(0.1, 0.25))
-            phiRef = np.array(np.random.uniform(0, 2 * np.pi))
+    m1, m2 = uniform(1, 70, (2, N_samples))
+    S1, S2 = uniform(-1, 1, (2, 3, N_samples))
+    a1, a2 = uniform(1e-3, 1, (2, N_samples))
+    S1 *= a1 / np.linalg.norm(S1, axis=0)
+    S2 *= a2 / np.linalg.norm(S2, axis=0)
 
-            q = symmetric_mass_ratio_to_mass_ratio(eta)
-            m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(M_c, q)
+    input_dict = {
+        'iota': uniform(0, np.pi, N_samples),
+        'S1x': S1[0],
+        'S1y': S1[1],
+        'S1z': S1[2],
+        'S2x': S2[0],
+        'S2y': S2[1],
+        'S2z': S2[2],
+        'm1': np.where(m1 >= m2, m1, m2),
+        'm2': np.where(m1 >= m2, m2, m1),
+        'fRef': np.ones(N_samples) * fRef,
+        'phiRef': uniform(0, 2*np.pi, N_samples)
+    }
+    assert np.all(input_dict['m1'] >= input_dict['m2'])
 
-            inputs.append((iota, S1x, S1y, S1z, S2x, S2y, S2z, m1, m2, fRef, phiRef))
-    inputs = np.array(inputs)
     np.savez(
-        f"test/unit/source_files/cartesian_spins_input/cartesian_spins_input_fRef_{fRef}.npz",
-        iota=inputs[:, 0],
-        S1x=inputs[:, 1],
-        S1y=inputs[:, 2],
-        S1z=inputs[:, 3],
-        S2x=inputs[:, 4],
-        S2y=inputs[:, 5],
-        S2z=inputs[:, 6],
-        m1=inputs[:, 7],
-        m2=inputs[:, 8],
-        fRef=inputs[:, 9],
-        phiRef=inputs[:, 10],
+        f"{outdir}/cartesian_spins_input/cartesian_spins_input_fRef_{fRef}.npz",
+        **input_dict
     )
 
     bilby_outputs = []
-    for input in inputs:
-        thteaJN, phiJL, theta1, theta2, phi12, chi1, chi2 = (
-            SimInspiralTransformPrecessingWvf2PE(*input)
-        )
-        bilby_outputs.append((thteaJN, phiJL, theta1, theta2, phi12, chi1, chi2))
-    bilby_outputs = np.array(bilby_outputs)
+    for row in input_array:
+        bilby_outputs.append(
+            SimInspiralTransformPrecessingWvf2PE(*row))
+
+    bilby_outputs = np.array(bilby_outputs).T
+
     np.savez(
-        f"test/unit/source_files/spin_angles_output_for_bilby/spin_angles_output_for_bilby_fRef_{fRef}.npz",
-        thetaJN=bilby_outputs[:, 0],
-        phiJL=bilby_outputs[:, 1],
-        theta1=bilby_outputs[:, 2],
-        theta2=bilby_outputs[:, 3],
-        phi12=bilby_outputs[:, 4],
-        chi1=bilby_outputs[:, 5],
-        chi2=bilby_outputs[:, 6],
+        f"{outdir}/spin_angles_output_for_bilby/spin_angles_output_for_bilby_fRef_{fRef}.npz",
+        thetaJN = bilby_outputs[0],
+        phiJL = bilby_outputs[1],
+        theta1 = bilby_outputs[2],
+        theta2 = bilby_outputs[3],
+        phi12 = bilby_outputs[4],
+        chi1 = bilby_outputs[5],
+        chi2 = bilby_outputs[6],
     )
