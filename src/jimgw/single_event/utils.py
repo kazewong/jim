@@ -480,9 +480,21 @@ def ra_dec_to_zenith_azimuth(
     return zenith, azimuth
 
 
-def rotate_y(angle, vec):
+def rotate_y(angle: Float, vec: Float[Array, " 3"]) -> Float[Array, " 3"]:
     """
     Rotate the vector (x, y, z) about y-axis
+
+    Parameters
+    ----------
+    angle : Float
+        Angle in radians.
+    vec : Float[Array, " 3"]
+        Vector to be rotated.
+    Returns
+    -------
+    rotated_vec : Float[Array, " 3"]
+        Rotated vector.
+    -------
     """
     cos_angle = jnp.cos(angle)
     sin_angle = jnp.sin(angle)
@@ -493,9 +505,20 @@ def rotate_y(angle, vec):
     return rotated_vec
 
 
-def rotate_z(angle, vec):
+def rotate_z(angle: Float, vec: Float[Array, " 3"]) -> Float[Array, " 3"]:
     """
     Rotate the vector (x, y, z) about z-axis
+
+    Parameters
+    ----------
+    angle : Float
+        Angle in radians.
+    vec : Float[Array, " 3"]
+        Vector to be rotated.
+    Returns
+    -------
+    rotated_vec : Float[Array, " 3"]
+        Rotated vector.
     """
     cos_angle = jnp.cos(angle)
     sin_angle = jnp.sin(angle)
@@ -506,10 +529,23 @@ def rotate_z(angle, vec):
     return rotated_vec
 
 
-def Lmag_2PN(m1, m2, v0):
+def Lmag_2PN(m1: Float, m2: Float, v0: Float) -> Float:
     """
     Compute the magnitude of the orbital angular momentum
     to 2 post-Newtonian orders.
+
+    Parameters
+    ----------
+    m1 : Float
+        Primary mass.
+    m2 : Float
+        Secondary mass.
+    v0 : Float
+        Relative velocity at the reference frequency.
+    Returns
+    -------
+    Lmag : Float
+        Magnitude of the orbital angular momentum.
     """
     eta = m1 * m2 / (m1 + m2) ** 2
     ## Simplified from:
