@@ -869,8 +869,8 @@ class TestSpinAnglesToCartesianSpinTransform:
             )
 
             # Scale down the vectors if their norms are greater than 1
-            S1 = S1 / jnp.max(1, jnp.linalg.norm(S1))
-            S2 = S2 / jnp.max(1, jnp.linalg.norm(S2))
+            S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
+            S2 = S2 / jnp.maximum(1, jnp.linalg.norm(S2))
 
             sample = [
                 iota[0],
