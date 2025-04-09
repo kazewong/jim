@@ -633,9 +633,9 @@ class TestSphereSpinToCartesianSpinTransform:
             lambda data: SphereSpinToCartesianSpinTransform("s1").transform(data)
         )
         jitted_output, jitted_jacobian = jit_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = SphereSpinToCartesianSpinTransform(
-            "s1"
-        ).transform(sample_dict)
+        non_jitted_output, _ = SphereSpinToCartesianSpinTransform("s1").transform(
+            sample_dict
+        )
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
@@ -653,14 +653,21 @@ class TestSphereSpinToCartesianSpinTransform:
 
         # Generate random sample
         subkeys = jax.random.split(jax.random.PRNGKey(123), 3)
-        s1_x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
-        s1_y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
-        s1_z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
+
+        # Scale down the vector if its norm is greater than 1
+        S1 = jnp.array(
+            [
+                jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1),
+                jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1),
+                jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1),
+            ]
+        )
+        S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
 
         sample = [
-            s1_x[0],
-            s1_y[0],
-            s1_z[0],
+            S1[0],
+            S1[1],
+            S1[2],
         ]
         sample_dict = dict(zip(["s1_x", "s1_y", "s1_z"], sample))
 
@@ -669,9 +676,9 @@ class TestSphereSpinToCartesianSpinTransform:
             lambda data: SphereSpinToCartesianSpinTransform("s1").inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = SphereSpinToCartesianSpinTransform(
-            "s1"
-        ).inverse(sample_dict)
+        non_jitted_output, _ = SphereSpinToCartesianSpinTransform("s1").inverse(
+            sample_dict
+        )
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
