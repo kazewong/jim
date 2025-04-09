@@ -651,17 +651,8 @@ class TestSphereSpinToCartesianSpinTransform:
         Test that the backward transformation is JIT compilable
         """
 
-        # Generate random sample
-        subkeys = jax.random.split(jax.random.PRNGKey(123), 3)
-
         # Scale down the vector if its norm is greater than 1
-        S1 = jnp.array(
-            [
-                jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1),
-                jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1),
-                jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1),
-            ]
-        )
+        S1 = jax.random.uniform(jax.random.PRNGKey(123), (3,), minval=-1, maxval=1)
         S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
 
         sample = [
@@ -852,28 +843,14 @@ class TestSpinAnglesToCartesianSpinTransform:
         key = jax.random.PRNGKey(42)
         for _ in range(n):
             key, subkey = jax.random.split(key)
-            subkeys = jax.random.split(subkey, 5)
+            subkeys = jax.random.split(subkey, 6)
             iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
             M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
             q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
             fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
             phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-            subkeys = jax.random.split(subkey, 6)
-            S1 = jnp.array(
-                [
-                    jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)[0],
-                    jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)[0],
-                    jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)[0],
-                ]
-            )
-            S2 = jnp.array(
-                [
-                    jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)[0],
-                    jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)[0],
-                    jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)[0],
-                ]
-            )
+            S1, S2 = jax.random.uniform(subkeys[5], (2, 3), minval=-1, maxval=1)
 
             # Scale down the vectors if their norms are greater than 1
             S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
@@ -917,21 +894,7 @@ class TestSpinAnglesToCartesianSpinTransform:
         fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
         phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-        subkeys = jax.random.split(subkeys[5], 6)
-        S1 = jnp.array(
-            [
-                jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)[0],
-                jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)[0],
-                jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)[0],
-            ]
-        )
-        S2 = jnp.array(
-            [
-                jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)[0],
-                jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)[0],
-                jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)[0],
-            ]
-        )
+        S1, S2 = jax.random.uniform(subkeys[5], (2, 3), minval=-1, maxval=1)
 
         # Scale down the vectors if their norms are greater than 1
         S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
