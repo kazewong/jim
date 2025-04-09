@@ -23,8 +23,11 @@ from jimgw.single_event.detector import H1, L1
 
 import numpy as np
 
+import os
+import glob
 
 jax.config.update("jax_enable_x64", True)
+
 
 class TestBasicTransforms:
     def test_scale_transform(self):
@@ -711,47 +714,62 @@ class TestSpinAnglesToCartesianSpinTransform:
         """
         Test transformation from spin angles to cartesian spins
 
-        Input and output values are generated with bilby_spin.py
         """
+        input_path = "test/unit/source_files/spin_angles_input"
+        input_files = glob.glob(os.path.join(input_path, "*.npz"))
 
-        # read inputs from binary
-        inputs = jnp.load("test/unit/source_files/spin_angles_input.npz")
-        inputs = [inputs[key] for key in inputs.keys()]
-        M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
+        for file in input_files:
+            inputs = jnp.load(file)
+            inputs = [inputs[key] for key in inputs.keys()]
+            M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
+            fRef = int(file.split("_")[-1].split(".")[0])
+            print("Testing forward transform for fRef =", fRef)
 
-        # read outputs from binary
-        bilby_spins = jnp.load(
-            "test/unit/source_files/cartesian_spins_output_for_bilby.npz"
-        )
-        bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+            inputs = jnp.stack(
+                [
+                    inputs[0],
+                    inputs[1],
+                    inputs[2],
+                    inputs[3],
+                    inputs[4],
+                    inputs[5],
+                    inputs[6],
+                    M_c,
+                    q,
+                    inputs[10],
+                ],
+                axis=-1,
+            ).T
+            inputs = dict(zip(self.forward_keys, inputs))
 
-        n = 100  # max: 100
+            output_path = "test/unit/source_files/cartesian_spins_output_for_bilby"
+            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
 
-        # compute jimgw spins
-        for i in range(n):
-            row = [
-                inputs[0][i],
-                inputs[1][i],
-                inputs[2][i],
-                inputs[3][i],
-                inputs[4][i],
-                inputs[5][i],
-                inputs[6][i],
-                M_c[i],
-                q[i],
-                inputs[10][i],
-            ]
+            # read outputs from binary
+            bilby_spins = jnp.load(output_files[0])
 
-            freq_ref = inputs[9][i]
+            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()])
 
-            jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
-                freq_ref=freq_ref
-            ).transform(dict(zip(self.forward_keys, row)))
+            transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
+
+            jimgw_spins, jacobian = jax.vmap(transform.transform)(inputs)
 
             for key in ("M_c", "q", "phase_c"):
                 jimgw_spins.pop(key)
 
-            assert jnp.allclose(jnp.array(list(jimgw_spins.values())), bilby_spins[i])
+            jimgw_spins = jnp.array(
+                [
+                    jimgw_spins["iota"],
+                    jimgw_spins["s1_x"],
+                    jimgw_spins["s1_y"],
+                    jimgw_spins["s1_z"],
+                    jimgw_spins["s2_x"],
+                    jimgw_spins["s2_y"],
+                    jimgw_spins["s2_z"],
+                ]
+            )
+
+            assert jnp.allclose(jimgw_spins, bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
@@ -759,48 +777,61 @@ class TestSpinAnglesToCartesianSpinTransform:
         """
         Test transformation from cartesian spins to spin angles
 
-        Input and output values are generated with bilby_spin.py
         """
+        input_path = "test/unit/source_files/cartesian_spins_input"
+        input_files = glob.glob(os.path.join(input_path, "*.npz"))
 
-        # read inputs from binary
-        inputs = jnp.load("test/unit/source_files/cartesian_spins_input.npz")
-        inputs = [inputs[key] for key in inputs.keys()]
-        M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
+        for file in input_files:
+            inputs = jnp.load(file)
+            inputs = [inputs[key] for key in inputs.keys()]
+            M_c, q = m1_m2_to_Mc_q(inputs[7], inputs[8])
+            fRef = int(file.split("_")[-1].split(".")[0])
+            print("Testing backward transform for fRef =", fRef)
 
-        # read outputs from binary
-        bilby_spins = jnp.load(
-            "test/unit/source_files/spin_angles_output_for_bilby.npz"
-        )
-        bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()]).T
+            inputs = jnp.stack(
+                [
+                    inputs[0],
+                    inputs[1],
+                    inputs[2],
+                    inputs[3],
+                    inputs[4],
+                    inputs[5],
+                    inputs[6],
+                    M_c,
+                    q,
+                    inputs[10],
+                ],
+                axis=-1,
+            ).T
+            inputs = dict(zip(self.backward_keys, inputs))
 
-        n = 100  # max: 100
+            output_path = "test/unit/source_files/spin_angles_output_for_bilby"
+            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
 
-        # compute jimgw spins
-        for i in range(n):
-            row = [
-                inputs[0][i],
-                inputs[1][i],
-                inputs[2][i],
-                inputs[3][i],
-                inputs[4][i],
-                inputs[5][i],
-                inputs[6][i],
-                M_c[i],
-                q[i],
-                inputs[10][i],
-            ]
+            # read outputs from binary
+            bilby_spins = jnp.load(output_files[0])
 
-            freq_ref = inputs[9][i]
+            bilby_spins = jnp.array([bilby_spins[key] for key in bilby_spins.keys()])
 
-            jimgw_spins, jacobian = SpinAnglesToCartesianSpinTransform(
-                freq_ref=freq_ref
-            ).inverse(dict(zip(self.backward_keys, row)))
+            transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
+
+            jimgw_spins, jacobian = jax.vmap(transform.inverse)(inputs)
 
             for key in ("M_c", "q", "phase_c"):
                 jimgw_spins.pop(key)
-            jimgw_spins = list(jimgw_spins.values())
 
-            assert jnp.allclose(jnp.array(jimgw_spins), bilby_spins[i])
+            jimgw_spins = jnp.array(
+                [
+                    jimgw_spins["theta_jn"],
+                    jimgw_spins["phi_jl"],
+                    jimgw_spins["tilt_1"],
+                    jimgw_spins["tilt_2"],
+                    jimgw_spins["phi_12"],
+                    jimgw_spins["a_1"],
+                    jimgw_spins["a_2"],
+                ]
+            )
+            assert jnp.allclose(jimgw_spins, bilby_spins)
             # default atol: 1e-8, rtol: 1e-5
             assert not jnp.isnan(jacobian).any()
 
@@ -821,7 +852,8 @@ class TestSpinAnglesToCartesianSpinTransform:
             fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
             phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-            while True:
+            max_iterations = 100
+            for _ in range(max_iterations):
                 key, subkey = jax.random.split(key)
                 subkeys = jax.random.split(subkey, 6)
                 S1x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
@@ -830,6 +862,7 @@ class TestSpinAnglesToCartesianSpinTransform:
                 S2x = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
                 S2y = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
                 S2z = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
+
                 if (
                     jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) <= 1
                     and jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) <= 1
