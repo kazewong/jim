@@ -23,8 +23,7 @@ from jimgw.single_event.detector import H1, L1
 
 import numpy as np
 
-import os
-import glob
+from pathlib import Path
 
 jax.config.update("jax_enable_x64", True)
 
@@ -472,7 +471,7 @@ class TestDistanceTransform:
             ).transform(data)
         )
         jitted_output, jitted_jacobian = jit_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = DistanceToSNRWeightedDistanceTransform(
+        non_jitted_output, _ = DistanceToSNRWeightedDistanceTransform(
             gps_time=1126259462.4,
             ifos=[H1, L1],
             dL_min=1.0,
@@ -481,8 +480,14 @@ class TestDistanceTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -526,7 +531,7 @@ class TestDistanceTransform:
             ).inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = DistanceToSNRWeightedDistanceTransform(
+        non_jitted_output, _ = DistanceToSNRWeightedDistanceTransform(
             gps_time=1126259462.4,
             ifos=[H1, L1],
             dL_min=1.0,
@@ -535,8 +540,14 @@ class TestDistanceTransform:
 
         # Assert that the jitted and non-jitted results agree.
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -588,7 +599,7 @@ class TestSphereSpinToCartesianSpinTransform:
         key = jax.random.PRNGKey(42)
         key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, 3)
-        s1_mag = jax.random.uniform(subkeys[0], (10,), minval=0.1, maxval=1.0)
+        s1_mag = jax.random.uniform(subkeys[0], (10,), minval=1e-3, maxval=1.0)
         s1_theta = jax.random.uniform(subkeys[1], (10,), minval=0, maxval=jnp.pi)
         s1_phi = jax.random.uniform(
             subkeys[2], (10,), minval=0, maxval=2 * jnp.pi
@@ -615,7 +626,7 @@ class TestSphereSpinToCartesianSpinTransform:
 
         # Generate random sample
         subkeys = jax.random.split(jax.random.PRNGKey(12), 3)
-        s1_mag = jax.random.uniform(subkeys[0], (1,), minval=0.1, maxval=1.0)
+        s1_mag = jax.random.uniform(subkeys[0], (1,), minval=1e-3, maxval=1.0)
         s1_theta = jax.random.uniform(subkeys[1], (1,), minval=0, maxval=jnp.pi)
         s1_phi = jax.random.uniform(
             subkeys[2], (1,), minval=0, maxval=2 * jnp.pi
@@ -639,8 +650,14 @@ class TestSphereSpinToCartesianSpinTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -651,16 +668,13 @@ class TestSphereSpinToCartesianSpinTransform:
         Test that the backward transformation is JIT compilable
         """
 
-        # Scale down the vector if its norm is greater than 1
-        S1 = jax.random.uniform(jax.random.PRNGKey(123), (3,), minval=-1, maxval=1)
-        S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
+        # Generate random sample
+        keys = jax.random.split(jax.random.PRNGKey(123), 2)
+        S1 = jax.random.uniform(keys[0], (3,), minval=-1, maxval=1)
+        a1 = jax.random.uniform(keys[1], (1,), minval=1e-3, maxval=1.0)
+        S1 *= a1 / jnp.linalg.norm(S1)
 
-        sample = [
-            S1[0],
-            S1[1],
-            S1[2],
-        ]
-        sample_dict = dict(zip(["s1_x", "s1_y", "s1_z"], sample))
+        sample_dict = dict(zip(["s1_x", "s1_y", "s1_z"], S1))
 
         # Create a JIT compiled version of the transform.
         jit_inverse_transform = jax.jit(
@@ -673,8 +687,14 @@ class TestSphereSpinToCartesianSpinTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -714,7 +734,7 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         """
         input_path = "test/unit/source_files/spin_angles_input"
-        input_files = glob.glob(os.path.join(input_path, "*.npz"))
+        input_files = Path(input_path).glob("*.npz")
 
         for file in input_files:
             inputs = jnp.load(file)
@@ -741,7 +761,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             inputs = dict(zip(self.forward_keys, inputs))
 
             output_path = "test/unit/source_files/cartesian_spins_output_for_bilby"
-            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
+            output_files = Path(output_path).glob(f"*fRef_{fRef}*.npz")
 
             # read outputs from binary
             bilby_spins = jnp.load(output_files[0])
@@ -777,7 +797,7 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         """
         input_path = "test/unit/source_files/cartesian_spins_input"
-        input_files = glob.glob(os.path.join(input_path, "*.npz"))
+        input_files = Path(input_path).glob("*.npz")
 
         for file in input_files:
             inputs = jnp.load(file)
@@ -804,7 +824,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             inputs = dict(zip(self.backward_keys, inputs))
 
             output_path = "test/unit/source_files/spin_angles_output_for_bilby"
-            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
+            output_files = Path(output_path).glob(f"*fRef_{fRef}*.npz")
 
             # read outputs from binary
             bilby_spins = jnp.load(output_files[0])
@@ -843,7 +863,7 @@ class TestSpinAnglesToCartesianSpinTransform:
         key = jax.random.PRNGKey(42)
         for _ in range(n):
             key, subkey = jax.random.split(key)
-            subkeys = jax.random.split(subkey, 6)
+            subkeys = jax.random.split(subkey, 7)
             iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
             M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
             q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
@@ -851,10 +871,9 @@ class TestSpinAnglesToCartesianSpinTransform:
             phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
             S1, S2 = jax.random.uniform(subkeys[5], (2, 3), minval=-1, maxval=1)
-
-            # Scale down the vectors if their norms are greater than 1
-            S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
-            S2 = S2 / jnp.maximum(1, jnp.linalg.norm(S2))
+            a1, a2 = jax.random.uniform(subkeys[6], (2,), minval=1e-3, maxval=1)
+            S1 *= a1 / jnp.linalg.norm(S1)
+            S2 *= a2 / jnp.linalg.norm(S2)
 
             sample = [
                 iota[0],
@@ -887,7 +906,7 @@ class TestSpinAnglesToCartesianSpinTransform:
         """
 
         # Generate random sample
-        subkeys = jax.random.split(jax.random.PRNGKey(12), 6)
+        subkeys = jax.random.split(jax.random.PRNGKey(12), 8)
         iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
         M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
         q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
@@ -895,10 +914,9 @@ class TestSpinAnglesToCartesianSpinTransform:
         phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
         S1, S2 = jax.random.uniform(subkeys[5], (2, 3), minval=-1, maxval=1)
-
-        # Scale down the vectors if their norms are greater than 1
-        S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
-        S2 = S2 / jnp.maximum(1, jnp.linalg.norm(S2))
+        a1, a2 = jax.random.uniform(subkeys[6], (2,), minval=1e-3, maxval=1)
+        S1 *= a1 / jnp.linalg.norm(S1)
+        S2 *= a2 / jnp.linalg.norm(S2)
 
         sample = [
             iota[0],
@@ -922,7 +940,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             ).transform(data)
         )
         jitted_spins, jitted_jacobian = jit_transform(sample_dict)
-        non_jitted_spins, non_jitted_jacobian = SpinAnglesToCartesianSpinTransform(
+        non_jitted_spins, _ = SpinAnglesToCartesianSpinTransform(
             freq_ref=freq_ref_sample
         ).transform(sample_dict)
 
@@ -933,8 +951,14 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_spins.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_spins.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_spins[key], non_jitted_spins[key])
+                        for key in jitted_spins.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -982,7 +1006,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             ).inverse(data)
         )
         jitted_spins, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_spins, non_jitted_jacobian = SpinAnglesToCartesianSpinTransform(
+        non_jitted_spins, _ = SpinAnglesToCartesianSpinTransform(
             freq_ref=freq_ref_sample
         ).inverse(sample_dict)
 
@@ -993,8 +1017,14 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         # Assert that the jitted and non-jitted results agree.
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_spins.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_spins.items())).values())),
+            *(
+                jnp.array(
+                    [
+                        (jitted_spins[key], non_jitted_spins[key])
+                        for key in jitted_spins.keys()
+                    ]
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
