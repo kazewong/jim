@@ -739,25 +739,25 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         for file in input_files:
             input_dict = dict(jnp.load(file).items())
-            fRef = int(input_dict.pop('fRef')[0])
+            fRef = int(input_dict.pop("fRef")[0])
             print("Testing forward transform for fRef =", fRef)
 
             m_1 = input_dict.pop("m_1")
             m_2 = input_dict.pop("m_2")
             M_c, q = m1_m2_to_Mc_q(m_1, m_2)
-            input_dict['M_c'] = M_c
-            input_dict['q'] = q
+            input_dict["M_c"] = M_c
+            input_dict["q"] = q
 
             # read outputs from binary
-            output_file = output_dir.glob(f"*fRef_{fRef}*.npz")[0]
+            output_file = list(output_dir.glob(f"*fRef_{fRef}*.npz"))[0]
             bilby_spins = jnp.load(output_file)
-            bilby_spins = jnp.array(list(bilby_spin.values()))
+            bilby_spins = jnp.array(list(bilby_spins.values()))
 
             transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
             jimgw_spins, jacobian = jax.vmap(transform.transform)(input_dict)
 
             jimgw_spins = jnp.array(
-                [ jimgw_spins[key] for key in backward_keys[:7] ]
+                [jimgw_spins[key] for key in self.backward_keys[:7]]
             )
 
             # default atol: 1e-8, rtol: 1e-5
@@ -775,26 +775,24 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         for file in input_files:
             input_dict = dict(jnp.load(file).items())
-            fRef = int(input_dict.pop('fRef')[0])
+            fRef = int(input_dict.pop("fRef")[0])
             print("Testing backward transform for fRef =", fRef)
 
             m_1 = input_dict.pop("m_1")
             m_2 = input_dict.pop("m_2")
             M_c, q = m1_m2_to_Mc_q(m_1, m_2)
-            input_dict['M_c'] = M_c
-            input_dict['q'] = q
-            
+            input_dict["M_c"] = M_c
+            input_dict["q"] = q
+
             # read outputs from binary
-            output_file = output_dir.glob(f"*fRef_{fRef}*.npz")[0]
+            output_file = list(output_dir.glob(f"*fRef_{fRef}*.npz"))[0]
             bilby_spins = jnp.load(output_file)
-            bilby_spins = jnp.array(list(bilby_spin.values()))
+            bilby_spins = jnp.array(list(bilby_spins.values()))
 
             transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
-            jimgw_spins, jacobian = jax.vmap(transform.inverse)(inputs)
+            jimgw_spins, jacobian = jax.vmap(transform.inverse)(input_dict)
 
-            jimgw_spins = jnp.array(
-                [ jimgw_spins[key] for key in forward_keys[:7] ]
-            )
+            jimgw_spins = jnp.array([jimgw_spins[key] for key in self.forward_keys[:7]])
 
             # default atol: 1e-8, rtol: 1e-5
             assert jnp.allclose(jimgw_spins, bilby_spins)
@@ -815,27 +813,30 @@ class TestSpinAnglesToCartesianSpinTransform:
         S1 *= a1 / jnp.linalg.norm(S1, axis=0)
         S2 *= a2 / jnp.linalg.norm(S2, axis=0)
 
-        samples = jnp.array([
-            jax.random.uniform(subkeys[2], (n,), minval=0, maxval=jnp.pi),  # iota
-            *S1, *S2
-            jax.random.uniform(subkeys[3], (n,), minval=1, maxval=100),     # M_c
-            jax.random.uniform(subkeys[4], (n,), minval=0.125, maxval=1),   # q
-            jax.random.uniform(subkeys[5], (n,), minval=0, maxval=2 * jnp.pi),  # phase_c
-        ]).T
+        samples = jnp.array(
+            [
+                jax.random.uniform(subkeys[2], (n,), minval=0, maxval=jnp.pi),  # iota
+                *S1,
+                *S2,
+                jax.random.uniform(subkeys[3], (n,), minval=1, maxval=100),  # M_c
+                jax.random.uniform(subkeys[4], (n,), minval=0.125, maxval=1),  # q
+                jax.random.uniform(
+                    subkeys[5], (n,), minval=0, maxval=2 * jnp.pi
+                ),  # phase_c
+            ]
+        ).T
         fRefs = jax.random.uniform(subkeys[6], (n,), minval=10, maxval=100)
 
         for fRef, sample in zip(fRefs, samples):
-            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
-                freq_ref=fRef
-            ).inverse(dict(zip(self.backward_keys, sample)))
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef).inverse(
+                dict(zip(self.backward_keys, sample))
+            )
             jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
                 freq_ref=fRef
             ).transform(jimgw_spins)
             jimgw_spins = jnp.array(list(jimgw_spins.values()))
             # default atol: 1e-8, rtol: 1e-5
-            assert jnp.allclose(
-                jimgw_spins, jnp.array([*sample[7:], *sample[:7]])
-            )
+            assert jnp.allclose(jimgw_spins, jnp.array([*sample[7:], *sample[:7]]))
 
     def test_jitted_forward_transform(self):
         """
@@ -857,7 +858,8 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         sample = [
             iota[0],
-            *S1, *S2,
+            *S1,
+            *S2,
             M_c[0],
             q[0],
             phiRef[0],
