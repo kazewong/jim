@@ -852,31 +852,30 @@ class TestSpinAnglesToCartesianSpinTransform:
             fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
             phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-            max_iterations = 100
-            for _ in range(max_iterations):
-                key, subkey = jax.random.split(key)
-                subkeys = jax.random.split(subkey, 6)
-                S1x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
-                S1y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
-                S1z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
-                S2x = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
-                S2y = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
-                S2z = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
+            subkeys = jax.random.split(subkey, 6)
+            S1 = jnp.array([
+                jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)[0],
+                jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)[0],
+                jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)[0],
+            ])
+            S2 = jnp.array([
+                jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)[0],
+                jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)[0],
+                jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)[0],
+            ])
 
-                if (
-                    jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) <= 1
-                    and jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) <= 1
-                ):
-                    break
+            # Scale down the vectors if their norms are greater than 1
+            S1 = S1 / jnp.max(1, jnp.linalg.norm(S1))
+            S2 = S2 / jnp.max(1, jnp.linalg.norm(S2))
 
             sample = [
                 iota[0],
-                S1x[0],
-                S1y[0],
-                S1z[0],
-                S2x[0],
-                S2y[0],
-                S2z[0],
+                S1[0],
+                S1[1],
+                S1[2],
+                S2[0],
+                S2[1],
+                S2[2],
                 M_c[0],
                 q[0],
                 phiRef[0],
@@ -907,30 +906,30 @@ class TestSpinAnglesToCartesianSpinTransform:
         fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
         phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
 
-        key = subkeys[5]
-        while True:
-            key, subkey = jax.random.split(key)
-            subkeys = jax.random.split(subkey, 6)
-            S1x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
-            S1y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
-            S1z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
-            S2x = jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)
-            S2y = jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)
-            S2z = jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)
-            if (
-                jnp.linalg.norm(jnp.array([S1x[0], S1y[0], S1z[0]])) <= 1
-                and jnp.linalg.norm(jnp.array([S2x[0], S2y[0], S2z[0]])) <= 1
-            ):
-                break
+        subkeys = jax.random.split(subkeys[5], 6)
+        S1 = jnp.array([
+            jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)[0],
+            jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)[0],
+            jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)[0],
+        ])
+        S2 = jnp.array([
+            jax.random.uniform(subkeys[3], (1,), minval=-1, maxval=1)[0],
+            jax.random.uniform(subkeys[4], (1,), minval=-1, maxval=1)[0],
+            jax.random.uniform(subkeys[5], (1,), minval=-1, maxval=1)[0],
+        ])
+
+        # Scale down the vectors if their norms are greater than 1
+        S1 = S1 / jnp.maximum(1, jnp.linalg.norm(S1))
+        S2 = S2 / jnp.maximum(1, jnp.linalg.norm(S2))
 
         sample = [
             iota[0],
-            S1x[0],
-            S1y[0],
-            S1z[0],
-            S2x[0],
-            S2y[0],
-            S2z[0],
+            S1[0],
+            S1[1],
+            S1[2],
+            S2[0],
+            S2[1],
+            S2[2],
             M_c[0],
             q[0],
             phiRef[0],
