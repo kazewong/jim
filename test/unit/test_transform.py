@@ -23,7 +23,8 @@ from jimgw.single_event.detector import H1, L1
 
 import numpy as np
 
-from pathlib import Path
+import os
+import glob
 
 jax.config.update("jax_enable_x64", True)
 
@@ -734,7 +735,7 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         """
         input_path = "test/unit/source_files/spin_angles_input"
-        input_files = Path(input_path).glob("*.npz")
+        input_files = glob.glob(os.path.join(input_path, "*.npz"))
 
         for file in input_files:
             inputs = jnp.load(file)
@@ -761,7 +762,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             inputs = dict(zip(self.forward_keys, inputs))
 
             output_path = "test/unit/source_files/cartesian_spins_output_for_bilby"
-            output_files = Path(output_path).glob(f"*fRef_{fRef}*.npz")
+            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
 
             # read outputs from binary
             bilby_spins = jnp.load(output_files[0])
@@ -797,7 +798,7 @@ class TestSpinAnglesToCartesianSpinTransform:
 
         """
         input_path = "test/unit/source_files/cartesian_spins_input"
-        input_files = Path(input_path).glob("*.npz")
+        input_files = glob.glob(os.path.join(input_path, "*.npz"))
 
         for file in input_files:
             inputs = jnp.load(file)
@@ -824,7 +825,7 @@ class TestSpinAnglesToCartesianSpinTransform:
             inputs = dict(zip(self.backward_keys, inputs))
 
             output_path = "test/unit/source_files/spin_angles_output_for_bilby"
-            output_files = Path(output_path).glob(f"*fRef_{fRef}*.npz")
+            output_files = glob.glob(os.path.join(output_path, f"*fRef_{fRef}*.npz"))
 
             # read outputs from binary
             bilby_spins = jnp.load(output_files[0])
