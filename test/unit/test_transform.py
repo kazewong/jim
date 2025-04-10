@@ -682,6 +682,10 @@ class TestSphereSpinToCartesianSpinTransform:
 
 
 class TestSkyFrameToDetectorFrameSkyPositionTransform:
+    # Since Bilby and Jim use different algorithm for gmst, which
+    # induces errors to RA, and this is the minimum precision that passes
+    RA_ATOL = 5e-5
+
     def test_backward_transform(self):
         """
         Test the backward transformation from spherical to detector frame sky position with different sets of detectors
@@ -690,28 +694,23 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         files = input_dir.glob("*.npz")
         for file in files:
             data = jnp.load(file, allow_pickle=True)
-            gps_time = data["gps_time"]
-            ifo_pair = data["ifo_pair"]
 
-            # bilby_outputs = {data[key] for key in ("ra", "dec")}
-            bilby_outputs = {"ra": data["ra"], "dec": data["dec"]}
-            zenith_azimuth = {"zenith": data["zenith"], "azimuth": data["azimuth"]}
-            ifos = [detector_preset[ifo_name] for ifo_name in ifo_pair]
+            bilby_outputs = {key: data[key] for key in ("ra", "dec")}
+            zenith_azimuth = {key: data[key] for key in ("zenith", "azimuth")}
+            ifos = [detector_preset[ifo_name] for ifo_name in data["ifo_pair"]]
 
             transform = SkyFrameToDetectorFrameSkyPositionTransform(
-                gps_time=gps_time,
+                gps_time=data["gps_time"],
                 ifos=ifos,
             )
             # test the forward transform
             jim_outputs, jacobian = jax.vmap(transform.inverse)(zenith_azimuth)
 
-            # Since Bilby and Jim use different algorithm for gmst, which
-            # induces errors to RA, and this is the minimum precision that passes
-            ATOL = 5e-5
-
-            for key in ("ra", "dec"):
-                assert jnp.allclose(jim_outputs[key], bilby_outputs[key], atol=ATOL)
-
+            # Use the tailored atol for RA
+            assert jnp.allclose(
+                jim_outputs["ra"], bilby_outputs["ra"], atol=self.RA_ATOL
+            )
+            assert jnp.allclose(jim_outputs["dec"], bilby_outputs["dec"])
             assert not jnp.isnan(jacobian).any()
 
     def test_forward_backward_consistency(self):
@@ -742,10 +741,9 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
                 forward_transform_output, _ = jax.vmap(transform.inverse)(inputs)
                 output, _ = jax.vmap(transform.transform)(forward_transform_output)
 
+                # default atol: 1e-8, rtol: 1e-5
                 for param_key, input in inputs.items():
                     assert jnp.allclose(output[param_key], input)
-
-                # default atol: 1e-8, rtol: 1e-5
                 # best accuracy for zenith and azimuth is 1e-16
 
     def test_jitted_forward_transform(self):
@@ -758,33 +756,29 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
             "ra": jax.random.uniform(subkeys[0], (1,), minval=0, maxval=2 * jnp.pi),
             "dec": jax.random.uniform(subkeys[1], (1,), minval=0, maxval=jnp.pi),
         }
+        class_args = dict(gps_time=1126259642.4, ifos=[H1, L1])
 
         # Create a JIT compiled version of the transform.
         jit_transform = jax.jit(
             lambda data: SkyFrameToDetectorFrameSkyPositionTransform(
-                gps_time=1126259642.4,
-                ifos=[H1, L1],
+                **class_args
             ).transform(data)
         )
         jitted_output, jitted_jacobian = jit_transform(sample_dict)
         non_jitted_output, _ = SkyFrameToDetectorFrameSkyPositionTransform(
-            gps_time=1126259642.4,
-            ifos=[H1, L1],
+            **class_args
         ).transform(sample_dict)
-
-        RTOL = 1e-5
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
             *(
                 jnp.array(
                     [
-                        (jitted_output[key], non_jitted_output[key])
+                        (jitted_output[key][0], non_jitted_output[key][0])
                         for key in jitted_output.keys()
                     ]
-                ).T[0]
-            ),
-            rtol=RTOL,
+                ).T
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
@@ -803,18 +797,17 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
                 subkeys[1], (1,), minval=0, maxval=2 * jnp.pi
             ),
         }
+        class_args = dict(gps_time=1126259642.4, ifos=[H1, L1])
 
         # Create a JIT compiled version of the transform.
         jit_inverse_transform = jax.jit(
             lambda data: SkyFrameToDetectorFrameSkyPositionTransform(
-                gps_time=1126259642.4,
-                ifos=[H1, L1],
+                **class_args
             ).inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
         non_jitted_output, _ = SkyFrameToDetectorFrameSkyPositionTransform(
-            gps_time=1126259642.4,
-            ifos=[H1, L1],
+            **class_args
         ).inverse(sample_dict)
 
         # Assert that the jitted and non-jitted results agree
@@ -822,10 +815,10 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
             *(
                 jnp.array(
                     [
-                        (jitted_output[key], non_jitted_output[key])
+                        (jitted_output[key][0], non_jitted_output[key][0])
                         for key in jitted_output.keys()
                     ]
-                ).T[0]
+                ).T
             )
         )
 
