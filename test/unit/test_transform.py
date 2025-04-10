@@ -776,8 +776,13 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            *jnp.array(
-                [(jitted_output[key], non_jitted_output[key]) for key in jitted_output]
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T[0]
             ),
             rtol=RTOL,
         )
@@ -807,18 +812,21 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
             ).inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = (
-            SkyFrameToDetectorFrameSkyPositionTransform(
-                gps_time=1126259642.4,
-                ifos=[H1, L1],
-            ).inverse(sample_dict)
-        )
+        non_jitted_output, _ = SkyFrameToDetectorFrameSkyPositionTransform(
+            gps_time=1126259642.4,
+            ifos=[H1, L1],
+        ).inverse(sample_dict)
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            *jnp.array(
-                [(jitted_output[key], non_jitted_output[key]) for key in jitted_output]
-            ),
+            *(
+                jnp.array(
+                    [
+                        (jitted_output[key], non_jitted_output[key])
+                        for key in jitted_output.keys()
+                    ]
+                ).T[0]
+            )
         )
 
         # Also check that the jitted jacobian contains no NaNs
