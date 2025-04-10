@@ -27,6 +27,33 @@ from jimgw.single_event.detector import H1, L1, V1, detector_preset
 jax.config.update("jax_enable_x64", True)
 
 
+def common_keys_allclose(
+    dict_1: dict, dict_2: dict, atol: float = 1e-8, rtol: float = 1e-5
+):
+    """
+    Check the common values between two result dictionaries are close.
+
+    Parameters
+    ----------
+    dict_1 : dict
+        Result dictionary from the 1st transform.
+    dict_2 : dict
+        Result dictionary from the 2nd transform.
+    atol : float
+        Absolute tolerance between the two values, default 1e-8.
+    rtol : float
+        Relative tolerance between the two values, default 1e-5.
+
+    The default values for atol and rtol here follows those
+    in jax.numpy.isclose, for their definitions, see e.g.:
+    https://docs.jax.dev/en/latest/_autosummary/jax.numpy.isclose.html
+    """
+    common_keys = set.intersection({*dict_1.keys()}, {*dict_2.keys()})
+    tuples = jnp.array([[dict_1[key], dict_2[key]] for key in common_keys])
+    tuple_array = jnp.swapaxes(tuples, 0, 1)
+    return jnp.allclose(*tuple_array, atol=atol, rtol=rtol)
+
+
 class TestBasicTransforms:
     def test_scale_transform(self):
         name_mapping = (["a", "b"], ["a_scaled", "b_scaled"])
@@ -722,7 +749,6 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         key = jax.random.PRNGKey(42)
 
         for ifo_pair in combinations(ifos, 2):
-            ifo_pair = list(ifo_pair)
             for time in gps_time:
                 key, subkey = jax.random.split(key)
                 subkeys = jax.random.split(subkey, 2)
@@ -736,14 +762,13 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
                 }
                 transform = SkyFrameToDetectorFrameSkyPositionTransform(
                     gps_time=time,
-                    ifos=ifo_pair,
+                    ifos=list(ifo_pair),
                 )
                 forward_transform_output, _ = jax.vmap(transform.inverse)(inputs)
-                output, _ = jax.vmap(transform.transform)(forward_transform_output)
+                outputs, _ = jax.vmap(transform.transform)(forward_transform_output)
 
                 # default atol: 1e-8, rtol: 1e-5
-                for param_key, input in inputs.items():
-                    assert jnp.allclose(output[param_key], input)
+                assert common_keys_allclose(outputs, inputs)
                 # best accuracy for zenith and azimuth is 1e-16
 
     def test_jitted_forward_transform(self):
@@ -770,17 +795,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         ).transform(sample_dict)
 
         # Assert that the jitted and non-jitted results agree
-        assert jnp.allclose(
-            *(
-                jnp.array(
-                    [
-                        (jitted_output[key][0], non_jitted_output[key][0])
-                        for key in jitted_output.keys()
-                    ]
-                ).T
-            )
-        )
-
+        assert common_keys_allclose(jitted_output, non_jitted_output)
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
@@ -811,17 +826,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         ).inverse(sample_dict)
 
         # Assert that the jitted and non-jitted results agree
-        assert jnp.allclose(
-            *(
-                jnp.array(
-                    [
-                        (jitted_output[key][0], non_jitted_output[key][0])
-                        for key in jitted_output.keys()
-                    ]
-                ).T
-            )
-        )
-
+        assert common_keys_allclose(jitted_output, non_jitted_output)
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
