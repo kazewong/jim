@@ -322,9 +322,10 @@ def angle_rotation(
     zenith: Float, azimuth: Float, rotation: Float[Array, " 3 3"]
 ) -> tuple[Float, Float]:
     """
-    Transforming the azimuthal angle and zenith angle in Earth frame to the polar angle and azimuthal angle in sky frame.
+    Transforming the azimuthal angle and zenith angle in Earth frame
+    to the polar angle and azimuthal angle in sky frame.
 
-    Copied and modified from bilby-cython/geometry.pyx
+    Modified from bilby-cython/geometry.pyx.
 
     Parameters
     ----------
@@ -342,26 +343,18 @@ def angle_rotation(
     phi : Float
             Azimuthal angle.
     """
-    sin_azimuth = jnp.sin(azimuth)
-    cos_azimuth = jnp.cos(azimuth)
-    sin_zenith = jnp.sin(zenith)
-    cos_zenith = jnp.cos(zenith)
-
-    theta = jnp.acos(
-        rotation[2][0] * sin_zenith * cos_azimuth
-        + rotation[2][1] * sin_zenith * sin_azimuth
-        + rotation[2][2] * cos_zenith
+    sky_loc_vec = jnp.array(
+        [
+            jnp.sin(zenith) * jnp.cos(azimuth),
+            jnp.sin(zenith) * jnp.sin(azimuth),
+            jnp.cos(zenith),
+        ]
     )
+    rotated_vec = jnp.einsum("ij,j...->i...", rotation, sky_loc_vec)
+
+    theta = jnp.acos(rotated_vec[2])
     phi = jnp.fmod(
-        jnp.atan2(
-            rotation[1][0] * sin_zenith * cos_azimuth
-            + rotation[1][1] * sin_zenith * sin_azimuth
-            + rotation[1][2] * cos_zenith,
-            rotation[0][0] * sin_zenith * cos_azimuth
-            + rotation[0][1] * sin_zenith * sin_azimuth
-            + rotation[0][2] * cos_zenith,
-        )
-        + 2 * jnp.pi,
+        jnp.atan2(rotated_vec[1], rotated_vec[0]) + 2 * jnp.pi,
         2 * jnp.pi,
     )
     return theta, phi
