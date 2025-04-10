@@ -461,7 +461,7 @@ L1 = GroundBased2G(
 V1 = GroundBased2G(
     "V1",
     latitude=(43 + 37.0 / 60 + 53.0921 / 3600) * DEG_TO_RAD,
-    longitude=(10 + 30.0 / 60 + 16.1887 / 3600) * DEG_TO_RAD,
+    longitude=(10 + 30.0 / 60 + 16.1878 / 3600) * DEG_TO_RAD,
     xarm_azimuth=70.5674 * DEG_TO_RAD,
     yarm_azimuth=160.5674 * DEG_TO_RAD,
     xarm_tilt=0,
