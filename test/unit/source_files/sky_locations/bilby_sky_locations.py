@@ -11,24 +11,18 @@ N_samples = 100
 ifo_names = ["H1", "L1", "V1"]
 geocent_time = [1126259642.413]
 
-
 for ifo_pair in combinations(ifo_names, 2):
-    ifo_pair = list(ifo_pair)
     ifos = bilby.gw.detector.InterferometerList(ifo_pair)
     for time in geocent_time:
         key = jax.random.PRNGKey(42)
         key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 2)
-        zenith = jax.random.uniform(subkeys[0], (N_samples,), minval=0, maxval=jnp.pi)
-        azimuth = jax.random.uniform(
-            subkeys[1], (N_samples,), minval=0, maxval=2 * jnp.pi
-        )
+        azimuth = jax.random.uniform(key, (N_samples,), minval=0, maxval=2 * jnp.pi)
+        zenith = jax.random.uniform(subkey, (N_samples,), minval=0, maxval=jnp.pi)
         input = jnp.array([zenith, azimuth]).T
         output = []
         for row in input:
             output.append(zenith_azimuth_to_ra_dec(*row, time, ifos))
-        output = jnp.array(output).T
-        ra, dec = output
+        ra, dec = jnp.array(output).T
         input_dict = {
             "zenith": zenith,
             "azimuth": azimuth,
