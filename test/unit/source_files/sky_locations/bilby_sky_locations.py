@@ -18,9 +18,9 @@ for ifo_pair in combinations(ifo_names, 2):
         key, subkey = jax.random.split(key)
         azimuth = jax.random.uniform(key, (N_samples,), minval=0, maxval=2 * jnp.pi)
         zenith = jax.random.uniform(subkey, (N_samples,), minval=0, maxval=jnp.pi)
-        input = jnp.array([zenith, azimuth]).T
+        inputs = jnp.array([zenith, azimuth]).T
         output = []
-        for row in input:
+        for row in inputs:
             output.append(zenith_azimuth_to_ra_dec(*row, time, ifos))
         ra, dec = jnp.array(output).T
         input_dict = {
