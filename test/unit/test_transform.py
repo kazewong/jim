@@ -694,7 +694,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
             ifo_pair = data["ifo_pair"]
 
             # bilby_outputs = {data[key] for key in ("ra", "dec")}
-            bilby_outputs = {"ra":data["ra"] , "dec": data["dec"]}
+            bilby_outputs = {"ra": data["ra"], "dec": data["dec"]}
             zenith_azimuth = {"zenith": data["zenith"], "azimuth": data["azimuth"]}
             ifos = [detector_preset[ifo_name] for ifo_name in ifo_pair]
 
@@ -776,8 +776,9 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *jnp.array(
+                [(jitted_output[key], non_jitted_output[key]) for key in jitted_output]
+            ),
             rtol=RTOL,
         )
 
@@ -815,8 +816,9 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
 
         # Assert that the jitted and non-jitted results agree
         assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+            *jnp.array(
+                [(jitted_output[key], non_jitted_output[key]) for key in jitted_output]
+            ),
         )
 
         # Also check that the jitted jacobian contains no NaNs
