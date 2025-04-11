@@ -436,8 +436,7 @@ class TestDistanceTransform:
         """
 
         key = jax.random.PRNGKey(42)
-        key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 6)
+        key, *subkeys = jax.random.split(key, 7)
         dL = jax.random.uniform(subkeys[0], (10,), minval=1, maxval=2000)
         M_c = jax.random.uniform(subkeys[1], (10,), minval=1, maxval=100)
         ra = jax.random.uniform(subkeys[2], (10,), minval=0, maxval=2 * jnp.pi)
@@ -611,8 +610,7 @@ class TestSphereSpinToCartesianSpinTransform:
         """
 
         key = jax.random.PRNGKey(42)
-        key, subkey = jax.random.split(key)
-        subkeys = jax.random.split(subkey, 3)
+        key, *subkeys = jax.random.split(key, 4)
         s1_mag = jax.random.uniform(subkeys[0], (10,), minval=0.1, maxval=1.0)
         s1_theta = jax.random.uniform(subkeys[1], (10,), minval=0, maxval=jnp.pi)
         s1_phi = jax.random.uniform(
@@ -750,8 +748,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
 
         for ifo_pair in combinations(ifos, 2):
             for time in gps_time:
-                key, subkey = jax.random.split(key)
-                subkeys = jax.random.split(subkey, 2)
+                key, *subkeys = jax.random.split(key, 3)
                 inputs = {
                     "zenith": jax.random.uniform(
                         subkeys[0], (10,), minval=0, maxval=jnp.pi
