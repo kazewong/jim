@@ -38,7 +38,7 @@ def inner_product(
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
 
 
-def m1_m2_to_M_q(m1: Float, m2: Float):
+def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
     Transforming the primary mass m1 and secondary mass m2 to the Total mass M
     and mass ratio q.
@@ -62,7 +62,7 @@ def m1_m2_to_M_q(m1: Float, m2: Float):
     return M_tot, q
 
 
-def M_q_to_m1_m2(M_tot: Float, q: Float):
+def M_q_to_m1_m2(M_tot: Float, q: Float) -> tuple[Float, Float]:
     """
     Transforming the Total mass M and mass ratio q to the primary mass m1 and
     secondary mass m2.
@@ -276,7 +276,7 @@ def eta_to_q(eta: Float) -> Float:
     return temp - (temp**2 - 1) ** 0.5
 
 
-def euler_rotation(delta_x: Float[Array, " 3"]):
+def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
     """
     Calculate the rotation matrix mapping the vector (0, 0, 1) to delta_x
     while preserving the origin of the azimuthal angle.
