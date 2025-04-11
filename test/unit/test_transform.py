@@ -775,8 +775,8 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         # Generate random sample
         subkeys = jax.random.split(jax.random.PRNGKey(12), 2)
         sample_dict = {
-            "ra": jax.random.uniform(subkeys[0], (1,), minval=0, maxval=2 * jnp.pi),
-            "dec": jax.random.uniform(subkeys[1], (1,), minval=0, maxval=jnp.pi),
+            "ra": jax.random.uniform(subkeys[0], (1,), minval=0, maxval=2 * jnp.pi)[0],
+            "dec": jax.random.uniform(subkeys[1], (1,), minval=0, maxval=jnp.pi)[0],
         }
         class_args = dict(gps_time=1126259642.4, ifos=[H1, L1])
 
@@ -804,10 +804,10 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
         # Generate random sample
         subkeys = jax.random.split(jax.random.PRNGKey(123), 2)
         sample_dict = {
-            "zenith": jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi),
+            "zenith": jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)[0],
             "azimuth": jax.random.uniform(
                 subkeys[1], (1,), minval=0, maxval=2 * jnp.pi
-            ),
+            )[0],
         }
         class_args = dict(gps_time=1126259642.4, ifos=[H1, L1])
 
