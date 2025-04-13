@@ -46,7 +46,7 @@ class Jim(object):
         n_max_examples: int = 10000,
         local_thinning: int = 1,
         global_thinning: int = 1,
-        n_flow_sample: int = 1000,
+        n_NFproposal_batch_size: int = 1000,
         history_window: int = 100,
         n_temperatures: int = 5,
         max_temperature: float = 10.0,
@@ -93,11 +93,11 @@ class Jim(object):
             n_max_examples=n_max_examples,
             local_thinning=local_thinning,
             global_thinning=global_thinning,
-            n_flow_sample=n_flow_sample,
+            n_NFproposal_batch_size=n_NFproposal_batch_size,
             history_window=history_window,
-            n_temperatures = n_temperatures,
-            max_temperature = max_temperature,
-            n_tempered_steps = n_tempered_steps,
+            n_temperatures=n_temperatures,
+            max_temperature=max_temperature,
+            n_tempered_steps=n_tempered_steps,
             logprior=self.evaluate_prior,
             verbose=verbose,
         )
@@ -121,7 +121,7 @@ class Jim(object):
         """
 
         return dict(zip(self.parameter_names, x))
-    
+
     def evaluate_prior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
