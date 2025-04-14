@@ -612,7 +612,7 @@ class TestSphereSpinToCartesianSpinTransform:
             subkeys[2], (10,), minval=0, maxval=2 * jnp.pi
         )  # [0, 2*pi]
 
-        inputs = {'s1_mag': s1_mag, 's1_theta': s1_theta, 's1_phi': s1_phi}
+        inputs = {"s1_mag": s1_mag, "s1_theta": s1_theta, "s1_phi": s1_phi}
         transform = SphereSpinToCartesianSpinTransform("s1")
         forward_transform_output, _ = jax.vmap(transform.transform)(inputs)
         output, _ = jax.vmap(transform.inverse)(forward_transform_output)
@@ -633,8 +633,11 @@ class TestSphereSpinToCartesianSpinTransform:
             subkeys[2], (1,), minval=0, maxval=2 * jnp.pi
         )  # [0, 2*pi]
 
-        sample_dict = \
-            {'s1_mag': s1_mag[0], 's1_theta': s1_theta[0], 's1_phi': s1_phi[0]}
+        sample_dict = {
+            "s1_mag": s1_mag[0],
+            "s1_theta": s1_theta[0],
+            "s1_phi": s1_phi[0],
+        }
 
         # Create a JIT compiled version of the transform.
         jit_transform = jax.jit(
