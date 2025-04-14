@@ -140,7 +140,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
         def named_transform(x):
             zenith, azimuth = ra_dec_to_zenith_azimuth(
-                x["ra"], x["dec"], self.gmst, self.rotation
+                x["ra"], x["dec"], self.gmst, self.rotation_inv
             )
             return {"zenith": zenith, "azimuth": azimuth}
 
@@ -148,7 +148,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
 
         def named_inverse_transform(x):
             ra, dec = zenith_azimuth_to_ra_dec(
-                x["zenith"], x["azimuth"], self.gmst, self.rotation_inv
+                x["zenith"], x["azimuth"], self.gmst, self.rotation
             )
             return {"ra": ra, "dec": dec}
 
