@@ -3,6 +3,7 @@ from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
 from jimgw.constants import MTSUN
+from jimgw.utils import safe_arctan2
 
 
 def inner_product(
@@ -641,7 +642,7 @@ def spin_angles_to_cartesian_spin(
     # Normalize J, and find theta0 and phi0 (the angles in starting frame)
     Jhat = J / jnp.linalg.norm(J)
     theta0 = jnp.arccos(Jhat[2])
-    phi0 = jnp.arctan2(Jhat[1], Jhat[0])
+    phi0 = safe_arctan2(Jhat[1], Jhat[0])
 
     # Rotation 1: Rotate about z-axis by -phi0
     s1hat = rotate_z(-phi0, s1hat)
@@ -662,7 +663,7 @@ def spin_angles_to_cartesian_spin(
     iota = jnp.arccos(jnp.dot(N, LNh))
 
     thetaLJ = jnp.arccos(LNh[2])
-    phiL = jnp.arctan2(LNh[1], LNh[0])
+    phiL = safe_arctan2(LNh[1], LNh[0])
 
     # Rotation 4: Rotate about z-axis by -phiL
     s1hat = rotate_z(-phiL, s1hat)
@@ -675,7 +676,7 @@ def spin_angles_to_cartesian_spin(
     N = rotate_y(-thetaLJ, N)
 
     # Rotation 6:
-    phiN = jnp.arctan2(N[1], N[0])
+    phiN = safe_arctan2(N[1], N[0])
     s1hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s1hat)
     s2hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s2hat)
 
@@ -760,8 +761,8 @@ def cartesian_spin_to_spin_angles(
     s2hat = jnp.where(chi_2 > 0, s2_vec / chi_2, jnp.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
-    phi1 = jnp.arctan2(s1hat[1], s1hat[0])
-    phi2 = jnp.arctan2(s2hat[1], s2hat[0])
+    phi1 = safe_arctan2(s1hat[1], s1hat[0])
+    phi2 = safe_arctan2(s2hat[1], s2hat[0])
 
     phi_12 = phi2 - phi1
 
@@ -785,7 +786,7 @@ def cartesian_spin_to_spin_angles(
     Jhat = J / jnp.linalg.norm(J)
 
     thetaJL = jnp.arccos(Jhat[2])
-    phiJ = jnp.arctan2(Jhat[1], Jhat[0])
+    phiJ = safe_arctan2(Jhat[1], Jhat[0])
 
     # Azimuthal angle from phase angle
     phi0 = 0.5 * jnp.pi - phiRef
@@ -804,10 +805,10 @@ def cartesian_spin_to_spin_angles(
     LNh = rotate_z(-phiJ, LNh)
     LNh = rotate_y(-thetaJL, LNh)
 
-    phiN = jnp.arctan2(N[1], N[0])
+    phiN = safe_arctan2(N[1], N[0])
     LNh = rotate_z(0.5 * jnp.pi - phiN, LNh)
 
-    phi_jl = jnp.arctan2(LNh[1], LNh[0])
+    phi_jl = safe_arctan2(LNh[1], LNh[0])
     phi_jl = (phi_jl + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_jl < 2pi
 
     return theta_jn, phi_jl, tilt_1, tilt_2, phi_12, chi_1, chi_2
