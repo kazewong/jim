@@ -25,8 +25,6 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.single_event.utils import Mc_q_to_m1_m2
-from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
 
@@ -133,40 +131,33 @@ mass_matrix = jnp.eye(prior.n_dim)
 # mass_matrix = mass_matrix.at[9, 9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 1e-3}
 
-Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
-
-import optax
-
-n_epochs = 20
-n_loop_training = 100
-total_epochs = n_epochs * n_loop_training
-start = total_epochs // 10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 1e-4, 4.0, total_epochs - start, transition_begin=start
-)
 
 jim = Jim(
     likelihood,
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_loop_training=n_loop_training,
-    n_loop_production=20,
-    n_local_steps=10,
-    n_global_steps=1000,
-    n_chains=500,
-    n_epochs=n_epochs,
-    learning_rate=learning_rate,
-    n_max_examples=30000,
-    n_flow_sample=100000,
-    momentum=0.9,
-    batch_size=30000,
-    use_global=True,
-    keep_quantile=0.0,
-    train_thinning=1,
-    output_thinning=10,
-    local_sampler_arg=local_sampler_arg,
-    # strategies=[Adam_optimizer,"default"],
+    n_chains = 500,
+    n_local_steps = 20,
+    n_global_steps = 5,
+    n_training_loops = 200,
+    n_production_loops = 100,
+    n_epochs = 20,
+    mala_step_size = mass_matrix * 2e-3,
+    rq_spline_hidden_units = [128, 128],
+    rq_spline_n_bins = 10,
+    rq_spline_n_layers = 8,
+    learning_rate = 1e-3,
+    batch_size = 10000,
+    n_max_examples = 10000,
+    n_NFproposal_batch_size = 5,
+    local_thinning=1,
+    global_thinning=1,
+    history_window = 200,
+    n_temperatures = 10,
+    max_temperature = 20.0,
+    n_tempered_steps = 10,
+    verbose=True,
 )
 
 

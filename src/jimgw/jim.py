@@ -1,7 +1,6 @@
 import jax
 import jax.numpy as jnp
-from flowMC.nfmodel.rqSpline import MaskedCouplingRQSpline
-from flowMC.proposal.MALA import MALA
+from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Optional
@@ -31,7 +30,28 @@ class Jim(object):
         prior: Prior,
         sample_transforms: list[BijectiveTransform] = [],
         likelihood_transforms: list[NtoMTransform] = [],
-        **kwargs,
+        rng_key: PRNGKeyArray = jax.random.PRNGKey(0),
+        n_chains: int = 50,
+        n_local_steps: int = 10,
+        n_global_steps: int = 10,
+        n_training_loops: int = 20,
+        n_production_loops: int = 20,
+        n_epochs: int = 20,
+        mala_step_size: float = 0.01,
+        rq_spline_hidden_units: list[int] = [128, 128],
+        rq_spline_n_bins: int = 10,
+        rq_spline_n_layers: int = 2,
+        learning_rate: float = 1e-3,
+        batch_size: int = 10000,
+        n_max_examples: int = 10000,
+        local_thinning: int = 1,
+        global_thinning: int = 1,
+        n_NFproposal_batch_size: int = 1000,
+        history_window: int = 100,
+        n_temperatures: int = 5,
+        max_temperature: float = 10.0,
+        n_tempered_steps: int = 5,
+        verbose: bool = False,
     ):
         self.likelihood = likelihood
         self.prior = prior
@@ -54,31 +74,43 @@ class Jim(object):
                 "No likelihood transforms provided. Using prior parameters as likelihood parameters"
             )
 
-        rng_key = kwargs.get("rng_key", None)
-        if rng_key is None:
+        if rng_key is jax.random.PRNGKey(0):
             print("No rng_key provided. Using default key with seed=0.")
-            rng_key = jax.random.PRNGKey(0)
 
-        num_layers = kwargs.get("num_layers", 10)
-        hidden_size = kwargs.get("hidden_size", [128, 128])
-        num_bins = kwargs.get("num_bins", 8)
-
-        local_sampler_arg = kwargs.get("local_sampler_arg", {})
-
-        local_sampler = MALA(self.posterior, True, **local_sampler_arg)
-
-        rng_key, subkey = jax.random.split(rng_key)
-        model = MaskedCouplingRQSpline(
-            self.prior.n_dim, num_layers, hidden_size, num_bins, subkey
+        resource_strategy_bundle = RQSpline_MALA_PT_Bundle(
+            rng_key=rng_key,
+            n_chains=n_chains,
+            n_dims=self.prior.n_dim,
+            logpdf=self.posterior,
+            n_local_steps=n_local_steps,
+            n_global_steps=n_global_steps,
+            n_training_loops=n_training_loops,
+            n_production_loops=n_production_loops,
+            n_epochs=n_epochs,
+            mala_step_size=mala_step_size,
+            rq_spline_hidden_units=rq_spline_hidden_units,
+            rq_spline_n_bins=rq_spline_n_bins,
+            rq_spline_n_layers=rq_spline_n_layers,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            n_max_examples=n_max_examples,
+            local_thinning=local_thinning,
+            global_thinning=global_thinning,
+            n_NFproposal_batch_size=n_NFproposal_batch_size,
+            history_window=history_window,
+            n_temperatures=n_temperatures,
+            max_temperature=max_temperature,
+            n_tempered_steps=n_tempered_steps,
+            logprior=self.evaluate_prior,
+            verbose=verbose,
         )
 
+        rng_key, subkey = jax.random.split(rng_key)
         self.sampler = Sampler(
             self.prior.n_dim,
-            rng_key,
-            None,  # type: ignore
-            local_sampler,
-            model,
-            **kwargs,
+            n_chains,
+            subkey,
+            resource_strategy_bundles=resource_strategy_bundle,
         )
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
@@ -92,6 +124,14 @@ class Jim(object):
         """
 
         return dict(zip(self.parameter_names, x))
+
+    def evaluate_prior(self, params: Float[Array, " n_dim"], data: dict):
+        named_params = self.add_name(params)
+        transform_jacobian = 0.0
+        for transform in reversed(self.sample_transforms):
+            named_params, jacobian = transform.inverse(named_params)
+            transform_jacobian += jacobian
+        return self.prior.log_prob(named_params) + transform_jacobian
 
     def posterior(self, params: Float[Array, " n_dim"], data: dict):
         named_params = self.add_name(params)
@@ -146,7 +186,7 @@ class Jim(object):
                 initial_position = initial_position.at[
                     non_finite_index[:common_length]
                 ].set(guess[:common_length])
-        self.sampler.sample(initial_position, None)  # type: ignore
+        self.sampler.sample(initial_position, {})  # type: ignore
 
     def print_summary(self, transform: bool = True):
         """
@@ -223,9 +263,9 @@ class Jim(object):
 
         """
         if training:
-            chains = self.sampler.get_sampler_state(training=True)["chains"]
+            chains = self.sampler.resources["positions_training"].data
         else:
-            chains = self.sampler.get_sampler_state(training=False)["chains"]
+            chains = self.sampler.resources["positions_production"].data
 
         chains = chains.reshape(-1, self.prior.n_dim)
         chains = jax.vmap(self.add_name)(chains)

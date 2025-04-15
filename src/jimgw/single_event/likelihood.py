@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
-from flowMC.strategy.optimization import optimization_Adam
+from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from typing import Optional
@@ -579,7 +579,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         print("Starting the optimizer")
 
-        optimizer = optimization_Adam(
+        optimizer = AdamOptimization(
             n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 

@@ -4,14 +4,12 @@ import jax
 import jax.numpy as jnp
 
 from jimgw.jim import Jim
-from jimgw.jim import Jim
 from jimgw.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
     SinePrior,
     PowerLawPrior,
-    UniformSpherePrior,
 )
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
@@ -19,14 +17,13 @@ from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
-    SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.single_event.utils import Mc_q_to_m1_m2
-from flowMC.strategy.optimization import optimization_Adam
+import optax
+
 
 jax.config.update("jax_enable_x64", True)
 
@@ -97,19 +94,59 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
+    DistanceToSNRWeightedDistanceTransform(
+        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
+    ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
+    ),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
-    BoundToUnbound(name_mapping = (["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
-    BoundToUnbound(name_mapping = (["s1_z"], ["s1_z_unbounded"]) , original_lower_bound=-1.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = (["s2_z"], ["s2_z_unbounded"]) , original_lower_bound=-1.0, original_upper_bound=1.0),
-    BoundToUnbound(name_mapping = (["iota"], ["iota_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["azimuth"], ["azimuth_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(
+        name_mapping=(["M_c"], ["M_c_unbounded"]),
+        original_lower_bound=M_c_min,
+        original_upper_bound=M_c_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["q"], ["q_unbounded"]),
+        original_lower_bound=q_min,
+        original_upper_bound=q_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_z"], ["s1_z_unbounded"]),
+        original_lower_bound=-1.0,
+        original_upper_bound=1.0,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_z"], ["s2_z_unbounded"]),
+        original_lower_bound=-1.0,
+        original_upper_bound=1.0,
+    ),
+    BoundToUnbound(
+        name_mapping=(["iota"], ["iota_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["phase_det"], ["phase_det_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["psi"], ["psi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["zenith"], ["zenith_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["azimuth"], ["azimuth_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
 ]
 
 likelihood_transforms = [
@@ -127,40 +164,26 @@ mass_matrix = jnp.eye(prior.n_dim)
 # mass_matrix = mass_matrix.at[9, 9].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 1e-3}
 
-Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
-
-import optax
-
-n_epochs = 20
-n_loop_training = 100
-total_epochs = n_epochs * n_loop_training
-start = total_epochs // 10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 1e-4, 4.0, total_epochs - start, transition_begin=start
-)
 
 jim = Jim(
     likelihood,
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_loop_training=n_loop_training,
-    n_loop_production=20,
-    n_local_steps=10,
-    n_global_steps=1000,
-    n_chains=500,
-    n_epochs=n_epochs,
-    learning_rate=learning_rate,
-    n_max_examples=30000,
-    n_flow_sample=100000,
-    momentum=0.9,
-    batch_size=30000,
-    use_global=True,
-    keep_quantile=0.0,
-    train_thinning=1,
-    output_thinning=10,
-    local_sampler_arg=local_sampler_arg,
-    # strategies=[Adam_optimizer,"default"],
+    rng_key=jax.random.PRNGKey(42),
+    n_chains = 50,
+    n_local_steps = 10,
+    n_global_steps = 10,
+    n_training_loops = 20,
+    n_production_loops = 20,
+    n_epochs = 20,
+    mala_step_size = mass_matrix * 1e-3,
+    rq_spline_hidden_units = [128, 128],
+    rq_spline_n_bins = 8,
+    rq_spline_n_layers = 4,
+    learning_rate = 1e-4,
+    batch_size = 10000,
+    n_max_examples = 10000,
 )
 
 

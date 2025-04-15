@@ -9,9 +9,6 @@ from jimgw.single_event.waveform import RippleIMRPhenomD
 from jimgw.transforms import BoundToUnbound
 from jimgw.single_event.transforms import ComponentMassesToChirpMassSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, ComponentMassesToChirpMassMassRatioTransform
 from jimgw.single_event.utils import Mc_q_to_m1_m2
-from flowMC.strategy.optimization import optimization_Adam
-from flowMC.utils.postprocessing import plot_summary
-import optax
 
 jax.config.update("jax_enable_x64", True)
 
@@ -96,35 +93,23 @@ mass_matrix = mass_matrix.at[1, 1].set(1e-3)
 mass_matrix = mass_matrix.at[5, 5].set(1e-3)
 local_sampler_arg = {"step_size": mass_matrix * 3e-3}
 
-Adam_optimizer = optimization_Adam(n_steps=5, learning_rate=0.01, noise_level=1)
-
-n_epochs = 2
-n_loop_training = 1
-learning_rate = 1e-4
 
 jim = Jim(
     likelihood,
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_loop_training=n_loop_training,
-    n_loop_production=1,
+    n_chains=4,
     n_local_steps=5,
     n_global_steps=5,
-    n_chains=4,
-    n_epochs=n_epochs,
-    learning_rate=learning_rate,
+    n_training_loops=2,
+    n_production_loops=2,
+    n_epochs=2,
+    learning_rate=1e-4,
     n_max_examples=30,
-    n_flow_sample=100,
-    momentum=0.9,
     batch_size=100,
-    use_global=True,
-    train_thinning=1,
-    output_thinning=1,
-    local_sampler_arg=local_sampler_arg,
-    strategies=[Adam_optimizer, "default"],
 )
 
 jim.sample(jax.random.PRNGKey(42))
-jim.get_samples()
-jim.print_summary()
+# jim.get_samples()
+# jim.print_summary()
