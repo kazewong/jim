@@ -74,6 +74,9 @@ class Jim(object):
                 "No likelihood transforms provided. Using prior parameters as likelihood parameters"
             )
 
+        if rng_key is jax.random.PRNGKey(0):
+            print("No rng_key provided. Using default key with seed=0.")
+
         resource_strategy_bundle = RQSpline_MALA_PT_Bundle(
             rng_key=rng_key,
             n_chains=n_chains,
