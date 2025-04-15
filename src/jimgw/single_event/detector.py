@@ -186,8 +186,8 @@ class GroundBased2G(Detector):
         h = self.elevation
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
-        r = major**2 * (
-            major**2 * jnp.cos(lat) ** 2 + minor**2 * jnp.sin(lat) ** 2
+        r = major ** 2 * (
+            major ** 2 * jnp.cos(lat) ** 2 + minor ** 2 * jnp.sin(lat) ** 2
         ) ** (-0.5)
         x = (r + h) * jnp.cos(lat) * jnp.cos(lon)
         y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
@@ -425,11 +425,11 @@ class GroundBased2G(Detector):
             data = requests.get(url)
             open(self.name + ".txt", "wb").write(data.content)
             f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
-            psd_vals = asd_vals**2
+            psd_vals = asd_vals ** 2
         else:
             f, psd_vals = np.loadtxt(psd_file, unpack=True)
 
-        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]))(freqs)  # type: ignore
+        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]), bounds_error=False)(freqs)  # type: ignore
         psd = jnp.array(psd)
         return psd
 
