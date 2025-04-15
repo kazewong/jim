@@ -45,8 +45,8 @@ def safe_arctan2(
     """
     A numerically stable method to evaluate arctan2 upon taking gradient.
 
-    The gradient (jnp.jacfwd) of the default jnp.arctan2 is undefined 
-    at (0, 0) and returns NaN. This function circumvent this issue by 
+    The gradient (jnp.jacfwd) of the default jnp.arctan2 is undefined
+    at (0, 0) and returns NaN. This function circumvent this issue by
     specifying a default value at that point.
 
     Parameters
@@ -71,16 +71,16 @@ def safe_arctan2(
 
 
 def safe_polar_angle(
-    x: Float[Array, " n"], y: Float[Array, " n"], z: Float[Array, " n"] 
+    x: Float[Array, " n"], y: Float[Array, " n"], z: Float[Array, " n"]
 ) -> Float[Array, " n"]:
     """
     A numerically stable method to compute the polar angle upon taking gradient.
 
     The canonical computation is:
         theta = ArcCos[ z / Sqrt[x^2 + y^2 + z^2] ] .
-    The gradient (jnp.jacfwd) of this method, however, 
+    The gradient (jnp.jacfwd) of this method, however,
     will return NaN when both x and y are 0.
-    This function circumvent this issue by specifying computing the simplified 
+    This function circumvent this issue by specifying computing the simplified
     expression of the function at the troubled point.
 
     Parameters
@@ -100,19 +100,21 @@ def safe_polar_angle(
     return jnp.where(
         (jnp.abs(x) < EPS) and (jnp.abs(y) < EPS),
         jnp.arccos(jnp.sign(z)),
-        jnp.arccos(z / jnp.sqrt(x**2 + y**2 + z**2)),
+        jnp.arccos(z / jnp.sqrt(x ** 2 + y ** 2 + z ** 2)),
     )
 
 
 def carte_to_spherical_angles(
-    x: Float[Array, " n"], y: Float[Array, " n"], z: Float[Array, " n"],
-    default_value: float = 0.0, 
+    x: Float[Array, " n"],
+    y: Float[Array, " n"],
+    z: Float[Array, " n"],
+    default_value: float = 0.0,
 ) -> Float[Array, " n n"]:
     """
     A numerically stable method to compute the spherical angles upon taking gradient.
 
-    For more details, see 
-    * `safe_polar_angle` for the polar angle and 
+    For more details, see
+    * `safe_polar_angle` for the polar angle and
     * `safe_arctan2` for the azimuthal angle.
 
     Parameters
@@ -137,7 +139,7 @@ def carte_to_spherical_angles(
     theta = jnp.where(
         align_condition,
         jnp.arccos(jnp.sign(z)),
-        jnp.arccos(z / jnp.sqrt(x**2 + y**2 + z**2)),
+        jnp.arccos(z / jnp.sqrt(x ** 2 + y ** 2 + z ** 2)),
     )
     phi = jnp.where(
         align_condition,

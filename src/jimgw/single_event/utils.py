@@ -3,7 +3,7 @@ from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
 from jimgw.constants import MTSUN
-from jimgw.utils import safe_arctan2
+from jimgw.utils import safe_arctan2, carte_to_spherical_angles
 
 
 def inner_product(
@@ -107,7 +107,7 @@ def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
             Mass ratio.
     """
     M_tot = m1 + m2
-    eta = m1 * m2 / M_tot**2
+    eta = m1 * m2 / M_tot ** 2
     M_c = M_tot * eta ** (3.0 / 5)
     q = m2 / m1
     return M_c, q
@@ -159,7 +159,7 @@ def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
             Symmetric mass ratio.
     """
     M_tot = m1 + m2
-    eta = m1 * m2 / M_tot**2
+    eta = m1 * m2 / M_tot ** 2
     return M_tot, eta
 
 
@@ -207,7 +207,7 @@ def m1_m2_to_Mc_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
             Symmetric mass ratio.
     """
     M = m1 + m2
-    eta = m1 * m2 / M**2
+    eta = m1 * m2 / M ** 2
     M_c = M * eta ** (3.0 / 5)
     return M_c, eta
 
@@ -274,7 +274,7 @@ def eta_to_q(eta: Float) -> Float:
             Mass ratio.
     """
     temp = 1 / eta / 2 - 1
-    return temp - (temp**2 - 1) ** 0.5
+    return temp - (temp ** 2 - 1) ** 0.5
 
 
 def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
@@ -290,7 +290,7 @@ def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
     norm = jnp.linalg.vector_norm(delta_x)
 
     cos_beta = delta_x[2] / norm
-    sin_beta = jnp.sqrt(1 - cos_beta**2)
+    sin_beta = jnp.sqrt(1 - cos_beta ** 2)
 
     alpha = jnp.arctan2(-delta_x[1] * cos_beta, delta_x[0])
     gamma = jnp.arctan2(delta_x[1], delta_x[0])
@@ -641,8 +641,7 @@ def spin_angles_to_cartesian_spin(
 
     # Normalize J, and find theta0 and phi0 (the angles in starting frame)
     Jhat = J / jnp.linalg.norm(J)
-    theta0 = jnp.arccos(Jhat[2])
-    phi0 = safe_arctan2(Jhat[1], Jhat[0])
+    theta0, phi0 = carte_to_spherical_angles(*Jhat)
 
     # Rotation 1: Rotate about z-axis by -phi0
     s1hat = rotate_z(-phi0, s1hat)
@@ -662,8 +661,7 @@ def spin_angles_to_cartesian_spin(
     N = jnp.array([0.0, jnp.sin(theta_jn), jnp.cos(theta_jn)])
     iota = jnp.arccos(jnp.dot(N, LNh))
 
-    thetaLJ = jnp.arccos(LNh[2])
-    phiL = safe_arctan2(LNh[1], LNh[0])
+    thetaLJ, phiL = carte_to_spherical_angles(*LNh)
 
     # Rotation 4: Rotate about z-axis by -phiL
     s1hat = rotate_z(-phiL, s1hat)
@@ -761,15 +759,11 @@ def cartesian_spin_to_spin_angles(
     s2hat = jnp.where(chi_2 > 0, s2_vec / chi_2, jnp.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
-    phi1 = safe_arctan2(s1hat[1], s1hat[0])
-    phi2 = safe_arctan2(s2hat[1], s2hat[0])
+    tilt_1, phi1 = carte_to_spherical_angles(*s1hat)
+    tilt_2, phi2 = carte_to_spherical_angles(*s2hat)
 
     phi_12 = phi2 - phi1
-
     phi_12 = (phi_12 + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_12 < 2pi
-
-    tilt_1 = jnp.arccos(s1hat[2])
-    tilt_2 = jnp.arccos(s2hat[2])
 
     # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
@@ -784,9 +778,7 @@ def cartesian_spin_to_spin_angles(
 
     # Normalize J
     Jhat = J / jnp.linalg.norm(J)
-
-    thetaJL = jnp.arccos(Jhat[2])
-    phiJ = safe_arctan2(Jhat[1], Jhat[0])
+    thetaJL, phiJ = carte_to_spherical_angles(*Jhat)
 
     # Azimuthal angle from phase angle
     phi0 = 0.5 * jnp.pi - phiRef
