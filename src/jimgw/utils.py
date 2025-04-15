@@ -64,7 +64,7 @@ def safe_arctan2(
         The signed azimuthal angle, in radians, within [-π, π]
     """
     return jnp.where(
-        (jnp.abs(x) < EPS) and (jnp.abs(y) < EPS),
+        (jnp.abs(x) < EPS) & (jnp.abs(y) < EPS),
         default_value * jnp.ones_like(x),
         jnp.atan2(y, x),
     )
@@ -98,7 +98,7 @@ def safe_polar_angle(
         The polar angle, in radians, within [0, π]
     """
     return jnp.where(
-        (jnp.abs(x) < EPS) and (jnp.abs(y) < EPS),
+        (jnp.abs(x) < EPS) & (jnp.abs(y) < EPS),
         jnp.arccos(jnp.sign(z)),
         jnp.arccos(z / jnp.sqrt(x ** 2 + y ** 2 + z ** 2)),
     )
@@ -135,7 +135,7 @@ def carte_to_spherical_angles(
     phi: array-like:
         The signed azimuthal angle, in radians, within [-π, π]
     """
-    align_condition = (jnp.absolute(x) < EPS) and (jnp.absolute(y) < EPS)
+    align_condition = (jnp.absolute(x) < EPS) & (jnp.absolute(y) < EPS)
     theta = jnp.where(
         align_condition,
         jnp.arccos(jnp.sign(z)),
