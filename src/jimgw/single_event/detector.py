@@ -248,9 +248,9 @@ class GroundBased2G(Detector):
         psd_data_td = TimeSeries.fetch_open_data(
             self.name, start_psd, end_psd, **gwpy_kwargs
         )
-        assert isinstance(psd_data_td, TimeSeries), (
-            "PSD data is not a TimeSeries object."
-        )
+        assert isinstance(
+            psd_data_td, TimeSeries
+        ), "PSD data is not a TimeSeries object."
         psd = psd_data_td.psd(
             fftlength=segment_length
         ).value  # TODO: Check whether this is sright.

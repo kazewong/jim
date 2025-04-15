@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+
 import numpy as np
 from itertools import combinations
 from pathlib import Path
@@ -19,9 +20,11 @@ from jimgw.transforms import (
 from jimgw.single_event.transforms import (
     DistanceToSNRWeightedDistanceTransform,
     SphereSpinToCartesianSpinTransform,
+    SpinAnglesToCartesianSpinTransform,
     SkyFrameToDetectorFrameSkyPositionTransform,
 )
 
+from jimgw.single_event.utils import m1_m2_to_Mc_q
 from jimgw.single_event.detector import H1, L1, V1, detector_preset
 
 jax.config.update("jax_enable_x64", True)
@@ -68,7 +71,7 @@ class TestBasicTransforms:
 
         # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
-        assert np.allclose(list(recovered.values()), list(input_data.values()))
+        assert common_keys_allclose(recovered, input_data)
         assert np.allclose(inv_log_det, -2 * jnp.log(scale))
 
         jit_transform = jax.jit(lambda x: transform.transform(x))
@@ -81,7 +84,7 @@ class TestBasicTransforms:
 
         # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
-        assert np.allclose(list(jitted_recovered.values()), list(input_data.values()))
+        assert common_keys_allclose(jitted_recovered, input_data)
         assert np.allclose(jitted_inv_log_det, -2 * jnp.log(scale))
 
     def test_offset_transform(self):
@@ -97,7 +100,7 @@ class TestBasicTransforms:
 
         # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
-        assert np.allclose(list(recovered.values()), list(input_data.values()))
+        assert common_keys_allclose(recovered, input_data)
         assert np.allclose(inv_log_det, 0.0)
 
         jit_transform = jax.jit(lambda x: transform.transform(x))
@@ -110,7 +113,7 @@ class TestBasicTransforms:
 
         # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
-        assert np.allclose(list(jitted_recovered.values()), list(input_data.values()))
+        assert common_keys_allclose(jitted_recovered, input_data)
         assert np.allclose(jitted_inv_log_det, 0.0)
 
     def test_logit_transform(self):
@@ -125,7 +128,7 @@ class TestBasicTransforms:
 
         # Test inverse transformation
         recovered, inv_log_det = transform.inverse(output.copy())
-        assert np.allclose(recovered["p"], input_data["p"])
+        assert common_keys_allclose(recovered, input_data)
         assert np.isfinite(inv_log_det)
 
         jit_transform = jax.jit(lambda x: transform.transform(x))
@@ -138,7 +141,7 @@ class TestBasicTransforms:
 
         # Test jitted inverse transformation
         jitted_recovered, jitted_inv_log_det = jit_inverse(jitted_output)
-        assert np.allclose(jitted_recovered["p"], input_data["p"])
+        assert common_keys_allclose(jitted_recovered, input_data)
         assert np.isfinite(jitted_inv_log_det)
 
     def test_sine_transform(self):
@@ -496,7 +499,7 @@ class TestDistanceTransform:
             ).transform(data)
         )
         jitted_output, jitted_jacobian = jit_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = DistanceToSNRWeightedDistanceTransform(
+        non_jitted_output, _ = DistanceToSNRWeightedDistanceTransform(
             gps_time=1126259462.4,
             ifos=[H1, L1],
             dL_min=1.0,
@@ -504,10 +507,7 @@ class TestDistanceTransform:
         ).transform(sample_dict)
 
         # Assert that the jitted and non-jitted results agree
-        assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
-        )
+        assert common_keys_allclose(jitted_output, non_jitted_output)
 
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
@@ -550,19 +550,14 @@ class TestDistanceTransform:
             ).inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = DistanceToSNRWeightedDistanceTransform(
+        non_jitted_output, _ = DistanceToSNRWeightedDistanceTransform(
             gps_time=1126259462.4,
             ifos=[H1, L1],
             dL_min=1.0,
             dL_max=2000.0,
         ).inverse(sample_dict)
 
-        # Assert that the jitted and non-jitted results agree.
-        assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
-        )
-
+        assert common_keys_allclose(jitted_output, non_jitted_output)
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
@@ -611,24 +606,18 @@ class TestSphereSpinToCartesianSpinTransform:
 
         key = jax.random.PRNGKey(42)
         key, *subkeys = jax.random.split(key, 4)
-        s1_mag = jax.random.uniform(subkeys[0], (10,), minval=0.1, maxval=1.0)
+        s1_mag = jax.random.uniform(subkeys[0], (10,), minval=1e-3, maxval=1.0)
         s1_theta = jax.random.uniform(subkeys[1], (10,), minval=0, maxval=jnp.pi)
         s1_phi = jax.random.uniform(
             subkeys[2], (10,), minval=0, maxval=2 * jnp.pi
         )  # [0, 2*pi]
 
-        inputs = jnp.stack([s1_mag, s1_theta, s1_phi], axis=-1).T
-        param_name = ["s1_mag", "s1_theta", "s1_phi"]
-        inputs = dict(zip(param_name, inputs))
+        inputs = {"s1_mag": s1_mag, "s1_theta": s1_theta, "s1_phi": s1_phi}
         transform = SphereSpinToCartesianSpinTransform("s1")
         forward_transform_output, _ = jax.vmap(transform.transform)(inputs)
         output, _ = jax.vmap(transform.inverse)(forward_transform_output)
 
-        assert (
-            jnp.allclose(output["s1_mag"], s1_mag)
-            & jnp.allclose(output["s1_theta"], s1_theta)
-            & jnp.allclose(output["s1_phi"], s1_phi)
-        )
+        assert common_keys_allclose(output, inputs)
         # default atol: 1e-8, rtol: 1e-5
 
     def test_jitted_forward_transform(self):
@@ -638,34 +627,29 @@ class TestSphereSpinToCartesianSpinTransform:
 
         # Generate random sample
         subkeys = jax.random.split(jax.random.PRNGKey(12), 3)
-        s1_mag = jax.random.uniform(subkeys[0], (1,), minval=0.1, maxval=1.0)
+        s1_mag = jax.random.uniform(subkeys[0], (1,), minval=1e-3, maxval=1.0)
         s1_theta = jax.random.uniform(subkeys[1], (1,), minval=0, maxval=jnp.pi)
         s1_phi = jax.random.uniform(
             subkeys[2], (1,), minval=0, maxval=2 * jnp.pi
         )  # [0, 2*pi]
 
-        sample = [
-            s1_mag[0],
-            s1_theta[0],
-            s1_phi[0],
-        ]
-        sample_dict = dict(zip(["s1_mag", "s1_theta", "s1_phi"], sample))
+        sample_dict = {
+            "s1_mag": s1_mag[0],
+            "s1_theta": s1_theta[0],
+            "s1_phi": s1_phi[0],
+        }
 
         # Create a JIT compiled version of the transform.
         jit_transform = jax.jit(
             lambda data: SphereSpinToCartesianSpinTransform("s1").transform(data)
         )
         jitted_output, jitted_jacobian = jit_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = SphereSpinToCartesianSpinTransform(
-            "s1"
-        ).transform(sample_dict)
-
-        # Assert that the jitted and non-jitted results agree
-        assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+        non_jitted_output, _ = SphereSpinToCartesianSpinTransform("s1").transform(
+            sample_dict
         )
 
+        # Assert that the jitted and non-jitted results agree
+        assert common_keys_allclose(jitted_output, non_jitted_output)
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
@@ -675,33 +659,246 @@ class TestSphereSpinToCartesianSpinTransform:
         """
 
         # Generate random sample
-        subkeys = jax.random.split(jax.random.PRNGKey(123), 3)
-        s1_x = jax.random.uniform(subkeys[0], (1,), minval=-1, maxval=1)
-        s1_y = jax.random.uniform(subkeys[1], (1,), minval=-1, maxval=1)
-        s1_z = jax.random.uniform(subkeys[2], (1,), minval=-1, maxval=1)
+        keys = jax.random.split(jax.random.PRNGKey(123), 2)
+        S1 = jax.random.uniform(keys[0], (3,), minval=-1, maxval=1)
+        a1 = jax.random.uniform(keys[1], (1,), minval=1e-3, maxval=1.0)
+        S1 *= a1 / jnp.linalg.norm(S1)
 
-        sample = [
-            s1_x[0],
-            s1_y[0],
-            s1_z[0],
-        ]
-        sample_dict = dict(zip(["s1_x", "s1_y", "s1_z"], sample))
+        sample_dict = dict(zip(["s1_x", "s1_y", "s1_z"], S1))
 
         # Create a JIT compiled version of the transform.
         jit_inverse_transform = jax.jit(
             lambda data: SphereSpinToCartesianSpinTransform("s1").inverse(data)
         )
         jitted_output, jitted_jacobian = jit_inverse_transform(sample_dict)
-        non_jitted_output, non_jitted_jacobian = SphereSpinToCartesianSpinTransform(
-            "s1"
-        ).inverse(sample_dict)
-
-        # Assert that the jitted and non-jitted results agree
-        assert jnp.allclose(
-            jnp.array(list(dict(sorted(jitted_output.items())).values())),
-            jnp.array(list(dict(sorted(non_jitted_output.items())).values())),
+        non_jitted_output, _ = SphereSpinToCartesianSpinTransform("s1").inverse(
+            sample_dict
         )
 
+        # Assert that the jitted and non-jitted results agree
+        assert common_keys_allclose(jitted_output, non_jitted_output)
+        # Also check that the jitted jacobian contains no NaNs
+        assert not jnp.isnan(jitted_jacobian).any()
+
+
+class TestSpinAnglesToCartesianSpinTransform:
+    forward_keys = (
+        "theta_jn",
+        "phi_jl",
+        "tilt_1",
+        "tilt_2",
+        "phi_12",
+        "a_1",
+        "a_2",
+        "M_c",
+        "q",
+        "phase_c",
+    )
+
+    backward_keys = (
+        "iota",
+        "s1_x",
+        "s1_y",
+        "s1_z",
+        "s2_x",
+        "s2_y",
+        "s2_z",
+        "M_c",
+        "q",
+        "phase_c",
+    )
+
+    def test_forward_spin_transform(self):
+        """
+        Test transformation from spin angles to cartesian spins
+
+        """
+        input_dir = Path("test/unit/source_files/spin_angles_input")
+        output_dir = Path("test/unit/source_files/cartesian_spins_output_for_bilby")
+        input_files = input_dir.glob("*.npz")
+
+        for file in input_files:
+            input_dict = dict(jnp.load(file).items())
+            fRef = int(input_dict.pop("fRef")[0])
+            print("Testing forward transform for fRef =", fRef)
+
+            m_1 = input_dict.pop("m_1")
+            m_2 = input_dict.pop("m_2")
+            M_c, q = m1_m2_to_Mc_q(m_1, m_2)
+            input_dict["M_c"] = M_c
+            input_dict["q"] = q
+
+            # read outputs from binary
+            output_file = list(output_dir.glob(f"*fRef_{fRef}*.npz"))[0]
+            bilby_spins = dict(jnp.load(output_file).items())
+
+            transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
+            jimgw_spins, jacobian = jax.vmap(transform.transform)(input_dict)
+
+            assert common_keys_allclose(jimgw_spins, bilby_spins)
+            assert not jnp.isnan(jacobian).any()
+
+    def test_backward_spin_transform(self):
+        """
+        Test transformation from cartesian spins to spin angles
+
+        """
+        input_dir = Path("test/unit/source_files/cartesian_spins_input")
+        output_dir = Path("test/unit/source_files/spin_angles_output_for_bilby")
+        input_files = input_dir.glob("*.npz")
+
+        for file in input_files:
+            input_dict = dict(jnp.load(file).items())
+            fRef = int(input_dict.pop("fRef")[0])
+            print("Testing backward transform for fRef =", fRef)
+
+            m_1 = input_dict.pop("m_1")
+            m_2 = input_dict.pop("m_2")
+            M_c, q = m1_m2_to_Mc_q(m_1, m_2)
+            input_dict["M_c"] = M_c
+            input_dict["q"] = q
+
+            # read outputs from binary
+            output_file = list(output_dir.glob(f"*fRef_{fRef}*.npz"))[0]
+            bilby_spins = dict(jnp.load(output_file).items())
+
+            transform = SpinAnglesToCartesianSpinTransform(freq_ref=fRef)
+            jimgw_spins, jacobian = jax.vmap(transform.inverse)(input_dict)
+
+            # default atol: 1e-8, rtol: 1e-5
+            assert common_keys_allclose(jimgw_spins, bilby_spins)
+            assert not jnp.isnan(jacobian).any()
+
+    def test_forward_backward_consistency(self):
+        """
+        Test that the forward and inverse transformations are consistent
+        """
+
+        n = 10
+        key = jax.random.PRNGKey(42)
+        subkeys = jax.random.split(key, 7)
+
+        S1, S2 = jax.random.uniform(subkeys[0], (2, 3, n), minval=-1, maxval=1)
+        a1, a2 = jax.random.uniform(subkeys[1], (2, n), minval=1e-3, maxval=1)
+        S1 *= a1 / jnp.linalg.norm(S1, axis=0)
+        S2 *= a2 / jnp.linalg.norm(S2, axis=0)
+
+        samples = jnp.array(
+            [
+                jax.random.uniform(subkeys[2], (n,), minval=0, maxval=jnp.pi),  # iota
+                *S1,
+                *S2,
+                jax.random.uniform(subkeys[3], (n,), minval=1, maxval=100),  # M_c
+                jax.random.uniform(subkeys[4], (n,), minval=0.125, maxval=1),  # q
+                jax.random.uniform(
+                    subkeys[5], (n,), minval=0, maxval=2 * jnp.pi
+                ),  # phase_c
+            ]
+        ).T
+        fRefs = jax.random.uniform(subkeys[6], (n,), minval=10, maxval=100)
+
+        for fRef, sample in zip(fRefs, samples):
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(freq_ref=fRef).inverse(
+                dict(zip(self.backward_keys, sample))
+            )
+            jimgw_spins, _ = SpinAnglesToCartesianSpinTransform(
+                freq_ref=fRef
+            ).transform(jimgw_spins)
+            jimgw_spins = jnp.array(list(jimgw_spins.values()))
+            # default atol: 1e-8, rtol: 1e-5
+            assert jnp.allclose(jimgw_spins, jnp.array([*sample[7:], *sample[:7]]))
+
+    def test_jitted_forward_transform(self):
+        """
+        Test that the forward transformation is JIT compilable
+        """
+
+        # Generate random sample
+        subkeys = jax.random.split(jax.random.PRNGKey(12), 8)
+        iota = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
+        M_c = jax.random.uniform(subkeys[1], (1,), minval=1, maxval=100)
+        q = jax.random.uniform(subkeys[2], (1,), minval=0.125, maxval=1)
+        fRef = jax.random.uniform(subkeys[3], (1,), minval=10, maxval=100)
+        phiRef = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
+
+        S1, S2 = jax.random.uniform(subkeys[5], (2, 3), minval=-1, maxval=1)
+        a1, a2 = jax.random.uniform(subkeys[6], (2,), minval=1e-3, maxval=1)
+        S1 *= a1 / jnp.linalg.norm(S1)
+        S2 *= a2 / jnp.linalg.norm(S2)
+
+        sample = [
+            iota[0],
+            *S1,
+            *S2,
+            M_c[0],
+            q[0],
+            phiRef[0],
+        ]
+        freq_ref_sample = fRef[0]
+        sample_dict = dict(zip(self.forward_keys, sample))
+
+        # Create a JIT compiled version of the transform.
+        jit_transform = jax.jit(
+            lambda data: SpinAnglesToCartesianSpinTransform(
+                freq_ref=freq_ref_sample
+            ).transform(data)
+        )
+        jitted_spins, jitted_jacobian = jit_transform(sample_dict)
+        non_jitted_spins, _ = SpinAnglesToCartesianSpinTransform(
+            freq_ref=freq_ref_sample
+        ).transform(sample_dict)
+
+        assert common_keys_allclose(jitted_spins, non_jitted_spins)
+        # Also check that the jitted jacobian contains no NaNs
+        assert not jnp.isnan(jitted_jacobian).any()
+
+    def test_jitted_backward_transform(self):
+        """
+        Test that the backward transformation is JIT compilable
+        """
+
+        # Generate random sample
+        subkeys = jax.random.split(jax.random.PRNGKey(123), 11)
+
+        theta_jn = jax.random.uniform(subkeys[0], (1,), minval=0, maxval=jnp.pi)
+        phi_jl = jax.random.uniform(subkeys[1], (1,), minval=0, maxval=2 * jnp.pi)
+        tilt_1 = jax.random.uniform(subkeys[2], (1,), minval=0, maxval=jnp.pi)
+        tilt_2 = jax.random.uniform(subkeys[3], (1,), minval=0, maxval=jnp.pi)
+        phi_12 = jax.random.uniform(subkeys[4], (1,), minval=0, maxval=2 * jnp.pi)
+        a_1 = jax.random.uniform(subkeys[5], (1,), minval=0, maxval=1)
+        a_2 = jax.random.uniform(subkeys[6], (1,), minval=0, maxval=1)
+        M_c = jax.random.uniform(subkeys[7], (1,), minval=1, maxval=100)
+        q = jax.random.uniform(subkeys[8], (1,), minval=0.125, maxval=1)
+        phase_c = jax.random.uniform(subkeys[9], (1,), minval=0, maxval=2 * jnp.pi)
+        f_ref = jax.random.uniform(subkeys[10], (1,), minval=10, maxval=100)
+
+        sample = [
+            theta_jn[0],
+            phi_jl[0],
+            tilt_1[0],
+            tilt_2[0],
+            phi_12[0],
+            a_1[0],
+            a_2[0],
+            M_c[0],
+            q[0],
+            phase_c[0],
+        ]
+        freq_ref_sample = f_ref[0]
+        sample_dict = dict(zip(self.backward_keys, sample))
+
+        # Create a JIT compiled version of the transform.
+        jit_inverse_transform = jax.jit(
+            lambda data: SpinAnglesToCartesianSpinTransform(
+                freq_ref=freq_ref_sample
+            ).inverse(data)
+        )
+        jitted_spins, jitted_jacobian = jit_inverse_transform(sample_dict)
+        non_jitted_spins, _ = SpinAnglesToCartesianSpinTransform(
+            freq_ref=freq_ref_sample
+        ).inverse(sample_dict)
+
+        assert common_keys_allclose(jitted_spins, non_jitted_spins)
         # Also check that the jitted jacobian contains no NaNs
         assert not jnp.isnan(jitted_jacobian).any()
 
@@ -843,5 +1040,5 @@ class TestHelperFunctions:
         # Now, using the reversed transform (which swaps the transform and its inverse),
         # applying its forward transformation on the original output should recover the original input.
         recovered, rev_log_det = reversed_transform.transform(output.copy())
-        assert np.allclose(list(recovered.values()), list(input_data.values()))
+        assert common_keys_allclose(recovered, input_data)
         assert np.allclose(rev_log_det, -log_det)
