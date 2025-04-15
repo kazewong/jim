@@ -4,6 +4,8 @@ from jaxtyping import Array, Float
 
 from jimgw.prior import Prior
 
+MAX_ATAN_TOL = 1.0e-15
+
 
 def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
     if prior.composite:
@@ -35,3 +37,13 @@ def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:
         The natural logarithm of the bessel function
     """
     return jnp.log(i0e(x)) + x
+
+
+def safe_arctan2(
+    y: Float[Array, " n"], x: Float[Array, " n"], default_value: float = 0.0
+) -> Float[Array, " n"]:
+    return jnp.where(
+        (y < MAX_ATAN_TOL) and (x < MAX_ATAN_TOL),
+        default_value * jnp.ones_like(x),
+        jnp.atan2(y, x),
+    )
