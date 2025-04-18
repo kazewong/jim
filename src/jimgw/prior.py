@@ -3,8 +3,9 @@ from dataclasses import field
 import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
-from flowMC.resource.nf_model.base import Distribution
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from abc import abstractmethod
+import equinox as eqx
 
 from jimgw.transforms import (
     BijectiveTransform,
@@ -17,10 +18,9 @@ from jimgw.transforms import (
     reverse_bijective_transform,
 )
 
-
-class Prior(Distribution):
+class Prior(eqx.Module):
     """
-    A thin wrapper build on top of flowMC distributions to do book keeping.
+    A base class for prior distributions.
 
     Should not be used directly since it does not implement any of the real method.
 
@@ -55,13 +55,18 @@ class Prior(Distribution):
         """
 
         return dict(zip(self.parameter_names, x))
+    
+    def __call__(self, x: dict[str, Float]) -> Float:
+        return self.log_prob(x)
 
+    @abstractmethod
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        raise NotImplementedError
+
+    @abstractmethod
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        raise NotImplementedError
-
-    def log_prob(self, z: dict[str, Array]) -> Float:
         raise NotImplementedError
 
 
