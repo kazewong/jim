@@ -264,10 +264,14 @@ class Jim(object):
 
         """
         if training:
-            assert isinstance(chains := self.sampler.resources["positions_training"], Buffer)
+            assert isinstance(
+                chains := self.sampler.resources["positions_training"], Buffer
+            )
             chains = chains.data
         else:
-            assert isinstance(chains := self.sampler.resources["positions_production"], Buffer)
+            assert isinstance(
+                chains := self.sampler.resources["positions_production"], Buffer
+            )
             chains = chains.data
 
         chains = chains.reshape(-1, self.prior.n_dim)

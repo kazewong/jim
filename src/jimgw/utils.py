@@ -2,10 +2,12 @@ import jax.numpy as jnp
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
-from jimgw.prior import Prior
+from jimgw.prior import SequentialTransformPrior, Prior
 
 
-def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
+def trace_prior_parent(
+    prior: SequentialTransformPrior, output: list[Prior] = []
+) -> list[Prior]:
     if prior.composite:
         if isinstance(prior.base_prior, list):
             for subprior in prior.base_prior:

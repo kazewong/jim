@@ -18,6 +18,7 @@ from jimgw.transforms import (
     reverse_bijective_transform,
 )
 
+
 class Prior(eqx.Module):
     """
     A base class for prior distributions.
@@ -55,7 +56,7 @@ class Prior(eqx.Module):
         """
 
         return dict(zip(self.parameter_names, x))
-    
+
     def __call__(self, x: dict[str, Float]) -> Float:
         return self.log_prob(x)
 
