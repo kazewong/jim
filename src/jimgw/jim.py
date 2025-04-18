@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
+from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
 from typing import Optional
@@ -263,9 +264,11 @@ class Jim(object):
 
         """
         if training:
-            chains = self.sampler.resources["positions_training"].data
+            assert isinstance(chains := self.sampler.resources["positions_training"], Buffer)
+            chains = chains.data
         else:
-            chains = self.sampler.resources["positions_production"].data
+            assert isinstance(chains := self.sampler.resources["positions_production"], Buffer)
+            chains = chains.data
 
         chains = chains.reshape(-1, self.prior.n_dim)
         chains = jax.vmap(self.add_name)(chains)
