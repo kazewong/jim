@@ -18,7 +18,6 @@ from jimgw.transforms import (
     reverse_bijective_transform,
 )
 
-
 class Prior(eqx.Module):
     """
     A base class for prior distributions.
@@ -30,7 +29,6 @@ class Prior(eqx.Module):
     """
 
     parameter_names: list[str]
-    composite: bool = False
 
     @property
     def n_dim(self) -> int:
@@ -69,7 +67,35 @@ class Prior(eqx.Module):
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
+    
+@jaxtyped(typechecker=typechecker)
+class CompositePrior(Prior):
+    """
+    A prior class that is a composite of multiple priors.
+    """
 
+    base_prior: list[Prior]
+
+    def __repr__(self):
+        return f"Composite(priors={self.base_prior}, parameter_names={self.parameter_names})"
+
+    def __init__(
+        self,
+        priors: list[Prior],
+    ):
+        parameter_names = []
+        for prior in priors:
+            parameter_names += prior.parameter_names
+        self.base_prior = priors
+        self.parameter_names = parameter_names
+
+    def trace_prior_parent(self, output: list[Prior] = []) -> list[Prior]:
+        for subprior in self.base_prior:
+            if isinstance(subprior, CompositePrior):
+                output = subprior.trace_prior_parent(output)
+            else:
+                output.append(subprior)
+        return output
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
@@ -79,7 +105,6 @@ class LogisticDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        self.composite = False
         assert self.n_dim == 1, "LogisticDistribution needs to be 1D distributions"
 
     def sample(
@@ -118,7 +143,6 @@ class StandardNormalDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        self.composite = False
         assert (
             self.n_dim == 1
         ), "StandardNormalDistribution needs to be 1D distributions"
@@ -157,7 +181,6 @@ class SequentialTransformPrior(Prior):
     and the space after the transform is named as z
     """
 
-    base_prior: Prior
     transforms: list[BijectiveTransform]
 
     def __repr__(self):
@@ -165,21 +188,21 @@ class SequentialTransformPrior(Prior):
 
     def __init__(
         self,
-        base_prior: Prior,
+        base_prior: list[Prior],
         transforms: list[BijectiveTransform],
     ):
 
+        assert len(base_prior) == 1, "SequentialTransformPrior only takes one base prior"
         self.base_prior = base_prior
         self.transforms = transforms
-        self.parameter_names = base_prior.parameter_names
+        self.parameter_names = base_prior[0].parameter_names
         for transform in transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
-        self.composite = True
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        output = self.base_prior.sample(rng_key, n_samples)
+        output = self.base_prior[0].sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
     def log_prob(self, z: dict[str, Float]) -> Float:
@@ -191,7 +214,7 @@ class SequentialTransformPrior(Prior):
         for transform in reversed(self.transforms):
             z, log_jacobian = transform.inverse(z)
             output += log_jacobian
-        output += self.base_prior.log_prob(z)
+        output += self.base_prior[0].log_prob(z)
         return output
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
@@ -200,7 +223,7 @@ class SequentialTransformPrior(Prior):
         return x
 
 
-class CombinePrior(Prior):
+class CombinePrior(CompositePrior):
     """
     A prior class constructed by joinning multiple priors together to form a multivariate prior.
     This assumes the priors composing the Combine class are independent.
@@ -222,7 +245,6 @@ class CombinePrior(Prior):
             parameter_names += prior.parameter_names
         self.base_prior = priors
         self.parameter_names = parameter_names
-        self.composite = True
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -259,7 +281,7 @@ class UniformPrior(SequentialTransformPrior):
         self.xmax = xmax
         self.xmin = xmin
         super().__init__(
-            LogisticDistribution([f"{self.parameter_names[0]}_base"]),
+            [LogisticDistribution([f"{self.parameter_names[0]}_base"])],
             [
                 LogitTransform(
                     (
@@ -310,7 +332,7 @@ class GaussianPrior(SequentialTransformPrior):
         self.mu = mu
         self.sigma = sigma
         super().__init__(
-            StandardNormalDistribution([f"{self.parameter_names[0]}_base"]),
+            [StandardNormalDistribution([f"{self.parameter_names[0]}_base"])],
             [
                 ScaleTransform(
                     (
@@ -340,7 +362,7 @@ class SinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
-            CosinePrior([f"{self.parameter_names[0]}-pi/2"]),
+            [CosinePrior([f"{self.parameter_names[0]}-pi/2"])],
             [
                 OffsetTransform(
                     (
@@ -368,7 +390,7 @@ class CosinePrior(SequentialTransformPrior):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
-            UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"]),
+            [UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"])],
             [
                 reverse_bijective_transform(
                     SineTransform(
@@ -425,7 +447,7 @@ class RayleighPrior(SequentialTransformPrior):
         assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
         self.sigma = sigma
         super().__init__(
-            UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"]),
+            [UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"])],
             [
                 RayleighTransform(
                     ([f"{self.parameter_names[0]}_base"], self.parameter_names),
@@ -459,7 +481,7 @@ class PowerLawPrior(SequentialTransformPrior):
         assert self.xmin < self.xmax, "xmin must be less than xmax"
         assert self.xmin > 0.0, "x must be positive"
         super().__init__(
-            LogisticDistribution([f"{self.parameter_names[0]}_base"]),
+            [LogisticDistribution([f"{self.parameter_names[0]}_base"])],
             [
                 LogitTransform(
                     (
@@ -480,17 +502,6 @@ class PowerLawPrior(SequentialTransformPrior):
         )
 
 
-def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
-    if prior.composite:
-        if isinstance(prior.base_prior, list):
-            for subprior in prior.base_prior:
-                output = trace_prior_parent(subprior, output)
-        elif isinstance(prior.base_prior, Prior):
-            output = trace_prior_parent(prior.base_prior, output)
-    else:
-        output.append(prior)
-
-    return output
 
 
 # ====================== Things below may need rework ======================
