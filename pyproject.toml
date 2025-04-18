@@ -40,6 +40,7 @@ test = [
 [tool.uv]
 dev-dependencies = [
     "jimgw",
+    "pre-commit>=4.2.0",
 ]
 
 [tool.uv.sources]
