@@ -18,6 +18,7 @@ from jimgw.transforms import (
     reverse_bijective_transform,
 )
 
+
 class Prior(eqx.Module):
     """
     A base class for prior distributions.
@@ -67,7 +68,8 @@ class Prior(eqx.Module):
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
-    
+
+
 @jaxtyped(typechecker=typechecker)
 class CompositePrior(Prior):
     """
@@ -96,6 +98,7 @@ class CompositePrior(Prior):
             else:
                 output.append(subprior)
         return output
+
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
@@ -192,7 +195,9 @@ class SequentialTransformPrior(Prior):
         transforms: list[BijectiveTransform],
     ):
 
-        assert len(base_prior) == 1, "SequentialTransformPrior only takes one base prior"
+        assert (
+            len(base_prior) == 1
+        ), "SequentialTransformPrior only takes one base prior"
         self.base_prior = base_prior
         self.transforms = transforms
         self.parameter_names = base_prior[0].parameter_names
@@ -500,8 +505,6 @@ class PowerLawPrior(SequentialTransformPrior):
                 ),
             ],
         )
-
-
 
 
 # ====================== Things below may need rework ======================
