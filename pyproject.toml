@@ -11,8 +11,6 @@ license = {file = "LICENSE"}
 dependencies = [
     "astropy>=6.1.4",
     "beartype>=0.19.0",
-    "corner>=2.2.2",
-    "coveralls>=4.0.1",
     "flowmc>=0.4.4",
     "gwpy>=3.0.10",
     "jax>=0.5.0",
@@ -31,16 +29,21 @@ docs = [
     "mkdocstrings[python]==0.27.0",
     "pymdown-extensions==10.12",
 ]
-test = [
-    "coverage>=7.7.0",
-    "coveralls>=4.0.1",
-    "pytest>=8.3.3",
+pipeline = [
+    "dagster>=1.10.11",
+    "dagster-webserver>=1.10.11",
+    "corner>=2.2.2",
+    "matplotlib>=3.10.1",
 ]
+
 
 [tool.uv]
 dev-dependencies = [
     "jimgw",
     "pre-commit>=4.2.0",
+    "coverage>=7.7.0",
+    "coveralls>=4.0.1",
+    "pytest>=8.3.3",
 ]
 
 [tool.uv.sources]
