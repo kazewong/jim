@@ -54,6 +54,10 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         # make sure data has a Fourier representation
         for det in detectors:
+            if not det.data:
+                raise ValueError(
+                    f"Detector {det.name} does not have data."
+                )
             if not det.data.has_fd:
                 logging.info("Computing FFT with default window")
                 det.data.fft()
@@ -77,8 +81,8 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             "The detectors must have the same frequency grid"
             
         self.frequencies = freqs[0]  # type: ignore
-        self.datas = [d.data.frequency_slice(f_min, f_max)[0] for d in detectors]
-        self.psds = [d.psd.frequency_slice(f_min, f_max)[0] for d in detectors]
+        self.datas = datas
+        self.psds = psds
         
         self.waveform = waveform
         self.trigger_time = trigger_time
