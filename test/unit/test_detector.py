@@ -1,11 +1,9 @@
 from jimgw.single_event.detector import H1
 from jimgw.single_event.data import Data, PowerSpectrum
 import jax
-import jax.numpy as jnp
 import numpy as np
 from copy import deepcopy
 import scipy.signal as sig
-import pytest
 
 class TestDataInterface:
 
@@ -111,6 +109,11 @@ class TestDataInterface:
         target_var = self.psd.values / (4 * self.psd.delta_f)
         assert np.allclose(np.var(fd_data.real), target_var, rtol=1e-1)
         assert np.allclose(np.var(fd_data.imag), target_var, rtol=1e-1)
+
+        # the integral of the PSD should equal the variance of the TD data
+        fd_data_white = fd_data / np.sqrt(self.psd.values/2/self.psd.delta_t)
+        td_data_white = np.fft.irfft(fd_data_white) / self.psd.delta_t
+        assert np.allclose(np.var(td_data_white), 1, rtol=1e-1)
     
     # def test_user_provide_data(self):
 
