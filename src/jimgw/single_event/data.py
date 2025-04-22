@@ -2,7 +2,6 @@ __include__ = ["Data", "PowerSpectrum"]
 
 from abc import ABC
 
-import jax.numpy as jnp
 import numpy as np
 from gwpy.timeseries import TimeSeries
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
@@ -41,6 +40,19 @@ class Data(ABC):
     delta_t: float
 
     window: Float[Array, " n_time"]
+
+    def __len__(self) -> int:
+        """Length of the time-domain data."""
+        return len(self.td)
+
+    def __iter__(self):
+        """Iterate over the time-domain data."""
+        return iter(self.td)
+
+    @property
+    def empty(self) -> bool:
+        """Whether the data is empty."""
+        return len(self.td) == 0
 
     @property
     def n_time(self) -> int:
@@ -221,6 +233,64 @@ class Data(ABC):
                                              cache=cache, **kws)
         return cls(data_td.value, data_td.dt.value, data_td.epoch.value, ifo)  # type: ignore # noqa: E501
 
+    @classmethod
+    def from_fd(cls, fd: Float[Array, " n_freq"],
+                frequencies: Float[Array, " n_freq"],
+                epoch: Optional[float] = 0.,
+                name: str = '') -> "Data":
+        """Create a Data object starting from (potentially incomplete) 
+        Fourier domain data.
+
+        Arguments
+        ---------
+        fd: array
+            Fourier domain data
+        frequencies: array
+            Frequencies of the data in Hz
+        epoch: float, optional
+            Epoch of the data in seconds (default: 0)
+        name: str, optional
+            Name of the data (default: '')
+
+        Returns
+        -------
+        data: Data
+            Data object with the Fourier and time domain data.
+        """
+        assert len(fd) == len(frequencies), (
+            "Frequency and data arrays must have the same length"
+        )
+        # form full frequency array
+        delta_f = frequencies[1] - frequencies[0]
+        fnyq = frequencies[-1]
+        # complete frequencies to adjacent power of 2
+        # (sometimes this is needed because frequency arrays do not include
+        # the Nyquist frequency)
+        if (fnyq + delta_f) % 2 == 0:
+            fnyq = fnyq + delta_f
+        f = np.arange(0, fnyq + delta_f, delta_f)
+        # form full data array
+        data_fd_full = np.zeros(f.shape, dtype=np.array(fd).dtype)
+        data_fd_full[(frequencies[-1] >= f) & (f >= frequencies[0])] = fd
+
+        # IFFT into time domain
+        delta_t = 1 / (2 * fnyq)
+        data_td_full = np.fft.irfft(data_fd_full) / delta_t
+        # check frequencies
+        assert np.allclose(f, np.fft.rfftfreq(len(data_td_full), delta_t)), (
+               "Generated frequencies do not match the input frequencies"
+        )
+        # create jd.Data object
+        data = cls(data_td_full, delta_t, epoch=epoch, name=name)
+        data.fd = data_fd_full
+
+        d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
+        assert all(np.equal(d_new, fd)), "Data do not match after slicing"
+        assert all(np.equal(f_new, frequencies)), (
+            "Frequencies do not match after slicing"
+        )
+        return data
+
 
 class PowerSpectrum(ABC):
     name: str
@@ -236,6 +306,11 @@ class PowerSpectrum(ABC):
     def delta_f(self) -> Float:
         """Frequency resolution of the data in Hz."""
         return self.frequencies[1] - self.frequencies[0]
+
+    @property
+    def delta_t(self) -> Float:
+        """Time resolution of the data in seconds."""
+        return 1 / self.sampling_frequency
 
     @property
     def duration(self) -> Float:
@@ -329,7 +404,8 @@ class PowerSpectrum(ABC):
 
         Returns
         -------
-        None
+        Complex[Array, " n_sample"]
+            Simulated data.
         """
         key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
