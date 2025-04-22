@@ -11,7 +11,7 @@ from scipy.interpolate import interp1d
 
 from jimgw.base import LikelihoodBase
 from jimgw.prior import Prior
-from jimgw.single_event.detector import Detector, GroundBased2G
+from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform

@@ -185,12 +185,14 @@ class GroundBased2G(Detector):
         """
         e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
         e_lat = jnp.array(
-            [-jnp.sin(lat) * jnp.cos(lon), -jnp.sin(lat)
-             * jnp.sin(lon), jnp.cos(lat)]
+            [-jnp.sin(lat) * jnp.cos(lon),
+             -jnp.sin(lat) * jnp.sin(lon),
+             jnp.cos(lat)]
         )
         e_h = jnp.array(
-            [jnp.cos(lat) * jnp.cos(lon), jnp.cos(lat)
-             * jnp.sin(lon), jnp.sin(lat)]
+            [jnp.cos(lat) * jnp.cos(lon),
+             jnp.cos(lat) * jnp.sin(lon),
+             jnp.sin(lat)]
         )
 
         return (
@@ -237,8 +239,9 @@ class GroundBased2G(Detector):
         """
         # TODO: this could easily be generalized for other detector geometries
         arm1, arm2 = self.arms
-        return 0.5 * jnp.einsum("i,j->ij", arm1, arm1) - \
-            jnp.einsum("i,j->ij", arm2, arm2)
+        return 0.5 * (
+            jnp.einsum("i,j->ij", arm1, arm1) - jnp.einsum("i,j->ij", arm2, arm2)
+        )
 
     @property
     def vertex(self) -> Float[Array, " 3"]:
