@@ -357,7 +357,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
 
-        # Assure frequency grids have same length
+        # Ensure frequency grids have same length
         if len(self.freq_grid_low) > len(self.freq_grid_center):
             self.freq_grid_low = self.freq_grid_low[: len(self.freq_grid_center)]
 
@@ -387,7 +387,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             * (self.epoch + self.ref_params["t_c"])
         )
 
-        for detector in self.detectors:
+        for detector, data, psd in zip(self.detectors, self.datas, self.psds):
             # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
@@ -404,9 +404,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 * align_time_center
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                detector.data,
+                data,
                 waveform_ref,
-                detector.psd,
+                psd,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
@@ -478,6 +478,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             waveform_sky,
             self.detectors,
             frequencies,
+            self.datas,
+            self.psds,
             align_time,
             **self.kwargs,
         )
