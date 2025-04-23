@@ -44,7 +44,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
-        post_trigger_duration: Float = 2,
+        post_trigger_duration: Float = 2,  # wouldn't it make more sense to pass an epoch directly?
         **kwargs,
     ) -> None:
         # NOTE: having 'kwargs' here makes it very difficult to diagnose
@@ -260,7 +260,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 self.rb_likelihood_function = (
                     phase_marginalized_relative_binning_likelihood
                 )
-                print("Marginalizing over phase")
+                logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
@@ -272,14 +272,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # e.g. {'M_c': 1.1975, 't_c': 0}
         if "fixing_parameters" in self.kwargs:
             fixing_parameters = self.kwargs["fixing_parameters"]
-            print(f"Parameters are fixed {fixing_parameters}")
+            logging.info(f"Parameters are fixed {fixing_parameters}")
             # check for conflict with the marginalization
             assert not (
                 "t_c" in fixing_parameters and "time" in self.marginalization
-            ), "Cannot have t_c fixed while having the marginalization of t_c turned on"
+            ), "Cannot have t_c fixed while marginalizing over t_c"
             assert not (
                 "phase_c" in fixing_parameters and "phase" in self.marginalization
-            ), "Cannot have phase_c fixed while having the marginalization of phase_c turned on"
+            ), "Cannot have phase_c fixed while marginalizing over phase_c"
             # if the same key exists in both dictionary,
             # the later one will overwrite the former one
             self.fixing_func = lambda x: {**x, **fixing_parameters}
@@ -297,9 +297,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         if ref_params:
             self.ref_params = ref_params
-            print(f"Reference parameters provided, which are {self.ref_params}")
+            logging.info(f"Reference parameters provided, which are {self.ref_params}")
         elif prior:
-            print("No reference parameters are provided, finding it...")
+            logging.info("No reference parameters are provided, finding it...")
             ref_params = self.maximize_likelihood(
                 prior=prior,
                 sample_transforms=sample_transforms,
@@ -308,7 +308,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 n_steps=n_steps,
             )
             self.ref_params = {key: float(value) for key, value in ref_params.items()}
-            print(f"The reference parameters are {self.ref_params}")
+            logging.info(f"The reference parameters are {self.ref_params}")
         else:
             raise ValueError(
                 "Either reference parameters or parameter names must be provided"
@@ -317,8 +317,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # since ripple cannot handle eta=0.25
         if jnp.isclose(self.ref_params["eta"], 0.25):
             self.ref_params["eta"] = 0.249995
-            print("The eta of the reference parameter is close to 0.25")
-            print(f"The eta is adjusted to {self.ref_params['eta']}")
+            logging.info("The eta of the reference parameter is close to 0.25")
+            logging.info(f"The eta is adjusted to {self.ref_params['eta']}")
 
         logging.info("Constructing reference waveforms..")
 
