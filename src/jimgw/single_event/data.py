@@ -6,7 +6,6 @@ import numpy as np
 from gwpy.timeseries import TimeSeries
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 from typing import Optional
-# from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 import scipy.signal as sig
 from scipy.signal.windows import tukey
@@ -25,11 +24,20 @@ asd_file_dict = {
 
 
 class Data(ABC):
-    """Base class for all data. The time domain data are considered the primary
-    entity; the Fourier domain data are derived from an FFT after applying a
-    window. The structure is set up so that :attr:`td` and :attr:`fd` are
-    always Fourier conjugates of each other: the one-sided Fourier series is
-    complete up to the Nyquist frequency.
+    """Base class for all data.
+
+    The time domain data are considered the primary entity; the Fourier domain 
+    data are derived from an FFT after applying a window. The structure is set up 
+    so that td and fd are always Fourier conjugates of each other: the one-sided 
+    Fourier series is complete up to the Nyquist frequency.
+
+    Attributes:
+        name: Name of the data instance.
+        td: Time domain data array.
+        fd: Frequency domain data array.
+        epoch: Time epoch of the data.
+        delta_t: Time step between samples.
+        window: Window function applied to data.
     """
     name: str
 
@@ -42,51 +50,91 @@ class Data(ABC):
     window: Float[Array, " n_time"]
 
     def __len__(self) -> int:
-        """Length of the time-domain data."""
+        """Returns the length of the time-domain data.
+        
+        Returns:
+            int: Length of time domain data array.
+        """
         return len(self.td)
 
     def __iter__(self):
-        """Iterate over the time-domain data."""
+        """Iterator over the time-domain data.
+        
+        Returns:
+            iterator: Iterator over time domain data.
+        """
         return iter(self.td)
 
     @property
     def empty(self) -> bool:
-        """Whether the data is empty."""
+        """Checks if the data is empty.
+        
+        Returns:
+            bool: True if data is empty, False otherwise.
+        """
         return len(self.td) == 0
 
-    @property
+    @property 
     def n_time(self) -> int:
-        """Number of time samples."""
+        """Gets number of time samples.
+        
+        Returns:
+            int: Number of time domain samples.
+        """
         return len(self.td)
 
     @property
     def n_freq(self) -> int:
-        """Number of frequency samples."""
+        """Gets number of frequency samples.
+        
+        Returns:
+            int: Number of frequency domain samples.
+        """
         return self.n_time // 2 + 1
 
     @property
     def duration(self) -> float:
-        """Duration of the data in seconds."""
+        """Gets duration of the data in seconds.
+        
+        Returns:
+            float: Duration in seconds.
+        """
         return self.n_time * self.delta_t
 
     @property
     def sampling_frequency(self) -> float:
-        """Sampling frequency of the data in Hz."""
+        """Gets sampling frequency of the data.
+        
+        Returns:
+            float: Sampling frequency in Hz.
+        """
         return 1 / self.delta_t
 
     @property
     def times(self) -> Float[Array, " n_time"]:
-        """Times of the data in seconds."""
+        """Gets time points of the data.
+        
+        Returns:
+            Array: Array of time points in seconds.
+        """
         return np.arange(self.n_time) * self.delta_t + self.epoch
 
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
-        """Frequencies of the data in Hz."""
+        """Gets frequencies of the data.
+        
+        Returns:
+            Array: Array of frequencies in Hz.
+        """
         return np.fft.rfftfreq(self.n_time, self.delta_t)
 
     @property
     def has_fd(self) -> bool:
-        """Whether the Fourier domain data has been computed."""
+        """Checks if Fourier domain data exists.
+        
+        Returns:
+            bool: True if Fourier domain data exists, False otherwise.
+        """
         return bool(np.any(self.fd))
 
     def __init__(self, td: Float[Array, " n_time"] = np.array([]),
@@ -97,18 +145,12 @@ class Data(ABC):
             -> None:
         """Initialize the data class.
 
-        Arguments
-        ---------
-        td: array
-            Time domain data
-        delta_t: float
-            Time step of the data in seconds.
-        epoch: float, optional
-            Epoch of the data in seconds (default: 0)
-        name: str, optional
-            Name of the data (default: '')
-        window: array, optional
-            Window function to apply to the data before FFT (default: None)
+        Args:
+            td: Time domain data array.
+            delta_t: Time step of the data in seconds.
+            epoch: Epoch of the data in seconds (default: 0).
+            name: Name of the data (default: '').
+            window: Window function to apply to the data before FFT (default: None).
         """
         self.name = name or ''
         self.td = td
@@ -130,25 +172,21 @@ class Data(ABC):
 
     def set_tukey_window(self, alpha: float = 0.2) -> None:
         """Create a Tukey window on the data; the window is stored in the
-        :attr:`window` attribute and only applied when FFTing the data.
+        window attribute and only applied when FFTing the data.
 
-        Arguments
-        ---------
-        alpha: float, optional
-            Shape parameter of the Tukey window (default: 0.2); this is
-            the fraction of the segment that is tapered on each side.
+        Args:
+            alpha: Shape parameter of the Tukey window (default: 0.2); this is
+                the fraction of the segment that is tapered on each side.
         """
         logging.info(f"Setting Tukey window to {self.name} data")
         self.window = np.array(tukey(self.n_time, alpha))
 
     def fft(self, window: Optional[Float[Array, " n_time"]] = None) -> None:
         """Compute the Fourier transform of the data and store it
-        in the :attr:`fd` attribute.
+        in the fd attribute.
 
-        Arguments
-        ---------
-        **kws: dict, optional
-            Keyword arguments for the FFT; defaults to
+        Args:
+            window: Window function to apply to the data before FFT (default: None).
         """
         logging.info(f"Computing FFT of {self.name} data")
         if window is not None:
@@ -163,19 +201,13 @@ class Data(ABC):
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
-        Arguments
-        ---------
-        f_min: float
-            Minimum frequency of the slice in Hz.
-        f_max: float
-            Maximum frequency of the slice in Hz.
+        Args:
+            f_min: Minimum frequency of the slice in Hz.
+            f_max: Maximum frequency of the slice in Hz.
+            auto_fft: Whether to automatically compute FFT if not already done.
 
-        Returns
-        -------
-        fd_slice: array
-            Sliced data in the frequency domain.
-        f_slice: array
-            Frequencies of the sliced data.
+        Returns:
+            tuple: Sliced data in the frequency domain and corresponding frequencies.
         """
         if auto_fft and not self.has_fd:
             self.fft()
@@ -188,15 +220,11 @@ class Data(ABC):
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
 
-        Arguments
-        ---------
-        **kws: dict, optional
-            Keyword arguments for `scipy.signal.welch`
+        Args:
+            **kws: Keyword arguments for `scipy.signal.welch`.
 
-        Returns
-        -------
-        psd: PowerSpectrum
-            Power spectral density of the data.
+        Returns:
+            PowerSpectrum: Power spectral density of the data.
         """
         if not self.has_fd:
             self.fft()
@@ -212,18 +240,15 @@ class Data(ABC):
                    **kws) -> "Data":
         """Pull data from GWOSC.
 
-        Arguments
-        ---------
-        ifo: str
-            Interferometer name
-        gps_start_time: float
-            GPS start time of the data
-        gps_end_time: float
-            GPS end time of the data
-        cache: bool, optional
-            Whether to cache the data (default: True)
-        **kws: dict, optional
-            Keyword arguments for `gwpy.timeseries.TimeSeries.fetch_open_data`
+        Args:
+            ifo: Interferometer name.
+            gps_start_time: GPS start time of the data.
+            gps_end_time: GPS end time of the data.
+            cache: Whether to cache the data (default: True).
+            **kws: Keyword arguments for `gwpy.timeseries.TimeSeries.fetch_open_data`.
+
+        Returns:
+            Data: Data object with the fetched time domain data.
         """
         duration = gps_end_time - gps_start_time
         logging.info(f"Fetching {duration} s of {ifo} data from GWOSC "
@@ -241,21 +266,14 @@ class Data(ABC):
         """Create a Data object starting from (potentially incomplete) 
         Fourier domain data.
 
-        Arguments
-        ---------
-        fd: array
-            Fourier domain data
-        frequencies: array
-            Frequencies of the data in Hz
-        epoch: float, optional
-            Epoch of the data in seconds (default: 0)
-        name: str, optional
-            Name of the data (default: '')
+        Args:
+            fd: Fourier domain data array.
+            frequencies: Frequencies of the data in Hz.
+            epoch: Epoch of the data in seconds (default: 0).
+            name: Name of the data (default: '').
 
-        Returns
-        -------
-        data: Data
-            Data object with the Fourier and time domain data.
+        Returns:
+            Data: Data object with the Fourier and time domain data.
         """
         assert len(fd) == len(frequencies), (
             "Frequency and data arrays must have the same length"
@@ -293,38 +311,73 @@ class Data(ABC):
 
 
 class PowerSpectrum(ABC):
+    """Class representing a power spectral density.
+    
+    Attributes:
+        name: Name of the power spectrum.
+        values: Array of PSD values.
+        frequencies: Array of frequencies corresponding to PSD values.
+    """
+
     name: str
     values: Float[Array, " n_freq"]
     frequencies: Float[Array, " n_freq"]
 
     @property
     def n_freq(self) -> int:
-        """Number of frequency samples."""
+        """Gets number of frequency samples.
+
+        Returns:
+            int: Number of frequency samples.
+        """
         return len(self.values)
 
     @property
     def delta_f(self) -> Float:
-        """Frequency resolution of the data in Hz."""
+        """Gets frequency resolution.
+
+        Returns:
+            float: Frequency resolution in Hz.
+        """
         return self.frequencies[1] - self.frequencies[0]
 
     @property
     def delta_t(self) -> Float:
-        """Time resolution of the data in seconds."""
+        """Gets time resolution.
+
+        Returns:
+            float: Time resolution in seconds.
+        """
         return 1 / self.sampling_frequency
 
     @property
     def duration(self) -> Float:
-        """Duration of the data in seconds."""
+        """Gets duration of the data.
+
+        Returns:
+            float: Duration in seconds.
+        """
         return 1 / self.delta_f
 
     @property
     def sampling_frequency(self) -> Float:
-        """Sampling frequency of the data in Hz."""
+        """Gets sampling frequency.
+
+        Returns:
+            float: Sampling frequency in Hz.
+        """
         return self.frequencies[-1] * 2
 
     def __init__(self, values: Float[Array, " n_freq"] = np.array([]),
                  frequencies: Float[Array, " n_freq"] = np.array([]),
                  name: Optional[str] = None) -> None:
+        """Initialize PowerSpectrum.
+
+        Args:
+            values: Array of PSD values. Defaults to empty array.
+            frequencies: Array of frequencies in Hz. Defaults to empty array.
+            name: Name of the power spectrum. Defaults to None.
+        """
         self.values = values
         self.frequencies = frequencies
         assert len(self.values) == len(self.frequencies), \
@@ -336,45 +389,40 @@ class PowerSpectrum(ABC):
             f"frequencies={self.frequencies})"
 
     def __bool__(self) -> bool:
-        """Check if the power spectrum is empty."""
+        """Check if the power spectrum is empty.
+        
+        Returns:
+            bool: True if power spectrum contains data, False otherwise.
+        """
         return len(self.values) > 0
 
     def frequency_slice(self, f_min: float, f_max: float) -> \
             tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
-        """Slice the power spectrum.
+        """Slice the power spectrum to a frequency range.
 
-        Arguments
-        ---------
-        f_min: float
-            Minimum frequency of the slice in Hz.
-        f_max: float
-            Maximum frequency of the slice in Hz.
+        Args:
+            f_min: Minimum frequency of the slice in Hz.
+            f_max: Maximum frequency of the slice in Hz.
 
-        Returns
-        -------
-        psd_slice: PowerSpectrum
-            Sliced power spectrum.
+        Returns:
+            tuple: Contains:
+                - values: Sliced PSD values
+                - frequencies: Frequencies corresponding to sliced values
         """
         mask = (self.frequencies >= f_min) & (self.frequencies <= f_max)
         return self.values[mask], self.frequencies[mask]
 
     def interpolate(self, f: Float[Array, " n_sample"],
                     kind: str = 'cubic', **kws) -> "PowerSpectrum":
-        """Interpolate the power spectrum to a new set of frequencies.
+        """Interpolate the power spectrum to new frequencies.
 
-        Arguments
-        ---------
-        f: array
-            Frequencies to interpolate the power spectrum to.
-        kind: str, optional
-            Interpolation method (default: 'cubic')
-        **kws: dict, optional
-            Keyword arguments for `scipy.interpolate.interp1d`
+        Args:
+            f: Frequencies to interpolate to.
+            kind: Interpolation method. Defaults to 'cubic'.
+            **kws: Additional keyword arguments for scipy.interpolate.interp1d.
 
-        Returns
-        -------
-        psd_interp: array
-            Interpolated power spectrum.
+        Returns:
+            PowerSpectrum: New power spectrum with interpolated values.
         """
         interp = interp1d(self.frequencies, self.values, kind=kind, **kws)
         return PowerSpectrum(interp(f), f, self.name)
@@ -382,49 +430,17 @@ class PowerSpectrum(ABC):
     def simulate_data(
         self,
         key: PRNGKeyArray,
-        # freqs: Float[Array, " n_sample"],
-        # h_sky: dict[str, Float[Array, " n_sample"]],
-        # params: dict[str, Float],
-        # psd_file: str = "",
     ) -> Complex[Array, " n_sample"]:
-        """
-        Inject a signal into the detector data.
+        """Simulate noise data based on the power spectrum.
 
-        Parameters
-        ----------
-        key : PRNGKeyArray
-            JAX PRNG key.
-        h_sky : dict[str, Float[Array, " n_sample"]]
-            Array of waveforms in the sky frame. The key is the polarization
-            mode.
-        params : dict[str, Float]
-            Dictionary of parameters.
-        psd_file : str
-            Path to the PSD file.
+        Args:
+            key: JAX PRNG key for random number generation.
 
-        Returns
-        -------
-        Complex[Array, " n_sample"]
-            Simulated data.
+        Returns:
+            Complex array of simulated noise data.
         """
         key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
         noise_real = jax.random.normal(key, shape=var.shape) * np.sqrt(var)
         noise_imag = jax.random.normal(subkey, shape=var.shape) * np.sqrt(var)
         return noise_real + 1j * noise_imag
-
-        # WIP: this should be moved to Detector class
-        
-        # align_time = jnp.exp(
-        #     -1j * 2 * jnp.pi * freqs * (params["epoch"] + params["t_c"])
-        # )
-        # signal = self.fd_response(freqs, h_sky, params) * align_time
-        # self.data = signal + noise_real + 1j * noise_imag
-
-        # # also calculate the optimal SNR and match filter SNR
-        # optimal_SNR = jnp.sqrt(jnp.sum(signal * signal.conj() / var).real)
-        # match_filter_SNR = jnp.sum(self.data * signal.conj() / var) / optimal_SNR
-
-        # print(f"For detector {self.name}:")
-        # print(f"The injected optimal SNR is {optimal_SNR}")
-        # print(f"The injected match filter SNR is {match_filter_SNR}")
