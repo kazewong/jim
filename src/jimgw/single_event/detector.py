@@ -25,6 +25,12 @@ asd_file_dict = {
 
 class Detector(ABC):
     """Base class for all detectors.
+
+    Attributes:
+        name (str): Name of the detector.
+        data (jd.Data): Detector data object.
+        psd (jd.PowerSpectrum): Power spectral density object.
+        frequency_bounds (tuple[float, float]): Lower and upper frequency bounds.
     """
 
     name: str
@@ -44,8 +50,22 @@ class Detector(ABC):
         params: dict,
         **kwargs,
     ) -> Float[Array, " n_sample"]:
-        """Modulate the waveform in the sky frame by the detector response
-        in the frequency domain.
+        """Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        
+        Args:
+            frequency (Float[Array, " n_sample"]): Array of frequency samples.
+            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names 
+                to frequency-domain waveforms. The keys are polarization names (e.g., 'plus', 'cross') 
+                and values are complex strain arrays.
+            params (dict): Dictionary of source parameters including:
+                - ra (float): Right ascension in radians
+                - dec (float): Declination in radians
+                - psi (float): Polarization angle in radians
+                - gmst (float): Greenwich mean sidereal time in radians
+            **kwargs: Additional keyword arguments.
+            
+        Returns:
+            Float[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
         """
         pass
 
@@ -57,21 +77,26 @@ class Detector(ABC):
         params: dict,
         **kwargs,
     ) -> Float[Array, " n_sample"]:
-        """Modulate the waveform in the sky frame by the detector response
-        in the time domain.
+        """Modulate the waveform in the sky frame by the detector response in the time domain.
+        
+        Args:
+            time: Array of time samples.
+            h_sky: Dictionary mapping polarization names to time-domain waveforms.
+            params: Dictionary of source parameters.
+            **kwargs: Additional keyword arguments.
+            
+        Returns:
+            Array of detector response in time domain.
         """
         pass
 
     def set_frequency_bounds(self, f_min: Optional[float] = None,
                              f_max: Optional[float] = None) -> None:
         """Set the frequency bounds for the detector.
-
-        Parameters
-        ----------
-        f_min : float
-            Minimum frequency.
-        f_max : float
-            Maximum frequency.
+        
+        Args:
+            f_min: Minimum frequency.
+            f_max: Maximum frequency.
         """
         bounds = list(self.frequency_bounds)
         if f_min is not None:
@@ -81,47 +106,44 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
     @property
-    def fd_data_slice(self):
+    def fd_data_slice(self) -> Float[Array, " n_sample"]:
+        """Get frequency-domain data slice based on frequency bounds.
+        
+        Returns:
+            Float[Array, " n_sample"]: Sliced frequency-domain data.
+        """
         return self.data.frequency_slice(*self.frequency_bounds)
 
     @property
-    def psd_slice(self):
+    def psd_slice(self) -> Float[Array, " n_sample"]:
+        """Get PSD slice based on frequency bounds.
+        
+        Returns:
+            Float[Array, " n_sample"]: Sliced power spectral density.
+        """
         return self.psd.frequency_slice(*self.frequency_bounds)
 
 
 class GroundBased2G(Detector):
-    """Object representing a ground-based detector. Contains information
-    about the location and orientation of the detector on Earth, as well as
-    actual strain data and the PSD of the associated noise.
+    """Object representing a ground-based detector.
+    
+    Contains information about the location and orientation of the detector on Earth, 
+    as well as actual strain data and the PSD of the associated noise.
 
-    Attributes
-    ----------
-    name : str
-        Name of the detector.
-    latitude : Float
-        Latitude of the detector in radians.
-    longitude : Float
-        Longitude of the detector in radians.
-    xarm_azimuth : Float
-        Azimuth of the x-arm in radians.
-    yarm_azimuth : Float
-        Azimuth of the y-arm in radians.
-    xarm_tilt : Float
-        Tilt of the x-arm in radians.
-    yarm_tilt : Float
-        Tilt of the y-arm in radians.
-    elevation : Float
-        Elevation of the detector in meters.
-    polarization_mode : list[Polarization]
-        List of polarization modes (`pc` for plus and cross) to be used in
-        computing antenna patterns; in the future, this could be expanded to
-        include non-GR modes.
-    frequencies : Float[Array, " n_sample"]
-        Array of Fourier frequencies.
-    data : Float[Array, " n_sample"]
-        Array of Fourier-domain strain data.
-    psd : Float[Array, " n_sample"]
-        Array of noise power spectral density.
+    Attributes:
+        name (str): Name of the detector.
+        latitude (Float): Latitude of the detector in radians.
+        longitude (Float): Longitude of the detector in radians.
+        xarm_azimuth (Float): Azimuth of the x-arm in radians.
+        yarm_azimuth (Float): Azimuth of the y-arm in radians.
+        xarm_tilt (Float): Tilt of the x-arm in radians.
+        yarm_tilt (Float): Tilt of the y-arm in radians.
+        elevation (Float): Elevation of the detector in meters.
+        polarization_mode (list[Polarization]): List of polarization modes (`pc` for plus and cross) to be used in
+            computing antenna patterns; in the future, this could be expanded to
+            include non-GR modes.
+        data (jd.Data): Array of Fourier-domain strain data.
+        psd (jd.PowerSpectrum): Power spectral density object.
     """
     polarization_mode: list[Polarization]
     data: jd.Data
@@ -142,6 +164,19 @@ class GroundBased2G(Detector):
                  elevation: float = 0, xarm_azimuth: float = 0,
                  yarm_azimuth: float = 0, xarm_tilt: float = 0,
                  yarm_tilt: float = 0, modes: str = "pc"):
+        """Initialize a ground-based detector.
+
+        Args:
+            name (str): Name of the detector.
+            latitude (float, optional): Latitude of the detector in radians. Defaults to 0.
+            longitude (float, optional): Longitude of the detector in radians. Defaults to 0.
+            elevation (float, optional): Elevation of the detector in meters. Defaults to 0.
+            xarm_azimuth (float, optional): Azimuth of the x-arm in radians. Defaults to 0.
+            yarm_azimuth (float, optional): Azimuth of the y-arm in radians. Defaults to 0.
+            xarm_tilt (float, optional): Tilt of the x-arm in radians. Defaults to 0.
+            yarm_tilt (float, optional): Tilt of the y-arm in radians. Defaults to 0.
+            modes (str, optional): Polarization modes. Defaults to "pc".
+        """
         self.name = name
 
         self.latitude = latitude
@@ -162,21 +197,14 @@ class GroundBased2G(Detector):
     ) -> Float[Array, " 3"]:
         """Construct detector-arm vectors in geocentric Cartesian coordinates.
 
-        Parameters
-        ---------
-        lat : Float
-            vertex latitude in rad.
-        lon : Float
-            vertex longitude in rad.
-        tilt : Float
-            arm tilt in rad.
-        azimuth : Float
-            arm azimuth in rad.
+        Args:
+            lat (Float): Vertex latitude in radians.
+            lon (Float): Vertex longitude in radians.
+            tilt (Float): Arm tilt in radians.
+            azimuth (Float): Arm azimuth in radians.
 
-        Returns
-        -------
-        arm : Float[Array, " 3"]
-            detector arm vector in geocentric Cartesian coordinates.
+        Returns:
+            Float[Array, " 3"]: Detector arm vector in geocentric Cartesian coordinates.
         """
         e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
         e_lat = jnp.array(
@@ -198,14 +226,12 @@ class GroundBased2G(Detector):
 
     @property
     def arms(self) -> tuple[Float[Array, " 3"], Float[Array, " 3"]]:
-        """Detector arm vectors (x, y).
+        """Get the detector arm vectors.
 
-        Returns
-        -------
-        x : Float[Array, " 3"]
-            x-arm vector.
-        y : Float[Array, " 3"]
-            y-arm vector.
+        Returns:
+            tuple[Float[Array, " 3"], Float[Array, " 3"]]: A tuple containing:
+                - x: X-arm vector in geocentric Cartesian coordinates
+                - y: Y-arm vector in geocentric Cartesian coordinates
         """
         x = self._get_arm(
             self.latitude, self.longitude, self.xarm_tilt, self.xarm_azimuth
@@ -217,7 +243,7 @@ class GroundBased2G(Detector):
 
     @property
     def tensor(self) -> Float[Array, " 3 3"]:
-        """Detector tensor defining the strain measurement.
+        """Get the detector tensor defining the strain measurement.
 
         For a 2-arm differential-length detector, this is given by:
 
@@ -227,10 +253,8 @@ class GroundBased2G(Detector):
 
         for unit vectors :math:`x` and :math:`y` along the x and y arms.
 
-        Returns
-        -------
-        tensor : Float[Array, " 3 3"]
-            detector tensor.
+        Returns:
+            Float[Array, " 3 3"]: The 3x3 detector tensor in geocentric coordinates.
         """
         # TODO: this could easily be generalized for other detector geometries
         arm1, arm2 = self.arms
@@ -240,14 +264,13 @@ class GroundBased2G(Detector):
 
     @property
     def vertex(self) -> Float[Array, " 3"]:
-        """Detector vertex coordinates in the reference celestial frame. Based
-        on arXiv:gr-qc/0008066 Eqs. (B11-B13) except for a typo in the
+        """Detector vertex coordinates in the reference celestial frame.
+        
+        Based on arXiv:gr-qc/0008066 Eqs. (B11-B13) except for a typo in the
         definition of the local radius; see Section 2.1 of LIGO-T980044-10.
 
-        Returns
-        -------
-        vertex : Float[Array, " 3"]
-            detector vertex coordinates.
+        Returns:
+            Float[Array, " 3"]: Detector vertex coordinates in geocentric Cartesian coordinates.
         """
         # get detector and Earth parameters
         lat = self.latitude
@@ -270,8 +293,23 @@ class GroundBased2G(Detector):
         params: dict[str, Float],
         **kwargs,
     ) -> Array:
-        """
-        Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        """Modulate the waveform in the sky frame by the detector response in the frequency domain.
+        
+        Args:
+            frequency (Float[Array, " n_sample"]): Array of frequency samples.
+            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names 
+                to frequency-domain waveforms. Keys are polarization names (e.g., 'plus', 'cross') 
+                and values are complex strain arrays.
+            params (dict[str, Float]): Dictionary of source parameters containing:
+                - ra (Float): Right ascension in radians
+                - dec (Float): Declination in radians
+                - psi (Float): Polarization angle in radians
+                - gmst (Float): Greenwich mean sidereal time in radians
+            **kwargs: Additional keyword arguments.
+            
+        Returns:
+            Array: Complex strain measured by the detector in frequency domain, obtained by 
+                  combining the antenna patterns and time delays for each polarization mode.
         """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
@@ -292,30 +330,32 @@ class GroundBased2G(Detector):
         params: dict,
         **kwargs,
     ) -> Array:
-        """
-        Modulate the waveform in the sky frame by the detector response in the time domain.
+        """Modulate the waveform in the sky frame by the detector response in the time domain.
+        
+        Args:
+            time: Array of time samples.
+            h_sky: Dictionary mapping polarization names to time-domain waveforms.
+            params: Dictionary of source parameters.
+            **kwargs: Additional keyword arguments.
+            
+        Returns:
+            Array of detector response in time domain.
         """
         raise NotImplementedError
 
     def delay_from_geocenter(self, ra: Float, dec: Float, gmst: Float) -> Float:
-        """
-        Calculate time delay between two detectors in geocentric
-        coordinates based on XLALArrivaTimeDiff in TimeDelay.c
-
+        """Calculate time delay between two detectors in geocentric coordinates.
+        
+        Based on XLALArrivaTimeDiff in TimeDelay.c
         https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
-
-        Parameters
-        ---------
-        ra : Float
-            right ascension of the source in rad.
-        dec : Float
-            declination of the source in rad.
-        gmst : Float
-            Greenwich mean sidereal time in rad.
-
-        Returns
-        -------
-        Float: time delay from Earth center.
+        
+        Args:
+            ra (Float): Right ascension of the source in radians.
+            dec (Float): Declination of the source in radians.
+            gmst (Float): Greenwich mean sidereal time in radians.
+            
+        Returns:
+            Float: Time delay from Earth center in seconds.
         """
         delta_d = -self.vertex
         gmst = jnp.mod(gmst, 2 * jnp.pi)
@@ -330,32 +370,21 @@ class GroundBased2G(Detector):
         )
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict:
-        """
-        Computes {name} antenna patterns for {modes} polarizations
-        at the specified sky location, orientation and GMST.
-
+    def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict[str, Float]:
+        """Compute antenna patterns for polarizations at specified sky location.
+        
         In the long-wavelength approximation, the antenna pattern for a
         given polarization is the dyadic product between the detector
         tensor and the corresponding polarization tensor.
-
-        Parameters
-        ---------
-        ra : Float
-            source right ascension in radians.
-        dec : Float
-            source declination in radians.
-        psi : Float
-            source polarization angle in radians.
-        gmst : Float
-            Greenwich mean sidereal time (GMST) in radians.
-        modes : str
-            string of polarizations to include, defaults to tensor modes: 'pc'.
-
-        Returns
-        -------
-        result : list
-            antenna pattern values for {modes}.
+        
+        Args:
+            ra (Float): Source right ascension in radians.
+            dec (Float): Source declination in radians.
+            psi (Float): Source polarization angle in radians.
+            gmst (Float): Greenwich mean sidereal time (GMST) in radians.
+            
+        Returns:
+            dict[str, Float]: Dictionary mapping polarization names to their antenna pattern values.
         """
         detector_tensor = self.tensor
 
@@ -372,6 +401,15 @@ class GroundBased2G(Detector):
     def load_psd(
         self, freqs: Float[Array, " n_sample"], psd_file: str = ""
     ) -> Float[Array, " n_sample"]:
+        """Load power spectral density (PSD) from file or default GWTC-2 catalog.
+        
+        Args:
+            freqs (Float[Array, " n_sample"]): Array of frequency samples to evaluate PSD at.
+            psd_file (str, optional): Path to file containing PSD data. If empty, uses GWTC-2 PSD.
+            
+        Returns:
+            Float[Array, " n_sample"]: Array of PSD values at requested frequencies.
+        """
         if psd_file == "":
             print("Grabbing GWTC-2 PSD for " + self.name)
             url = asd_file_dict[self.name]
@@ -388,15 +426,15 @@ class GroundBased2G(Detector):
         return psd
 
     def set_data(self, data: jd.Data | Array, **kws) -> None:
-        """Add data to detector.
+        """Add data to the detector.
 
-        Arguments
-        ---------
-        data : jd.Data | Array
-            Data to be added to the detector, either as a `jd.Data` object
-            or as a timeseries array.
-        kws : dict
-            Additional keyword arguments to pass to `jd.Data` constructor.
+        Args:
+            data (Union[jd.Data, Array]): Data to be added to the detector, either as a `jd.Data` object
+                or as a timeseries array.
+            **kws (dict): Additional keyword arguments to pass to `jd.Data` constructor.
+
+        Returns:
+            None
         """
         if isinstance(data, jd.Data):
             self.data = data
@@ -404,16 +442,15 @@ class GroundBased2G(Detector):
             self.data = jd.Data(data, **kws)
 
     def set_psd(self, psd: jd.PowerSpectrum | Array, **kws) -> None:
-        """Add PSD to detector.
+        """Add PSD to the detector.
 
-        Arguments
-        ---------
-        psd : jd.PowerSpectrum | Array
-            PSD to be added to the detector, either as a `jd.PowerSpectrum`
-            object or as a timeseries array.
-        kws : dict
-            Additional keyword arguments to pass to `jd.PowerSpectrum`
-            constructor.
+        Args:
+            psd (Union[jd.PowerSpectrum, Array]): PSD to be added to the detector, either as a `jd.PowerSpectrum`
+                object or as a timeseries array.
+            **kws (dict): Additional keyword arguments to pass to `jd.PowerSpectrum` constructor.
+                
+        Returns:
+            None
         """
         if isinstance(psd, jd.PowerSpectrum):
             self.psd = psd
