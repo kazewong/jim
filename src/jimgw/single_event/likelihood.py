@@ -731,7 +731,7 @@ def time_marginalized_likelihood(
     complex_h_inner_d = jnp.zeros_like(freqs)
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
-        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / detector.psd * df
+        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
         optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 
