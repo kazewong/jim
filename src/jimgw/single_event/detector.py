@@ -23,9 +23,6 @@ asd_file_dict = {
     "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
 }
 
-_DEF_GWPY_KWARGS = {"cache": True}
-
-
 class Detector(ABC):
     """Base class for all detectors.
     """
