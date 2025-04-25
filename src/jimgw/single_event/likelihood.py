@@ -702,8 +702,6 @@ def phase_marginalized_likelihood(
     log_likelihood = 0.0
     complex_d_inner_h = 0.0
     df = freqs[1] - freqs[0]
-    f_min = freqs[0]
-    f_max = freqs[-1]
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
         complex_d_inner_h += 4 * jnp.sum(
@@ -729,8 +727,6 @@ def time_marginalized_likelihood(
 ) -> Float:
     log_likelihood = 0.0
     df = freqs[1] - freqs[0]
-    f_min = freqs[0]
-    f_max = freqs[-1]
     # using <h|d> instead of <d|h>
     complex_h_inner_d = jnp.zeros_like(freqs)
     for detector, data, psd in zip(detectors, datas, psds):
