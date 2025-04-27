@@ -82,7 +82,7 @@ class Jim(object):
         resource_strategy_bundle = RQSpline_MALA_PT_Bundle(
             rng_key=subkey,
             n_chains=n_chains,
-            n_dims=self.prior.n_dim,
+            n_dims=self.prior.n_dims,
             logpdf=self.posterior,
             n_local_steps=n_local_steps,
             n_global_steps=n_global_steps,
@@ -109,25 +109,25 @@ class Jim(object):
 
         rng_key, subkey = jax.random.split(rng_key)
         self.sampler = Sampler(
-            self.prior.n_dim,
+            self.prior.n_dims,
             n_chains,
             subkey,
             resource_strategy_bundles=resource_strategy_bundle,
         )
 
-    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+    def add_name(self, x: Float[Array, " n_dims"]) -> dict[str, Float]:
         """
         Turn an array into a dictionary
 
         Parameters
         ----------
         x : Array
-            An array of parameters. Shape (n_dim,).
+            An array of parameters. Shape (n_dims,).
         """
 
         return dict(zip(self.parameter_names, x))
 
-    def evaluate_prior(self, params: Float[Array, " n_dim"], data: dict):
+    def evaluate_prior(self, params: Float[Array, " n_dims"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
         for transform in reversed(self.sample_transforms):
@@ -135,7 +135,7 @@ class Jim(object):
             transform_jacobian += jacobian
         return self.prior.log_prob(named_params) + transform_jacobian
 
-    def posterior(self, params: Float[Array, " n_dim"], data: dict):
+    def posterior(self, params: Float[Array, " n_dims"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
         for transform in reversed(self.sample_transforms):
@@ -146,46 +146,53 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample(
-        self,
-        initial_position: Array = jnp.array([]),
-    ):
-        if initial_position.size == 0:
-            initial_position = (
-                jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
+    def sample_initial_condition(
+        self
+    ) -> Float[Array, "n_chains n_dims"]:
+        initial_position = (
+                jnp.zeros((self.sampler.n_chains, self.prior.n_dims)) + jnp.nan
             )
 
-            rng_key, subkey = jax.random.split(self.sampler.rng_key)
+        rng_key, subkey = jax.random.split(self.sampler.rng_key)
 
-            while not jax.tree.reduce(
-                jnp.logical_and,
-                jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-            ).all():
-                non_finite_index = jnp.where(
-                    jnp.any(
-                        ~jax.tree.reduce(
-                            jnp.logical_and,
-                            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-                        ),
-                        axis=1,
-                    )
-                )[0]
+        while not jax.tree.reduce(
+            jnp.logical_and,
+            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+        ).all():
+            non_finite_index = jnp.where(
+                jnp.any(
+                    ~jax.tree.reduce(
+                        jnp.logical_and,
+                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                    ),
+                    axis=1,
+                )
+            )[0]
 
-                rng_key, subkey = jax.random.split(subkey)
-                guess = self.prior.sample(subkey, self.sampler.n_chains)
-                for transform in self.sample_transforms:
-                    guess = jax.vmap(transform.forward)(guess)
-                guess = jnp.array(
-                    jax.tree.leaves({key: guess[key] for key in self.parameter_names})
-                ).T
-                finite_guess = jnp.where(
-                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-                )[0]
-                common_length = min(len(finite_guess), len(non_finite_index))
-                initial_position = initial_position.at[
-                    non_finite_index[:common_length]
-                ].set(guess[:common_length])
-            self.sampler.rng_key = rng_key
+            rng_key, subkey = jax.random.split(subkey)
+            guess = self.prior.sample(subkey, self.sampler.n_chains)
+            for transform in self.sample_transforms:
+                guess = jax.vmap(transform.forward)(guess)
+            guess = jnp.array(
+                jax.tree.leaves({key: guess[key] for key in self.parameter_names})
+            ).T
+            finite_guess = jnp.where(
+                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+            )[0]
+            common_length = min(len(finite_guess), len(non_finite_index))
+            initial_position = initial_position.at[
+                non_finite_index[:common_length]
+            ].set(guess[:common_length])
+        self.sampler.rng_key = rng_key
+        return initial_position
+
+    def sample(
+        self,
+        initial_position: Float[Array, "n_chains n_dims"],
+    ):
+        if initial_position.size == 0:
+            initial_position = self.sample_initial_condition()
+            
         self.sampler.sample(initial_position, {})  # type: ignore
 
     def get_samples(self, training: bool = False) -> dict:
@@ -214,7 +221,7 @@ class Jim(object):
             )
             chains = chains.data
 
-        chains = chains.reshape(-1, self.prior.n_dim)
+        chains = chains.reshape(-1, self.prior.n_dims)
         chains = jax.vmap(self.add_name)(chains)
         for sample_transform in reversed(self.sample_transforms):
             chains = jax.vmap(sample_transform.backward)(chains)

@@ -32,7 +32,7 @@ class Prior(eqx.Module):
     parameter_names: list[str]
 
     @property
-    def n_dim(self) -> int:
+    def n_dims(self) -> int:
         return len(self.parameter_names)
 
     def __init__(self, parameter_names: list[str]):
@@ -44,14 +44,14 @@ class Prior(eqx.Module):
         """
         self.parameter_names = parameter_names
 
-    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+    def add_name(self, x: Float[Array, " n_dims"]) -> dict[str, Float]:
         """
         Turn an array into a dictionary
 
         Parameters
         ----------
         x : Array
-            An array of parameters. Shape (n_dim,).
+            An array of parameters. Shape (n_dims,).
         """
 
         return dict(zip(self.parameter_names, x))
@@ -108,7 +108,7 @@ class LogisticDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        assert self.n_dim == 1, "LogisticDistribution needs to be 1D distributions"
+        assert self.n_dims == 1, "LogisticDistribution needs to be 1D distributions"
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -147,7 +147,7 @@ class StandardNormalDistribution(Prior):
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
         assert (
-            self.n_dim == 1
+            self.n_dims == 1
         ), "StandardNormalDistribution needs to be 1D distributions"
 
     def sample(
@@ -282,7 +282,7 @@ class UniformPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "UniformPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "UniformPrior needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         super().__init__(
@@ -333,7 +333,7 @@ class GaussianPrior(SequentialTransformPrior):
             parameter_names: A list of names for the parameters of the prior.
         """
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "GaussianPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "GaussianPrior needs to be 1D distributions"
         self.mu = mu
         self.sigma = sigma
         super().__init__(
@@ -365,7 +365,7 @@ class SinePrior(SequentialTransformPrior):
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
+        assert self.n_dims == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
             [CosinePrior([f"{self.parameter_names[0]}-pi/2"])],
             [
@@ -393,7 +393,7 @@ class CosinePrior(SequentialTransformPrior):
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
+        assert self.n_dims == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
             [UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"])],
             [
@@ -417,7 +417,7 @@ class UniformSpherePrior(CombinePrior):
 
     def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
+        assert self.n_dims == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
             f"{self.parameter_names[0]}_mag",
             f"{self.parameter_names[0]}_theta",
@@ -449,7 +449,7 @@ class RayleighPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "RayleighPrior needs to be 1D distributions"
         self.sigma = sigma
         super().__init__(
             [UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"])],
@@ -479,7 +479,7 @@ class PowerLawPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "Power law needs to be 1D distributions"
+        assert self.n_dims == 1, "Power law needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         self.alpha = alpha
