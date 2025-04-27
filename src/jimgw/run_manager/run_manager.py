@@ -8,7 +8,7 @@ from jaxlib.xla_extension import ArrayImpl
 
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run import Run
-
+import logging
 
 def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
     return dumper.represent_list(data.tolist())
@@ -21,34 +21,15 @@ class RunManager:
     run: Run
     jim: Jim
 
-    def __init__(self, **kwargs):
-        if "run" in kwargs:
-            print("Run instance provided. Loading from instance.")
-            self.run = kwargs["run"]
-        elif "path" in kwargs:
-            print("Run instance not provided. Loading from path.")
-            self.run = self.load_from_path(kwargs["path"])
+    def __init__(self, run: Run | str):
+        if isinstance(run, Run):
+            self.run = run
+        elif isinstance(run, str):
+            self.run = Run.deserialize(run)
         else:
-            print("Neither run instance nor path provided.")
-            raise ValueError
-
-        if self.run.injection and not self.run.injection_parameters:
-            raise ValueError("Injection mode requires injection parameters.")
-
-        local_prior = self.initialize_prior()
-        local_likelihood = self.initialize_likelihood(local_prior)
-        self.jim = Jim(local_likelihood, local_prior, **self.run.jim_parameters)
-
-    def save(self, path: str):
-        output_dict = asdict(self.run)
-        with open(path + ".yaml", "w") as f:
-            yaml.dump(output_dict, f, sort_keys=False)
-
-    def load_from_path(self, path: str) -> Run:
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-        return Run(**data)
-
+            logging.ERROR("Run object or path not given.")
+        
+        self.jim = Jim(run.likelihood, run.prior, run.sample_transforms, run.likelihood_transforms, **flowMC_params)
 
     ### Utility functions ###
 
@@ -58,7 +39,7 @@ class RunManager:
     def get_samples(self):
         return self.jim.get_samples()
 
-    def plot_corner(self, path: str = "corner.jpeg", **kwargs):
+    def plot_chains(self, path: str = "corner.jpeg", **kwargs):
         """
         plot corner plot of the samples.
         """
@@ -84,40 +65,23 @@ class RunManager:
         plt.savefig(path)
         plt.close()
 
-    def plot_diagnostic(self, path: str = "diagnostic.jpeg", **kwargs):
-        """
-        plot diagnostic plot of the samples.
-        """
-        summary = self.jim.Sampler.get_sampler_state(training=True)
-        chains, log_prob, local_accs, global_accs, loss_vals = summary.values()
-        log_prob = np.array(log_prob)
+    def plot_trace(self):
+        raise NotImplementedError
+    
+    def plot_loss(self):
+        raise NotImplementedError
 
-        plt.figure(figsize=(10, 10))
-        axs = [plt.subplot(2, 2, i + 1) for i in range(4)]
-        plt.sca(axs[0])
-        plt.title("log probability")
-        plt.plot(log_prob.mean(0))
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-
-        plt.sca(axs[1])
-        plt.title("NF loss")
-        plt.plot(loss_vals.reshape(-1))
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-
-        plt.sca(axs[2])
-        plt.title("Local Acceptance")
-        plt.plot(local_accs.mean(0))
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-
-        plt.sca(axs[3])
-        plt.title("Global Acceptance")
-        plt.plot(global_accs.mean(0))
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-        plt.tight_layout()
-
-        plt.savefig(path)
-        plt.close()
+    def plot_nf_sample(self):
+        raise NotImplementedError
+    
+    def serialize_run(self):
+        raise NotImplementedError
+    
+    def plot_prior(self):
+        raise NotImplementedError
+    
+    def plot_acceptances(self):
+        raise NotImplementedError
+    
+    def generate_summar(self):
+        raise NotImplementedError
