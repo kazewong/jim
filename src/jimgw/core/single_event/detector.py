@@ -10,8 +10,8 @@ from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
 
-from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
-from jimgw.single_event.wave import Polarization
+from jimgw.core.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
+from jimgw.core.single_event.wave import Polarization
 
 DEG_TO_RAD = jnp.pi / 180
 

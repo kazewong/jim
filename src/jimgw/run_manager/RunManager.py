@@ -12,11 +12,11 @@ from jaxlib.xla_extension import ArrayImpl
 from jaxtyping import Array, Float, PyTree
 
 from jimgw import prior
-from jimgw.base import RunManager
-from jimgw.jim import Jim
-from jimgw.single_event.detector import Detector, detector_preset
-from jimgw.single_event.likelihood import SingleEventLiklihood, likelihood_presets
-from jimgw.single_event.waveform import Waveform, waveform_preset
+from jimgw.core.base import RunManager
+from jimgw.core.jim import Jim
+from jimgw.core.single_event.detector import Detector, detector_preset
+from jimgw.core.single_event.likelihood import SingleEventLiklihood, likelihood_presets
+from jimgw.core.single_event.waveform import Waveform, waveform_preset
 
 
 def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):

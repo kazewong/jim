@@ -9,12 +9,12 @@ from jaxtyping import Array, Float
 from typing import Optional
 from scipy.interpolate import interp1d
 
-from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior
-from jimgw.single_event.detector import Detector
-from jimgw.utils import log_i0
-from jimgw.single_event.waveform import Waveform
-from jimgw.transforms import BijectiveTransform, NtoMTransform
+from jimgw.core.base import LikelihoodBase
+from jimgw.core.prior import Prior
+from jimgw.core.single_event.detector import Detector
+from jimgw.core.utils import log_i0
+from jimgw.core.single_event.waveform import Waveform
+from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 
 
 class SingleEventLiklihood(LikelihoodBase):

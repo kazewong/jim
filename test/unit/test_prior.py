@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from jimgw.prior import (
+from jimgw.core.prior import (
     LogisticDistribution,
     StandardNormalDistribution,
     UniformPrior,
@@ -12,7 +12,7 @@ from jimgw.prior import (
     GaussianPrior,
     RayleighPrior,
 )
-from jimgw.utils import trace_prior_parent
+from jimgw.core.utils import trace_prior_parent
 
 import scipy.stats as stats
 

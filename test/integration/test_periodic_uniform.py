@@ -1,10 +1,10 @@
 import jax
 import jax.numpy as jnp
 
-from jimgw.jim import Jim
-from jimgw.prior import UniformPrior, RayleighPrior, CombinePrior
-from jimgw.transforms import PeriodicTransform, BoundToUnbound
-from jimgw.base import LikelihoodBase
+from jimgw.core.jim import Jim
+from jimgw.core.prior import UniformPrior, RayleighPrior, CombinePrior
+from jimgw.core.transforms import PeriodicTransform, BoundToUnbound
+from jimgw.core.base import LikelihoodBase
 from jaxtyping import Float
 
 jax.config.update("jax_enable_x64", True)

@@ -1,7 +1,7 @@
 from beartype import beartype as typechecker
 from jaxtyping import jaxtyped
 
-from jimgw.prior import (
+from jimgw.core.prior import (
     PowerLawPrior,
 )
 

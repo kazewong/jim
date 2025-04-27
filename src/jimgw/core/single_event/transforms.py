@@ -3,13 +3,13 @@ from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
 
-from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import (
+from jimgw.core.single_event.detector import GroundBased2G
+from jimgw.core.transforms import (
     ConditionalBijectiveTransform,
     BijectiveTransform,
     reverse_bijective_transform,
 )
-from jimgw.single_event.utils import (
+from jimgw.core.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
     m1_m2_to_Mc_eta,

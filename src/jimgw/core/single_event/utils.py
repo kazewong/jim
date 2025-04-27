@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
-from jimgw.constants import MTSUN
+from jimgw.core.constants import MTSUN
 
 
 def inner_product(
