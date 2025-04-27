@@ -125,13 +125,6 @@ likelihood = TransientLikelihoodFD(
     [H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2
 )
 
-
-mass_matrix = jnp.eye(prior.n_dim)
-# mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-# mass_matrix = mass_matrix.at[9, 9].set(1e-3)
-local_sampler_arg = {"step_size": mass_matrix * 1e-3}
-
-
 jim = Jim(
     likelihood,
     prior,
@@ -143,7 +136,7 @@ jim = Jim(
     n_training_loops = 200,
     n_production_loops = 100,
     n_epochs = 20,
-    mala_step_size = mass_matrix * 2e-3,
+    mala_step_size = jnp.eye(prior.n_dim) * 2e-6,
     rq_spline_hidden_units = [128, 128],
     rq_spline_n_bins = 10,
     rq_spline_n_layers = 8,
