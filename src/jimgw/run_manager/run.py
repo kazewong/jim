@@ -1,8 +1,10 @@
+from dataclasses import asdict
 from abc import ABC, abstractmethod
 from typing import Self
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
+import yaml
 
 class Run(ABC):
     """
@@ -19,16 +21,19 @@ class Run(ABC):
     sample_transforms: list[BijectiveTransform]
     likelihood_transforms: list[NtoMTransform]
 
-    @abstractmethod
     def serialize(self, path: str = "./"):
         """Serialize a `Run` object into a human readble config file.
         
         """
-        raise NotImplementedError
+        output_dict = asdict(self.run)
+        with open(path + ".yaml", "w") as f:
+            yaml.dump(output_dict, f, sort_keys=False)
 
-    @abstractmethod
     def deserialize(self, path: str) -> Self:
         """ Deserialize a config file into a `Run` object
         
         """
-        raise NotImplementedError
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return Run(**data)
+
