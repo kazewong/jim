@@ -6,9 +6,11 @@ The higher the level, the more abstractions are introduced hence the infrastruct
 
 # Level 2 - Pipelined jim
 
-On this level, 
+On this level, you don't handle plotting, you don't handle running jim. You push one button then you look at all the plots that are generated.
 
 # Level 1 - Managed jim
+
+On this level, you interact with `jim` mostly through a parameterized class called the `RunManager`, which manage a `Run` that is a templated `Run` that is commonly used.
 
 # Level 0 - Core jim
 
