@@ -1,23 +1,17 @@
-from dataclasses import asdict
+
 import jax
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import corner
 import numpy as np
 import yaml
-from jaxlib.xla_extension import ArrayImpl
+from astropy.time import Time
 
 from jimgw.core.jim import Jim
+from jimgw.run_manager.run_manager import RunManager
 from jimgw.run_manager.run import Run
 
-
-def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
-    return dumper.represent_list(data.tolist())
-
-
-yaml.add_representer(ArrayImpl, jaxarray_representer)  # type: ignore
-
-
-class RunManager:
+class SingleEventRunManager(RunManager):
     run: Run
     jim: Jim
 
@@ -47,10 +41,102 @@ class RunManager:
     def load_from_path(self, path: str) -> Run:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
-        return Run(**data)
+        return SingleEventRun(**data)
 
 
     ### Utility functions ###
+
+    def get_detector_waveform(self, params: dict[str, float]) -> tuple[
+        Float[Array, " n_sample"],
+        dict[str, Float[Array, " n_sample"]],
+        dict[str, Float[Array, " n_sample"]],
+    ]:
+        """
+        Get the waveform in each detector.
+        """
+        if not self.run.injection:
+            raise ValueError("No injection provided.")
+        freqs = jnp.linspace(
+            self.run.data_parameters["f_min"],
+            self.run.data_parameters["f_sampling"] / 2,
+            int(
+                self.run.data_parameters["f_sampling"]
+                * self.run.data_parameters["duration"]
+            ),
+        )
+        freqs = freqs[
+            (freqs >= self.run.data_parameters["f_min"])
+            & (freqs <= self.run.data_parameters["f_max"])
+        ]
+        gmst = (
+            Time(self.run.data_parameters["trigger_time"], format="gps")
+            .sidereal_time("apparent", "greenwich")
+            .rad
+        )
+        h_sky = self.jim.Likelihood.waveform(freqs, params)  # type: ignore
+        align_time = jnp.exp(
+            -1j * 2 * jnp.pi * freqs * (self.jim.Likelihood.epoch + params["t_c"])  # type: ignore
+        )
+        detector_parameters = {
+            "ra": params["ra"],
+            "dec": params["dec"],
+            "psi": params["psi"],
+            "t_c": params["t_c"],
+            "gmst": gmst,
+            "epoch": self.run.data_parameters["duration"]
+            - self.run.data_parameters["post_trigger_duration"],
+        }
+        print(detector_parameters)
+        detector_waveforms = {}
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            detector_waveforms[detector.name] = (
+                detector.fd_response(freqs, h_sky, detector_parameters) * align_time
+            )
+        return freqs, detector_waveforms, h_sky
+
+    def plot_injection_waveform(self, path: str):
+        """
+        Plot the injection waveform.
+        """
+        freqs, waveforms, h_sky = self.get_detector_waveform(
+            self.run.injection_parameters
+        )
+        plt.figure()
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            plt.loglog(
+                freqs,
+                jnp.abs(waveforms[detector.name]),
+                label=detector.name + " (injection)",
+            )
+            plt.loglog(
+                freqs, jnp.sqrt(jnp.abs(detector.psd)), label=detector.name + " (PSD)"
+            )
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Amplitude")
+        plt.legend()
+        plt.savefig(path)
+
+    def plot_data(self, path: str):
+        """
+        Plot the data.
+        """
+
+        plt.figure()
+        for detector in self.jim.Likelihood.detectors:  # type: ignore
+            plt.loglog(
+                detector.freqs,
+                jnp.abs(detector.data),
+                label=detector.name + " (data)",
+            )
+            plt.loglog(
+                detector.freqs,
+                jnp.sqrt(jnp.abs(detector.psd)),
+                label=detector.name + " (PSD)",
+            )
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Amplitude")
+        plt.legend()
+        plt.savefig(path)
 
     def sample(self):
         self.jim.sample(jax.random.PRNGKey(self.run.seed))
