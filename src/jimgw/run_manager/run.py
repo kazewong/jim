@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Self
 
 class Run(ABC):
     """
@@ -12,8 +13,14 @@ class Run(ABC):
 
     @abstractmethod
     def serialize(self, path: str = "./"):
+        """Serialize a `Run` object into a human readble config file.
+        
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def deserialize(self, path: str):
+    def deserialize(self, path: str) -> Self:
+        """ Deserialize a config file into a `Run` object
+        
+        """
         raise NotImplementedError
