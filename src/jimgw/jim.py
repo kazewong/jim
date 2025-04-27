@@ -83,7 +83,7 @@ class Jim(object):
             rng_key=subkey,
             n_chains=n_chains,
             n_dims=self.prior.n_dims,
-            logpdf=self.posterior,
+            logpdf=self.evaluate_posterior,
             n_local_steps=n_local_steps,
             n_global_steps=n_global_steps,
             n_training_loops=n_training_loops,
@@ -135,7 +135,7 @@ class Jim(object):
             transform_jacobian += jacobian
         return self.prior.log_prob(named_params) + transform_jacobian
 
-    def posterior(self, params: Float[Array, " n_dims"], data: dict):
+    def evaluate_posterior(self, params: Float[Array, " n_dims"], data: dict):
         named_params = self.add_name(params)
         transform_jacobian = 0.0
         for transform in reversed(self.sample_transforms):
@@ -193,7 +193,7 @@ class Jim(object):
         if initial_position.size == 0:
             initial_position = self.sample_initial_condition()
             
-        self.sampler.sample(initial_position, {})  # type: ignore
+        self.sampler.sample(initial_position, {})
 
     def get_samples(self, training: bool = False) -> dict:
         """
