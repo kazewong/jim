@@ -61,37 +61,3 @@ class LikelihoodBase(ABC):
         Evaluate the likelihood for a given set of parameters.
         """
         raise NotImplementedError
-
-
-class RunManager(ABC):
-    """
-    Base class for run managers.
-
-    A run manager is a class that help with book keeping for a run.
-    It should be able to log metadata, summarize the run, save the run, and load the run.
-    Individual use cases can extend this class to implement the actual functionality.
-    This class is meant to be a template for the functionality.
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize the run manager.
-        """
-        self.likelihood = kwargs["likelihood"]
-        self.prior = kwargs["prior"]
-        self.jim = kwargs["jim"]
-
-    @abstractmethod
-    def save(self, path: str):
-        """
-        Save the run.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_from_path(self, path: str):
-        """
-        Load the run.
-        """
-        raise NotImplementedError
