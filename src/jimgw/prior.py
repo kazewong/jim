@@ -185,6 +185,7 @@ class SequentialTransformPrior(Prior):
     """
 
     transforms: list[BijectiveTransform]
+    base_prior: list[Prior]
 
     def __repr__(self):
         return f"Sequential(priors={self.base_prior}, parameter_names={self.parameter_names})"
