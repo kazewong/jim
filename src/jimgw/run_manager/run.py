@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Self
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior

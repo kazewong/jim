@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 
 import jax
 import jax.numpy as jnp
@@ -6,10 +8,13 @@ import corner
 import numpy as np
 import yaml
 from astropy.time import Time
+from jaxtyping import Float, Array
+from jimgw.run_manager.library.single_event_run import SingleEventRun
 
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run_manager import RunManager
 from jimgw.run_manager.run import Run
+
 
 class SingleEventRunManager(RunManager):
     run: Run
@@ -43,10 +48,11 @@ class SingleEventRunManager(RunManager):
             data = yaml.safe_load(f)
         return SingleEventRun(**data)
 
-
     ### Utility functions ###
 
-    def get_detector_waveform(self, params: dict[str, float]) -> tuple[
+    def get_detector_waveform(
+        self, params: dict[str, float]
+    ) -> tuple[
         Float[Array, " n_sample"],
         dict[str, Float[Array, " n_sample"]],
         dict[str, Float[Array, " n_sample"]],

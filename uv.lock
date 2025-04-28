@@ -1025,15 +1025,15 @@ wheels = [
 
 [[package]]
 name = "gwdatafind"
-version = "1.2.0"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "igwn-auth-utils" },
-    { name = "ligo-segments" },
+    { name = "igwn-segments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/10/9f1b9100f59e2ca4a85dad8a21942d0702d756f4b80a433c728be4a871d2/gwdatafind-1.2.0.tar.gz", hash = "sha256:8f74942e66cdb9a53030da29069110b3cb30afc2a034790957786028fb09f451", size = 40381 }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/d8/d63db7552cfda6db05464442234ecfbafdcd09c41493d19ac32dbdbf1f62/gwdatafind-2.0.0.tar.gz", hash = "sha256:04fb1aa18ea1f22148a17eb1ac30406b8737f89a6d86113f3c06b86c30ba7127", size = 37609 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/61/5020eff070e04b1e07c7cf8bed63705aa705011e057cbb839e9a31367bdd/gwdatafind-1.2.0-py3-none-any.whl", hash = "sha256:58c505ee188c1186ff81b3de5f946f289179a4f8c334f7eb45d07dd70a71bd2c", size = 45529 },
+    { url = "https://files.pythonhosted.org/packages/78/ae/0edf7a201604d2222ecd7796fd438597494d6a051bb4dc4501c9dff051a8/gwdatafind-2.0.0-py3-none-any.whl", hash = "sha256:1f78cd0edcb4bf8b4ab3cbafe6e02dc8386c09a45f97906faf2d98b900e354a9", size = 39693 },
 ]
 
 [[package]]
@@ -1576,19 +1576,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/05/f9/27e94c1b3eb29e6933b6986ffc5fa1177d2cd1f0c8efc5f02c91c9ac61de/kiwisolver-1.4.8-cp313-cp313t-musllinux_1_2_ppc64le.whl", hash = "sha256:151dffc4865e5fe6dafce5480fab84f950d14566c480c08a53c663a0020504b6", size = 2390661 },
     { url = "https://files.pythonhosted.org/packages/d9/d4/3c9735faa36ac591a4afcc2980d2691000506050b7a7e80bcfe44048daa7/kiwisolver-1.4.8-cp313-cp313t-musllinux_1_2_s390x.whl", hash = "sha256:577facaa411c10421314598b50413aa1ebcf5126f704f1e5d72d7e4e9f020d90", size = 2546710 },
     { url = "https://files.pythonhosted.org/packages/4c/fa/be89a49c640930180657482a74970cdcf6f7072c8d2471e1babe17a222dc/kiwisolver-1.4.8-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:be4816dc51c8a471749d664161b434912eee82f2ea66bd7628bd14583a833e85", size = 2349213 },
-]
-
-[[package]]
-name = "ligo-segments"
-version = "1.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/81/60/8de5c89e4e5fc760649cee0c773418ecc920c3dae21ac5656fd3e5e21a9d/ligo-segments-1.4.0.tar.gz", hash = "sha256:e072a844713c5b02efdcaf5bfe4c3a8cd9ef225b08cfd3202a4e185e0f71f5dc", size = 51015 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/db/b2de07a032a766d34480e93e6d4ecda5a4d651bb6a5e3286c2624d6c181d/ligo_segments-1.4.0-cp311-cp311-win_amd64.whl", hash = "sha256:da82ae2b839bad0027e0a492b3673344e62360747d41194a265563e6c2903c7d", size = 50007 },
-    { url = "https://files.pythonhosted.org/packages/b5/37/c962f26408ce45271a5a3aaa918f7beae74a8e8a6f00bbe5fdf77fd778ca/ligo_segments-1.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:601be6d92e52bdebbb5a82b608ed1ceb781a0ea86b3e5333d61af77575b32664", size = 50555 },
 ]
 
 [[package]]
