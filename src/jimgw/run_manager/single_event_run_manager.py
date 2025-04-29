@@ -9,7 +9,7 @@ import numpy as np
 import yaml
 from astropy.time import Time
 from jaxtyping import Float, Array
-from jimgw.run_manager.library.single_event_run import SingleEventRun
+from jimgw.run_manager.single_event_run import SingleEventRun
 
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run_manager import RunManager
