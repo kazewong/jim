@@ -226,7 +226,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(0.0, 10.0, 1000)[None])
         y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(
