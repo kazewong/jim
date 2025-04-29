@@ -569,18 +569,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
-        def y(x):
+        def y(x: Float[Array, " n_dim"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -self.evaluate_original(named_params, {})
+            return -self.evaluate_original(named_params, data)
 
         print("Starting the optimizer")
 
         optimizer = AdamOptimization(
-            n_steps=n_steps, learning_rate=0.001, noise_level=1
+            logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 
         key = jax.random.PRNGKey(0)
@@ -613,11 +613,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
 
-        rng_key, optimized_positions, summary = optimizer.optimize(
-            jax.random.PRNGKey(12094), y, initial_position
+        rng_key, best_fit = optimizer.optimize(
+            jax.random.PRNGKey(12094), y, initial_position, {}
         )
-
-        best_fit = optimized_positions[jnp.argmin(summary["final_log_prob"])]
 
         named_params = dict(zip(parameter_names, best_fit))
         for transform in reversed(sample_transforms):
