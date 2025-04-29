@@ -13,11 +13,10 @@ from jimgw.run_manager.single_event_run import SingleEventRun
 
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run_manager import RunManager
-from jimgw.run_manager.run import Run
 
 
 class SingleEventRunManager(RunManager):
-    run: Run
+    run: SingleEventRun
     jim: Jim
 
     def __init__(self, **kwargs):
@@ -43,7 +42,7 @@ class SingleEventRunManager(RunManager):
         with open(path + ".yaml", "w") as f:
             yaml.dump(output_dict, f, sort_keys=False)
 
-    def load_from_path(self, path: str) -> Run:
+    def load_from_path(self, path: str) -> SingleEventRun:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
         return SingleEventRun(**data)

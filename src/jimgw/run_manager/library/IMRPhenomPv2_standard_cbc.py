@@ -1,4 +1,4 @@
-from jimgw.run_manager.run import Run
+from jimgw.run_manager.single_event_run import SingleEventRun
 from typing import Literal
 
 import jax.numpy as jnp
@@ -27,7 +27,7 @@ from jimgw.core.single_event.transforms import (
 detector_enum = {"H1": H1, "L1": L1, "V1": V1}
 
 
-class IMRPhenomPv2StandardCBCRun(Run):
+class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
     # Likelihood parameters
 
