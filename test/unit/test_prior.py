@@ -72,9 +72,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = jnp.linspace(-10.0, 10.0, 1000)[None]
-        name = p.base_prior[0].parameter_names[0]
-        x = dict(zip([name], x))
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
 
@@ -96,9 +94,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = jnp.linspace(-10.0, 10.0, 1000)[None]
-        name = f"{p.base_prior[0].base_prior[0].parameter_names[0]}_base"
-        x = dict(zip([name], x))
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.base_prior[0].base_prior[0].transform)(x)
         y = jax.vmap(p.base_prior[0].transform)(y)
         y = jax.vmap(p.transform)(y)
@@ -122,9 +118,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = jnp.linspace(-10.0, 10.0, 1000)[None]
-        name = f"{p.base_prior[0].parameter_names[0]}_base"
-        x = dict(zip([name], x))
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y["x"]) / 2.0))
@@ -163,9 +157,9 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(log_prob))
 
             # Check that the log_prob are correct in the support
-            x = jnp.linspace(-10.0, 10.0, 1000)[None]
-            name = p.base_prior[0].parameter_names[0]
-            x = dict(zip([name], x))
+            x = p.trace_prior_parent([])[0].add_name(
+                jnp.linspace(-10.0, 10.0, 1000)[None]
+            )
             y = jax.vmap(p.transform)(x)
             if alpha < -1.0:
                 assert jnp.allclose(
@@ -206,9 +200,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = jnp.linspace(-10.0, 10.0, 1000)[None]
-        name = p.base_prior[0].parameter_names[0]
-        x = dict(zip([name], x))
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(
             jax.vmap(p.log_prob)(y),
@@ -234,9 +226,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = jnp.linspace(-10.0, 10.0, 1000)[None]
-        name = f"{p.base_prior[0].parameter_names[0]}_base"
-        x = dict(zip([name], x))
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(
