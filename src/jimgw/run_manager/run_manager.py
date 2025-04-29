@@ -13,14 +13,13 @@ def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
     return dumper.represent_list(data.tolist())
 
 
-yaml.add_representer(ArrayImpl, jaxarray_representer)  # type: ignore
-
+yaml.add_representer(ArrayImpl, jaxarray_representer)
 
 class RunManager:
     run: Run
     jim: Jim
 
-    def __init__(self, run: Run | str):
+    def __init__(self, run: Run | str, **flowMC_params):
         if isinstance(run, Run):
             self.run = run
         elif isinstance(run, str):
