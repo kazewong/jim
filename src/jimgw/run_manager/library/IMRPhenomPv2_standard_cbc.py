@@ -1,5 +1,4 @@
 from jimgw.run_manager.single_event_run import SingleEventRun
-from typing import Literal
 
 import jax.numpy as jnp
 
@@ -24,22 +23,12 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
-detector_enum = {"H1": H1, "L1": L1, "V1": V1}
+from typing import Sequence
 
+detector_enum = {"H1": H1, "L1": L1, "V1": V1}
 
 class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
-    # Likelihood parameters
-
-    gps: int  # GPS time of the event trigger
-    segment_length: int  # Length of the segment
-    post_trigger_length: int  # Length of segment after the trigger
-    f_min: int  # Minimum frequency
-    f_max: int  # Maximum frequency
-    ifos: set[Literal["H1"], Literal["L1"], Literal["V1"]]
-    f_ref: int  # Reference frequency
-
-    # Prior parameters
     M_c_range: tuple[float, float]
     q_range: tuple[float, float]
     max_s1: float
@@ -53,7 +42,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
     dec_prior: tuple[float, float]
 
     @property
-    def n_dims():
+    def n_dims(self):
         return 15
 
     def __init__(
@@ -61,7 +50,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         gps: int,
         segment_length: int,
         post_trigger_length: int,
-        ifos: set[Literal["H1"], Literal["L1"], Literal["V1"]],
+        ifos: set[str],
         M_c_range: tuple[float, float],
         q_range: tuple[float, float],
         max_s1: float,
@@ -84,7 +73,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         self.post_trigger_length = post_trigger_length
         self.f_min = 20
         self.f_max = 1024
-        self.ifos = ifos
+        self.ifos = [detector_enum[ifo] for ifo in ifos]
         self.f_ref = 20
 
         self.M_c_range = M_c_range
@@ -104,19 +93,17 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
 
-        ifos = []
         for ifo in self.ifos:
-            if ifo not in detector_enum:
+            if ifo not in detector_enum.values():
                 raise ValueError(f"Invalid detector: {ifo}")
-            detector_enum[ifo].load_data(
+            ifo.load_data(
                 gps, start, end, self.f_min, self.f_max, psd_pad=16, tukey_alpha=0.2
             )
-            ifos.append(detector_enum[ifo])
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
 
         likelihood = TransientLikelihoodFD(
-            ifos=ifos,
+            detectors=self.ifos,
             waveform=waveform,
             trigger_time=gps,
             duration=self.segment_length,
@@ -180,88 +167,102 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
         return CombinePrior(prior)
 
-    def initialize_likelihood_transforms(self) -> list[BijectiveTransform]:
+    def initialize_likelihood_transforms(self) -> Sequence[BijectiveTransform]:
         return [
             MassRatioToSymmetricMassRatioTransform,
             SphereSpinToCartesianSpinTransform("s1"),
             SphereSpinToCartesianSpinTransform("s2"),
         ]
 
-    def initialize_sample_tranforms(self) -> list[NtoMTransform]:
+    def initialize_sample_transforms(self) -> Sequence[NtoMTransform]:
         return [
             DistanceToSNRWeightedDistanceTransform(
-            gps_time=self.gps, ifos=self.ifos, dL_min=self.dL_range[0], dL_max=self.dL_range[1]
+                gps_time=self.gps,
+                ifos=self.ifos,
+                dL_min=self.dL_range[0],
+                dL_max=self.dL_range[1],
             ),
             GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
-            gps_time=self.gps, ifo=list(self.ifos)[0]
+                gps_time=self.gps, ifo=self.ifos[0]
             ),
             GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-            tc_min=self.t_c_range[0], tc_max=self.t_c_range[1], gps_time=self.gps, ifo=list(self.ifos)[0]
+                tc_min=self.t_c_range[0],
+                tc_max=self.t_c_range[1],
+                gps_time=self.gps,
+                ifo=self.ifos[0],
             ),
-            SkyFrameToDetectorFrameSkyPositionTransform(gps_time=self.gps, ifos=self.ifos),
-            BoundToUnbound(
-            name_mapping=(["M_c"], ["M_c_unbounded"]),
-            original_lower_bound=self.M_c_range[0],
-            original_upper_bound=self.M_c_range[1],
-            ),
-            BoundToUnbound(
-            name_mapping=(["q"], ["q_unbounded"]),
-            original_lower_bound=self.q_range[0],
-            original_upper_bound=self.q_range[1],
+            SkyFrameToDetectorFrameSkyPositionTransform(
+                gps_time=self.gps, ifos=self.ifos
             ),
             BoundToUnbound(
-            name_mapping=(["s1_phi"], ["s1_phi_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=2 * jnp.pi,
+                name_mapping=(["M_c"], ["M_c_unbounded"]),
+                original_lower_bound=self.M_c_range[0],
+                original_upper_bound=self.M_c_range[1],
             ),
             BoundToUnbound(
-            name_mapping=(["s2_phi"], ["s2_phi_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=2 * jnp.pi,
+                name_mapping=(["q"], ["q_unbounded"]),
+                original_lower_bound=self.q_range[0],
+                original_upper_bound=self.q_range[1],
             ),
             BoundToUnbound(
-            name_mapping=(["iota"], ["iota_unbounded"]),
-            original_lower_bound=self.iota_range[0],
-            original_upper_bound=self.iota_range[1],
+                name_mapping=(["s1_phi"], ["s1_phi_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=2 * jnp.pi,
             ),
             BoundToUnbound(
-            name_mapping=(["s1_theta"], ["s1_theta_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=jnp.pi,
+                name_mapping=(["s2_phi"], ["s2_phi_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=2 * jnp.pi,
             ),
             BoundToUnbound(
-            name_mapping=(["s2_theta"], ["s2_theta_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=jnp.pi,
+                name_mapping=(["iota"], ["iota_unbounded"]),
+                original_lower_bound=self.iota_range[0],
+                original_upper_bound=self.iota_range[1],
             ),
             BoundToUnbound(
-            name_mapping=(["s1_mag"], ["s1_mag_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=self.max_s1,
+                name_mapping=(["s1_theta"], ["s1_theta_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=jnp.pi,
             ),
             BoundToUnbound(
-            name_mapping=(["s2_mag"], ["s2_mag_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=self.max_s2,
+                name_mapping=(["s2_theta"], ["s2_theta_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=jnp.pi,
             ),
             BoundToUnbound(
-            name_mapping=(["phase_det"], ["phase_det_unbounded"]),
-            original_lower_bound=self.phase_c_range[0],
-            original_upper_bound=self.phase_c_range[1],
+                name_mapping=(["s1_mag"], ["s1_mag_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=self.max_s1,
             ),
             BoundToUnbound(
-            name_mapping=(["psi"], ["psi_unbounded"]),
-            original_lower_bound=self.psi_prior[0],
-            original_upper_bound=self.psi_prior[1],
+                name_mapping=(["s2_mag"], ["s2_mag_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=self.max_s2,
             ),
             BoundToUnbound(
-            name_mapping=(["zenith"], ["zenith_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=jnp.pi,
+                name_mapping=(["phase_det"], ["phase_det_unbounded"]),
+                original_lower_bound=self.phase_c_range[0],
+                original_upper_bound=self.phase_c_range[1],
             ),
             BoundToUnbound(
-            name_mapping=(["azimuth"], ["azimuth_unbounded"]),
-            original_lower_bound=0.0,
-            original_upper_bound=2 * jnp.pi,
+                name_mapping=(["psi"], ["psi_unbounded"]),
+                original_lower_bound=self.psi_prior[0],
+                original_upper_bound=self.psi_prior[1],
+            ),
+            BoundToUnbound(
+                name_mapping=(["zenith"], ["zenith_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=jnp.pi,
+            ),
+            BoundToUnbound(
+                name_mapping=(["azimuth"], ["azimuth_unbounded"]),
+                original_lower_bound=0.0,
+                original_upper_bound=2 * jnp.pi,
             ),
         ]
+
+    def serialize(self, path="./"):
+        raise NotImplementedError("Serialization not implemented yet.")
+
+    def deserialize(self, path):
+        raise NotImplementedError("Deserialization not implemented yet.")

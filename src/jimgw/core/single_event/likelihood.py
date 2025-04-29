@@ -6,7 +6,7 @@ from astropy.time import Time
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
-from typing import Optional
+from typing import Iterable, Optional
 from scipy.interpolate import interp1d
 
 from jimgw.core.base import LikelihoodBase
@@ -18,10 +18,10 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 
 
 class SingleEventLiklihood(LikelihoodBase):
-    detectors: list[Detector]
+    detectors: Iterable[Detector]
     waveform: Waveform
 
-    def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
+    def __init__(self, detectors: Iterable[Detector], waveform: Waveform) -> None:
         self.detectors = detectors
         self.waveform = waveform
 
@@ -38,7 +38,7 @@ class ZeroLikelihood(LikelihoodBase):
 class TransientLikelihoodFD(SingleEventLiklihood):
     def __init__(
         self,
-        detectors: list[Detector],
+        detectors: Iterable[Detector],
         waveform: Waveform,
         trigger_time: float = 0,
         duration: float = 4,
@@ -192,7 +192,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def __init__(
         self,
-        detectors: list[Detector],
+        detectors: Iterable[Detector],
         waveform: Waveform,
         n_bins: int = 100,
         trigger_time: float = 0,
@@ -465,7 +465,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         Parameters
         ----------
-        f: Float[Array, "n_dim"]
+        f: Float[Array, "n_dims"]
             Array of frequencies to be binned.
         f_low: float
             Lower frequency bound.
@@ -476,7 +476,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         Returns
         -------
-        Float[Array, "n_dim"]
+        Float[Array, "n_dims"]
             Maximum phase difference between the frequencies in the array.
         """
 
@@ -569,7 +569,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
-        def y(x: Float[Array, " n_dim"], data: dict) -> Float:
+        def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
@@ -584,7 +584,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         key = jax.random.PRNGKey(0)
-        initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
+        initial_position = jnp.zeros((popsize, prior.n_dims)) + jnp.nan
         while not jax.tree.reduce(
             jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
         ).all():
@@ -633,9 +633,9 @@ likelihood_presets = {
 
 def original_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
-    detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
+    h_sky: dict[str, Float[Array, " n_dims"]],
+    detectors: Iterable[Detector],
+    freqs: Float[Array, " n_dims"],
     align_time: Float,
     **kwargs,
 ) -> Float:
@@ -654,9 +654,9 @@ def original_likelihood(
 
 def phase_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
-    detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
+    h_sky: dict[str, Float[Array, " n_dims"]],
+    detectors: Iterable[Detector],
+    freqs: Float[Array, " n_dims"],
     align_time: Float,
     **kwargs,
 ) -> Float:
@@ -678,9 +678,9 @@ def phase_marginalized_likelihood(
 
 def time_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
-    detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
+    h_sky: dict[str, Float[Array, " n_dims"]],
+    detectors: Iterable[Detector],
+    freqs: Float[Array, " n_dims"],
     align_time: Float,
     **kwargs,
 ) -> Float:
@@ -727,9 +727,9 @@ def time_marginalized_likelihood(
 
 def phase_time_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
-    detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
+    h_sky: dict[str, Float[Array, " n_dims"]],
+    detectors: Iterable[Detector],
+    freqs: Float[Array, " n_dims"],
     align_time: Float,
     **kwargs,
 ) -> Float:

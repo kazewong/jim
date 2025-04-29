@@ -3,7 +3,7 @@ from typing import Self
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
-
+from typing import Sequence
 
 class Run(ABC):
     """
@@ -17,8 +17,8 @@ class Run(ABC):
 
     likelihood: LikelihoodBase
     prior: Prior
-    sample_transforms: list[BijectiveTransform]
-    likelihood_transforms: list[NtoMTransform]
+    likelihood_transforms: Sequence[BijectiveTransform]
+    sample_transforms: Sequence[NtoMTransform]
 
     @abstractmethod
     def serialize(self, path: str = "./"):

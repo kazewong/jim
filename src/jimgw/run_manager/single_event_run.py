@@ -1,4 +1,5 @@
 from jimgw.run_manager.run import Run
+from jimgw.core.single_event.detector import GroundBased2G
 
 class SingleEventRun(Run):
     """
@@ -15,5 +16,5 @@ class SingleEventRun(Run):
     post_trigger_length: int  # Length of segment after the trigger
     f_min: int  # Minimum frequency
     f_max: int  # Maximum frequency
-    ifos: set[str]  # Set of detectors
+    ifos: list[GroundBased2G]  # Set of detectors
     f_ref: int  # Reference frequency
