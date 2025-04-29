@@ -195,7 +195,7 @@ class Jim(object):
             
         self.sampler.sample(initial_position, {})
 
-    def get_samples(self, training: bool = False) -> dict:
+    def get_samples(self, training: bool = False) -> dict[str, Float[Array, "n_chains n_dims"]]:
         """
         Get the samples from the sampler
 
