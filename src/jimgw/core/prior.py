@@ -177,7 +177,7 @@ class StandardNormalDistribution(Prior):
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
 
-class SequentialTransformPrior(Prior):
+class SequentialTransformPrior(CompositePrior):
     """
     Transform a prior distribution by applying a sequence of transforms.
     The space before the transform is named as x,

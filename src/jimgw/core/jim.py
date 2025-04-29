@@ -169,7 +169,7 @@ class Jim(object):
                 )
             )[0]
 
-            rng_key, subkey = jax.random.split(subkey)
+            rng_key, subkey = jax.random.split(rng_key)
             guess = self.prior.sample(subkey, self.sampler.n_chains)
             for transform in self.sample_transforms:
                 guess = jax.vmap(transform.forward)(guess)
