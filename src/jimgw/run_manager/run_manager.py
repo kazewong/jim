@@ -8,6 +8,8 @@ from jaxtyping import Float, Array
 
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run import Run
+
+from flowMC.resource.buffers import Buffer
 import logging
 
 
@@ -47,7 +49,8 @@ class RunManager:
     ### Utility functions ###
 
     def sample(self):
-        self.jim.sample(jax.random.PRNGKey(self.run.seed))
+        raise NotImplementedError
+        # self.jim.sample(jax.random.PRNGKey(self.run.seed))
 
     def get_samples(
         self, training: bool = False
@@ -88,11 +91,11 @@ class RunManager:
 
     def plot_loss(self):
         assert isinstance(
-            loss := self.jim.sampler.resources["loss_buffer"].data, Array
+            loss := self.jim.sampler.resources["loss_buffer"], Buffer
         ), "Loss buffer is not a jax array"
         plt.figure(figsize=(10, 8))
         plt.title("NF loss")
-        plt.plot(loss)
+        plt.plot(loss.data)
         plt.xlabel("iteration")
         plt.xlim(0, None)
         plt.ylabel("loss")
