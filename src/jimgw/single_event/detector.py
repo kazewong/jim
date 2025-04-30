@@ -8,7 +8,7 @@ from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 from scipy.signal.windows import tukey
-from jimgw.single_event.data import data as jd
+from jimgw.single_event import data as jd
 from typing import Optional
 
 from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
