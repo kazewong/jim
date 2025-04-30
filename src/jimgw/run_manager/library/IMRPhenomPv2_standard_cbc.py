@@ -168,14 +168,14 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
         return CombinePrior(prior)
 
-    def initialize_likelihood_transforms(self) -> Sequence[BijectiveTransform]:
+    def initialize_likelihood_transforms(self) -> Sequence[NtoMTransform]:
         return [
             MassRatioToSymmetricMassRatioTransform,
             SphereSpinToCartesianSpinTransform("s1"),
             SphereSpinToCartesianSpinTransform("s2"),
         ]
 
-    def initialize_sample_transforms(self) -> Sequence[NtoMTransform]:
+    def initialize_sample_transforms(self) -> Sequence[BijectiveTransform]:
         return [
             DistanceToSNRWeightedDistanceTransform(
                 gps_time=self.gps,

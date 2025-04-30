@@ -18,8 +18,8 @@ class Run(ABC):
 
     likelihood: LikelihoodBase
     prior: Prior
-    likelihood_transforms: Sequence[BijectiveTransform]
-    sample_transforms: Sequence[NtoMTransform]
+    sample_transforms: Sequence[BijectiveTransform]
+    likelihood_transforms: Sequence[NtoMTransform]
 
     @abstractmethod
     def serialize(self, path: str = "./"):

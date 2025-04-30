@@ -31,6 +31,9 @@ class RunManager:
         else:
             logging.ERROR("Run object or path not given.")
 
+        assert isinstance(
+            run, Run
+        ), "Run object or path not given. Please provide a Run object or a path to a serialized Run object."
         self.jim = Jim(
             run.likelihood,
             run.prior,

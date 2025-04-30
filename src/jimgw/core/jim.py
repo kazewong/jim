@@ -1,3 +1,4 @@
+from typing import Sequence
 import jax
 import jax.numpy as jnp
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
@@ -19,8 +20,8 @@ class Jim(object):
     prior: Prior
 
     # Name of parameters to sample from
-    sample_transforms: list[BijectiveTransform]
-    likelihood_transforms: list[NtoMTransform]
+    sample_transforms: Sequence[BijectiveTransform]
+    likelihood_transforms: Sequence[NtoMTransform]
     parameter_names: list[str]
     sampler: Sampler
 
@@ -28,8 +29,8 @@ class Jim(object):
         self,
         likelihood: LikelihoodBase,
         prior: Prior,
-        sample_transforms: list[BijectiveTransform] = [],
-        likelihood_transforms: list[NtoMTransform] = [],
+        sample_transforms: Sequence[BijectiveTransform] = [],
+        likelihood_transforms: Sequence[NtoMTransform] = [],
         rng_key: PRNGKeyArray = jax.random.PRNGKey(0),
         n_chains: int = 50,
         n_local_steps: int = 10,
