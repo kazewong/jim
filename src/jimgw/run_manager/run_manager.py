@@ -96,7 +96,7 @@ class RunManager:
         path = f"{self.result_dir}/loss.jpeg"
         plt.savefig(path)
         plt.close()
-        
+
     def plot_nf_sample(self):
         raise NotImplementedError
 

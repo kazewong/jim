@@ -1,6 +1,7 @@
 from jimgw.run_manager.run import Run
 from jimgw.core.single_event.detector import GroundBased2G
 
+
 class SingleEventRun(Run):
     """
     A `SingleEventRun` is a template of priors, likelihood transforms, and sample transforms for single event analysis.

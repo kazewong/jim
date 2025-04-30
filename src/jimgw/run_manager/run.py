@@ -5,6 +5,7 @@ from jimgw.core.prior import Prior
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 from typing import Sequence
 
+
 class Run(ABC):
     """
 

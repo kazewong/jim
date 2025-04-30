@@ -27,6 +27,7 @@ from typing import Sequence
 
 detector_enum = {"H1": H1, "L1": L1, "V1": V1}
 
+
 class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
     M_c_range: tuple[float, float]

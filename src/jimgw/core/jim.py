@@ -146,12 +146,10 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample_initial_condition(
-        self
-    ) -> Float[Array, "n_chains n_dims"]:
+    def sample_initial_condition(self) -> Float[Array, "n_chains n_dims"]:
         initial_position = (
-                jnp.zeros((self.sampler.n_chains, self.prior.n_dims)) + jnp.nan
-            )
+            jnp.zeros((self.sampler.n_chains, self.prior.n_dims)) + jnp.nan
+        )
 
         rng_key, subkey = jax.random.split(self.sampler.rng_key)
 
@@ -192,10 +190,12 @@ class Jim(object):
     ):
         if initial_position.size == 0:
             initial_position = self.sample_initial_condition()
-            
+
         self.sampler.sample(initial_position, {})
 
-    def get_samples(self, training: bool = False) -> dict[str, Float[Array, "n_chains n_dims"]]:
+    def get_samples(
+        self, training: bool = False
+    ) -> dict[str, Float[Array, "n_chains n_dims"]]:
         """
         Get the samples from the sampler
 
