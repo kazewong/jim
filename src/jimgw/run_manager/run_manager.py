@@ -2,22 +2,13 @@ import jax
 import matplotlib.pyplot as plt
 import corner
 import numpy as np
-import yaml
-from jaxlib.xla_extension import ArrayImpl
 from jaxtyping import Float, Array
-
 from jimgw.core.jim import Jim
 from jimgw.run_manager.run import Run
 
 from flowMC.resource.buffers import Buffer
 import logging
 
-
-def jaxarray_representer(dumper: yaml.Dumper, data: ArrayImpl):
-    return dumper.represent_list(data.tolist())
-
-
-yaml.add_representer(ArrayImpl, jaxarray_representer)
 
 
 class RunManager:
