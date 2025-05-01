@@ -4,11 +4,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import requests
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, jaxtyped
 from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
-from scipy.signal.windows import tukey
-from jimgw.single_event import data as jd
+from jimgw.core.single_event import data as jd
 from typing import Optional
 
 from jimgw.core.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
@@ -106,20 +105,22 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
     @property
-    def fd_data_slice(self) -> Float[Array, " n_sample"]:
+    def fd_data_slice(self) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Get frequency-domain data slice based on frequency bounds.
         
         Returns:
             Float[Array, " n_sample"]: Sliced frequency-domain data.
+            Float[Array, " n_sample"]: Frequency array.
         """
         return self.data.frequency_slice(*self.frequency_bounds)
 
     @property
-    def psd_slice(self) -> Float[Array, " n_sample"]:
+    def psd_slice(self) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Get PSD slice based on frequency bounds.
         
         Returns:
             Float[Array, " n_sample"]: Sliced power spectral density.
+            Float[Array, " n_sample"]: Frequency array.
         """
         return self.psd.frequency_slice(*self.frequency_bounds)
 
