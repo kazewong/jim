@@ -1,5 +1,3 @@
-__include__ = ["Data", "PowerSpectrum"]
-
 from abc import ABC
 
 import numpy as np
@@ -67,7 +65,7 @@ class Data(ABC):
         return iter(self.td)
 
     @property
-    def empty(self) -> bool:
+    def is_empty(self) -> bool:
         """Checks if the data is empty.
         
         Returns:
@@ -136,7 +134,7 @@ class Data(ABC):
         Returns:
             bool: True if Fourier domain data exists, False otherwise.
         """
-        return bool(np.any(self.fd))
+        return bool(jnp.any(self.fd))
 
     def __init__(self, td: Float[Array, " n_time"] = jnp.array([]),
                  delta_t: Float = 0.,
