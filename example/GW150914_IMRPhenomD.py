@@ -22,7 +22,7 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-import optax
+from jimgw.single_event import data as jd
 
 
 jax.config.update("jax_enable_x64", True)
@@ -34,17 +34,44 @@ jax.config.update("jax_enable_x64", True)
 total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
+# for the analysis
 gps = 1126259462.4
 start = gps - 2
 end = gps + 2
-fmin = 20.0
-fmax = 1024.0
 
+# fetch 4096s of data to estimate the PSD (to be
+# careful we should avoid the on-source segment,
+# but we don't do this in this example)
+psd_start = gps - 2048
+psd_end = gps + 2048
+
+# define frequency integration bounds for the likelihood
+# we set fmax to 87.5% of the Nyquist frequency to avoid
+# data corrupted by the GWOSC antialiasing filter
+# (Note that Data.from_gwosc will pull data sampled at
+# 4096 Hz by default)
+fmin = 20.0
+fmax = 1024
+
+# initialize detectors
 ifos = [H1, L1]
 
-H1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    # set analysis data
+    data = jd.Data.from_gwosc(ifo.name, start, end)
+    ifo.set_data(data)
 
+    # set PSD (Welch estimate)
+    psd_data = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+    # set an NFFT corresponding to the analysis segment duration
+    psd_fftlength = data.duration * data.sampling_frequency
+    ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
+
+###########################################
+########## Set up waveform ################
+###########################################
+
+# initialize waveform
 waveform = RippleIMRPhenomD(f_ref=20)
 
 ###########################################
@@ -155,7 +182,8 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2
+    [H1, L1], waveform=waveform, trigger_time=gps, f_min=fmin,
+    f_max=fmax, post_trigger_duration=2,
 )
 
 
@@ -171,20 +199,29 @@ jim = Jim(
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
     rng_key=jax.random.PRNGKey(42),
-    n_chains = 50,
-    n_local_steps = 10,
-    n_global_steps = 10,
-    n_training_loops = 20,
-    n_production_loops = 20,
+    n_chains = 500,
+    n_local_steps = 20,
+    n_global_steps = 5,
+    n_training_loops = 200,
+    n_production_loops = 100,
     n_epochs = 20,
     mala_step_size = mass_matrix * 1e-3,
     rq_spline_hidden_units = [128, 128],
-    rq_spline_n_bins = 8,
-    rq_spline_n_layers = 4,
-    learning_rate = 1e-4,
+    rq_spline_n_bins = 10,
+    rq_spline_n_layers = 8,
+    learning_rate = 1e-3,
     batch_size = 10000,
     n_max_examples = 10000,
+    n_NFproposal_batch_size = 5,
+    local_thinning=1,
+    global_thinning=1,
+    history_window = 200,
+    n_temperatures = 10,
+    max_temperature = 20.0,
+    n_tempered_steps = 10,
+    verbose=True,
 )
 
-
 jim.sample(jax.random.PRNGKey(42))
+
+print("Done!")

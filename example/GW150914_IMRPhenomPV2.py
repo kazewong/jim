@@ -24,6 +24,7 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
+from jimgw.single_event import data as jd
 
 jax.config.update("jax_enable_x64", True)
 
@@ -34,17 +35,44 @@ jax.config.update("jax_enable_x64", True)
 total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
+# for the analysis
 gps = 1126259462.4
 start = gps - 2
 end = gps + 2
-fmin = 20.0
-fmax = 1024.0
 
+# fetch 4096s of data to estimate the PSD (to be
+# careful we should avoid the on-source segment,
+# but we don't do this in this example)
+psd_start = gps - 2048
+psd_end = gps + 2048
+
+# define frequency integration bounds for the likelihood
+# we set fmax to 87.5% of the Nyquist frequency to avoid
+# data corrupted by the GWOSC antialiasing filter
+# (Note that Data.from_gwosc will pull data sampled at
+# 4096 Hz by default)
+fmin = 20.0
+fmax = 1024
+
+# initialize detectors
 ifos = [H1, L1]
 
-H1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    # set analysis data
+    data = jd.Data.from_gwosc(ifo.name, start, end)
+    ifo.set_data(data)
 
+    # set PSD (Welch estimate)
+    psd_data = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+    # set an NFFT corresponding to the analysis segment duration
+    psd_fftlength = data.duration * data.sampling_frequency
+    ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
+
+###########################################
+########## Set up waveform ################
+###########################################
+
+# initialize waveform
 waveform = RippleIMRPhenomPv2(f_ref=20)
 
 ###########################################
@@ -121,7 +149,8 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2
+    [H1, L1], waveform=waveform, trigger_time=gps, f_min=fmin,
+    f_max=fmax, post_trigger_duration=2,
 )
 
 jim = Jim(
@@ -135,7 +164,7 @@ jim = Jim(
     n_training_loops = 200,
     n_production_loops = 100,
     n_epochs = 20,
-    mala_step_size = jnp.eye(prior.n_dim) * 2e-6,
+    mala_step_size = jnp.eye(prior.n_dims) * 2e-6,
     rq_spline_hidden_units = [128, 128],
     rq_spline_n_bins = 10,
     rq_spline_n_layers = 8,
@@ -151,6 +180,13 @@ jim = Jim(
     n_tempered_steps = 10,
     verbose=True,
 )
-
-
+# 
 jim.sample(jax.random.PRNGKey(42))
+
+print("Done!")
+
+logprob = jim.sampler.resources['log_prob_production'].data
+print(jnp.mean(logprob))
+
+jim.get_samples()
+
