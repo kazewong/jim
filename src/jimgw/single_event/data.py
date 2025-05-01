@@ -11,6 +11,7 @@ import scipy.signal as sig
 from scipy.signal.windows import tukey
 import logging
 import jax
+import jax.numpy as jnp
 
 
 DEG_TO_RAD = np.pi / 180
@@ -118,7 +119,7 @@ class Data(ABC):
         Returns:
             Array: Array of time points in seconds.
         """
-        return np.arange(self.n_time) * self.delta_t + self.epoch
+        return jnp.arange(self.n_time) * self.delta_t + self.epoch
 
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
@@ -127,7 +128,7 @@ class Data(ABC):
         Returns:
             Array: Array of frequencies in Hz.
         """
-        return np.fft.rfftfreq(self.n_time, self.delta_t)
+        return jnp.fft.rfftfreq(self.n_time, self.delta_t)
 
     @property
     def has_fd(self) -> bool:
@@ -140,7 +141,7 @@ class Data(ABC):
 
     def __init__(
         self,
-        td: Float[Array, " n_time"] = np.array([]),
+        td: Float[Array, " n_time"] = jnp.array([]),
         delta_t: float = 0.0,
         epoch: Optional[float] = 0.0,
         name: str = "",
@@ -157,7 +158,7 @@ class Data(ABC):
         """
         self.name = name or ""
         self.td = td
-        self.fd = np.zeros(self.n_freq)
+        self.fd = jnp.zeros(self.n_freq)
         self.delta_t = delta_t
         self.epoch = epoch
         if window is None:
@@ -184,7 +185,7 @@ class Data(ABC):
                 the fraction of the segment that is tapered on each side.
         """
         logging.info(f"Setting Tukey window to {self.name} data")
-        self.window = np.array(tukey(self.n_time, alpha))
+        self.window = jnp.array(tukey(self.n_time, alpha))
 
     def fft(self, window: Optional[Float[Array, " n_time"]] = None) -> None:
         """Compute the Fourier transform of the data and store it
@@ -198,11 +199,11 @@ class Data(ABC):
             self.window = window
         if self.n_time > 0:
             assert self.delta_t > 0, "Delta t must be positive"
-        self.fd = np.fft.rfft(self.td * self.window) * self.delta_t
+        self.fd = jnp.fft.rfft(self.td * self.window) * self.delta_t
 
     def frequency_slice(
-        self, f_min: float, f_max: float, auto_fft: bool = True
-    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+            self, f_min: float, f_max: float, auto_fft: bool = True
+        ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
@@ -270,12 +271,12 @@ class Data(ABC):
 
     @classmethod
     def from_fd(
-        cls,
-        fd: Float[Array, " n_freq"],
-        frequencies: Float[Array, " n_freq"],
-        epoch: Optional[float] = 0.0,
-        name: str = "",
-    ) -> "Data":
+            cls,
+            fd: Float[Array, " n_freq"],
+            frequencies: Float[Array, " n_freq"],
+            epoch: float = 0.0,
+            name: str = "",
+        ) -> "Data":
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -303,10 +304,10 @@ class Data(ABC):
         # form full data array
         data_fd_full = np.zeros(f.shape, dtype=np.array(fd).dtype)
         data_fd_full[(frequencies[-1] >= f) & (f >= frequencies[0])] = fd
-
+        data_fd_full = jnp.array(data_fd_full)
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
-        data_td_full = np.fft.irfft(data_fd_full) / delta_t
+        data_td_full = jnp.fft.irfft(data_fd_full) / delta_t
         # check frequencies
         assert np.allclose(
             f, np.fft.rfftfreq(len(data_td_full), delta_t)
@@ -382,11 +383,11 @@ class PowerSpectrum(ABC):
         return self.frequencies[-1] * 2
 
     def __init__(
-        self,
-        values: Float[Array, " n_freq"] = np.array([]),
-        frequencies: Float[Array, " n_freq"] = np.array([]),
-        name: Optional[str] = None,
-    ) -> None:
+            self,
+            values: Float[Array, " n_freq"] = jnp.array([]),
+            frequencies: Float[Array, " n_freq"] = jnp.array([]),
+            name: Optional[str] = None,
+        ) -> None:
         """Initialize PowerSpectrum.
 
         Args:
