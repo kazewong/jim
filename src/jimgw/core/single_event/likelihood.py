@@ -16,12 +16,13 @@ from jimgw.core.utils import log_i0
 from jimgw.core.single_event.waveform import Waveform
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 
+import logging
 
 class SingleEventLikelihood(LikelihoodBase):
-    detectors: Iterable[Detector]
+    detectors: list[Detector]
     waveform: Waveform
 
-    def __init__(self, detectors: Iterable[Detector], waveform: Waveform) -> None:
+    def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
         self.detectors = detectors
         self.waveform = waveform
 
@@ -38,7 +39,7 @@ class ZeroLikelihood(LikelihoodBase):
 class TransientLikelihoodFD(SingleEventLikelihood):
     def __init__(
         self,
-        detectors: Iterable[Detector],
+        detectors: list[Detector],
         waveform: Waveform,
         f_min: Float = 0,
         f_max: Float = float("inf"),
@@ -220,7 +221,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def __init__(
         self,
-        detectors: Iterable[Detector],
+        detectors: list[Detector],
         waveform: Waveform,
         f_min: Float = 0,
         f_max: Float = float("inf"),
