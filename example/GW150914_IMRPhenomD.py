@@ -2,6 +2,7 @@ import time
 
 import jax
 import jax.numpy as jnp
+jax.config.update("jax_enable_x64", True)
 
 from jimgw.jim import Jim
 from jimgw.prior import (
@@ -11,6 +12,7 @@ from jimgw.prior import (
     SinePrior,
     PowerLawPrior,
 )
+from jimgw.single_event.data import Data
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
 from jimgw.single_event.waveform import RippleIMRPhenomD
@@ -22,10 +24,6 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.single_event import data as jd
-
-
-jax.config.update("jax_enable_x64", True)
 
 ###########################################
 ########## First we grab data #############
@@ -58,11 +56,11 @@ ifos = [H1, L1]
 
 for ifo in ifos:
     # set analysis data
-    data = jd.Data.from_gwosc(ifo.name, start, end)
+    data = Data.from_gwosc(ifo.name, start, end)
     ifo.set_data(data)
 
     # set PSD (Welch estimate)
-    psd_data = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+    psd_data = Data.from_gwosc(ifo.name, psd_start, psd_end)
     # set an NFFT corresponding to the analysis segment duration
     psd_fftlength = data.duration * data.sampling_frequency
     ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
