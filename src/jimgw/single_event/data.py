@@ -39,6 +39,7 @@ class Data(ABC):
         delta_t: Time step between samples.
         window: Window function applied to data.
     """
+
     name: str
 
     td: Float[Array, " n_time"]
@@ -99,7 +100,7 @@ class Data(ABC):
         Returns:
             float: Duration in seconds.
         """
-        return (self.n_time - 1) * self.delta_t
+        return self.n_time * self.delta_t
 
     @property
     def sampling_frequency(self) -> float:
@@ -137,12 +138,14 @@ class Data(ABC):
         """
         return bool(np.any(self.fd))
 
-    def __init__(self, td: Float[Array, " n_time"] = np.array([]),
-                 delta_t: float = 0.,
-                 epoch: Optional[float] = 0.,
-                 name: str = '',
-                 window: Optional[Float[Array, " n_time"]] = None)\
-            -> None:
+    def __init__(
+        self,
+        td: Float[Array, " n_time"] = np.array([]),
+        delta_t: float = 0.0,
+        epoch: Optional[float] = 0.0,
+        name: str = "",
+        window: Optional[Float[Array, " n_time"]] = None,
+    ) -> None:
         """Initialize the data class.
 
         Args:
@@ -152,7 +155,7 @@ class Data(ABC):
             name: Name of the data (default: '').
             window: Window function to apply to the data before FFT (default: None).
         """
-        self.name = name or ''
+        self.name = name or ""
         self.td = td
         self.fd = np.zeros(self.n_freq)
         self.delta_t = delta_t
@@ -163,8 +166,10 @@ class Data(ABC):
             self.window = window
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(name='{self.name}', " + \
-            f"delta_t={self.delta_t}, epoch={self.epoch})"
+        return (
+            f"{self.__class__.__name__}(name='{self.name}', "
+            + f"delta_t={self.delta_t}, epoch={self.epoch})"
+        )
 
     def __bool__(self) -> bool:
         """Check if the data is empty."""
@@ -195,9 +200,9 @@ class Data(ABC):
             assert self.delta_t > 0, "Delta t must be positive"
         self.fd = np.fft.rfft(self.td * self.window) * self.delta_t
 
-    def frequency_slice(self, f_min: float, f_max: float,
-                        auto_fft: bool = True) -> \
-            tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+    def frequency_slice(
+        self, f_min: float, f_max: float, auto_fft: bool = True
+    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
@@ -212,10 +217,10 @@ class Data(ABC):
         if auto_fft and not self.has_fd:
             self.fft()
         f = self.frequencies
-        assert (f_min >= f.min()) and (f_max <= f.max()), \
-            "Frequency range is out of bounds"
-        return self.fd[(f >= f_min) & (f <= f_max)], \
-            f[(f >= f_min) & (f <= f_max)]
+        assert (f_min >= f.min()) and (
+            f_max <= f.max()
+        ), "Frequency range is out of bounds"
+        return self.fd[(f >= f_min) & (f <= f_max)], f[(f >= f_min) & (f <= f_max)]
 
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
@@ -232,12 +237,14 @@ class Data(ABC):
         return PowerSpectrum(psd, freq, self.name)
 
     @classmethod
-    def from_gwosc(cls,
-                   ifo: str,
-                   gps_start_time: Float,
-                   gps_end_time: Float,
-                   cache: bool = True,
-                   **kws) -> "Data":
+    def from_gwosc(
+        cls,
+        ifo: str,
+        gps_start_time: Float,
+        gps_end_time: Float,
+        cache: bool = True,
+        **kws,
+    ) -> "Data":
         """Pull data from GWOSC.
 
         Args:
@@ -251,18 +258,24 @@ class Data(ABC):
             Data: Data object with the fetched time domain data.
         """
         duration = gps_end_time - gps_start_time
-        logging.info(f"Fetching {duration} s of {ifo} data from GWOSC "
-                     f"[{gps_start_time}, {gps_end_time}]")
+        logging.info(
+            f"Fetching {duration} s of {ifo} data from GWOSC "
+            f"[{gps_start_time}, {gps_end_time}]"
+        )
 
-        data_td = TimeSeries.fetch_open_data(ifo, gps_start_time, gps_end_time,
-                                             cache=cache, **kws)
+        data_td = TimeSeries.fetch_open_data(
+            ifo, gps_start_time, gps_end_time, cache=cache, **kws
+        )
         return cls(data_td.value, data_td.dt.value, data_td.epoch.value, ifo)  # type: ignore # noqa: E501
 
     @classmethod
-    def from_fd(cls, fd: Float[Array, " n_freq"],
-                frequencies: Float[Array, " n_freq"],
-                epoch: Optional[float] = 0.,
-                name: str = '') -> "Data":
+    def from_fd(
+        cls,
+        fd: Float[Array, " n_freq"],
+        frequencies: Float[Array, " n_freq"],
+        epoch: Optional[float] = 0.0,
+        name: str = "",
+    ) -> "Data":
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -275,9 +288,9 @@ class Data(ABC):
         Returns:
             Data: Data object with the Fourier and time domain data.
         """
-        assert len(fd) == len(frequencies), (
-            "Frequency and data arrays must have the same length"
-        )
+        assert len(fd) == len(
+            frequencies
+        ), "Frequency and data arrays must have the same length"
         # form full frequency array
         delta_f = frequencies[1] - frequencies[0]
         fnyq = frequencies[-1]
@@ -295,18 +308,18 @@ class Data(ABC):
         delta_t = 1 / (2 * fnyq)
         data_td_full = np.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert np.allclose(f, np.fft.rfftfreq(len(data_td_full), delta_t)), (
-               "Generated frequencies do not match the input frequencies"
-        )
+        assert np.allclose(
+            f, np.fft.rfftfreq(len(data_td_full), delta_t)
+        ), "Generated frequencies do not match the input frequencies"
         # create jd.Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(np.equal(d_new, fd)), "Data do not match after slicing"
-        assert all(np.equal(f_new, frequencies)), (
-            "Frequencies do not match after slicing"
-        )
+        assert all(
+            np.equal(f_new, frequencies)
+        ), "Frequencies do not match after slicing"
         return data
 
 
@@ -368,9 +381,12 @@ class PowerSpectrum(ABC):
         """
         return self.frequencies[-1] * 2
 
-    def __init__(self, values: Float[Array, " n_freq"] = np.array([]),
-                 frequencies: Float[Array, " n_freq"] = np.array([]),
-                 name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        values: Float[Array, " n_freq"] = np.array([]),
+        frequencies: Float[Array, " n_freq"] = np.array([]),
+        name: Optional[str] = None,
+    ) -> None:
         """Initialize PowerSpectrum.
 
         Args:
@@ -380,13 +396,16 @@ class PowerSpectrum(ABC):
         """
         self.values = values
         self.frequencies = frequencies
-        assert len(self.values) == len(self.frequencies), \
-            "Values and frequencies must have the same length"
-        self.name = name or ''
+        assert len(self.values) == len(
+            self.frequencies
+        ), "Values and frequencies must have the same length"
+        self.name = name or ""
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name='{self.name}', " + \
-            f"frequencies={self.frequencies})"
+        return (
+            f"{self.__class__.__name__}(name='{self.name}', "
+            + f"frequencies={self.frequencies})"
+        )
 
     def __bool__(self) -> bool:
         """Check if the power spectrum is empty.
@@ -396,8 +415,9 @@ class PowerSpectrum(ABC):
         """
         return len(self.values) > 0
 
-    def frequency_slice(self, f_min: float, f_max: float) -> \
-            tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+    def frequency_slice(
+        self, f_min: float, f_max: float
+    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the power spectrum to a frequency range.
 
         Args:
@@ -412,8 +432,9 @@ class PowerSpectrum(ABC):
         mask = (self.frequencies >= f_min) & (self.frequencies <= f_max)
         return self.values[mask], self.frequencies[mask]
 
-    def interpolate(self, f: Float[Array, " n_sample"],
-                    kind: str = 'cubic', **kws) -> "PowerSpectrum":
+    def interpolate(
+        self, f: Float[Array, " n_sample"], kind: str = "cubic", **kws
+    ) -> "PowerSpectrum":
         """Interpolate the power spectrum to new frequencies.
 
         Args:
