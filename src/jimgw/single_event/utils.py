@@ -13,27 +13,19 @@ def inner_product(
     psd: Float[Array, " n_sample"],
 ) -> Float:
     """
-        Evaluating the inner product of two waveforms h1 and h2 with the psd.
+        Evaluates the inner product of two waveforms h1 and h2 with the PSD.
 
-    Do psd interpolation outside the inner product loop to speed up the evaluation
+        Do psd interpolation outside the inner product loop to speed up the evaluation.
 
-        Parameters
-        ----------
-        h1 : Float[Array, "n_sample"]
-                First waveform. Can be complex.
-        h2 : Float[Array, "n_sample"]
-                Second waveform. Can be complex.
-        frequency : Float[Array, "n_sample"]
-                Frequency array.
-        psd : Float[Array, "n_sample"]
-                Power spectral density.
+    Args:
+        h1 (Float[Array, "n_sample"]): First waveform. Can be complex.
+        h2 (Float[Array, "n_sample"]): Second waveform. Can be complex.
+        frequency (Float[Array, "n_sample"]): Frequency array.
+        psd (Float[Array, "n_sample"]): Power spectral density.
 
-        Returns
-        -------
-        Float
-                Inner product of h1 and h2 with the psd.
+    Returns:
+        Float: Inner product of h1 and h2 with the PSD.
     """
-    # psd_interp = jnp.interp(frequency, psd_frequency, psd)
     df = frequency[1] - frequency[0]
     integrand = jnp.conj(h1) * h2 / psd
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
@@ -41,22 +33,15 @@ def inner_product(
 
 def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the Total mass M
+    Transforms the primary mass m1 and secondary mass m2 to the total mass M
     and mass ratio q.
 
-    Parameters
-        ----------
-        m1 : Float
-                Primary mass.
-        m2 : Float
-                Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-        Returns
-        -------
-        M_tot : Float
-                Total mass.
-        q : Float
-                Mass ratio.
+    Returns:
+        tuple[Float, Float]: Total mass (M_tot) and mass ratio (q).
     """
     M_tot = m1 + m2
     q = m2 / m1
@@ -65,22 +50,15 @@ def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
 
 def M_q_to_m1_m2(M_tot: Float, q: Float) -> tuple[Float, Float]:
     """
-    Transforming the Total mass M and mass ratio q to the primary mass m1 and
+    Transforms the total mass M and mass ratio q to the primary mass m1 and
     secondary mass m2.
 
-    Parameters
-    ----------
-    M_tot : Float
-            Total mass.
-    q : Float
-            Mass ratio.
+    Args:
+        M_tot (Float): Total mass.
+        q (Float): Mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     m1 = M_tot / (1 + q)
     m2 = m1 * q
@@ -89,25 +67,18 @@ def M_q_to_m1_m2(M_tot: Float, q: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    Transforms the primary mass m1 and secondary mass m2 to the chirp mass M_c
     and mass ratio q.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M_c : Float
-            Chirp mass.
-    q : Float
-            Mass ratio.
+    Returns:
+        tuple[Float, Float]: Chirp mass (M_c) and mass ratio (q).
     """
     M_tot = m1 + m2
-    eta = m1 * m2 / M_tot ** 2
+    eta = m1 * m2 / M_tot**2
     M_c = M_tot * eta ** (3.0 / 5)
     q = m2 / m1
     return M_c, q
@@ -115,22 +86,15 @@ def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
 
 def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
     """
-    Transforming the chirp mass M_c and mass ratio q to the primary mass m1 and
+    Transforms the chirp mass M_c and mass ratio q to the primary mass m1 and
     secondary mass m2.
 
-    Parameters
-    ----------
-    M_c : Float
-            Chirp mass.
-    q : Float
-            Mass ratio.
+    Args:
+        M_c (Float): Chirp mass.
+        q (Float): Mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     eta = q / (1 + q) ** 2
     M_tot = M_c / eta ** (3.0 / 5)
@@ -141,46 +105,32 @@ def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the total mass M
+    Transforms the primary mass m1 and secondary mass m2 to the total mass M
     and symmetric mass ratio eta.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M : Float
-            Total mass.
-    eta : Float
-            Symmetric mass ratio.
+    Returns:
+        tuple[Float, Float]: Total mass (M) and symmetric mass ratio (eta).
     """
     M_tot = m1 + m2
-    eta = m1 * m2 / M_tot ** 2
+    eta = m1 * m2 / M_tot**2
     return M_tot, eta
 
 
 def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
     """
-    Transforming the total mass M and symmetric mass ratio eta to the primary mass m1
+    Transforms the total mass M and symmetric mass ratio eta to the primary mass m1
     and secondary mass m2.
 
-    Parameters
-    ----------
-    M : Float
-            Total mass.
-    eta : Float
-            Symmetric mass ratio.
+    Args:
+        M_tot (Float): Total mass.
+        eta (Float): Symmetric mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     m1 = M_tot * (1 + jnp.sqrt(1 - 4 * eta)) / 2
     m2 = M_tot * (1 - jnp.sqrt(1 - 4 * eta)) / 2
@@ -189,25 +139,18 @@ def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_Mc_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    Transforms the primary mass m1 and secondary mass m2 to the chirp mass M_c
     and symmetric mass ratio eta.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M_c : Float
-            Chirp mass.
-    eta : Float
-            Symmetric mass ratio.
+    Returns:
+        tuple[Float, Float]: Chirp mass (M_c) and symmetric mass ratio (eta).
     """
     M = m1 + m2
-    eta = m1 * m2 / M ** 2
+    eta = m1 * m2 / M**2
     M_c = M * eta ** (3.0 / 5)
     return M_c, eta
 
