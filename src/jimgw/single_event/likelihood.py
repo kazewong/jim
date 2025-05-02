@@ -44,7 +44,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
-        post_trigger_duration: Float = 2,  # wouldn't it make more sense to pass an epoch directly?
+        start_time: Float = -2,
         **kwargs,
     ) -> None:
         # NOTE: having 'kwargs' here makes it very difficult to diagnose
@@ -75,17 +75,16 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             # make sure the psd and data are consistent
             assert (freq_0 == freq_1).all(), \
                 f"The {detector.name} data and PSD must have same frequencies"
-                
+
         # make sure all detectors are consistent
         assert all([(freqs[0] == freq).all() for freq in freqs]), \
             "The detectors must have the same frequency grid"
-            
+
         self.frequencies = freqs[0]  # type: ignore
         self.datas = datas
         self.psds = psds
-        
+
         self.waveform = waveform
-        self.trigger_time = trigger_time
         self.gmst = (
             Time(trigger_time, format="gps").sidereal_time("apparent",
                                                            "greenwich").rad
@@ -93,7 +92,8 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         self.trigger_time = trigger_time
         self.duration = duration = self.detectors[0].data.duration
-        self.post_trigger_duration = post_trigger_duration
+        self.start_time = start_time
+        self.post_trigger_duration = start_time + duration - trigger_time
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -118,18 +118,16 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
             if "time" in self.marginalization:
                 fs = kwargs["sampling_rate"]
+                delta_f = 1.0 / duration
                 self.kwargs["tc_array"] = jnp.fft.fftfreq(
-                    int(duration * fs / 2), 1.0 / duration
+                    int(duration * fs / 2), delta_f
                 )
                 self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
-                if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
+                if jnp.isclose(self.frequencies[-1], fs / 2.0 - delta_f):
                     self.kwargs["pad_high"] = jnp.array([])
                 else:
                     self.kwargs["pad_high"] = jnp.zeros(
-                        int(
-                            (fs / 2.0 - 1.0 / duration - self.frequencies[-1])
-                            * duration
-                        )
+                        int((fs / 2.0 - delta_f - self.frequencies[-1]) * duration)
                     )
         else:
             self.param_func = lambda x: x
@@ -227,7 +225,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_max: Float = float("inf"),
         n_bins: int = 100,
         trigger_time: float = 0,
-        post_trigger_duration: float = 2,
+        start_time: Float = -2,
         popsize: int = 100,
         n_steps: int = 2000,
         ref_params: dict = {},
@@ -238,7 +236,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         **kwargs,
     ) -> None:
         super().__init__(
-            detectors, waveform, f_min, f_max, trigger_time, post_trigger_duration
+            detectors, waveform, f_min, f_max, trigger_time, start_time
         )
 
         logging.info("Initializing heterodyned likelihood..")
@@ -364,28 +362,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = reference_waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = reference_waveform(self.freq_grid_center, self.ref_params)
 
+        time_shift_2pi = 2 * jnp.pi * (self.epoch + self.ref_params["t_c"])
         # Get phase shifts to align time of coalescence
-        align_time = jnp.exp(
-            -1j
-            * 2
-            * jnp.pi
-            * frequency_original
-            * (self.epoch + self.ref_params["t_c"])
-        )
-        align_time_low = jnp.exp(
-            -1j
-            * 2
-            * jnp.pi
-            * self.freq_grid_low
-            * (self.epoch + self.ref_params["t_c"])
-        )
-        align_time_center = jnp.exp(
-            -1j
-            * 2
-            * jnp.pi
-            * self.freq_grid_center
-            * (self.epoch + self.ref_params["t_c"])
-        )
+        align_time = jnp.exp(-1j * time_shift_2pi * frequency_original)
+        align_time_low = jnp.exp(-1j * time_shift_2pi * self.freq_grid_low)
+        align_time_center = jnp.exp(-1j * time_shift_2pi * self.freq_grid_center)
 
         for detector, data, psd in zip(self.detectors, self.datas, self.psds):
             # Get the reference waveforms
@@ -558,30 +539,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         B1_array = []
 
         df = freqs[1] - freqs[0]
-        data_prod = np.array(data * h_ref.conj())
-        self_prod = np.array(h_ref * h_ref.conj())
+        data_prod = np.array(data * h_ref.conj()) / psd
+        self_prod = np.array(h_ref * h_ref.conj()) / psd
         for i in range(len(f_bins) - 1):
             f_index = np.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
-            A0_array.append(4 * np.sum(data_prod[f_index] / psd[f_index]) * df)
-            A1_array.append(
-                4
-                * np.sum(
-                    data_prod[f_index]
-                    / psd[f_index]
-                    * (freqs[f_index] - f_bins_center[i])
-                )
-                * df
-            )
-            B0_array.append(4 * np.sum(self_prod[f_index] / psd[f_index]) * df)
-            B1_array.append(
-                4
-                * np.sum(
-                    self_prod[f_index]
-                    / psd[f_index]
-                    * (freqs[f_index] - f_bins_center[i])
-                )
-                * df
-            )
+            freq_shift = freqs[f_index] - f_bins_center[i]
+            A0_array.append(4 * np.sum(data_prod[f_index]) * df)
+            A1_array.append(4 * np.sum(data_prod[f_index] * freq_shift) * df)
+            B0_array.append(4 * np.sum(self_prod[f_index]) * df)
+            B1_array.append(4 * np.sum(self_prod[f_index] * freq_shift) * df)
 
         A0_array = jnp.array(A0_array)
         A1_array = jnp.array(A1_array)
