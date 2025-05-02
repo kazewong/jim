@@ -26,5 +26,13 @@ class Run(ABC):
         """Serialize a `Run` object into a human readble config file."""
 
     @abstractmethod
-    def deserialize(self, path: str) -> Self:
+    @classmethod
+    def deserialize(cls, path: str) -> Self:
         """Deserialize a config file into a `Run` object"""
+
+    @classmethod
+    def from_file(
+        cls,
+        path: str,):
+        """Load a `Run` object from a config file."""
+        return cls.deserialize(path)

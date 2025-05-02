@@ -1,4 +1,3 @@
-import jax
 import matplotlib.pyplot as plt
 import corner
 import numpy as np
@@ -20,7 +19,7 @@ class RunManager:
         if isinstance(run, Run):
             self.run = run
         elif isinstance(run, str):
-            self.run = Run.deserialize(run)
+            self.run = Run.from_file(run)
         else:
             logging.ERROR("Run object or path not given.")
 
