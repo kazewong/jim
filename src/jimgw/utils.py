@@ -2,22 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
-from jimgw.prior import Prior
-
 EPS = 1e-15
-
-
-def trace_prior_parent(prior: Prior, output: list[Prior] = []) -> list[Prior]:
-    if prior.composite:
-        if isinstance(prior.base_prior, list):
-            for subprior in prior.base_prior:
-                output = trace_prior_parent(subprior, output)
-        elif isinstance(prior.base_prior, Prior):
-            output = trace_prior_parent(prior.base_prior, output)
-    else:
-        output.append(prior)
-
-    return output
 
 
 def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:

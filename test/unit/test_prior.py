@@ -12,7 +12,6 @@ from jimgw.prior import (
     GaussianPrior,
     RayleighPrior,
 )
-from jimgw.utils import trace_prior_parent
 
 import scipy.stats as stats
 
@@ -73,7 +72,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
 
@@ -95,9 +94,9 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
-        y = jax.vmap(p.base_prior.base_prior.transform)(x)
-        y = jax.vmap(p.base_prior.transform)(y)
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        y = jax.vmap(p.base_prior[0].base_prior[0].transform)(x)
+        y = jax.vmap(p.base_prior[0].transform)(y)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y["x"]) / 2.0))
 
@@ -119,8 +118,8 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
-        y = jax.vmap(p.base_prior.transform)(x)
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y["x"]) / 2.0))
 
@@ -158,7 +157,7 @@ class TestUnivariatePrior:
             assert jnp.all(jnp.isfinite(log_prob))
 
             # Check that the log_prob are correct in the support
-            x = trace_prior_parent(p, [])[0].add_name(
+            x = p.trace_prior_parent([])[0].add_name(
                 jnp.linspace(-10.0, 10.0, 1000)[None]
             )
             y = jax.vmap(p.transform)(x)
@@ -201,7 +200,7 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(
             jax.vmap(p.log_prob)(y),
@@ -227,8 +226,8 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(log_prob))
 
         # Check that the log_prob are correct in the support
-        x = trace_prior_parent(p, [])[0].add_name(jnp.linspace(0.0, 10.0, 1000)[None])
-        y = jax.vmap(p.base_prior.transform)(x)
+        x = p.trace_prior_parent([])[0].add_name(jnp.linspace(0.0, 10.0, 1000)[None])
+        y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(
             jax.vmap(p.log_prob)(y),
