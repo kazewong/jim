@@ -121,59 +121,19 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    DistanceToSNRWeightedDistanceTransform(
-        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
-    ),
+    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
-    ),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
-    BoundToUnbound(
-        name_mapping=(["M_c"], ["M_c_unbounded"]),
-        original_lower_bound=M_c_min,
-        original_upper_bound=M_c_max,
-    ),
-    BoundToUnbound(
-        name_mapping=(["q"], ["q_unbounded"]),
-        original_lower_bound=q_min,
-        original_upper_bound=q_max,
-    ),
-    BoundToUnbound(
-        name_mapping=(["s1_z"], ["s1_z_unbounded"]),
-        original_lower_bound=-1.0,
-        original_upper_bound=1.0,
-    ),
-    BoundToUnbound(
-        name_mapping=(["s2_z"], ["s2_z_unbounded"]),
-        original_lower_bound=-1.0,
-        original_upper_bound=1.0,
-    ),
-    BoundToUnbound(
-        name_mapping=(["iota"], ["iota_unbounded"]),
-        original_lower_bound=0.0,
-        original_upper_bound=jnp.pi,
-    ),
-    BoundToUnbound(
-        name_mapping=(["phase_det"], ["phase_det_unbounded"]),
-        original_lower_bound=0.0,
-        original_upper_bound=2 * jnp.pi,
-    ),
-    BoundToUnbound(
-        name_mapping=(["psi"], ["psi_unbounded"]),
-        original_lower_bound=0.0,
-        original_upper_bound=jnp.pi,
-    ),
-    BoundToUnbound(
-        name_mapping=(["zenith"], ["zenith_unbounded"]),
-        original_lower_bound=0.0,
-        original_upper_bound=jnp.pi,
-    ),
-    BoundToUnbound(
-        name_mapping=(["azimuth"], ["azimuth_unbounded"]),
-        original_lower_bound=0.0,
-        original_upper_bound=2 * jnp.pi,
-    ),
+    BoundToUnbound(name_mapping=(["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max,),
+    BoundToUnbound(name_mapping=(["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max,),
+    BoundToUnbound(name_mapping=(["s1_z"], ["s1_z_unbounded"]), original_lower_bound=-1.0, original_upper_bound=1.0,),
+    BoundToUnbound(name_mapping=(["s2_z"], ["s2_z_unbounded"]), original_lower_bound=-1.0, original_upper_bound=1.0,),
+    BoundToUnbound(name_mapping=(["iota"], ["iota_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
+    BoundToUnbound(name_mapping=(["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
+    BoundToUnbound(name_mapping=(["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
+    BoundToUnbound(name_mapping=(["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
+    BoundToUnbound(name_mapping=(["azimuth"], ["azimuth_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
 ]
 
 likelihood_transforms = [
@@ -182,8 +142,12 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1], waveform=waveform, trigger_time=gps, f_min=fmin,
-    f_max=fmax, post_trigger_duration=2,
+    [H1, L1],
+    waveform=waveform,
+    trigger_time=gps,
+    f_min=fmin,
+    f_max=fmax,
+    start_time=start,
 )
 
 
@@ -199,26 +163,26 @@ jim = Jim(
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
     rng_key=jax.random.PRNGKey(42),
-    n_chains = 500,
-    n_local_steps = 20,
-    n_global_steps = 5,
-    n_training_loops = 200,
-    n_production_loops = 100,
-    n_epochs = 20,
-    mala_step_size = mass_matrix * 1e-3,
-    rq_spline_hidden_units = [128, 128],
-    rq_spline_n_bins = 10,
-    rq_spline_n_layers = 8,
-    learning_rate = 1e-3,
-    batch_size = 10000,
-    n_max_examples = 10000,
-    n_NFproposal_batch_size = 5,
+    n_chains=500,
+    n_local_steps=20,
+    n_global_steps=5,
+    n_training_loops=200,
+    n_production_loops=100,
+    n_epochs=20,
+    mala_step_size=mass_matrix * 1e-3,
+    rq_spline_hidden_units=[128, 128],
+    rq_spline_n_bins=10,
+    rq_spline_n_layers=8,
+    learning_rate=1e-3,
+    batch_size=10000,
+    n_max_examples=10000,
+    n_NFproposal_batch_size=5,
     local_thinning=1,
     global_thinning=1,
-    history_window = 200,
-    n_temperatures = 10,
-    max_temperature = 20.0,
-    n_tempered_steps = 10,
+    history_window=200,
+    n_temperatures=10,
+    max_temperature=20.0,
+    n_tempered_steps=10,
     verbose=True,
 )
 
