@@ -15,9 +15,10 @@ from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform
+import logging
 
 
-class SingleEventLiklihood(LikelihoodBase):
+class SingleEventLikelihood(LikelihoodBase):
     detectors: list[Detector]
     waveform: Waveform
 
@@ -35,34 +36,63 @@ class ZeroLikelihood(LikelihoodBase):
         return 0.0
 
 
-class TransientLikelihoodFD(SingleEventLiklihood):
+class TransientLikelihoodFD(SingleEventLikelihood):
     def __init__(
         self,
         detectors: list[Detector],
         waveform: Waveform,
-        trigger_time: float = 0,
-        duration: float = 4,
-        post_trigger_duration: float = 2,
+        f_min: Float = 0,
+        f_max: Float = float("inf"),
+        trigger_time: Float = 0,
+        post_trigger_duration: Float = 2,  # wouldn't it make more sense to pass an epoch directly?
         **kwargs,
     ) -> None:
+        # NOTE: having 'kwargs' here makes it very difficult to diagnose
+        # errors and keep track of what's going on, would be better to list
+        # explicitly what the arguments are accepted
         self.detectors = detectors
-        assert jnp.all(
-            jnp.array(
-                [
-                    (self.detectors[0].frequencies == detector.frequencies).all()  # type: ignore
-                    for detector in self.detectors
-                ]
-            )
-        ), "The detectors must have the same frequency grid"
-        self.frequencies = self.detectors[0].frequencies  # type: ignore
+
+        # make sure data has a Fourier representation
+        for det in detectors:
+            if not det.data:
+                raise ValueError(
+                    f"Detector {det.name} does not have data."
+                )
+            if not det.data.has_fd:
+                logging.info("Computing FFT with default window")
+                det.data.fft()
+
+        # collect the data, psd and frequencies for the requested band
+        freqs = []
+        datas = []
+        psds = []
+        for detector in detectors:
+            data, freq_0 = detector.data.frequency_slice(f_min, f_max)
+            psd, freq_1 = detector.psd.frequency_slice(f_min, f_max)
+            freqs.append(freq_0)
+            datas.append(data)
+            psds.append(psd)
+            # make sure the psd and data are consistent
+            assert (freq_0 == freq_1).all(), \
+                f"The {detector.name} data and PSD must have same frequencies"
+                
+        # make sure all detectors are consistent
+        assert all([(freqs[0] == freq).all() for freq in freqs]), \
+            "The detectors must have the same frequency grid"
+            
+        self.frequencies = freqs[0]  # type: ignore
+        self.datas = datas
+        self.psds = psds
+        
         self.waveform = waveform
         self.trigger_time = trigger_time
         self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
+            Time(trigger_time, format="gps").sidereal_time("apparent",
+                                                           "greenwich").rad
         )
 
         self.trigger_time = trigger_time
-        self.duration = duration
+        self.duration = duration = self.detectors[0].data.duration
         self.post_trigger_duration = post_trigger_duration
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
@@ -76,15 +106,15 @@ class TransientLikelihoodFD(SingleEventLiklihood):
             if self.marginalization == "phase-time":
                 self.param_func = lambda x: {**x, "phase_c": 0.0, "t_c": 0.0}
                 self.likelihood_function = phase_time_marginalized_likelihood
-                print("Marginalizing over phase and time")
+                logging.info("Marginalizing over phase and time")
             elif self.marginalization == "time":
                 self.param_func = lambda x: {**x, "t_c": 0.0}
                 self.likelihood_function = time_marginalized_likelihood
-                print("Marginalizing over time")
+                logging.info("Marginalizing over time")
             elif self.marginalization == "phase":
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
-                print("Marginalizing over phase")
+                logging.info("Marginalizing over phase")
 
             if "time" in self.marginalization:
                 fs = kwargs["sampling_rate"]
@@ -127,22 +157,19 @@ class TransientLikelihoodFD(SingleEventLiklihood):
 
     @property
     def epoch(self):
-        """
-        The epoch of the data.
+        """The epoch of the data.
         """
         return self.duration - self.post_trigger_duration
 
     @property
     def ifos(self):
-        """
-        The interferometers for the likelihood.
+        """The interferometers for the likelihood.
         """
         return [detector.name for detector in self.detectors]
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
-        """
-        Evaluate the likelihood for a given set of parameters.
+        """Evaluate the likelihood for a given set of parameters.
         """
         frequencies = self.frequencies
         params["gmst"] = self.gmst
@@ -160,6 +187,8 @@ class TransientLikelihoodFD(SingleEventLiklihood):
             waveform_sky,
             self.detectors,
             frequencies,
+            self.datas,
+            self.psds,
             align_time,
             **self.kwargs,
         )
@@ -194,9 +223,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self,
         detectors: list[Detector],
         waveform: Waveform,
+        f_min: Float = 0,
+        f_max: Float = float("inf"),
         n_bins: int = 100,
         trigger_time: float = 0,
-        duration: float = 4,
         post_trigger_duration: float = 2,
         popsize: int = 100,
         n_steps: int = 2000,
@@ -208,10 +238,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         **kwargs,
     ) -> None:
         super().__init__(
-            detectors, waveform, trigger_time, duration, post_trigger_duration
+            detectors, waveform, f_min, f_max, trigger_time, post_trigger_duration
         )
 
-        print("Initializing heterodyned likelihood..")
+        logging.info("Initializing heterodyned likelihood..")
 
         # Can use another waveform to use as reference waveform, but if not provided, use the same waveform
         if reference_waveform is None:
@@ -230,7 +260,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 self.rb_likelihood_function = (
                     phase_marginalized_relative_binning_likelihood
                 )
-                print("Marginalizing over phase")
+                logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
@@ -242,14 +272,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # e.g. {'M_c': 1.1975, 't_c': 0}
         if "fixing_parameters" in self.kwargs:
             fixing_parameters = self.kwargs["fixing_parameters"]
-            print(f"Parameters are fixed {fixing_parameters}")
+            logging.info(f"Parameters are fixed {fixing_parameters}")
             # check for conflict with the marginalization
             assert not (
                 "t_c" in fixing_parameters and "time" in self.marginalization
-            ), "Cannot have t_c fixed while having the marginalization of t_c turned on"
+            ), "Cannot have t_c fixed while marginalizing over t_c"
             assert not (
                 "phase_c" in fixing_parameters and "phase" in self.marginalization
-            ), "Cannot have phase_c fixed while having the marginalization of phase_c turned on"
+            ), "Cannot have phase_c fixed while marginalizing over phase_c"
             # if the same key exists in both dictionary,
             # the later one will overwrite the former one
             self.fixing_func = lambda x: {**x, **fixing_parameters}
@@ -267,9 +297,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         if ref_params:
             self.ref_params = ref_params
-            print(f"Reference parameters provided, which are {self.ref_params}")
+            logging.info(f"Reference parameters provided, which are {self.ref_params}")
         elif prior:
-            print("No reference parameters are provided, finding it...")
+            logging.info("No reference parameters are provided, finding it...")
             ref_params = self.maximize_likelihood(
                 prior=prior,
                 sample_transforms=sample_transforms,
@@ -278,7 +308,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 n_steps=n_steps,
             )
             self.ref_params = {key: float(value) for key, value in ref_params.items()}
-            print(f"The reference parameters are {self.ref_params}")
+            logging.info(f"The reference parameters are {self.ref_params}")
         else:
             raise ValueError(
                 "Either reference parameters or parameter names must be provided"
@@ -287,10 +317,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # since ripple cannot handle eta=0.25
         if jnp.isclose(self.ref_params["eta"], 0.25):
             self.ref_params["eta"] = 0.249995
-            print("The eta of the reference parameter is close to 0.25")
-            print(f"The eta is adjusted to {self.ref_params['eta']}")
+            logging.info("The eta of the reference parameter is close to 0.25")
+            logging.info(f"The eta is adjusted to {self.ref_params['eta']}")
 
-        print("Constructing reference waveforms..")
+        logging.info("Constructing reference waveforms..")
 
         self.ref_params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
@@ -327,7 +357,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.freq_grid_low = self.freq_grid_low[mask_heterodyne_low]
         self.freq_grid_center = self.freq_grid_center[mask_heterodyne_center]
 
-        # Assure frequency grids have same length
+        # Ensure frequency grids have same length
         if len(self.freq_grid_low) > len(self.freq_grid_center):
             self.freq_grid_low = self.freq_grid_low[: len(self.freq_grid_center)]
 
@@ -357,7 +387,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             * (self.epoch + self.ref_params["t_c"])
         )
 
-        for detector in self.detectors:
+        for detector, data, psd in zip(self.detectors, self.datas, self.psds):
             # Get the reference waveforms
             waveform_ref = (
                 detector.fd_response(frequency_original, h_sky, self.ref_params)
@@ -374,9 +404,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 * align_time_center
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                detector.data,
+                data,
                 waveform_ref,
-                detector.psd,
+                psd,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
@@ -448,6 +478,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             waveform_sky,
             self.detectors,
             frequencies,
+            self.datas,
+            self.psds,
             align_time,
             **self.kwargs,
         )
@@ -569,18 +601,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
-        def y(x):
+        def y(x: Float[Array, " n_dim"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -self.evaluate_original(named_params, {})
+            return -self.evaluate_original(named_params, data)
 
         print("Starting the optimizer")
 
         optimizer = AdamOptimization(
-            n_steps=n_steps, learning_rate=0.001, noise_level=1
+            logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 
         key = jax.random.PRNGKey(0)
@@ -613,11 +645,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
 
-        rng_key, optimized_positions, summary = optimizer.optimize(
-            jax.random.PRNGKey(12094), y, initial_position
+        rng_key, best_fit = optimizer.optimize(
+            jax.random.PRNGKey(12094), y, initial_position, {}
         )
-
-        best_fit = optimized_positions[jnp.argmin(summary["final_log_prob"])]
 
         named_params = dict(zip(parameter_names, best_fit))
         for transform in reversed(sample_transforms):
@@ -638,17 +668,20 @@ def original_likelihood(
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
     freqs: Float[Array, " n_dim"],
+    datas: list[Float[Array, " n_dim"]],
+    psds: list[Float[Array, " n_dim"]],
     align_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     df = freqs[1] - freqs[0]
-    for detector in detectors:
+    for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
+        # NOTE: do we want to take the slide outside the likelihood?
         match_filter_SNR = (
-            4 * jnp.sum((jnp.conj(h_dec) * detector.data) / detector.psd * df).real
+            4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
         )
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
 
     return log_likelihood
@@ -659,18 +692,20 @@ def phase_marginalized_likelihood(
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
     freqs: Float[Array, " n_dim"],
+    datas: list[Float[Array, " n_dim"]],
+    psds: list[Float[Array, " n_dim"]],
     align_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_d_inner_h = 0.0
     df = freqs[1] - freqs[0]
-    for detector in detectors:
+    for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
         complex_d_inner_h += 4 * jnp.sum(
-            (jnp.conj(h_dec) * detector.data) / detector.psd * df
+            (jnp.conj(h_dec) * data) / psd * df
         )
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 
     log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
@@ -683,6 +718,8 @@ def time_marginalized_likelihood(
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
     freqs: Float[Array, " n_dim"],
+    datas: list[Float[Array, " n_dim"]],
+    psds: list[Float[Array, " n_dim"]],
     align_time: Float,
     **kwargs,
 ) -> Float:
@@ -690,10 +727,10 @@ def time_marginalized_likelihood(
     df = freqs[1] - freqs[0]
     # using <h|d> instead of <d|h>
     complex_h_inner_d = jnp.zeros_like(freqs)
-    for detector in detectors:
+    for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
-        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
@@ -732,6 +769,8 @@ def phase_time_marginalized_likelihood(
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
     freqs: Float[Array, " n_dim"],
+    datas: list[Float[Array, " n_dim"]],
+    psds: list[Float[Array, " n_dim"]],
     align_time: Float,
     **kwargs,
 ) -> Float:
@@ -739,10 +778,10 @@ def phase_time_marginalized_likelihood(
     df = freqs[1] - freqs[0]
     # using <h|d> instead of <d|h>
     complex_h_inner_d = jnp.zeros_like(freqs)
-    for detector in detectors:
+    for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
-        complex_h_inner_d += 4 * h_dec * jnp.conj(detector.data) / detector.psd * df
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / detector.psd * df).real
+        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
+        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
