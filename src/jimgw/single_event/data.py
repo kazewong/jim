@@ -26,9 +26,9 @@ asd_file_dict = {
 class Data(ABC):
     """Base class for all data.
 
-    The time domain data are considered the primary entity; the Fourier domain 
-    data are derived from an FFT after applying a window. The structure is set up 
-    so that td and fd are always Fourier conjugates of each other: the one-sided 
+    The time domain data are considered the primary entity; the Fourier domain
+    data are derived from an FFT after applying a window. The structure is set up
+    so that td and fd are always Fourier conjugates of each other: the one-sided
     Fourier series is complete up to the Nyquist frequency.
 
     Attributes:
@@ -51,7 +51,7 @@ class Data(ABC):
 
     def __len__(self) -> int:
         """Returns the length of the time-domain data.
-        
+
         Returns:
             int: Length of time domain data array.
         """
@@ -59,7 +59,7 @@ class Data(ABC):
 
     def __iter__(self):
         """Iterator over the time-domain data.
-        
+
         Returns:
             iterator: Iterator over time domain data.
         """
@@ -68,16 +68,16 @@ class Data(ABC):
     @property
     def empty(self) -> bool:
         """Checks if the data is empty.
-        
+
         Returns:
             bool: True if data is empty, False otherwise.
         """
         return len(self.td) == 0
 
-    @property 
+    @property
     def n_time(self) -> int:
         """Gets number of time samples.
-        
+
         Returns:
             int: Number of time domain samples.
         """
@@ -86,7 +86,7 @@ class Data(ABC):
     @property
     def n_freq(self) -> int:
         """Gets number of frequency samples.
-        
+
         Returns:
             int: Number of frequency domain samples.
         """
@@ -95,16 +95,16 @@ class Data(ABC):
     @property
     def duration(self) -> float:
         """Gets duration of the data in seconds.
-        
+
         Returns:
             float: Duration in seconds.
         """
-        return self.n_time * self.delta_t
+        return (self.n_time - 1) * self.delta_t
 
     @property
     def sampling_frequency(self) -> float:
         """Gets sampling frequency of the data.
-        
+
         Returns:
             float: Sampling frequency in Hz.
         """
@@ -113,7 +113,7 @@ class Data(ABC):
     @property
     def times(self) -> Float[Array, " n_time"]:
         """Gets time points of the data.
-        
+
         Returns:
             Array: Array of time points in seconds.
         """
@@ -122,7 +122,7 @@ class Data(ABC):
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
         """Gets frequencies of the data.
-        
+
         Returns:
             Array: Array of frequencies in Hz.
         """
@@ -131,7 +131,7 @@ class Data(ABC):
     @property
     def has_fd(self) -> bool:
         """Checks if Fourier domain data exists.
-        
+
         Returns:
             bool: True if Fourier domain data exists, False otherwise.
         """
@@ -263,7 +263,7 @@ class Data(ABC):
                 frequencies: Float[Array, " n_freq"],
                 epoch: Optional[float] = 0.,
                 name: str = '') -> "Data":
-        """Create a Data object starting from (potentially incomplete) 
+        """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
         Args:
@@ -312,7 +312,7 @@ class Data(ABC):
 
 class PowerSpectrum(ABC):
     """Class representing a power spectral density.
-    
+
     Attributes:
         name: Name of the power spectrum.
         values: Array of PSD values.
@@ -390,7 +390,7 @@ class PowerSpectrum(ABC):
 
     def __bool__(self) -> bool:
         """Check if the power spectrum is empty.
-        
+
         Returns:
             bool: True if power spectrum contains data, False otherwise.
         """
