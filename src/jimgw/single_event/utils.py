@@ -217,7 +217,7 @@ def eta_to_q(eta: Float) -> Float:
             Mass ratio.
     """
     temp = 1 / eta / 2 - 1
-    return temp - (temp ** 2 - 1) ** 0.5
+    return temp - (temp**2 - 1) ** 0.5
 
 
 def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
@@ -233,7 +233,7 @@ def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
     norm = jnp.linalg.vector_norm(delta_x)
 
     cos_beta = delta_x[2] / norm
-    sin_beta = jnp.sqrt(1 - cos_beta ** 2)
+    sin_beta = jnp.sqrt(1 - cos_beta**2)
 
     alpha = jnp.arctan2(-delta_x[1] * cos_beta, delta_x[0])
     gamma = jnp.arctan2(delta_x[1], delta_x[0])
