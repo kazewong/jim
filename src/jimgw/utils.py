@@ -11,15 +11,11 @@ def log_i0(x: Float[Array, " n"]) -> Float[Array, " n"]:
     a modified Bessel function of order 0.
     It is used in the phase-marginalized likelihood.
 
-    Parameters
-    ==========
-    x: array-like
-        Value(s) at which to evaluate the function
+    Args:
+        x (array-like): Value(s) at which to evaluate the function.
 
-    Returns
-    =======
-    array-like:
-        The natural logarithm of the bessel function
+    Returns:
+        array-like: The natural logarithm of the Bessel function.
     """
     return jnp.log(i0e(x)) + x
 
@@ -31,22 +27,16 @@ def safe_arctan2(
     A numerically stable method to evaluate arctan2 upon taking gradient.
 
     The gradient (jnp.jacfwd) of the default jnp.arctan2 is undefined
-    at (0, 0) and returns NaN. This function circumvent this issue by
+    at (0, 0) and returns NaN. This function circumvents this issue by
     specifying a default value at that point.
 
-    Parameters
-    ==========
-    y: array-like
-        y-coordinate of the point
-    x: array-like
-        x-coordinate of the point
-    default_value: float
-        arctan2 value to return at (0, 0), default is 0.0
+    Args:
+        y (array-like): y-coordinate of the point.
+        x (array-like): x-coordinate of the point.
+        default_value (float): arctan2 value to return at (0, 0). Default is 0.0.
 
-    Returns
-    =======
-    array-like:
-        The signed azimuthal angle, in radians, within [-π, π]
+    Returns:
+        array-like: The signed azimuthal angle, in radians, within [-π, π].
     """
     return jnp.where(
         (jnp.abs(x) < EPS) & (jnp.abs(y) < EPS),
@@ -62,25 +52,19 @@ def safe_polar_angle(
     A numerically stable method to compute the polar angle upon taking gradient.
 
     The canonical computation is:
-        theta = ArcCos[ z / Sqrt[x^2 + y^2 + z^2] ] .
+        theta = ArcCos[ z / Sqrt[x^2 + y^2 + z^2] ].
     The gradient (jnp.jacfwd) of this method, however,
     will return NaN when both x and y are 0.
-    This function circumvent this issue by specifying computing the simplified
+    This function circumvents this issue by computing the simplified
     expression of the function at the troubled point.
 
-    Parameters
-    ==========
-    x: array-like
-        x-coordinate of the point
-    y: array-like
-        y-coordinate of the point
-    z: array-like
-        z-coordinate of the point
+    Args:
+        x (array-like): x-coordinate of the point.
+        y (array-like): y-coordinate of the point.
+        z (array-like): z-coordinate of the point.
 
-    Returns
-    =======
-    array-like:
-        The polar angle, in radians, within [0, π]
+    Returns:
+        array-like: The polar angle, in radians, within [0, π].
     """
     return jnp.where(
         (jnp.abs(x) < EPS) & (jnp.abs(y) < EPS),
@@ -98,27 +82,20 @@ def carte_to_spherical_angles(
     """
     A numerically stable method to compute the spherical angles upon taking gradient.
 
-    For more details, see
-    * `safe_polar_angle` for the polar angle and
+    For more details, see:
+    * `safe_polar_angle` for the polar angle.
     * `safe_arctan2` for the azimuthal angle.
 
-    Parameters
-    ==========
-    x: array-like
-        x-coordinate of the point
-    y: array-like
-        y-coordinate of the point
-    z: array-like
-        z-coordinate of the point
-    default_value: float
-        arctan2 value to return at (0, 0), default is 0.0
+    Args:
+        x (array-like): x-coordinate of the point.
+        y (array-like): y-coordinate of the point.
+        z (array-like): z-coordinate of the point.
+        default_value (float): arctan2 value to return at (0, 0). Default is 0.0.
 
-    Returns
-    =======
-    theta: array-like:
-        The polar angle, in radians, within [0, π]
-    phi: array-like:
-        The signed azimuthal angle, in radians, within [-π, π]
+    Returns:
+        tuple: A tuple containing:
+            - theta (array-like): The polar angle, in radians, within [0, π].
+            - phi (array-like): The signed azimuthal angle, in radians, within [-π, π].
     """
     align_condition = (jnp.absolute(x) < EPS) & (jnp.absolute(y) < EPS)
     theta = jnp.where(
