@@ -143,7 +143,7 @@ class Data(ABC):
         self,
         td: Float[Array, " n_time"] = jnp.array([]),
         delta_t: float = 0.0,
-        epoch: Optional[float] = 0.0,
+        epoch: float = 0.0,
         name: str = "",
         window: Optional[Float[Array, " n_time"]] = None,
     ) -> None:
