@@ -1,5 +1,5 @@
-from jimgw.run.single_event_run import TestSingleEventRun
+from jimgw.run.library.IMRPhenomPv2_standard_cbc import TestIMRPhenomPv2StandardCBCRun
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 
-run_manager = SingleEventRunManager(TestSingleEventRun())
+run_manager = SingleEventRunManager(TestIMRPhenomPv2StandardCBCRun())
 print(run_manager.run)

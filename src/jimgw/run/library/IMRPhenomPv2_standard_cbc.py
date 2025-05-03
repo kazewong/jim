@@ -27,6 +27,7 @@ from jimgw.core.single_event.transforms import (
 
 from typing import Sequence, Self
 import yaml
+import logging
 
 
 
@@ -51,7 +52,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
     def __init__(
         self,
         seed: int,
-        gps: int,
+        gps: float,
         segment_length: float,
         post_trigger_length: float,
         f_min: float,
@@ -70,10 +71,6 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         ra_prior: tuple[float, float],
     ):
 
-        self.likelihood = self.initialize_likelihood()
-        self.prior = self.initialize_prior()
-        self.likelihood_transforms = self.initialize_likelihood_transforms()
-        self.sample_transforms = self.initialize_sample_transforms()
 
         self.seed = seed
         self.gps = gps
@@ -95,7 +92,14 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         self.psi_prior = psi_prior
         self.ra_prior = ra_prior
 
+        self.likelihood = self.initialize_likelihood()
+        self.prior = self.initialize_prior()
+        self.likelihood_transforms = self.initialize_likelihood_transforms()
+        self.sample_transforms = self.initialize_sample_transforms()
+
+
     def initialize_likelihood(self) -> TransientLikelihoodFD:
+        logging.info("Initializing likelihood...")
         # first, fetch a 4s segment centered on GW150914
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
@@ -126,6 +130,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
     def initialize_prior(self) -> CombinePrior:
 
+        logging.info("Initializing prior...")
         # Mass prior
         Mc_prior = UniformPrior(
             self.M_c_range[0], self.M_c_range[1], parameter_names=["M_c"]
@@ -180,6 +185,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         return CombinePrior(prior)
 
     def initialize_likelihood_transforms(self) -> Sequence[NtoMTransform]:
+        logging.info("Initializing likelihood transforms...")
         return [
             MassRatioToSymmetricMassRatioTransform,
             SphereSpinToCartesianSpinTransform("s1"),
@@ -187,6 +193,7 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         ]
 
     def initialize_sample_transforms(self) -> Sequence[BijectiveTransform]:
+        logging.info("Initializing sample transforms...")
         return [
             DistanceToSNRWeightedDistanceTransform(
                 gps_time=self.gps,
@@ -332,13 +339,13 @@ class TestIMRPhenomPv2StandardCBCRun(IMRPhenomPv2StandardCBCRun):
     def __init__(self):
         super().__init__(
             seed=123130941092,
-            gps=1234567890,
-            segment_length=10,
-            post_trigger_length=5,
+            gps=1126259462.4,
+            segment_length=4,
+            post_trigger_length=2,
             f_min=20,
             f_max=2000,
             ifos={"H1", "L1"},
-            f_ref=100,
+            f_ref=20,
             M_c_range=(1.0, 100.0),
             q_range=(1.0, 100.0),
             max_s1=0.99,

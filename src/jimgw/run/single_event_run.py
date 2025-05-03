@@ -13,7 +13,7 @@ class SingleEventRun(Run):
     """
 
     # Likelihood parameters
-    gps: int  # GPS time of the event trigger
+    gps: float  # GPS time of the event trigger
     segment_length: float  # Length of the segment
     post_trigger_length: float  # Length of segment after the trigger
     f_min: float  # Minimum frequency
