@@ -9,6 +9,7 @@ from jimgw.run.run import Run
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.nf_model.base import NFModel
 import logging
+import os
 
 
 class RunManager:
@@ -16,7 +17,7 @@ class RunManager:
     jim: Jim
     result_dir: str
 
-    def __init__(self, run: Run | str, result_dir: str = "./", **flowMC_params):
+    def __init__(self, run: Run | str, result_dir: str = "./runs", **flowMC_params):
         if isinstance(run, Run):
             self.run = run
         elif isinstance(run, str):
@@ -35,6 +36,8 @@ class RunManager:
             **flowMC_params,
         )
 
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
         self.result_dir = result_dir
 
     ### Utility functions ###
@@ -100,9 +103,7 @@ class RunManager:
         assert isinstance(
             nf_model := self.jim.sampler.resources["model"], NFModel
         ), "NF model is not a normalizing flow model"
-        samples = nf_model.sample(
-            jax.random.PRNGKey(0), 10000
-        )
+        samples = nf_model.sample(jax.random.PRNGKey(0), 10000)
         param_names = list(self.jim.get_samples().keys())
         samples = np.array(samples).reshape(int(len(param_names)), -1).T
         corner.corner(
@@ -141,22 +142,25 @@ class RunManager:
         Plot the local and global acceptance rates during sampling.
         """
         plt.figure(figsize=(10, 8))
-        plt.subplot(2, 1, 1)
-        plt.title("Local acceptance rate")
-        local_acc = np.array(self.jim.sampler.resources["local_accs_training"])
-        plt.plot(local_acc)
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-        plt.ylabel("acceptance rate")
+        fig, axs = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+        fig.suptitle("Acceptance Rates", fontsize=16)
 
-        plt.subplot(2, 1, 2)
-        plt.title("Global acceptance rate")
-        global_acc = np.array(self.jim.sampler.resources["global_accs_training"])
-        plt.plot(global_acc)
-        plt.xlabel("iteration")
-        plt.xlim(0, None)
-        plt.ylabel("acceptance rate")
+        assert isinstance(
+            local_acc := self.jim.sampler.resources["local_accs_training"], Buffer
+        ), "Local acceptance rate is not a Buffer"
+        axs[0].plot(np.mean(local_acc.data, axis=0))
+        axs[0].set_title("Local acceptance rate", fontsize=12)
+        axs[0].set_ylabel("Acceptance rate")
 
+        assert isinstance(
+            global_acc := self.jim.sampler.resources["global_accs_training"], Buffer
+        ), "Global acceptance rate is not a Buffer"
+        axs[1].plot(np.mean(global_acc.data, axis=0))
+        axs[1].set_title("Global acceptance rate", fontsize=12)
+        axs[1].set_xlabel("Iteration")
+        axs[1].set_ylabel("Acceptance rate")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust layout to fit the suptitle
         path = f"{self.result_dir}/acceptance_rates.jpeg"
         plt.savefig(path)
         plt.close()
@@ -175,7 +179,7 @@ class RunManager:
         summary = {}
         for i, param in enumerate(param_names):
             param_samples = samples_array[:, i]
-            quantiles = np.percentile(param_samples, [16, 50, 84])
+            quantiles = np.percentile(param_samples, [5, 50, 95])
             summary[param] = {
                 "median": quantiles[1],
                 "lower_err": quantiles[1] - quantiles[0],
@@ -190,4 +194,4 @@ class RunManager:
         """
         Serialize the run object to a file.
         """
-        self.run.serialize(self.result_dir + "/config.yaml")        
+        self.run.serialize(self.result_dir + "/config.yaml")
