@@ -218,10 +218,9 @@ class Data(ABC):
         if auto_fft and not self.has_fd:
             self.fft()
         f = self.frequencies
-        assert (f_min >= f.min()) and (
-            f_max <= f.max()
-        ), "Frequency range is out of bounds"
-        return self.fd[(f >= f_min) & (f <= f_max)], f[(f >= f_min) & (f <= f_max)]
+
+        return self.fd[(f >= f_min) & (f <= f_max)], \
+            f[(f >= f_min) & (f <= f_max)]
 
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
