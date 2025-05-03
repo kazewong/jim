@@ -40,8 +40,8 @@ class RunManager:
     ### Utility functions ###
 
     def sample(self):
-        raise NotImplementedError
-        # self.jim.sample(jax.random.PRNGKey(self.run.seed))
+        logging.info("Starting sampling...")
+        self.jim.sample(self.jim.sample_initial_condition())
 
     def get_samples(
         self, training: bool = False
