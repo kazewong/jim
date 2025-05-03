@@ -10,8 +10,10 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1, V1
-from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+
+import jimgw.core.single_event.data as jd
+from jimgw.core.single_event.detector import detector_preset
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD, ZeroLikelihood
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound, BijectiveTransform, NtoMTransform
 from jimgw.core.single_event.transforms import (
@@ -23,9 +25,9 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
-from typing import Sequence
+from typing import Sequence, Self
+import yaml
 
-detector_enum = {"H1": H1, "L1": L1, "V1": V1}
 
 
 class IMRPhenomPv2StandardCBCRun(SingleEventRun):
@@ -48,10 +50,14 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
 
     def __init__(
         self,
+        seed: int,
         gps: int,
-        segment_length: int,
-        post_trigger_length: int,
+        segment_length: float,
+        post_trigger_length: float,
+        f_min: float,
+        f_max: float,
         ifos: set[str],
+        f_ref: float,
         M_c_range: tuple[float, float],
         q_range: tuple[float, float],
         max_s1: float,
@@ -69,13 +75,14 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         self.likelihood_transforms = self.initialize_likelihood_transforms()
         self.sample_transforms = self.initialize_sample_transforms()
 
+        self.seed = seed
         self.gps = gps
         self.segment_length = segment_length
         self.post_trigger_length = post_trigger_length
-        self.f_min = 20
-        self.f_max = 1024
-        self.ifos = [detector_enum[ifo] for ifo in ifos]
-        self.f_ref = 20
+        self.f_min = f_min
+        self.f_max = f_max
+        self.ifos = [detector_preset[ifo] for ifo in ifos]
+        self.f_ref = f_ref
 
         self.M_c_range = M_c_range
         self.q_range = q_range
@@ -93,13 +100,17 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
+        psd_start = gps - 2048
+        psd_end = gps + 2048
 
         for ifo in self.ifos:
-            if ifo not in detector_enum.values():
+            if ifo not in detector_preset.values():
                 raise ValueError(f"Invalid detector: {ifo}")
-            ifo.load_data(
-                gps, start, end, self.f_min, self.f_max, psd_pad=16, tukey_alpha=0.2
-            )
+            ifo_data = jd.Data.from_gwosc(ifo.name, start, end)
+            ifo.set_data(ifo_data)
+            ifo_psd = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+            psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
+            ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
 
@@ -262,8 +273,81 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
             ),
         ]
 
-    def serialize(self, path="./"):
-        raise NotImplementedError("Serialization not implemented yet.")
+    def serialize(self, path: str = "./"):
+        run_dict = {
+            "seed": self.seed,
+            "gps": self.gps,
+            "segment_length": self.segment_length,
+            "post_trigger_length": self.post_trigger_length,
+            "f_min": self.f_min,
+            "f_max": self.f_max,
+            "ifos": [ifo.name for ifo in self.ifos],
+            "f_ref": self.f_ref,
+            "M_c_range": self.M_c_range,
+            "q_range": self.q_range,
+            "max_s1": self.max_s1,
+            "max_s2": self.max_s2,
+            "iota_range": self.iota_range,
+            "dL_range": self.dL_range,
+            "t_c_range": self.t_c_range,
+            "phase_c_range": self.phase_c_range,
+            "psi_prior": self.psi_prior,
+            "ra_prior": self.ra_prior,
+        }
+        with open(path, "w") as f:
+            yaml.dump(run_dict, f)
+        print(f"Run serialized to {path}")
 
-    def deserialize(self, path):
-        raise NotImplementedError("Deserialization not implemented yet.")
+    @classmethod
+    def deserialize(cls, path: str) -> Self:
+        with open(path, "r") as f:
+            run_dict = yaml.safe_load(f)
+        run = cls(
+            seed=run_dict["seed"],
+            gps=run_dict["gps"],
+            segment_length=run_dict["segment_length"],
+            post_trigger_length=run_dict["post_trigger_length"],
+            f_min=run_dict["f_min"],
+            f_max=run_dict["f_max"],
+            ifos=set(run_dict["ifos"]),
+            f_ref=run_dict["f_ref"],
+            M_c_range=tuple(run_dict["M_c_range"]),
+            q_range=tuple(run_dict["q_range"]),
+            max_s1=run_dict["max_s1"],
+            max_s2=run_dict["max_s2"],
+            iota_range=tuple(run_dict["iota_range"]),
+            dL_range=tuple(run_dict["dL_range"]),
+            t_c_range=tuple(run_dict["t_c_range"]),
+            phase_c_range=tuple(run_dict["phase_c_range"]),
+            psi_prior=tuple(run_dict["psi_prior"]),
+            ra_prior=tuple(run_dict["ra_prior"]),
+        )
+        return run
+    
+class TestIMRPhenomPv2StandardCBCRun(IMRPhenomPv2StandardCBCRun):
+    """
+    A test run with zero likelihood
+    """
+
+    def __init__(self):
+        super().__init__(
+            seed=123130941092,
+            gps=1234567890,
+            segment_length=10,
+            post_trigger_length=5,
+            f_min=20,
+            f_max=2000,
+            ifos={"H1", "L1"},
+            f_ref=100,
+            M_c_range=(1.0, 100.0),
+            q_range=(1.0, 100.0),
+            max_s1=0.99,
+            max_s2=0.99,
+            iota_range=(0.0, jnp.pi),
+            dL_range=(1.0, 10000.0),
+            t_c_range=(-0.05, 0.05),
+            phase_c_range=(0.0, 2 * jnp.pi),
+            psi_prior=(0.0, jnp.pi),
+            ra_prior=(0.0, 2 * jnp.pi),
+        )
+        self.likelihood = ZeroLikelihood()

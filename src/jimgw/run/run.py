@@ -15,7 +15,8 @@ class Run(ABC):
 
     The most important property of a Run instance is it needs to be able to deterministically declared. All arguments to a run has to be explicitly provided, and the content of a Run should be exactly the same given the same arguments.
     """
-
+    
+    seed: int
     likelihood: LikelihoodBase
     prior: Prior
     sample_transforms: Sequence[BijectiveTransform]
@@ -25,8 +26,8 @@ class Run(ABC):
     def serialize(self, path: str = "./"):
         """Serialize a `Run` object into a human readble config file."""
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def deserialize(cls, path: str) -> Self:
         """Deserialize a config file into a `Run` object"""
 

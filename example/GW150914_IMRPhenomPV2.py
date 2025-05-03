@@ -24,7 +24,7 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.single_event import data as jd
+from jimgw.core.single_event import data as jd
 
 jax.config.update("jax_enable_x64", True)
 
