@@ -1,4 +1,4 @@
-from jimgw.run_manager.run import Run
+from jimgw.run.run import Run
 from jimgw.core.single_event.detector import GroundBased2G, H1, L1, detector_preset
 from jimgw.core.single_event.likelihood import ZeroLikelihood
 from jimgw.core.prior import (

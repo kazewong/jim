@@ -1,6 +1,6 @@
 from jaxtyping import Float, Array
 
-from jimgw.run_manager.run_manager import RunManager
+from jimgw.run.run_manager import RunManager
 
 
 class SingleEventRunManager(RunManager):

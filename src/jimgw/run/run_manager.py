@@ -4,7 +4,7 @@ import numpy as np
 import jax
 from jaxtyping import Float, Array
 from jimgw.core.jim import Jim
-from jimgw.run_manager.run import Run
+from jimgw.run.run import Run
 
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.nf_model.base import NFModel
@@ -187,4 +187,7 @@ class RunManager:
         return summary
 
     def serialize_run(self):
-        pass
+        """
+        Serialize the run object to a file.
+        """
+        self.run.serialize(self.result_dir + "/config.yaml")        

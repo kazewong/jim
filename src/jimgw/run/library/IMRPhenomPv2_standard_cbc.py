@@ -1,4 +1,4 @@
-from jimgw.run_manager.single_event_run import SingleEventRun
+from jimgw.run.single_event_run import SingleEventRun
 
 import jax.numpy as jnp
 
