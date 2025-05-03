@@ -93,7 +93,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.trigger_time = trigger_time
         self.duration = duration = self.detectors[0].data.duration
         self.start_time = start_time
-        self.post_trigger_duration = start_time + duration - trigger_time
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -157,7 +156,10 @@ class TransientLikelihoodFD(SingleEventLikelihood):
     def epoch(self):
         """The epoch of the data.
         """
-        return self.duration - self.post_trigger_duration
+        # The previous definition was:
+        # post_trigger_duration = start_time + duration - trigger_time
+        # return duration - post_trigger_duration
+        return self.trigger_time - self.start_time
 
     @property
     def ifos(self):
