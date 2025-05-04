@@ -23,6 +23,7 @@ asd_file_dict = {
     "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
 }
 
+
 class Detector(ABC):
     """Base class for all detectors.
 
@@ -40,12 +41,11 @@ class Detector(ABC):
     data: jd.Data
     psd: jd.PowerSpectrum
 
-    frequency_bounds: tuple[float, float] = (0., float("inf"))
+    frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
     @property
     def epoch(self):
-        """The epoch of the data.
-        """
+        """The epoch of the data."""
         return self.data.epoch
 
     @abstractmethod
@@ -96,8 +96,9 @@ class Detector(ABC):
         """
         pass
 
-    def set_frequency_bounds(self, f_min: Optional[float] = None,
-                             f_max: Optional[float] = None) -> None:
+    def set_frequency_bounds(
+        self, f_min: Optional[float] = None, f_max: Optional[float] = None
+    ) -> None:
         """Set the frequency bounds for the detector.
 
         Args:
@@ -151,6 +152,7 @@ class GroundBased2G(Detector):
         data (jd.Data): Array of Fourier-domain strain data.
         psd (jd.PowerSpectrum): Power spectral density object.
     """
+
     polarization_mode: list[Polarization]
     data: jd.Data
     psd: jd.PowerSpectrum
@@ -166,10 +168,18 @@ class GroundBased2G(Detector):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.name})"
 
-    def __init__(self, name: str, latitude: float = 0, longitude: float = 0,
-                 elevation: float = 0, xarm_azimuth: float = 0,
-                 yarm_azimuth: float = 0, xarm_tilt: float = 0,
-                 yarm_tilt: float = 0, modes: str = "pc"):
+    def __init__(
+        self,
+        name: str,
+        latitude: float = 0,
+        longitude: float = 0,
+        elevation: float = 0,
+        xarm_azimuth: float = 0,
+        yarm_azimuth: float = 0,
+        xarm_tilt: float = 0,
+        yarm_tilt: float = 0,
+        modes: str = "pc",
+    ):
         """Initialize a ground-based detector.
 
         Args:
@@ -214,14 +224,10 @@ class GroundBased2G(Detector):
         """
         e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
         e_lat = jnp.array(
-            [-jnp.sin(lat) * jnp.cos(lon),
-             -jnp.sin(lat) * jnp.sin(lon),
-             jnp.cos(lat)]
+            [-jnp.sin(lat) * jnp.cos(lon), -jnp.sin(lat) * jnp.sin(lon), jnp.cos(lat)]
         )
         e_h = jnp.array(
-            [jnp.cos(lat) * jnp.cos(lon),
-             jnp.cos(lat) * jnp.sin(lon),
-             jnp.sin(lat)]
+            [jnp.cos(lat) * jnp.cos(lon), jnp.cos(lat) * jnp.sin(lon), jnp.sin(lat)]
         )
 
         return (
@@ -284,8 +290,8 @@ class GroundBased2G(Detector):
         h = self.elevation
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
-        r = major ** 2 * (
-            major ** 2 * jnp.cos(lat) ** 2 + minor ** 2 * jnp.sin(lat) ** 2
+        r = major**2 * (
+            major**2 * jnp.cos(lat) ** 2 + minor**2 * jnp.sin(lat) ** 2
         ) ** (-0.5)
         x = (r + h) * jnp.cos(lat) * jnp.cos(lon)
         y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
@@ -297,9 +303,9 @@ class GroundBased2G(Detector):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
-        trigger_time: Float=0.0
+        trigger_time: Float = 0.0,
     ) -> Array:
-        """Project the frequency-domain waveform onto the detector response, 
+        """Project the frequency-domain waveform onto the detector response,
         and apply the time shift to align the peak time to the data.
 
         Args:
@@ -407,7 +413,9 @@ class GroundBased2G(Detector):
         )
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict[str, Float]:
+    def antenna_pattern(
+        self, ra: Float, dec: Float, psi: Float, gmst: Float
+    ) -> dict[str, Float]:
         """Compute antenna patterns for polarizations at specified sky location.
 
         In the long-wavelength approximation, the antenna pattern for a
@@ -453,7 +461,7 @@ class GroundBased2G(Detector):
             data = requests.get(url)
             open(self.name + ".txt", "wb").write(data.content)
             f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
-            psd_vals = asd_vals ** 2
+            psd_vals = asd_vals**2
         else:
             f, psd_vals = np.loadtxt(psd_file, unpack=True)
 

@@ -58,9 +58,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         # make sure data has a Fourier representation
         for det in detectors:
             if not det.data:
-                raise ValueError(
-                    f"Detector {det.name} does not have data."
-                )
+                raise ValueError(f"Detector {det.name} does not have data.")
             if not det.data.has_fd:
                 logging.info("Computing FFT with default window")
                 det.data.fft()
@@ -71,12 +69,14 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             datas.append(data)
             psds.append(psd)
             # make sure the psd and data are consistent
-            assert (freq_0 == freq_1).all(), \
-                f"The {det.name} data and PSD must have same frequencies"
+            assert (
+                freq_0 == freq_1
+            ).all(), f"The {det.name} data and PSD must have same frequencies"
 
         # make sure all detectors are consistent
-        assert all([(freqs[0] == freq).all() for freq in freqs]), \
-            "The detectors must have the same frequency grid"
+        assert all(
+            [(freqs[0] == freq).all() for freq in freqs]
+        ), "The detectors must have the same frequency grid"
 
         self.frequencies = freqs[0]  # type: ignore
         self.datas = datas
@@ -84,8 +84,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         self.waveform = waveform
         self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent",
-                                                           "greenwich").rad
+            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
 
         self.trigger_time = trigger_time
@@ -151,14 +150,12 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
     @property
     def detector_names(self):
-        """The interferometers for the likelihood.
-        """
+        """The interferometers for the likelihood."""
         return [detector.name for detector in self.detectors]
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
-        """Evaluate the likelihood for a given set of parameters.
-        """
+        """Evaluate the likelihood for a given set of parameters."""
         frequencies = self.frequencies
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
@@ -220,9 +217,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         likelihood_transforms: list[NtoMTransform] = [],
         **kwargs,
     ) -> None:
-        super().__init__(
-            detectors, waveform, f_min, f_max, trigger_time
-        )
+        super().__init__(detectors, waveform, f_min, f_max, trigger_time)
 
         logging.info("Initializing heterodyned likelihood..")
 
@@ -350,11 +345,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for detector, data, psd in zip(self.detectors, self.datas, self.psds):
             # Get the reference waveforms
             waveform_ref = detector.fd_full_response(
-                    frequency_original, h_sky, self.ref_params, trigger_time)
+                frequency_original, h_sky, self.ref_params, trigger_time
+            )
             self.waveform_low_ref[detector.name] = detector.fd_full_response(
-                    self.freq_grid_low, h_sky_low, self.ref_params, trigger_time)
+                self.freq_grid_low, h_sky_low, self.ref_params, trigger_time
+            )
             self.waveform_center_ref[detector.name] = detector.fd_full_response(
-                    self.freq_grid_center, h_sky_center, self.ref_params, trigger_time)
+                self.freq_grid_center, h_sky_center, self.ref_params, trigger_time
+            )
             A0, A1, B0, B1 = self.compute_coefficients(
                 data,
                 waveform_ref,
@@ -603,9 +601,7 @@ def original_likelihood(
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
         # NOTE: do we want to take the slide outside the likelihood?
-        match_filter_SNR = (
-            4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
-        )
+        match_filter_SNR = 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
         optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
 
@@ -627,9 +623,7 @@ def phase_marginalized_likelihood(
     df = freqs[1] - freqs[0]
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
-        complex_d_inner_h += 4 * jnp.sum(
-            (jnp.conj(h_dec) * data) / psd * df
-        )
+        complex_d_inner_h += 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df)
         optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 
@@ -753,15 +747,19 @@ def original_relative_binning_likelihood(
     detectors,
     frequencies_low,
     frequencies_center,
-    trigger_time
+    trigger_time,
     **kwargs,
 ):
 
     log_likelihood = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_full_response(frequencies_low, waveform_sky_low, params, trigger_time)
-        waveform_center = detector.fd_full_response(frequencies_low, waveform_sky_center, params, trigger_time)
+        waveform_low = detector.fd_full_response(
+            frequencies_low, waveform_sky_low, params, trigger_time
+        )
+        waveform_center = detector.fd_full_response(
+            frequencies_low, waveform_sky_center, params, trigger_time
+        )
 
         r0 = waveform_center / waveform_center_ref[detector.name]
         r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
@@ -799,8 +797,12 @@ def phase_marginalized_relative_binning_likelihood(
     complex_d_inner_h = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_full_response(frequencies_low, waveform_sky_low, params, trigger_time)
-        waveform_center = detector.fd_full_response(frequencies_center, waveform_sky_center, params, trigger_time)
+        waveform_low = detector.fd_full_response(
+            frequencies_low, waveform_sky_low, params, trigger_time
+        )
+        waveform_center = detector.fd_full_response(
+            frequencies_center, waveform_sky_center, params, trigger_time
+        )
 
         r0 = waveform_center / waveform_center_ref[detector.name]
         r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
