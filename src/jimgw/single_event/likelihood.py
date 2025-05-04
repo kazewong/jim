@@ -17,6 +17,9 @@ from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform
 import logging
 
+HR_TO_RAD = 2 * np.pi / 24
+HR_TO_SEC = 3600
+
 
 class SingleEventLikelihood(LikelihoodBase):
     detectors: list[Detector]
@@ -85,7 +88,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         self.waveform = waveform
         self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent",
+            Time(trigger_time, format="gps").sidereal_time("mean",
                                                            "greenwich").rad
         )
 
@@ -173,8 +176,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         frequencies = self.frequencies
         # params["gmst"] = self.gmst
         # Note: How about we sample in "geocent_time" instead?
-        _gmst = Time(self.trigger_time + params["t_c"], format="gps")
-        params["gmst"] = _gmst.sidereal_time("apparent", "greenwich").rad
+        params["gmst"] = self.gmst + params["t_c"] / HR_TO_SEC * HR_TO_RAD
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
