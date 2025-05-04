@@ -374,7 +374,7 @@ class GroundBased2G(Detector):
                 jnp.cos(theta),
             ]
         )
-        return jnp.dot(omega, delta_d) / C_SI
+        return jnp.einsum('i...,i->...', omega, delta_d) / C_SI
 
     def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict[str, Float]:
         """Compute antenna patterns for polarizations at specified sky location.
@@ -398,7 +398,7 @@ class GroundBased2G(Detector):
         for polarization in self.polarization_mode:
             wave_tensor = polarization.tensor_from_sky(ra, dec, psi, gmst)
             antenna_patterns[polarization.name] = jnp.einsum(
-                "ij,ij->", detector_tensor, wave_tensor
+                "ij,ij...->...", detector_tensor, wave_tensor
             )
 
         return antenna_patterns

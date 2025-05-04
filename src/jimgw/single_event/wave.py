@@ -1,7 +1,7 @@
 # Credit some part of the source code from bilby
 
 import equinox as eqx
-import jax.numpy as jnp
+import jax.numpy as np
 from jaxtyping import Array, Float
 
 KNOWN_POLS = "pcxybl"
@@ -32,21 +32,22 @@ class Polarization(eqx.Module):
         defined by orthonormal vectors (x, y) in arbitrary Cartesian
         coordinates.
         """
+        outer_fmt = "i...,j...->ij..."
         if self.name == "p":
-            return jnp.einsum("i,j->ij", x, x) - jnp.einsum("i,j->ij", y, y)
+            return np.einsum(outer_fmt, x, x) - np.einsum(outer_fmt, y, y)
         elif self.name == "c":
-            return jnp.einsum("i,j->ij", x, y) + jnp.einsum("i,j->ij", y, x)
+            return np.einsum(outer_fmt, x, y) + np.einsum(outer_fmt, y, x)
         elif self.name == "x":
-            z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", x, z) + jnp.einsum("i,j->ij", z, x)
+            z = np.cross(x, y)
+            return np.einsum(outer_fmt, x, z) + np.einsum(outer_fmt, z, x)
         elif self.name == "y":
-            z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", y, z) + jnp.einsum("i,j->ij", z, y)
+            z = np.cross(x, y)
+            return np.einsum(outer_fmt, y, z) + np.einsum(outer_fmt, z, y)
         elif self.name == "b":
-            return jnp.einsum("i,j->ij", x, x) + jnp.einsum("i,j->ij", y, y)
+            return np.einsum(outer_fmt, x, x) + np.einsum(outer_fmt, y, y)
         elif self.name == "l":
-            z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", z, z)
+            z = np.cross(x, y)
+            return np.einsum(outer_fmt, z, z)
         else:
             raise ValueError(f"unrecognized polarization {self.name}")
 
@@ -72,19 +73,19 @@ class Polarization(eqx.Module):
         tensor : array
             3x3 polarization tensor.
         """
-        gmst = jnp.mod(gmst, 2 * jnp.pi)
+        gmst = np.mod(gmst, 2 * np.pi)
         phi = ra - gmst
-        theta = jnp.pi / 2 - dec
+        theta = np.pi / 2 - dec
 
-        u = jnp.array(
+        u = np.array(
             [
-                jnp.cos(phi) * jnp.cos(theta),
-                jnp.cos(theta) * jnp.sin(phi),
-                -jnp.sin(theta),
+                np.cos(phi) * np.cos(theta),
+                np.cos(theta) * np.sin(phi),
+                -np.sin(theta),
             ]
         )
-        v = jnp.array([-jnp.sin(phi), jnp.cos(phi), 0])
-        m = -u * jnp.sin(psi) - v * jnp.cos(psi)
-        n = -u * jnp.cos(psi) + v * jnp.sin(psi)
+        v = np.array([-np.sin(phi), np.cos(phi), phi*0.0])
+        m = -u * np.sin(psi) - v * np.cos(psi)
+        n = -u * np.cos(psi) + v * np.sin(psi)
 
         return self.tensor_from_basis(m, n)
