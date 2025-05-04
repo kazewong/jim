@@ -2,12 +2,11 @@ from abc import ABC, abstractmethod
 
 import jax
 import jax.numpy as jnp
-import numpy as np
+from numpy import loadtxt
 import requests
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, jaxtyped
 from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
-from scipy.signal.windows import tukey
 from jimgw.single_event import data as jd
 from typing import Optional
 
@@ -421,14 +420,13 @@ class GroundBased2G(Detector):
             url = asd_file_dict[self.name]
             data = requests.get(url)
             open(self.name + ".txt", "wb").write(data.content)
-            f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
+            f, asd_vals = loadtxt(self.name + ".txt", unpack=True)
             psd_vals = asd_vals ** 2
         else:
-            f, psd_vals = np.loadtxt(psd_file, unpack=True)
+            f, psd_vals = loadtxt(psd_file, unpack=True)
 
         psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]), bounds_error=False)(freqs)  # type: ignore
-        psd = jnp.array(psd)
-        return psd
+        return jnp.array(psd)
 
     def set_data(self, data: jd.Data | Array, **kws) -> None:
         """Add data to the detector.
