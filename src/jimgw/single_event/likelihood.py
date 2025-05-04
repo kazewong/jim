@@ -171,7 +171,10 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         """Evaluate the likelihood for a given set of parameters.
         """
         frequencies = self.frequencies
-        params["gmst"] = self.gmst
+        # params["gmst"] = self.gmst
+        # Note: How about we sample in "geocent_time" instead?
+        _gmst = Time(self.trigger_time + params["t_c"], format="gps")
+        params["gmst"] = _gmst.sidereal_time("apparent", "greenwich").rad
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
