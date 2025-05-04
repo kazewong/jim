@@ -88,7 +88,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         self.waveform = waveform
         self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("mean",
+            Time(trigger_time, format="gps").sidereal_time("apparent",
                                                            "greenwich").rad
         )
 
