@@ -44,7 +44,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
-        start_time: Float = -2,
         **kwargs,
     ) -> None:
         # NOTE: having 'kwargs' here makes it very difficult to diagnose
@@ -92,7 +91,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
         self.trigger_time = trigger_time
         self.duration = duration = self.detectors[0].data.duration
-        self.start_time = start_time
+        self.start_time = self.detectors[0].epoch
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -227,7 +226,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_max: Float = float("inf"),
         n_bins: int = 100,
         trigger_time: float = 0,
-        start_time: Float = -2,
         popsize: int = 100,
         n_steps: int = 2000,
         ref_params: dict = {},
@@ -238,7 +236,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         **kwargs,
     ) -> None:
         super().__init__(
-            detectors, waveform, f_min, f_max, trigger_time, start_time
+            detectors, waveform, f_min, f_max, trigger_time
         )
 
         logging.info("Initializing heterodyned likelihood..")
