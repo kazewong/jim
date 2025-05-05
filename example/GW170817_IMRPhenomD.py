@@ -145,7 +145,6 @@ likelihood = HeterodynedTransientLikelihoodFD(
     waveform=waveform,
     n_bins=1000,
     trigger_time=gps,
-    start_time=start,
     prior=prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,

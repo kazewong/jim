@@ -111,7 +111,6 @@ likelihood = HeterodynedTransientLikelihoodFD(
     f_min=fmin,
     f_max=fmax,
     trigger_time=gps,
-    start_time=start,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
     n_steps=5,
