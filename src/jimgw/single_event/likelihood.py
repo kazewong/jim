@@ -58,7 +58,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert np.all(_frequencies, axis=0), "The frequency arrays are not all the same."
+        assert np.all(_frequencies, axis=0).all(), "The frequency arrays are not all the same."
         self.detectors = detectors
         self.frequencies = _frequencies[0]
         self.duration = self.detectors[0].data.duration
@@ -545,7 +545,7 @@ def inner_product(
         frequencies: Optional[Float[Array, " n_dim"]]=None,
         df: Optional[Float]=None,
     ):
-    # Note: move this function to somewhere else, maybe utils, 
+    # Note: move this function to somewhere else, maybe utils,
     # or even inside Detector.
     if df is None:
         df = frequencies[1] - frequencies[0]
