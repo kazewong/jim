@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
-from astropy.time import Time
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
@@ -15,6 +14,7 @@ from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform
+from jimgw.gps_times import greenwich_mean_sidereal_time as jim_gmst
 import logging
 
 HR_TO_RAD = 2 * np.pi / 24
@@ -87,10 +87,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.psds = psds
 
         self.waveform = waveform
-        self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent",
-                                                           "greenwich").rad
-        )
+        self.gmst = jim_gmst(trigger_time)
 
         self.trigger_time = trigger_time
         self.duration = duration = self.detectors[0].data.duration
@@ -174,8 +171,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         """Evaluate the likelihood for a given set of parameters.
         """
         frequencies = self.frequencies
-        # params["gmst"] = self.gmst
-        # Note: How about we sample in "geocent_time" instead?
         params["gmst"] = self.gmst + params["t_c"] / HR_TO_SEC * HR_TO_RAD
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
