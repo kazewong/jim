@@ -117,21 +117,17 @@ class TransientLikelihoodFD(SingleEventLikelihood):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters."""
-        frequencies = self.frequencies
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
         params = self.fixing_func(params)
         # evaluate the waveform as usual
-        waveform_sky = self.waveform(frequencies, params)
+        waveform_sky = self.waveform(self.frequencies, params)
         return self.likelihood_function(
             params,
             waveform_sky,
             self.detectors,
-            frequencies,
-            self.datas,
-            self.psds,
             self.trigger_time,
             **self.kwargs,
         )
@@ -196,9 +192,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             if self.marginalization == "phase":
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
-                self.rb_likelihood_function = (
-                    phase_marginalized_relative_binning_likelihood
-                )
+                self.rb_likelihood_function = phase_marginalized_relative_binning_likelihood
                 logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
@@ -365,21 +359,17 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         Evaluate the likelihood for a given set of parameters.
         """
-        frequencies = self.frequencies
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
         params = self.fixing_func(params)
         # evaluate the waveform as usual
-        waveform_sky = self.waveform(frequencies, params)
+        waveform_sky = self.waveform(self.frequencies, params)
         return self.likelihood_function(
             params,
             waveform_sky,
             self.detectors,
-            frequencies,
-            self.datas,
-            self.psds,
             self.trigger_time,
             **self.kwargs,
         )
@@ -584,9 +574,6 @@ def phase_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
@@ -626,9 +613,6 @@ def time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
@@ -677,9 +661,6 @@ def phase_time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
