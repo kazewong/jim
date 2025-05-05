@@ -52,43 +52,19 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         # NOTE: having 'kwargs' here makes it very difficult to diagnose
         # errors and keep track of what's going on, would be better to list
         # explicitly what the arguments are accepted
+
+        # Set the frequency bounds for the detectors
+        _frequencies = []
+        for detector in detectors:
+            detector.set_frequency_bounds(f_min, f_max)
+            _frequencies.append(detector.sliced_frequencies)
+        assert np.all(_frequencies, axis=0), "The frequency arrays are not all the same."
         self.detectors = detectors
-
-        # collect the data, psd and frequencies for the requested band
-        freqs = []
-        datas = []
-        psds = []
-        # make sure data has a Fourier representation
-        for det in detectors:
-            if not det.data:
-                raise ValueError(f"Detector {det.name} does not have data.")
-            if not det.data.has_fd:
-                logging.info("Computing FFT with default window")
-                det.data.fft()
-
-            data, freq_0 = det.data.frequency_slice(f_min, f_max)
-            psd, freq_1 = det.psd.frequency_slice(f_min, f_max)
-            freqs.append(freq_0)
-            datas.append(data)
-            psds.append(psd)
-            # make sure the psd and data are consistent
-            assert (
-                freq_0 == freq_1
-            ).all(), f"The {det.name} data and PSD must have same frequencies"
-
-        # make sure all detectors are consistent
-        assert all(
-            [(freqs[0] == freq).all() for freq in freqs]
-        ), "The detectors must have the same frequency grid"
-
-        self.frequencies = freqs[0]  # type: ignore
-        self.datas = datas
-        self.psds = psds
-
+        self.frequencies = _frequencies[0]
+        self.duration = self.detectors[0].data.duration
         self.waveform = waveform
-        self.gmst = jim_gmst(trigger_time)
         self.trigger_time = trigger_time
-        self.duration = duration = self.detectors[0].data.duration
+        self.gmst = jim_gmst(trigger_time)
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -110,20 +86,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
                 logging.info("Marginalizing over phase")
-
-            if "time" in self.marginalization:
-                fs = kwargs["sampling_rate"]
-                delta_f = 1.0 / duration
-                self.kwargs["tc_array"] = jnp.fft.fftfreq(
-                    int(duration * fs / 2), delta_f
-                )
-                self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
-                if jnp.isclose(self.frequencies[-1], fs / 2.0 - delta_f):
-                    self.kwargs["pad_high"] = jnp.array([])
-                else:
-                    self.kwargs["pad_high"] = jnp.zeros(
-                        int((fs / 2.0 - delta_f - self.frequencies[-1]) * duration)
-                    )
         else:
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
@@ -156,21 +118,17 @@ class TransientLikelihoodFD(SingleEventLikelihood):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters."""
-        frequencies = self.frequencies
         params["gmst"] = self.gmst + params["t_c"] / HR_TO_SEC * HR_TO_RAD
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
         params = self.fixing_func(params)
         # evaluate the waveform as usual
-        waveform_sky = self.waveform(frequencies, params)
+        waveform_sky = self.waveform(self.frequencies, params)
         return self.likelihood_function(
             params,
             waveform_sky,
             self.detectors,
-            frequencies,
-            self.datas,
-            self.psds,
             self.trigger_time,
             **self.kwargs,
         )
@@ -235,9 +193,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             if self.marginalization == "phase":
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
-                self.rb_likelihood_function = (
-                    phase_marginalized_relative_binning_likelihood
-                )
+                self.rb_likelihood_function = phase_marginalized_relative_binning_likelihood
                 logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
@@ -404,21 +360,17 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         Evaluate the likelihood for a given set of parameters.
         """
-        frequencies = self.frequencies
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
         params = self.fixing_func(params)
         # evaluate the waveform as usual
-        waveform_sky = self.waveform(frequencies, params)
+        waveform_sky = self.waveform(self.frequencies, params)
         return self.likelihood_function(
             params,
             waveform_sky,
             self.detectors,
-            frequencies,
-            self.datas,
-            self.psds,
             self.trigger_time,
             **self.kwargs,
         )
@@ -586,23 +538,34 @@ likelihood_presets = {
 }
 
 
+def inner_product(
+        array_1: Float[Array, " n_dim"],
+        array_2: Float[Array, " n_dim"],
+        psd: Float[Array, " n_dim"],
+        frequencies: Optional[Float[Array, " n_dim"]]=None,
+        df: Optional[Float]=None,
+    ):
+    # Note: move this function to somewhere else, maybe utils, 
+    # or even inside Detector.
+    if df is None:
+        df = frequencies[1] - frequencies[0]
+
+    return 4 * jnp.sum((jnp.conj(array_1) * array_2) / psd * df)
+
+
 def original_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
-    df = freqs[1] - freqs[0]
-    for detector, data, psd in zip(detectors, datas, psds):
-        h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
-        # NOTE: do we want to take the slide outside the likelihood?
-        match_filter_SNR = 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
+    for ifo in detectors:
+        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        match_filter_SNR = inner_product(h_dec, data, psd, freqs).real
+        optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
 
     return log_likelihood
@@ -612,51 +575,64 @@ def phase_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
-    complex_d_inner_h = 0.0
-    df = freqs[1] - freqs[0]
-    for detector, data, psd in zip(detectors, datas, psds):
-        h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
-        complex_d_inner_h += 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df)
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
+    complex_d_inner_h = 0.0 + 0.0j
+    for ifo in detectors:
+        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        complex_d_inner_h += inner_product(h_dec, data, psd, freqs)
+        optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += -optimal_SNR / 2
 
     log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
-
     return log_likelihood
+
+
+def _get_tc_array(duration: Float, sampling_rate: Float):
+    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1/duration)
+
+
+def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
+    f_low, f_high = detector.frequency_bounds
+    duration = detector.data.duration
+    delta_f = 1 / duration
+
+    pad_low = jnp.zeros(int(f_low * duration))
+
+    f_Nyquist_diff = fs / 2.0 - delta_f - f_high
+    if jnp.isclose(f_Nyquist_diff, 0):
+        pad_high = jnp.array([])
+    else:
+        pad_high = jnp.zeros(int(f_Nyquist_diff * duration))
+    return pad_low, pad_high
 
 
 def time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
-    df = freqs[1] - freqs[0]
-    # using <h|d> instead of <d|h>
-    complex_h_inner_d = jnp.zeros_like(freqs)
-    for detector, data, psd in zip(detectors, datas, psds):
-        h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
-        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
+    complex_h_inner_d = 0.0 + 0.0j
+    for ifo in detectors:
+        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        # using <h|d> instead of <d|h>
+        complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
+        optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += -optimal_SNR / 2
+    duration = detectors[0].data.duration
 
     # fetch the tc range tc_array, lower padding and higher padding
     tc_range = kwargs["tc_range"]
-    tc_array = kwargs["tc_array"]
-    pad_low = kwargs["pad_low"]
-    pad_high = kwargs["pad_high"]
+    fs = kwargs["sampling_rate"]
+    tc_array = _get_tc_array(duration, fs)
+    pad_low, pad_high = _get_frequencies_pads(detectors[0], fs=fs)
 
     # padding the complex_h_inner_d
     # this array is the hd*/S for f in [0, fs / 2 - df]
@@ -679,7 +655,6 @@ def time_marginalized_likelihood(
 
     # using the logsumexp to marginalize over the tc prior range
     log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(tc_array))
-
     return log_likelihood
 
 
@@ -687,27 +662,25 @@ def phase_time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    freqs: Float[Array, " n_dim"],
-    datas: list[Float[Array, " n_dim"]],
-    psds: list[Float[Array, " n_dim"]],
     trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
-    df = freqs[1] - freqs[0]
-    # using <h|d> instead of <d|h>
-    complex_h_inner_d = jnp.zeros_like(freqs)
-    for detector, data, psd in zip(detectors, datas, psds):
-        h_dec = detector.fd_full_response(freqs, h_sky, params, trigger_time)
-        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
-        optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
+    complex_h_inner_d = 0.0 + 0.0j
+    for ifo in detectors:
+        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        # using <h|d> instead of <d|h>
+        complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
+        optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += -optimal_SNR / 2
+    duration = detectors[0].data.duration
 
     # fetch the tc range tc_array, lower padding and higher padding
     tc_range = kwargs["tc_range"]
-    tc_array = kwargs["tc_array"]
-    pad_low = kwargs["pad_low"]
-    pad_high = kwargs["pad_high"]
+    fs = kwargs["sampling_rate"]
+    tc_array = _get_tc_array(duration, fs)
+    pad_low, pad_high = _get_frequencies_pads(detectors[0], fs=fs)
 
     # padding the complex_h_inner_d
     # this array is the hd*/S for f in [0, fs / 2 - df]
@@ -730,7 +703,6 @@ def phase_time_marginalized_likelihood(
 
     # using the logsumexp to marginalize over the tc prior range
     log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(tc_array))
-
     return log_likelihood
 
 
