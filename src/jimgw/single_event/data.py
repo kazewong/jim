@@ -221,7 +221,8 @@ class Data(ABC):
         Returns:
             tuple: Sliced data in the frequency domain and corresponding frequencies.
         """
-        self.fft()
+        if auto_fft:
+            self.fft()
         mask = (self.frequencies >= f_min) * (self.frequencies <= f_max)
 
         return self.fd[mask], self.frequencies[mask]
