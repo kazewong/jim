@@ -118,7 +118,10 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     year = timestamp // LEAP_YEAR_SECONDS + UNIX_EPOCH_YEAR
     seconds_before = np.where(YEAR_ARRAY < year, LEAP_SEC_ARRAY, 0).sum()
 
-    assert year < 2500, f"This function is designed to work between years {UNIX_EPOCH_YEAR} and 2500. The year {year} is out of bounds."
+    # if (year < 2500):
+    #     raise ValueError(
+    #         f"This function is designed to work between years {UNIX_EPOCH_YEAR} and 2500. The year {year} is out of bounds."
+    #     )
 
     remaining_seconds = timestamp - seconds_before
     sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
