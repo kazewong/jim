@@ -109,7 +109,6 @@ likelihood = TransientLikelihoodFD(
     f_min=fmin,
     f_max=fmax,
     trigger_time=gps,
-    start_time=start,
 )
 
 mass_matrix = jnp.eye(11)

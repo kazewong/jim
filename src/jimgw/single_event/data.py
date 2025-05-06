@@ -194,12 +194,18 @@ class Data(ABC):
         Args:
             window: Window function to apply to the data before FFT (default: None).
         """
-        logging.info(f"Computing FFT of {self.name} data")
-        if window is not None:
-            self.window = window
         if self.n_time > 0:
             assert self.delta_t > 0, "Delta t must be positive"
-        self.fd = jnp.fft.rfft(self.td * self.window) * self.delta_t
+        if self.has_fd and (window is None or window == self.window):
+            # Perhaps one needs to also check self.td and self.delta_t are the same.
+            logging.debug(f"{self.name} has FD data, skipping FFT.")
+            return self.fd
+        if window is None:
+            window = self.window
+
+        logging.info(f"Computing FFT of {self.name} data")
+        self.fd = jnp.fft.rfft(self.td * window) * self.delta_t
+        self.window = window
 
     def frequency_slice(
             self, f_min: float, f_max: float, auto_fft: bool = True
@@ -215,12 +221,11 @@ class Data(ABC):
         Returns:
             tuple: Sliced data in the frequency domain and corresponding frequencies.
         """
-        if auto_fft and not self.has_fd:
+        if auto_fft:
             self.fft()
-        f = self.frequencies
+        mask = (self.frequencies >= f_min) * (self.frequencies <= f_max)
 
-        return self.fd[(f >= f_min) & (f <= f_max)], \
-            f[(f >= f_min) & (f <= f_max)]
+        return self.fd[mask], self.frequencies[mask]
 
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
