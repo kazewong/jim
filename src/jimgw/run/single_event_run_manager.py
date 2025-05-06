@@ -1,21 +1,15 @@
-from jaxtyping import Float, Array
-
 from jimgw.run.run_manager import RunManager
-
-
+from jimgw.core.jim import Jim
+from jimgw.core.single_event.likelihood import SingleEventLikelihood
+from jimgw.core.single_event.data import Data, PowerSpectrum
 class SingleEventRunManager(RunManager):
 
     ### Utility functions ###
 
-    def get_detector_waveform(self, params: dict[str, float]) -> tuple[
-        Float[Array, " n_sample"],
-        dict[str, Float[Array, " n_sample"]],
-        dict[str, Float[Array, " n_sample"]],
-    ]:
-        raise NotImplementedError
+    def plot_data(self):
+        pass
 
-    def plot_injection_waveform(self, path: str):
-        raise NotImplementedError
+    def plot_psd(self):
+        pass
 
-    def plot_data(self, path: str):
-        raise NotImplementedError
+    

@@ -3,6 +3,7 @@ from jimgw.run.single_event_run_manager import SingleEventRunManager
 
 run_manager = SingleEventRunManager(
     TestIMRPhenomPv2StandardCBCRun(),
+    n_chains=4,
     n_training_loops=1,
     n_epochs=10,
     n_production_loops=5,

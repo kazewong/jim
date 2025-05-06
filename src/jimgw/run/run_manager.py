@@ -160,7 +160,7 @@ class RunManager:
         axs[1].set_xlabel("Iteration")
         axs[1].set_ylabel("Acceptance rate")
 
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust layout to fit the suptitle
+        plt.tight_layout(rect=(0, 0, 1, 0.96))  # Adjust layout to fit the suptitle
         path = f"{self.result_dir}/acceptance_rates.jpeg"
         plt.savefig(path)
         plt.close()
