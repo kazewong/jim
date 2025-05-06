@@ -10,10 +10,8 @@ from scipy.interpolate import interp1d
 from jimgw.single_event import data as jd
 from typing import Optional
 
-from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
+from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, DEG_TO_RAD
 from jimgw.single_event.wave import Polarization
-
-DEG_TO_RAD = jnp.pi / 180
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {

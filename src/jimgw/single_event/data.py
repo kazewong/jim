@@ -13,9 +13,6 @@ import logging
 import jax
 import jax.numpy as jnp
 
-
-DEG_TO_RAD = np.pi / 180
-
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
     "H1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-H1-C01_CLEAN_SUB60HZ-1251752040.0_sensitivity_strain_asd.txt",  # noqa: E501

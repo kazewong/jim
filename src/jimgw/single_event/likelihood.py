@@ -15,10 +15,8 @@ from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform
+from jimgw.constants import HR_TO_RAD, HR_TO_SEC
 import logging
-
-HR_TO_RAD = 2 * np.pi / 24
-HR_TO_SEC = 3600
 
 
 class SingleEventLikelihood(LikelihoodBase):
