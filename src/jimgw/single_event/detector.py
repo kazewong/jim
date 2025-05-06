@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from numpy import loadtxt
 import requests
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 from jimgw.single_event import data as jd
@@ -492,6 +492,47 @@ class GroundBased2G(Detector):
             # not clear if we want to support this
             self.psd = jd.PowerSpectrum(psd, **kws)
 
+    def inject_signal(self, waveform_model, parameters: dict[str, float], rng_key: PRNGKeyArray = jax.random.PRNGKey(0)) -> None:
+        """Inject a signal into the detector data.
+
+        Args:
+            waveform_model: The waveform model to be injected.
+            parameters (dict): Dictionary of parameters for the waveform model.
+
+        Returns:
+            None
+        """
+        polarisations = waveform_model(self.frequencies, parameters)
+        projected_strain = self.fd_full_response(self.frequencies, polarisations, parameters)
+
+        noise_timeseries = self.psd.simulate_data(rng_key)
+        self.data = projected_strain + noise_timeseries
+
+    def whitened_frequency_domain_data(
+        self, frequency: Float[Array, " n_sample"]
+    ) -> Float[Array, " n_sample"]:
+        """Get the whitened frequency-domain data.
+
+        Args:
+            frequency (Float[Array, " n_sample"]): Array of frequency samples.
+
+        Returns:
+            Float[Array, " n_sample"]: Whitened frequency-domain data.
+        """
+        return self.data.frequency_domain_data / jnp.sqrt(self.psd_slice)
+
+    def whitened_time_domain_data(
+        self, time: Float[Array, " n_sample"]
+    ) -> Float[Array, " n_sample"]:
+        """Get the whitened time-domain data.
+
+        Args:
+            time (Float[Array, " n_sample"]): Array of time samples.
+
+        Returns:
+            Float[Array, " n_sample"]: Whitened time-domain data.
+        """
+        return pass
 
 H1 = GroundBased2G(
     "H1",
