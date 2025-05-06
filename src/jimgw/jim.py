@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+from collections import OrderedDict
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
@@ -176,7 +177,7 @@ class Jim(object):
                 for transform in self.sample_transforms:
                     guess = jax.vmap(transform.forward)(guess)
                 guess = jnp.array(
-                    jax.tree.leaves({key: guess[key] for key in self.parameter_names})
+                    jax.tree.leaves(OrderedDict({key: guess[key] for key in self.parameter_names}))
                 ).T
                 finite_guess = jnp.where(
                     jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
