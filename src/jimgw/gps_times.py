@@ -13,6 +13,10 @@ import jax.numpy as np
 config.update("jax_enable_x64", True)
 from jaxtyping import Float, Int
 
+# This UNIX timestamp is computed by: 
+# datetime(1980, 1, 6, 0, 0, 0, tzinfo=timezone.utc).timestamp()
+# Or in LAL: 
+# https://lscsoft.docs.ligo.org/lalsuite/lal/group___date__h.html#ga1c3cab00910987a1410a9d24d4fccdce
 GPS_EPOCH: int = 315964800
 EPOCH_J2000_0_JD: float = 2451545.0
 '''
