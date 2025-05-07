@@ -162,8 +162,8 @@ class Jim(object):
                 jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
             ).all():
                 non_finite_index = jnp.where(
-                    jnp.all(
-                        jax.tree.reduce(
+                    jnp.any(
+                        ~jax.tree.reduce(
                             jnp.logical_and,
                             jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
                         ),

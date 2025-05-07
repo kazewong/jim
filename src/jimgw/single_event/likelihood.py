@@ -75,15 +75,15 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             # make sure the psd and data are consistent
             assert (freq_0 == freq_1).all(), \
                 f"The {detector.name} data and PSD must have same frequencies"
-                
+
         # make sure all detectors are consistent
         assert all([(freqs[0] == freq).all() for freq in freqs]), \
             "The detectors must have the same frequency grid"
-            
+
         self.frequencies = freqs[0]  # type: ignore
         self.datas = datas
         self.psds = psds
-        
+
         self.waveform = waveform
         self.trigger_time = trigger_time
         self.gmst = (
@@ -621,8 +621,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
         ).all():
             non_finite_index = jnp.where(
-                jnp.all(
-                    jax.tree.reduce(
+                jnp.any(
+                    ~jax.tree.reduce(
                         jnp.logical_and,
                         jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
                     ),
