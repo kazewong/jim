@@ -3,6 +3,7 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.special import xlogy, logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
@@ -295,9 +296,7 @@ class LogitTransform(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.log(
-                x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]])
-            )
+            name_mapping[0][i]: logit(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
 
@@ -417,9 +416,6 @@ class BoundToUnbound(BijectiveTransform):
         original_upper_bound: Float,
     ):
 
-        def logit(x):
-            return jnp.log(x / (1 - x))
-
         super().__init__(name_mapping)
         self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
         self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
@@ -503,7 +499,7 @@ class PowerLawTransform(BijectiveTransform):
         if alpha == -1.0:
             self.transform_func = lambda x: {
                 name_mapping[1][i]: self.xmin
-                * jnp.exp(x[name_mapping[0][i]] * jnp.log(self.xmax / self.xmin))
+                * jnp.exp(xlogy(x[name_mapping[0][i]], self.xmax / self.xmin))
                 for i in range(len(name_mapping[0]))
             }
             self.inverse_transform_func = lambda x: {
@@ -641,7 +637,7 @@ class RayleighTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.sigma = sigma
         self.transform_func = lambda x: {
-            name_mapping[1][i]: sigma * jnp.sqrt(-2 * jnp.log(x[name_mapping[0][i]]))
+            name_mapping[1][i]: sigma * jnp.sqrt(xlogy(-2, x[name_mapping[0][i]]))
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {

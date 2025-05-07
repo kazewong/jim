@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 from astropy.time import Time
@@ -242,7 +243,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             t_det_max = self.tc_max + time_shift
 
             y = (t_det - t_det_min) / (t_det_max - t_det_min)
-            t_det_unbounded = jnp.log(y / (1.0 - y))
+            t_det_unbounded = logit(y)
             return {
                 "t_det_unbounded": t_det_unbounded,
             }
@@ -415,7 +416,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             d_hat_max = scale_factor * self.dL_max
 
             y = (d_hat - d_hat_min) / (d_hat_max - d_hat_min)
-            d_hat_unbounded = jnp.log(y / (1.0 - y))
+            d_hat_unbounded = logit(y)
 
             return {
                 "d_hat_unbounded": d_hat_unbounded,
