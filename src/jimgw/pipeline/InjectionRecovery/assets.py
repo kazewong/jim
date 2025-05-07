@@ -3,8 +3,25 @@ import dagster as dg
 from jimgw.run.single_event_run_definition import SingleEventRunDefinition
 
 
-# Create asset group for run and configuration0
+# Sample a fiducial population
 
+@dg.asset
+def sample_population():
+    """
+    This is a placeholder function for the fiducial population.
+    It is used to demonstrate how to create a Dagster asset.
+    """
+    pass
+
+@dg.asset
+def generate_configs():
+    """
+    This is a placeholder function for the generation of configuration files.
+    It is used to demonstrate how to create a Dagster asset.
+    """
+    pass
+
+# Create asset group for run and configuration0
 
 @dg.asset(
     group_name="prerun",
