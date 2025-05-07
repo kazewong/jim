@@ -4,7 +4,7 @@ import numpy as np
 import jax
 from jaxtyping import Float, Array
 from jimgw.core.jim import Jim
-from jimgw.run.run import Run
+from jimgw.run.run import RunDefinition
 
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.nf_model.base import NFModel
@@ -13,20 +13,22 @@ import os
 
 
 class RunManager:
-    run: Run
+    run: RunDefinition
     jim: Jim
     result_dir: str
 
-    def __init__(self, run: Run | str, result_dir: str = "./runs", **flowMC_params):
-        if isinstance(run, Run):
+    def __init__(
+        self, run: RunDefinition | str, result_dir: str = "./runs", **flowMC_params
+    ):
+        if isinstance(run, RunDefinition):
             self.run = run
         elif isinstance(run, str):
-            self.run = Run.from_file(run)
+            self.run = RunDefinition.from_file(run)
         else:
             logging.ERROR("Run object or path not given.")
 
         assert isinstance(
-            run, Run
+            run, RunDefinition
         ), "Run object or path not given. Please provide a Run object or a path to a serialized Run object."
         self.jim = Jim(
             run.likelihood,

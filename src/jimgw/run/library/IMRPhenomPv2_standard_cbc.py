@@ -1,4 +1,4 @@
-from jimgw.run.single_event_run import SingleEventRun
+from jimgw.run.single_event_run import SingleEventRunDefinition
 
 import jax.numpy as jnp
 
@@ -30,8 +30,7 @@ import yaml
 import logging
 
 
-
-class IMRPhenomPv2StandardCBCRun(SingleEventRun):
+class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
 
     M_c_range: tuple[float, float]
     q_range: tuple[float, float]
@@ -71,7 +70,6 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         ra_prior: tuple[float, float],
     ):
 
-
         self.seed = seed
         self.gps = gps
         self.segment_length = segment_length
@@ -96,7 +94,6 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
         self.prior = self.initialize_prior()
         self.likelihood_transforms = self.initialize_likelihood_transforms()
         self.sample_transforms = self.initialize_sample_transforms()
-
 
     def initialize_likelihood(self) -> TransientLikelihoodFD:
         logging.info("Initializing likelihood...")
@@ -330,8 +327,9 @@ class IMRPhenomPv2StandardCBCRun(SingleEventRun):
             ra_prior=tuple(run_dict["ra_prior"]),
         )
         return run
-    
-class TestIMRPhenomPv2StandardCBCRun(IMRPhenomPv2StandardCBCRun):
+
+
+class TestIMRPhenomPv2StandardCBCRunDefinition(IMRPhenomPv2StandardCBCRunDefinition):
     """
     A test run with zero likelihood
     """

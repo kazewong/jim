@@ -1,8 +1,10 @@
-from jimgw.run.library.IMRPhenomPv2_standard_cbc import TestIMRPhenomPv2StandardCBCRun
+from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
+    TestIMRPhenomPv2StandardCBCRunDefinition,
+)
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 
 run_manager = SingleEventRunManager(
-    TestIMRPhenomPv2StandardCBCRun(),
+    TestIMRPhenomPv2StandardCBCRunDefinition(),
     n_chains=4,
     n_training_loops=1,
     n_epochs=10,

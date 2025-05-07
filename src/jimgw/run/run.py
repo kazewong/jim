@@ -6,7 +6,7 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 from typing import Sequence
 
 
-class Run(ABC):
+class RunDefinition(ABC):
     """
 
     A `Run` is a template of priors, likelihood transforms, and sample transforms.
@@ -15,7 +15,7 @@ class Run(ABC):
 
     The most important property of a Run instance is it needs to be able to deterministically declared. All arguments to a run has to be explicitly provided, and the content of a Run should be exactly the same given the same arguments.
     """
-    
+
     seed: int
     likelihood: LikelihoodBase
     prior: Prior
@@ -34,6 +34,7 @@ class Run(ABC):
     @classmethod
     def from_file(
         cls,
-        path: str,):
+        path: str,
+    ):
         """Load a `Run` object from a config file."""
         return cls.deserialize(path)

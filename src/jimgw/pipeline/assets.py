@@ -1,6 +1,6 @@
 import dagster as dg
 
-from jimgw.run.single_event_run import SingleEventRun
+from jimgw.run.single_event_run import SingleEventRunDefinition
 
 
 # Create asset group for run and configuration0
@@ -94,6 +94,7 @@ def training_local_acceptance_plot():
 @dg.asset(group_name="diagnostics", deps=["training_global_acceptance"])
 def training_global_acceptance_plot():
     pass
+
 
 @dg.asset(group_name="diagnostics", deps=["production_chains"])
 def production_chains_corner_plot():
