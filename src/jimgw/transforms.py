@@ -86,7 +86,6 @@ class NtoNTransform(NtoMTransform):
         transform_params = dict((key, x_copy[key]) for key in self.name_mapping[0])
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
-        # No need to use OrderedDict for determinant
         jacobian = jnp.array(jax.tree.leaves(jacobian))
         jacobian = jnp.log(
             jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
@@ -126,7 +125,6 @@ class BijectiveTransform(NtoNTransform):
         transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
-        # No need to use OrderedDict for determinant
         jacobian = jnp.array(jax.tree.leaves(jacobian))
         jacobian = jnp.log(
             jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
@@ -192,7 +190,6 @@ class ConditionalBijectiveTransform(BijectiveTransform):
             key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[0]}
             for key1 in self.name_mapping[1]
         }
-        # No need to use OrderedDict for determinant
         jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
         jacobian = jnp.log(
             jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
@@ -219,7 +216,6 @@ class ConditionalBijectiveTransform(BijectiveTransform):
             key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[1]}
             for key1 in self.name_mapping[0]
         }
-        # No need to use OrderedDict for determinant
         jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
         jacobian = jnp.log(
             jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
