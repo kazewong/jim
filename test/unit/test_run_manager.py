@@ -1,5 +1,5 @@
 import os
-from jimgw.run.single_event_run import TestSingleEventRun
+from jimgw.run.single_event_run_definition import TestSingleEventRun
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.core.single_event.detector import H1, L1
 

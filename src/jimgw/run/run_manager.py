@@ -4,7 +4,7 @@ import numpy as np
 import jax
 from jaxtyping import Float, Array
 from jimgw.core.jim import Jim
-from jimgw.run.run import RunDefinition
+from jimgw.run.run_definition import RunDefinition
 
 from flowMC.resource.buffers import Buffer
 from flowMC.resource.nf_model.base import NFModel

@@ -1,4 +1,4 @@
-from jimgw.run.run import RunDefinition
+from jimgw.run.run_definition import RunDefinition
 from jimgw.core.single_event.detector import GroundBased2G
 from typing import Sequence
 
