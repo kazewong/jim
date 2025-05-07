@@ -2,6 +2,7 @@ import time
 
 import jax
 import jax.numpy as jnp
+jax.config.update("jax_enable_x64", True)
 
 from jimgw.jim import Jim
 from jimgw.prior import (
@@ -25,8 +26,6 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-
-jax.config.update("jax_enable_x64", True)
 
 ###########################################
 ########## First we grab data #############
