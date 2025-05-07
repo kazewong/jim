@@ -53,9 +53,10 @@ jimgw = { workspace = true }
 uv_managed = true
 
 [tool.dagster]
-module_name = "jimgw.pipeline.definitions"
-code_location_name = "jimpipe"
-
+modules = [
+{ type="module", name="jimgw.pipeline.InjectionRecovery.definitions" },
+{ type="module", name="jimgw.pipeline.RealDataCatalog.definitions" },
+]
 
 [build-system]
 requires = ["hatchling"]
