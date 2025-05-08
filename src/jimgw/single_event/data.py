@@ -65,15 +65,6 @@ class Data(ABC):
         return iter(self.td)
 
     @property
-    def empty(self) -> bool:
-        """Checks if the data is empty.
-
-        Returns:
-            bool: True if data is empty, False otherwise.
-        """
-        return len(self.td) == 0
-
-    @property
     def n_time(self) -> int:
         """Gets number of time samples.
 
@@ -90,6 +81,15 @@ class Data(ABC):
             int: Number of frequency domain samples.
         """
         return self.n_time // 2 + 1
+
+    @property
+    def empty(self) -> bool:
+        """Checks if the data is empty.
+
+        Returns:
+            bool: True if data is empty, False otherwise.
+        """
+        return self.n_time == 0
 
     @property
     def duration(self) -> float:
@@ -345,6 +345,15 @@ class PowerSpectrum(ABC):
             int: Number of frequency samples.
         """
         return len(self.values)
+
+    @property
+    def empty(self) -> bool:
+        """Checks if the data is empty.
+
+        Returns:
+            bool: True if data is empty, False otherwise.
+        """
+        return self.n_freq == 0
 
     @property
     def delta_f(self) -> Float:
