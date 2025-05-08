@@ -60,10 +60,9 @@ class TestDataInterface:
 
         # check that frequency slice does the right thing
         fmin, fmax = self.psd_band
-        data_slice, freq_slice, _freq_mask = self.data.frequency_slice(fmin, fmax)
+        data_slice, freq_slice = self.data.frequency_slice(fmin, fmax)
         # note that the FFT requires float64 or it might be off
         freq_mask = (fftfreq >= fmin) & (fftfreq <= fmax)
-        assert np.allclose(freq_mask, _freq_mask)
         assert np.allclose(self.data.fd, fftdata)
         assert np.allclose(data_slice, fftdata[freq_mask])
         assert np.allclose(freq_slice, fftfreq[freq_mask])
@@ -72,7 +71,7 @@ class TestDataInterface:
         assert not data_copy.has_fd
         data_copy.fft()
         assert np.allclose(data_copy.fd, fftdata)
-        data_slice1, freq_slice1, _ = data_copy.frequency_slice(fmin, fmax)
+        data_slice1, freq_slice1 = data_copy.frequency_slice(fmin, fmax)
         assert np.allclose(data_slice, data_slice1)
         assert np.allclose(freq_slice, freq_slice1)
 
@@ -86,7 +85,7 @@ class TestDataInterface:
         assert np.all(self.psd.frequencies <= self.psd_band[1])
 
         # check PSD frequency slice
-        sliced_psd, freq_slice, _ = self.psd.frequency_slice(*self.psd_band)
+        sliced_psd, freq_slice = self.psd.frequency_slice(*self.psd_band)
         assert np.allclose(sliced_psd, self.psd.values)
         assert np.allclose(freq_slice, self.psd.frequencies)
 

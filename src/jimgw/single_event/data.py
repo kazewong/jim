@@ -134,7 +134,7 @@ class Data(ABC):
         Returns:
             bool: True if Fourier domain data exists, False otherwise.
         """
-        return bool(np.any(self.fd))
+        return bool(jnp.any(self.fd))
 
     def __init__(
         self,
@@ -221,7 +221,7 @@ class Data(ABC):
         if auto_fft:
             self.fft()
         mask = (self.frequencies >= f_min) * (self.frequencies <= f_max)
-        return self.fd[mask], self.frequencies[mask], mask
+        return self.fd[mask], self.frequencies[mask]
 
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
@@ -295,31 +295,31 @@ class Data(ABC):
         # form full frequency array
         delta_f = frequencies[1] - frequencies[0]
         fnyq = frequencies[-1]
-        # complete frequencies to adjacent power of 2
+        # complete frequencies to adjacent multiple of 2
         # (sometimes this is needed because frequency arrays do not include
         # the Nyquist frequency)
         if (fnyq + delta_f) % 2 == 0:
             fnyq = fnyq + delta_f
-        f = np.arange(0, fnyq + delta_f, delta_f)
+        f = jnp.arange(0, fnyq + delta_f, delta_f)
         # form full data array
-        data_fd_full = np.zeros(f.shape, dtype=np.array(fd).dtype)
-        data_fd_full[(frequencies[-1] >= f) & (f >= frequencies[0])] = fd
-        data_fd_full = jnp.array(data_fd_full)
+        data_fd_full = jnp.where(
+            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0+0.0j
+        )
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
         data_td_full = jnp.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert np.allclose(
-            f, np.fft.rfftfreq(len(data_td_full), delta_t)
+        assert jnp.allclose(
+            f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
         # create jd.Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
-        d_new, f_new, _ = data.frequency_slice(frequencies[0], frequencies[-1])
-        assert all(np.equal(d_new, fd)), "Data do not match after slicing"
+        d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
+        assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
-            np.equal(f_new, frequencies)
+            jnp.equal(f_new, frequencies)
         ), "Frequencies do not match after slicing"
         return data
 
@@ -441,7 +441,7 @@ class PowerSpectrum(ABC):
                 - frequencies: Frequencies corresponding to sliced values
         """
         mask = (self.frequencies >= f_min) & (self.frequencies <= f_max)
-        return self.values[mask], self.frequencies[mask], mask
+        return self.values[mask], self.frequencies[mask]
 
     def interpolate(
         self, frequencies: Float[Array, " n_sample"], kind: str = "cubic", **kws
@@ -481,5 +481,5 @@ class PowerSpectrum(ABC):
         """
         var = self.values / (4 * self.delta_f)
         noise_real, noise_imag = \
-            jax.random.normal(key, shape=(2, *var.shape)) * np.sqrt(var)
+            jax.random.normal(key, shape=(2, *var.shape)) * jnp.sqrt(var)
         return noise_real + 1j * noise_imag

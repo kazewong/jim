@@ -128,15 +128,14 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
         # Compute sliced frequencies, data and psd.
-        data, freqs_1, mask_1 = self.data.frequency_slice(*self.frequency_bounds)
-        psd, freqs_2, _ = self.psd.frequency_slice(*self.frequency_bounds)
+        data, freqs_1 = self.data.frequency_slice(*self.frequency_bounds)
+        psd, freqs_2 = self.psd.frequency_slice(*self.frequency_bounds)
 
         assert all(
             freqs_1 == freqs_2
         ), f"The {self.name} data and PSD must have same frequencies"
 
         self.sliced_frequencies = freqs_1
-        self.frequency_mask = mask_1
         self.sliced_fd_data = data
         self.sliced_psd = psd
 
