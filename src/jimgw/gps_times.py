@@ -102,7 +102,7 @@ UNIX_EPOCH_YEAR = 1970
 # **Someone in the future please update this**
 # This is surely not the most ideal way, but for the code to be jittable,
 # this seems to be a not too bad compromise.
-YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2500)
+YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2450)
 IS_LEAP_YEARS = is_leap_year(YEAR_ARRAY)
 LEAP_SEC_ARRAY = np.where(IS_LEAP_YEARS, LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
 
