@@ -2,16 +2,16 @@ from abc import ABC, abstractmethod
 
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from numpy import loadtxt
 import requests
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from beartype import beartype as typechecker
-from scipy.interpolate import interp1d
-from jimgw.single_event import data as jd
 from typing import Optional
 
 from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, DEG_TO_RAD
 from jimgw.single_event.wave import Polarization
+from jimgw.single_event.data import Data, PowerSpectrum
+from jimgw.single_event.utils import inner_product, complex_inner_product
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -26,8 +26,8 @@ class Detector(ABC):
 
     Attributes:
         name (str): Name of the detector.
-        data (jd.Data): Detector data object.
-        psd (jd.PowerSpectrum): Power spectral density object.
+        data (Data): Detector data object.
+        psd (PowerSpectrum): Power spectral density object.
         frequency_bounds (tuple[float, float]): Lower and upper frequency bounds.
     """
 
@@ -35,8 +35,8 @@ class Detector(ABC):
 
     # NOTE: for some detectors (e.g. LISA, ET) data could be a list of Data
     # objects so this might be worth revisiting
-    data: jd.Data
-    psd: jd.PowerSpectrum
+    data: Data
+    psd: PowerSpectrum
 
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
@@ -140,13 +140,13 @@ class GroundBased2G(Detector):
         polarization_mode (list[Polarization]): List of polarization modes (`pc` for plus and cross) to be used in
             computing antenna patterns; in the future, this could be expanded to
             include non-GR modes.
-        data (jd.Data): Array of Fourier-domain strain data.
-        psd (jd.PowerSpectrum): Power spectral density object.
+        data (Data): Array of Fourier-domain strain data.
+        psd (PowerSpectrum): Power spectral density object.
     """
 
     polarization_mode: list[Polarization]
-    data: jd.Data
-    psd: jd.PowerSpectrum
+    data: Data
+    psd: PowerSpectrum
 
     latitude: Float = 0
     longitude: Float = 0
@@ -195,8 +195,8 @@ class GroundBased2G(Detector):
         self.yarm_tilt = yarm_tilt
 
         self.polarization_mode = [Polarization(m) for m in modes]
-        self.data = jd.Data()
-        self.psd = jd.PowerSpectrum()
+        self.data = Data()
+        self.psd = PowerSpectrum()
 
     @staticmethod
     def _get_arm(
@@ -532,7 +532,7 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_sample"]: Whitened time-domain data.
         """
-        return pass
+        pass
 
 H1 = GroundBased2G(
     "H1",
