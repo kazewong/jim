@@ -221,8 +221,7 @@ class Data(ABC):
         if auto_fft:
             self.fft()
         mask = (self.frequencies >= f_min) * (self.frequencies <= f_max)
-
-        return self.fd[mask], self.frequencies[mask]
+        return self.fd[mask], self.frequencies[mask], mask
 
     def to_psd(self, **kws) -> "PowerSpectrum":
         """Compute a Welch estimate of the power spectral density of the data.
@@ -317,7 +316,7 @@ class Data(ABC):
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
-        d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
+        d_new, f_new, _ = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(np.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
             np.equal(f_new, frequencies)
@@ -433,7 +432,7 @@ class PowerSpectrum(ABC):
                 - frequencies: Frequencies corresponding to sliced values
         """
         mask = (self.frequencies >= f_min) & (self.frequencies <= f_max)
-        return self.values[mask], self.frequencies[mask]
+        return self.values[mask], self.frequencies[mask], mask
 
     def interpolate(
         self, frequencies: Float[Array, " n_sample"], kind: str = "cubic", **kws

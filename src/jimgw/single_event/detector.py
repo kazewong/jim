@@ -116,14 +116,15 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
         # Compute sliced frequencies, data and psd.
-        data, freqs_1 = self.data.frequency_slice(*self.frequency_bounds)
-        psd, freqs_2 = self.psd.frequency_slice(*self.frequency_bounds)
+        data, freqs_1, mask_1 = self.data.frequency_slice(*self.frequency_bounds)
+        psd, freqs_2, _ = self.psd.frequency_slice(*self.frequency_bounds)
 
         assert all(
             freqs_1 == freqs_2
         ), f"The {self.name} data and PSD must have same frequencies"
 
         self.sliced_frequencies = freqs_1
+        self.frequency_mask = mask_1
         self.fd_data_slice = data
         self.psd_slice = psd
 
@@ -556,14 +557,19 @@ class GroundBased2G(Detector):
             epoch=self.data.epoch,
         )
 
+        # 5. Update the sliced data and psd with the (potentially) new frequency bounds
+        self.set_frequency_bounds()
+        masked_signal = projected_strain[self.frequency_mask]
+
         optimal_snr = inner_product(
-            projected_strain, projected_strain, self.psd, self.frequencies
+            masked_signal, masked_signal,
+            self.psd_slice, self.sliced_frequencies
         )
         match_filtered_snr = complex_inner_product(
-            projected_strain,
-            self.data.frequency_domain_data,
-            self.psd,
-            self.frequencies,
+            masked_signal,
+            self.fd_data_slice,
+            self.psd_slice,
+            self.sliced_frequencies,
         )
 
         # NOTE: Change this to logging later.
