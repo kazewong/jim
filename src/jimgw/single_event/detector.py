@@ -62,6 +62,11 @@ class Detector(ABC):
     def duration(self) -> Float:
         return self.data.duration
 
+    @property
+    def frequency_mask(self) -> Bool[Array, " n_sample"]:
+        f_min, f_max = self.frequency_bounds
+        return (f_min <= self.frequencies) & (self.frequencies <= f_max)
+
     @abstractmethod
     def fd_response(
         self,
@@ -591,9 +596,11 @@ class GroundBased2G(Detector):
         )
 
         # 3. Set the new data
-        strain_data = projected_strain
+        strain_data = jnp.where(self.frequency_mask, projected_strain, 0.0 + 0.0j)
         if not is_zero_noise:
-            strain_data += self.psd.simulate_data(rng_key)
+            strain_data += jnp.where(
+                self.frequency_mask, self.psd.simulate_data(rng_key), 0.0 + 0.0j
+            )
 
         self.set_data(
             Data.from_fd(
