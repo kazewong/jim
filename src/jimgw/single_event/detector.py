@@ -46,9 +46,21 @@ class Detector(ABC):
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
     @property
-    def epoch(self):
+    def epoch(self) -> Float:
         """The epoch of the data."""
         return self.data.epoch
+
+    @property
+    def times(self) -> Float[Array, " n_sample"]:
+        return self.data.times
+
+    @property
+    def frequencies(self) -> Float[Array, " n_sample"]:
+        return self.data.frequencies
+
+    @property
+    def duration(self) -> Float:
+        return self.data.duration
 
     @abstractmethod
     def fd_response(
@@ -127,6 +139,20 @@ class Detector(ABC):
         self.frequency_mask = mask_1
         self.sliced_fd_data = data
         self.sliced_psd = psd
+
+    def clear_data_and_psd(self) -> None:
+        """Clear the data and PSD of the detector."""
+        self.data = Data()
+        self.psd = PowerSpectrum()
+        self.frequency_bounds = (0.0, float("inf"))
+        for attrname in [
+            "sliced_frequencies",
+            "frequency_mask",
+            "sliced_fd_data",
+            "sliced_psd",
+        ]:
+            if hasattr(self, attrname):
+                delattr(self, attrname)
 
 
 class GroundBased2G(Detector):
@@ -296,14 +322,6 @@ class GroundBased2G(Detector):
         z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
         return jnp.array([x, y, z])
 
-    @property
-    def times(self) -> Float[Array, " n_sample"]:
-        return self.data.times
-
-    @property
-    def frequencies(self) -> Float[Array, " n_sample"]:
-        return self.data.frequencies
-
     def fd_full_response(
         self,
         frequency: Float[Array, " n_sample"],
@@ -449,7 +467,7 @@ class GroundBased2G(Detector):
         return antenna_patterns
 
     @jaxtyped(typechecker=typechecker)
-    def load_and_set_psd(self, psd_file: str = "") -> Float[Array, " n_sample"]:
+    def load_and_set_psd(self, psd_file: str = "") -> PowerSpectrum:
         """Load power spectral density (PSD) from file or default GWTC-2 catalog,
             and set it to the detector.
 
@@ -470,7 +488,7 @@ class GroundBased2G(Detector):
             f, psd_vals = loadtxt(psd_file, unpack=True)
 
         _loaded_psd = PowerSpectrum(psd_vals, f, name=f"{self.name}_psd")
-        self.psd = _loaded_psd.interpolate(self.frequencies)
+        self.set_psd(_loaded_psd)
         return self.psd
 
     def set_data(self, data: Data | Array, **kws) -> None:
@@ -488,6 +506,14 @@ class GroundBased2G(Detector):
             self.data = data
         else:
             self.data = Data(data, **kws)
+        # Assert PSD frequencies agree with data
+        if not (
+            (self.psd is None)
+            or (self.psd.empty)
+            or (self.data.empty)
+            or (self.psd.frequencies == self.data.frequencies).all()
+        ):
+            self.psd = self.psd.interpolate(self.data.frequencies)
 
     def set_psd(self, psd: PowerSpectrum | Array, **kws) -> None:
         """Add PSD to the detector.
@@ -505,6 +531,14 @@ class GroundBased2G(Detector):
         else:
             # not clear if we want to support this
             self.psd = PowerSpectrum(psd, **kws)
+        # Assert PSD frequencies agree with data frequencies
+        if not (
+            (self.data is None)
+            or (self.psd.empty)
+            or (self.data.empty)
+            or (self.psd.frequencies == self.data.frequencies).all()
+        ):
+            self.psd = self.psd.interpolate(self.data.frequencies)
 
     def inject_signal(
         self,
@@ -562,8 +596,7 @@ class GroundBased2G(Detector):
         masked_signal = projected_strain[self.frequency_mask]
 
         optimal_snr = inner_product(
-            masked_signal, masked_signal,
-            self.sliced_psd, self.sliced_frequencies
+            masked_signal, masked_signal, self.sliced_psd, self.sliced_frequencies
         )
         match_filtered_snr = complex_inner_product(
             masked_signal,
@@ -589,31 +622,31 @@ class GroundBased2G(Detector):
         pass
 
     def get_whitened_frequency_domain_strain(
-            self, frequency_series: Complex[Array, " n_freq"]) -> Complex[Array, " n_freq"]:
+        self, frequency_series: Complex[Array, " n_freq"]
+    ) -> Complex[Array, " n_freq"]:
         """Get the whitened frequency-domain strain.
         Args:
             frequency_series (Complex[Array, " n_freq"]): Array of frequency domain data/signal.
         Returns:
             Complex[Array, " n_freq"]: Whitened frequency-domain strain.
         """
-        scaled_asd = jnp.sqrt(self.sliced_psd * self.duration / 4)
+        scaled_asd = jnp.sqrt(self.psd.values * self.duration / 4)
         return (frequency_series / scaled_asd) * self.frequency_mask
 
     def whitened_frequency_to_time_domain_strain(
-            self, whitened_frequency_series: Complex[Array, " n_time // 2 + 1"]) -> Float[Array, " n_time"]:
+        self, whitened_frequency_series: Complex[Array, " n_time // 2 + 1"]
+    ) -> Float[Array, " n_time"]:
         """Get the whitened frequency-domain strain.
         Args:
-            whitened_frequency_series (Complex[Array, " n_time // 2 + 1"]): 
+            whitened_frequency_series (Complex[Array, " n_time // 2 + 1"]):
                 Array of whitened frequency domain data/signal.
         Returns:
             Float[Array, " n_time"]: Whitened time-domain strain/signal.
         """
-        n_freq_in_band = jnp.sum(self.frequency_mask)
-        frequency_window_factor = (
-            n_freq_in_band
-            / len(self.frequency_mask)
+        freq_mask_ratio = len(self.frequency_mask) / jnp.sqrt(
+            jnp.sum(self.frequency_mask)
         )
-        return jnp.fft.irfft(whitened_frequency_series) * jnp.sqrt(n_freq_in_band) / frequency_window_factor
+        return jnp.fft.irfft(whitened_frequency_series) * freq_mask_ratio
 
     @property
     def whitened_frequency_domain_data(self) -> Complex[Array, " n_sample"]:
@@ -625,7 +658,7 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_sample"]: Whitened frequency-domain data.
         """
-        
+
         return self.get_whitened_frequency_domain_strain(self.data.fd)
 
     @property
