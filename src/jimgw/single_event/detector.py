@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped, Bool
 from numpy import loadtxt
 import requests
 from beartype import beartype as typechecker
@@ -467,7 +467,7 @@ class GroundBased2G(Detector):
         return antenna_patterns
 
     @jaxtyped(typechecker=typechecker)
-    def load_and_set_psd(self, psd_file: str = "") -> PowerSpectrum:
+    def load_and_set_psd(self, psd_file: str = "", asd_file: str = "") -> PowerSpectrum:
         """Load power spectral density (PSD) from file or default GWTC-2 catalog,
             and set it to the detector.
 
@@ -477,19 +477,42 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_sample"]: Array of PSD values of the detector.
         """
-        if psd_file == "":
+        if psd_file != "":
+            f, psd_vals = loadtxt(psd_file, unpack=True)
+        elif asd_file != "":
+            f, asd_vals = loadtxt(asd_file, unpack=True)
+            psd_vals = asd_vals**2
+        else:
             print("Grabbing GWTC-2 PSD for " + self.name)
             url = asd_file_dict[self.name]
             data = requests.get(url)
-            open(self.name + ".txt", "wb").write(data.content)
-            f, asd_vals = loadtxt(self.name + ".txt", unpack=True)
+            tmp_file_name = f"fetched_default_asd_{self.name}.txt"
+            open(tmp_file_name, "wb").write(data.content)
+            f, asd_vals = loadtxt(tmp_file_name, unpack=True)
             psd_vals = asd_vals**2
-        else:
-            f, psd_vals = loadtxt(psd_file, unpack=True)
 
         _loaded_psd = PowerSpectrum(psd_vals, f, name=f"{self.name}_psd")
         self.set_psd(_loaded_psd)
         return self.psd
+
+    def _equal_data_psd_frequencies(self) -> Bool:
+        """Check if the frequencies of the data and PSD match.
+        A helper function for `set_data` and `set_psd`.
+
+        Return:
+            Bool: True if the frequencies match, False otherwise.
+        """
+        if self.psd.empty or self.data.empty:
+            # In this case, we simply skip the check
+            return True
+        if self.psd.n_freq != self.data.n_freq:
+            # Cannot proceed comparison, needs interpolation
+            return False
+        if (self.psd.frequencies == self.data.frequencies).all():
+            # Frequencies match
+            return True
+        # This case means the frequencies are different
+        return False
 
     def set_data(self, data: Data | Array, **kws) -> None:
         """Add data to the detector.
@@ -507,12 +530,7 @@ class GroundBased2G(Detector):
         else:
             self.data = Data(data, **kws)
         # Assert PSD frequencies agree with data
-        if not (
-            (self.psd is None)
-            or (self.psd.empty)
-            or (self.data.empty)
-            or (self.psd.frequencies == self.data.frequencies).all()
-        ):
+        if not ((self.psd is None) or self._equal_data_psd_frequencies()):
             self.psd = self.psd.interpolate(self.data.frequencies)
 
     def set_psd(self, psd: PowerSpectrum | Array, **kws) -> None:
@@ -532,12 +550,7 @@ class GroundBased2G(Detector):
             # not clear if we want to support this
             self.psd = PowerSpectrum(psd, **kws)
         # Assert PSD frequencies agree with data frequencies
-        if not (
-            (self.data is None)
-            or (self.psd.empty)
-            or (self.data.empty)
-            or (self.psd.frequencies == self.data.frequencies).all()
-        ):
+        if not ((self.data is None) or self._equal_data_psd_frequencies()):
             self.psd = self.psd.interpolate(self.data.frequencies)
 
     def inject_signal(
@@ -563,35 +576,36 @@ class GroundBased2G(Detector):
         """
         # 1. Set empty data to initialise the detector
         n_times = int(duration * sampling_frequency)
-        self.data = Data(
-            name=f"{self.name}_empty",
-            td=jnp.zeros(n_times),
-            delta_t=1 / sampling_frequency,
-            epoch=epoch,
+        self.set_data(
+            Data(
+                name=f"{self.name}_empty",
+                td=jnp.zeros(n_times),
+                delta_t=1 / sampling_frequency,
+                epoch=epoch,
+            )
         )
 
-        # 2. Reset the PSD to the correct frequency array
-        self.psd = self.psd.interpolate(self.frequencies)
-
-        # 3. Compute the projected strain from parameters
+        # 2. Compute the projected strain from parameters
         polarisations = waveform_model(self.frequencies, parameters)
         projected_strain = self.fd_full_response(
             self.frequencies, polarisations, parameters
         )
 
-        # 4. Set the new data
+        # 3. Set the new data
         strain_data = projected_strain
         if not is_zero_noise:
             strain_data += self.psd.simulate_data(rng_key)
 
-        self.data = Data.from_fd(
-            name=f"{self.name}_injected",
-            fd=strain_data,
-            frequencies=self.frequencies,
-            epoch=self.data.epoch,
+        self.set_data(
+            Data.from_fd(
+                name=f"{self.name}_injected",
+                fd=strain_data,
+                frequencies=self.frequencies,
+                epoch=self.data.epoch,
+            )
         )
 
-        # 5. Update the sliced data and psd with the (potentially) new frequency bounds
+        # 4. Update the sliced data and psd with the (potentially) new frequency bounds
         self.set_frequency_bounds()
         masked_signal = projected_strain[self.frequency_mask]
 
