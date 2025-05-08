@@ -2,16 +2,16 @@ __include__ = ["Data", "PowerSpectrum"]
 
 from abc import ABC
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 from gwpy.timeseries import TimeSeries
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 from typing import Optional
-from scipy.interpolate import interp1d
-import scipy.signal as sig
+from scipy.signal import welch
 from scipy.signal.windows import tukey
+from scipy.interpolate import interp1d
 import logging
-import jax
-import jax.numpy as jnp
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -235,7 +235,7 @@ class Data(ABC):
         """
         if not self.has_fd:
             self.fft()
-        freq, psd = sig.welch(self.td, fs=self.sampling_frequency, **kws)
+        freq, psd = welch(self.td, fs=self.sampling_frequency, **kws)
         return PowerSpectrum(psd, freq, self.name)
 
     @classmethod
@@ -319,9 +319,8 @@ class Data(ABC):
 
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(np.equal(d_new, fd)), "Data do not match after slicing"
-        assert all(
-            np.equal(f_new, frequencies)
-        ), "Frequencies do not match after slicing"
+        assert all(np.equal(f_new, frequencies)), \
+            "Frequencies do not match after slicing"
         return data
 
 
@@ -396,6 +395,7 @@ class PowerSpectrum(ABC):
             frequencies: Array of frequencies in Hz. Defaults to empty array.
             name: Name of the power spectrum. Defaults to None.
         """
+        # NOTE: Are we sure the values and frequencies start from 0?
         self.values = values
         self.frequencies = frequencies
         assert len(self.values) == len(
@@ -435,7 +435,7 @@ class PowerSpectrum(ABC):
         return self.values[mask], self.frequencies[mask]
 
     def interpolate(
-        self, f: Float[Array, " n_sample"], kind: str = "cubic", **kws
+        self, frequencies: Float[Array, " n_sample"], kind: str = "cubic", **kws
     ) -> "PowerSpectrum":
         """Interpolate the power spectrum to new frequencies.
 
@@ -447,8 +447,10 @@ class PowerSpectrum(ABC):
         Returns:
             PowerSpectrum: New power spectrum with interpolated values.
         """
-        interp = interp1d(self.frequencies, self.values, kind=kind, **kws)
-        return PowerSpectrum(interp(f), f, self.name)
+        # NOTE: Why are we using cubic interpolation?
+        interp = interp1d(self.frequencies, self.values, kind=kind,
+                          fill_value=np.inf, bounds_error=False, **kws)
+        return PowerSpectrum(interp(frequencies), frequencies, self.name)
 
     def simulate_data(
         self,
@@ -460,10 +462,8 @@ class PowerSpectrum(ABC):
             key: JAX PRNG key for random number generation.
 
         Returns:
-            Complex array of simulated noise data.
+            Complex frequency series of simulated noise data.
         """
-        key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
-        noise_real = jax.random.normal(key, shape=var.shape) * np.sqrt(var)
-        noise_imag = jax.random.normal(subkey, shape=var.shape) * np.sqrt(var)
+        noise_real, noise_imag = jax.random.normal(key, shape=(2, var.shape)) * np.sqrt(var)
         return noise_real + 1j * noise_imag
