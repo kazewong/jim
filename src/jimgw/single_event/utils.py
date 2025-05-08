@@ -1,41 +1,58 @@
 import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Complex, Optional
 
 from jimgw.constants import MTSUN
 
 
+def complex_inner_product(
+    h1: Float[Array, " n_freq"],
+    h2: Float[Array, " n_freq"],
+    psd: Float[Array, " n_freq"],
+    frequency: Optional[Float[Array, " n_freq"]] = None,
+    df: Optional[Float] = None,
+) -> Complex:
+    """
+    Compute the complex inner product of two waveforms h1 and h2 
+    with the given power spectral density (PSD).
+    The first waveform, h1, is complex conjugated.
+
+    Args:
+        h1 (Float[Array, "n_sample"]): First waveform. Can be complex.
+        h2 (Float[Array, "n_sample"]): Second waveform. Can be complex.
+        psd (Float[Array, "n_sample"]): Power spectral density.
+        frequency (Float[Array, "n_sample"]): Frequency array.
+        df (Float): Frequency spacing. If None, it is calculated from the frequency array.
+
+    Returns:
+        Float: Noise-weighted inner product of h1 and h2 with given the PSD.
+    """
+    integrand = jnp.conj(h1) * h2 / psd
+    return 4.0 * trapezoid(integrand, x=frequency, dx=df)
+
+
 def inner_product(
-    h1: Float[Array, " n_sample"],
-    h2: Float[Array, " n_sample"],
-    frequency: Float[Array, " n_sample"],
-    psd: Float[Array, " n_sample"],
+    h1: Float[Array, " n_freq"],
+    h2: Float[Array, " n_freq"],
+    psd: Float[Array, " n_freq"],
+    frequency: Optional[Float[Array, " n_freq"]] = None,
+    df: Optional[Float] = None,
 ) -> Float:
     """
-        Evaluating the inner product of two waveforms h1 and h2 with the psd.
+    Compute the noise-weighted inner product of two waveforms h1 and h2 
+    with the given power spectral density (PSD).
 
-    Do psd interpolation outside the inner product loop to speed up the evaluation
+    Args:
+        h1 (Float[Array, "n_sample"]): First waveform. Can be complex.
+        h2 (Float[Array, "n_sample"]): Second waveform. Can be complex.
+        psd (Float[Array, "n_sample"]): Power spectral density.
+        frequency (Float[Array, "n_sample"]): Frequency array.
+        df (Float): Frequency spacing. If None, it is calculated from the frequency array.
 
-        Parameters
-        ----------
-        h1 : Float[Array, "n_sample"]
-                First waveform. Can be complex.
-        h2 : Float[Array, "n_sample"]
-                Second waveform. Can be complex.
-        frequency : Float[Array, "n_sample"]
-                Frequency array.
-        psd : Float[Array, "n_sample"]
-                Power spectral density.
-
-        Returns
-        -------
-        Float
-                Inner product of h1 and h2 with the psd.
+    Returns:
+        Float: Noise-weighted inner product of h1 and h2 with given the PSD.
     """
-    # psd_interp = jnp.interp(frequency, psd_frequency, psd)
-    df = frequency[1] - frequency[0]
-    integrand = jnp.conj(h1) * h2 / psd
-    return 4.0 * jnp.real(trapezoid(integrand, dx=df))
+    return complex_inner_product(h1, h2, psd, frequency, df).real
 
 
 def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
