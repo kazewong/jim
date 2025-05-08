@@ -13,9 +13,9 @@ import jax.numpy as np
 config.update("jax_enable_x64", True)
 from jaxtyping import Float, Int
 
-# This UNIX timestamp is computed by: 
+# This UNIX timestamp is computed by:
 # datetime(1980, 1, 6, 0, 0, 0, tzinfo=timezone.utc).timestamp()
-# Or in LAL: 
+# Or in LAL:
 # https://lscsoft.docs.ligo.org/lalsuite/lal/group___date__h.html#ga1c3cab00910987a1410a9d24d4fccdce
 GPS_EPOCH: int = 315964800
 EPOCH_J2000_0_JD: float = 2451545.0
@@ -68,7 +68,7 @@ def n_leap_seconds(date: Int) -> Int:
 
     Search in reverse order as in practice, almost all requested times will
     be after the most recent leap.
-    
+
     The Bilby Cython implementation:
     NUM_LEAPS: int = 18
     n_leaps: int = NUM_LEAPS
@@ -100,7 +100,7 @@ DAYS_IN_MONTH = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 UNIX_EPOCH_YEAR = 1970
 
 # **Someone in the future please update this**
-# This is surely not the most ideal way, but for the code to be jittable, 
+# This is surely not the most ideal way, but for the code to be jittable,
 # this seems to be a not too bad compromise.
 YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2500)
 IS_LEAP_YEARS = is_leap_year(YEAR_ARRAY)
@@ -111,30 +111,23 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     This function converts a UTC timestamp to a UTC date (year, month, day, seconds).
 
     This sole intention of this function is to be JAX-compatible and be used within Jim .
-    While it has been agressively tested against the C-implementation in LAL, 
-    and the datetime module, it is advised to use those other modules for 
+    While it has been agressively tested against the C-implementation in LAL,
+    and the datetime module, it is advised to use those other modules for
     other purposes.
 
-    Note that the current implementation has an upper limit of year up to 2500, 
+    Note that the current implementation has an upper limit of year up to 2500,
     which is sufficient for most practical purposes.
     '''
     # The lower bound assumes every year is a leap year
     year = timestamp // LEAP_YEAR_SECONDS + UNIX_EPOCH_YEAR
     seconds_before = np.where(YEAR_ARRAY < year, LEAP_SEC_ARRAY, 0).sum()
 
-    # if (year < 2500):
-    #     raise ValueError(
-    #         f"This function is designed to work between years {UNIX_EPOCH_YEAR} and 2500. The year {year} is out of bounds."
-    #     )
-
     remaining_seconds = timestamp - seconds_before
     sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
-    is_more_than = (remaining_seconds > sec_in_year).astype(np.int32)
-    year += is_more_than
-    remaining_seconds -= is_more_than * sec_in_year
-    is_negative = (remaining_seconds < 0).astype(np.int32)
-    year -= is_negative
-    remaining_seconds += is_negative * sec_in_year
+    is_more_than = (remaining_seconds >= sec_in_year).astype(np.int64)
+    is_negative = (remaining_seconds < 0).astype(np.int64)
+    year += is_more_than - is_negative
+    remaining_seconds -= (is_more_than - is_negative) * sec_in_year
 
     # Adjust for leap year
     sec_in_months = np.where(
@@ -142,23 +135,21 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
         DAYS_IN_MONTH.at[1].set(29),
         DAYS_IN_MONTH,
     ) * SECONDS_IN_DAY
-    
+
     month = remaining_seconds // (28 * SECONDS_IN_DAY)
+    month += (month == 0).astype(np.int64)
     seconds_before_mon = np.where(MONTH_ARRAY < month, sec_in_months, 0).sum()
-    month += (month == 0).astype(np.int32)
     remaining_seconds -= seconds_before_mon
 
-    sec_in_month = sec_in_months[month - 1]
-    is_more_than = (remaining_seconds > sec_in_month).astype(np.int32)
-    month += is_more_than
-    remaining_seconds -= is_more_than * sec_in_month
-    is_negative = (remaining_seconds < 0).astype(np.int32)
-    month -= is_negative
-    remaining_seconds += is_negative * sec_in_month
+    sec_in_month = sec_in_months[month-1]
+    is_more_than = (remaining_seconds >= sec_in_month).astype(np.int64)
+    is_negative = (remaining_seconds < 0).astype(np.int64)
+    month += is_more_than - is_negative
+    remaining_seconds -= (is_more_than - is_negative) * sec_in_month
 
     # Calculate the day and seconds
     day, seconds = divmod(remaining_seconds, SECONDS_IN_DAY)
-    return year, month, day + 1, seconds.astype(np.int32)
+    return year, month, day + 1, seconds.astype(np.int64)
 
 
 def gps_to_utc_date(gps_time: Float) -> tuple[Int, Int, Int, Int]:
@@ -213,7 +204,7 @@ def greenwich_mean_sidereal_time(gps_time: Float) -> Float:
 
 
 def greenwich_sidereal_time(
-        gps_time: Float, 
+        gps_time: Float,
         equation_of_equinoxes: Float) -> Float:
     """
     Compute the Greenwich mean sidereal time from the GPS time and equation of
