@@ -546,7 +546,7 @@ def original_likelihood(
 ) -> Float:
     log_likelihood = 0.0
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
         match_filter_SNR = inner_product(h_dec, data, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)
@@ -565,7 +565,7 @@ def phase_marginalized_likelihood(
     log_likelihood = 0.0
     complex_d_inner_h = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
         complex_d_inner_h += complex_inner_product(h_dec, data, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)
@@ -604,7 +604,7 @@ def time_marginalized_likelihood(
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
         complex_h_inner_d += complex_inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)
@@ -651,7 +651,7 @@ def phase_time_marginalized_likelihood(
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
         complex_h_inner_d += complex_inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)

@@ -86,8 +86,8 @@ class TestDataInterface:
         assert np.all(self.psd.frequencies <= self.psd_band[1])
 
         # check PSD frequency slice
-        psd_slice, freq_slice, _ = self.psd.frequency_slice(*self.psd_band)
-        assert np.allclose(psd_slice, self.psd.values)
+        sliced_psd, freq_slice, _ = self.psd.frequency_slice(*self.psd_band)
+        assert np.allclose(sliced_psd, self.psd.values)
         assert np.allclose(freq_slice, self.psd.frequencies)
 
         # finally check that we can a Welch PSD from data

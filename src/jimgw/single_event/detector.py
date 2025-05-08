@@ -125,8 +125,8 @@ class Detector(ABC):
 
         self.sliced_frequencies = freqs_1
         self.frequency_mask = mask_1
-        self.fd_data_slice = data
-        self.psd_slice = psd
+        self.sliced_fd_data = data
+        self.sliced_psd = psd
 
 
 class GroundBased2G(Detector):
@@ -563,12 +563,12 @@ class GroundBased2G(Detector):
 
         optimal_snr = inner_product(
             masked_signal, masked_signal,
-            self.psd_slice, self.sliced_frequencies
+            self.sliced_psd, self.sliced_frequencies
         )
         match_filtered_snr = complex_inner_product(
             masked_signal,
-            self.fd_data_slice,
-            self.psd_slice,
+            self.sliced_fd_data,
+            self.sliced_psd,
             self.sliced_frequencies,
         )
 
@@ -596,7 +596,7 @@ class GroundBased2G(Detector):
         Returns:
             Complex[Array, " n_freq"]: Whitened frequency-domain strain.
         """
-        scaled_asd = jnp.sqrt(self.psd_slice * self.duration / 4)
+        scaled_asd = jnp.sqrt(self.sliced_psd * self.duration / 4)
         return (frequency_series / scaled_asd) * self.frequency_mask
 
     def whitened_frequency_to_time_domain_strain(

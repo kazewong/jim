@@ -2,7 +2,7 @@ from dataclasses import field
 
 import jax
 import jax.numpy as jnp
-from jax.scipy.special import logit, xlog1py, xlogy
+from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 from abc import abstractmethod
@@ -136,7 +136,7 @@ class LogisticDistribution(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
-        return -variable + xlog1py(-2, jnp.exp(-variable))
+        return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
 
 @jaxtyped(typechecker=typechecker)
@@ -175,7 +175,7 @@ class StandardNormalDistribution(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
-        return -0.5 * variable**2 - xlogy(0.5, 2 * jnp.pi)
+        return -0.5 * (variable**2 + jnp.log(2 * jnp.pi))
 
 
 class SequentialTransformPrior(CompositePrior):
