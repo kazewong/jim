@@ -1,9 +1,10 @@
 from dataclasses import field
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, Bool, PRNGKeyArray, jaxtyped
 from abc import abstractmethod
 import equinox as eqx
 
@@ -30,6 +31,7 @@ class Prior(eqx.Module):
     """
 
     parameter_names: list[str]
+    constraints: list[Callable]
 
     @property
     def n_dim(self) -> int:
@@ -43,6 +45,7 @@ class Prior(eqx.Module):
             A list of names for the parameters of the prior.
         """
         self.parameter_names = parameter_names
+        self.constraints = []
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
         """
@@ -69,6 +72,9 @@ class Prior(eqx.Module):
     ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
 
+    def eval_constraints(self, x: dict[str, Float]) -> Bool:
+        return jnp.array([constraint(x) for constraint in self.constraints]).all()
+
 
 @jaxtyped(typechecker=typechecker)
 class CompositePrior(Prior):
@@ -90,6 +96,7 @@ class CompositePrior(Prior):
             parameter_names += prior.parameter_names
         self.base_prior = priors
         self.parameter_names = parameter_names
+        self.constraints = []
 
     def trace_prior_parent(self, output: list[Prior] = []) -> list[Prior]:
         for subprior in self.base_prior:
@@ -194,15 +201,20 @@ class SequentialTransformPrior(CompositePrior):
         base_prior: list[Prior],
         transforms: list[BijectiveTransform],
     ):
-
         assert (
             len(base_prior) == 1
         ), "SequentialTransformPrior only takes one base prior"
-        self.base_prior = base_prior
+        super().__init__(base_prior)
         self.transforms = transforms
-        self.parameter_names = base_prior[0].parameter_names
-        for transform in transforms:
+        for transform in self.transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
+        if self.n_dim == 1:
+            x_min = getattr(self, 'xmin', -jnp.inf)
+            x_max = getattr(self, 'xmax', +jnp.inf)
+            param_name = self.parameter_names[0]
+            self.constraints = [
+                lambda x: (x[param_name] > x_min) * (x[param_name] < x_max) 
+                ]
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -210,17 +222,23 @@ class SequentialTransformPrior(CompositePrior):
         output = self.base_prior[0].sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
-    def log_prob(self, z: dict[str, Float]) -> Float:
-        """
-        Evaluating the probability of the transformed variable z.
-        This is what flowMC should sample from
-        """
-        output = 0
+    def _compute_log_prob(self, z):
+        output = 0.0
         for transform in reversed(self.transforms):
             z, log_jacobian = transform.inverse(z)
             output += log_jacobian
         output += self.base_prior[0].log_prob(z)
         return output
+
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        """
+        Evaluating the probability of the transformed variable z.
+        This is what flowMC should sample from
+        """
+        eval_result = self.eval_constraints(z)
+        return jnp.where(
+            eval_result, self._compute_log_prob(z), -jnp.inf
+        )
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
@@ -245,11 +263,9 @@ class CombinePrior(CompositePrior):
         self,
         priors: list[Prior],
     ):
-        parameter_names = []
+        super().__init__(priors)
         for prior in priors:
-            parameter_names += prior.parameter_names
-        self.base_prior = priors
-        self.parameter_names = parameter_names
+            self.constraints += prior.constraints
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -387,6 +403,8 @@ class CosinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
+    xmin: Float = -jnp.pi / 2
+    xmax: Float = jnp.pi / 2
 
     def __repr__(self):
         return f"CosinePrior(parameter_names={self.parameter_names})"
