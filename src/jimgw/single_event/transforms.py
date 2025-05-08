@@ -156,7 +156,7 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
 
 
 @jaxtyped(typechecker=typechecker)
-class SkyFrameToDetectorFrameSkyPositionTransform(ConditionalBijectiveTransform):
+class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     """
     Transform sky frame to detector frame sky position
     """
@@ -171,8 +171,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(ConditionalBijectiveTransform)
         ifos: list[GroundBased2G],
     ):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
-        conditional_names = ["t_c"]
-        super().__init__(name_mapping, conditional_names)
+        super().__init__(name_mapping)
 
         self.gmst = jim_gmst(gps_time)
         delta_x = ifos[0].vertex - ifos[1].vertex
@@ -181,7 +180,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(ConditionalBijectiveTransform)
 
         def named_transform(x):
             zenith, azimuth = ra_dec_to_zenith_azimuth(
-                x["ra"], x["dec"], self.gmst + x["t_c"]*SEC_TO_RAD, self.rotation_inv
+                x["ra"], x["dec"], self.gmst, self.rotation_inv
             )
             return {"zenith": zenith, "azimuth": azimuth}
 
@@ -189,7 +188,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(ConditionalBijectiveTransform)
 
         def named_inverse_transform(x):
             ra, dec = zenith_azimuth_to_ra_dec(
-                x["zenith"], x["azimuth"], self.gmst + x["t_c"]*SEC_TO_RAD, self.rotation
+                x["zenith"], x["azimuth"], self.gmst, self.rotation
             )
             return {"ra": ra, "dec": dec}
 
@@ -306,7 +305,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         ifo: GroundBased2G,
     ):
         name_mapping = (["phase_c"], ["phase_det"])
-        conditional_names = ["ra", "dec", "psi", "iota", "t_c"]
+        conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
         self.gmst = jim_gmst(gps_time)
@@ -332,7 +331,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_transform(x):
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst + x["t_c"]*SEC_TO_RAD
+                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
             )
             phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
@@ -343,7 +342,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
 
         def named_inverse_transform(x):
             R_det_arg = _calc_R_det_arg(
-                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst + x["t_c"]*SEC_TO_RAD
+                x["ra"], x["dec"], x["psi"], x["iota"], self.gmst
             )
             phase_c = -R_det_arg + x["phase_det"] * 2.0
             return {
@@ -378,7 +377,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         dL_max: Float,
     ):
         name_mapping = (["d_L"], ["d_hat_unbounded"])
-        conditional_names = ["M_c", "ra", "dec", "psi", "iota", "t_c"]
+        conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
         self.gmst = jim_gmst(gps_time)
@@ -395,13 +394,13 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             and "M_c" in conditional_names
         )
 
-        def _calc_R_dets(ra, dec, psi, iota, t_c_rad):
+        def _calc_R_dets(ra, dec, psi, iota):
             p_iota_term = (1.0 + np.cos(iota) ** 2) / 2.0
             c_iota_term = np.cos(iota)
             R_dets2 = 0.0
 
             for ifo in self.ifos:
-                antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst+t_c_rad)
+                antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
                 c_mode_term = c_iota_term * antenna_pattern["c"]
                 R_dets2 += p_mode_term ** 2 + c_mode_term ** 2
@@ -413,7 +412,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_L"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"], x["t_c"]*SEC_TO_RAD)
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
             scale_factor = 1.0 / np.power(M_c, 5.0 / 6.0) / R_dets
             d_hat = scale_factor * d_L
@@ -435,7 +434,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 x["d_hat_unbounded"],
                 x["M_c"],
             )
-            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"], x["t_c"])
+            R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
             scale_factor = 1.0 / np.power(M_c, 5.0 / 6.0) / R_dets
 
