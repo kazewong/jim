@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
-from collections import OrderedDict
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
@@ -510,9 +509,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             guess = prior.sample(subkey, popsize)
             for transform in sample_transforms:
                 guess = jax.vmap(transform.forward)(guess)
-            guess = jnp.array(
-                jax.tree.leaves(OrderedDict({key: guess[key] for key in parameter_names}))
-            ).T
+            guess = jnp.array([guess[key] for key in parameter_names]).T
             finite_guess = jnp.where(
                 jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
             )[0]

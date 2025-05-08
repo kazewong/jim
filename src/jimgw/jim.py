@@ -176,9 +176,7 @@ class Jim(object):
                 guess = self.prior.sample(subkey, self.sampler.n_chains)
                 for transform in self.sample_transforms:
                     guess = jax.vmap(transform.forward)(guess)
-                guess = jnp.array(
-                    jax.tree.leaves(OrderedDict({key: guess[key] for key in self.parameter_names}))
-                ).T
+                guess = jnp.array([guess[key] for key in self.parameter_names]).T
                 finite_guess = jnp.where(
                     jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
                 )[0]
