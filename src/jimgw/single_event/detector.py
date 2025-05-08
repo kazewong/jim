@@ -289,6 +289,14 @@ class GroundBased2G(Detector):
         z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
         return jnp.array([x, y, z])
 
+    @property
+    def times(self) -> Float[Array, " n_sample"]:
+        return self.data.times
+
+    @property
+    def frequencies(self) -> Float[Array, " n_sample"]:
+        return self.data.frequencies
+    
     def fd_full_response(
         self,
         frequency: Float[Array, " n_sample"],
@@ -434,17 +442,15 @@ class GroundBased2G(Detector):
         return antenna_patterns
 
     @jaxtyped(typechecker=typechecker)
-    def load_psd(
-        self, freqs: Float[Array, " n_sample"], psd_file: str = ""
-    ) -> Float[Array, " n_sample"]:
-        """Load power spectral density (PSD) from file or default GWTC-2 catalog.
+    def load_and_set_psd(self, psd_file: str = "") -> Float[Array, " n_sample"]:
+        """Load power spectral density (PSD) from file or default GWTC-2 catalog, 
+            and set it to the detector.
 
         Args:
-            freqs (Float[Array, " n_sample"]): Array of frequency samples to evaluate PSD at.
             psd_file (str, optional): Path to file containing PSD data. If empty, uses GWTC-2 PSD.
 
         Returns:
-            Float[Array, " n_sample"]: Array of PSD values at requested frequencies.
+            Float[Array, " n_sample"]: Array of PSD values of the detector.
         """
         if psd_file == "":
             print("Grabbing GWTC-2 PSD for " + self.name)
@@ -456,44 +462,49 @@ class GroundBased2G(Detector):
         else:
             f, psd_vals = loadtxt(psd_file, unpack=True)
 
-        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]), bounds_error=False)(freqs)  # type: ignore
-        return jnp.array(psd)
+        _loaded_psd = PowerSpectrum(psd_vals, f, name=f'{self.name}_psd')
+        self.psd = _loaded_psd.interpolate(self.frequencies)
+        return self.psd
 
-    def set_data(self, data: jd.Data | Array, **kws) -> None:
+    def set_data(self, data: Data | Array, **kws) -> None:
         """Add data to the detector.
 
         Args:
-            data (Union[jd.Data, Array]): Data to be added to the detector, either as a `jd.Data` object
+            data (Union[Data, Array]): Data to be added to the detector, either as a `Data` object
                 or as a timeseries array.
-            **kws (dict): Additional keyword arguments to pass to `jd.Data` constructor.
+            **kws (dict): Additional keyword arguments to pass to `Data` constructor.
 
         Returns:
             None
         """
-        if isinstance(data, jd.Data):
+        if isinstance(data, Data):
             self.data = data
         else:
-            self.data = jd.Data(data, **kws)
+            self.data = Data(data, **kws)
 
-    def set_psd(self, psd: jd.PowerSpectrum | Array, **kws) -> None:
+    def set_psd(self, psd: PowerSpectrum | Array, **kws) -> None:
         """Add PSD to the detector.
 
         Args:
-            psd (Union[jd.PowerSpectrum, Array]): PSD to be added to the detector, either as a `jd.PowerSpectrum`
+            psd (Union[PowerSpectrum, Array]): PSD to be added to the detector, either as a `PowerSpectrum`
                 object or as a timeseries array.
-            **kws (dict): Additional keyword arguments to pass to `jd.PowerSpectrum` constructor.
+            **kws (dict): Additional keyword arguments to pass to `PowerSpectrum` constructor.
 
         Returns:
             None
         """
-        if isinstance(psd, jd.PowerSpectrum):
+        if isinstance(psd, PowerSpectrum):
             self.psd = psd
         else:
             # not clear if we want to support this
-            self.psd = jd.PowerSpectrum(psd, **kws)
+            self.psd = PowerSpectrum(psd, **kws)
 
-    def inject_signal(self, waveform_model, parameters: dict[str, float], rng_key: PRNGKeyArray = jax.random.PRNGKey(0)) -> None:
+    def inject_signal(self, duration: float, sampling_frequency: float, epoch: float,
+                      waveform_model, parameters: dict[str, float], is_zero_noise: bool = False,
+                      rng_key: PRNGKeyArray = jax.random.PRNGKey(0)) -> None:
         """Inject a signal into the detector data.
+
+        Note: The power spectral density must be set beforehand.
 
         Args:
             waveform_model: The waveform model to be injected.
@@ -502,11 +513,55 @@ class GroundBased2G(Detector):
         Returns:
             None
         """
+        # 1. Set empty data to initialise the detector
+        n_times = int(duration * sampling_frequency)
+        self.data = Data(
+            name=f'{self.name}_empty',
+            td=jnp.zeros(n_times),
+            delta_t=1/sampling_frequency,
+            epoch=epoch,
+        )
+
+        # 2. Reset the PSD to the correct frequency array
+        self.psd = self.psd.interpolate(self.frequencies)
+
+        # 3. Compute the projected strain from parameters
         polarisations = waveform_model(self.frequencies, parameters)
         projected_strain = self.fd_full_response(self.frequencies, polarisations, parameters)
 
-        noise_timeseries = self.psd.simulate_data(rng_key)
-        self.data = projected_strain + noise_timeseries
+        # 4. Set the new data
+        strain_data = projected_strain
+        if not is_zero_noise:
+            strain_data += self.psd.simulate_data(rng_key)
+
+        self.data = Data.from_fd(
+            name=f'{self.name}_injected',
+            fd=strain_data,
+            frequencies=self.frequencies,
+            epoch=self.data.epoch,
+        )
+
+        optimal_snr = inner_product(projected_strain, projected_strain, self.psd, self.frequencies)
+        match_filtered_snr = complex_inner_product(
+            projected_strain, self.data.frequency_domain_data, self.psd, self.frequencies
+        )
+
+        # NOTE: Change this to logging later.
+        print(f'For detector {self.name}, the injected signal has:')
+        print(f'  - Optimal SNR: {optimal_snr:.4f}')
+        print(f'  - Match filtered SNR: {match_filtered_snr:.4f}')
+
+
+    def set_data_from_file(self, filename: str) -> None:
+        """Set data from a file.
+
+        Args:
+            filename (str): Path to the file containing the data.
+
+        Returns:
+            None
+        """
+        pass
 
     def whitened_frequency_domain_data(
         self, frequency: Float[Array, " n_sample"]

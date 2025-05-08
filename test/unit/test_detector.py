@@ -98,8 +98,7 @@ class TestDataInterface:
         assert np.allclose(psd_auto.values, psd_manual)
 
         # check interpolation of PSD to data frequency grid
-        psd_interp = self.psd.interpolate(self.data.frequencies,
-                                          fill_value=1, bounds_error=False)
+        psd_interp = self.psd.interpolate(self.data.frequencies, bounds_error=False)
         assert isinstance(psd_interp, PowerSpectrum)
 
         # check drawing frequency domain data from PSD
