@@ -444,24 +444,24 @@ class PowerSpectrum(ABC):
         return self.values[mask], self.frequencies[mask]
 
     def interpolate(
-        self, frequencies: Float[Array, " n_sample"], kind: str = "cubic", **kws
+        self, frequencies: Float[Array, " n_sample"], kind: str = "linear", **kws
     ) -> "PowerSpectrum":
         """Interpolate the power spectrum to new frequencies.
 
         Args:
             f: Frequencies to interpolate to.
-            kind: Interpolation method. Defaults to 'cubic'.
+            kind: Interpolation method. Defaults to 'linear'.
             **kws: Additional keyword arguments for scipy.interpolate.interp1d.
 
         Returns:
             PowerSpectrum: New power spectrum with interpolated values.
         """
-        # NOTE: Why are we using cubic interpolation?
         interp = interp1d(
             self.frequencies,
             self.values,
             kind=kind,
-            fill_value=np.inf,
+            fill_value=(self.values[0], self.values[-1]),
+            # fill_value=jnp.inf,
             bounds_error=False,
             **kws,
         )
