@@ -14,7 +14,7 @@ def complex_inner_product(
     df: Optional[Float] = None,
 ) -> Complex:
     """
-    Compute the complex inner product of two waveforms h1 and h2 
+    Compute the complex inner product of two waveforms h1 and h2
     with the given power spectral density (PSD).
     The first waveform, h1, is complex conjugated.
 
@@ -40,7 +40,7 @@ def inner_product(
     df: Optional[Float] = None,
 ) -> Float:
     """
-    Compute the noise-weighted inner product of two waveforms h1 and h2 
+    Compute the noise-weighted inner product of two waveforms h1 and h2
     with the given power spectral density (PSD).
 
     Args:

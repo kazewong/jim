@@ -205,8 +205,8 @@ class Data(ABC):
         self.window = window
 
     def frequency_slice(
-            self, f_min: float, f_max: float, auto_fft: bool = True
-        ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+        self, f_min: float, f_max: float, auto_fft: bool = True
+    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
@@ -272,12 +272,12 @@ class Data(ABC):
 
     @classmethod
     def from_fd(
-            cls,
-            fd: Float[Array, " n_freq"],
-            frequencies: Float[Array, " n_freq"],
-            epoch: float = 0.0,
-            name: str = "",
-        ) -> "Data":
+        cls,
+        fd: Float[Array, " n_freq"],
+        frequencies: Float[Array, " n_freq"],
+        epoch: float = 0.0,
+        name: str = "",
+    ) -> "Data":
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -319,8 +319,9 @@ class Data(ABC):
 
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(np.equal(d_new, fd)), "Data do not match after slicing"
-        assert all(np.equal(f_new, frequencies)), \
-            "Frequencies do not match after slicing"
+        assert all(
+            np.equal(f_new, frequencies)
+        ), "Frequencies do not match after slicing"
         return data
 
 
@@ -383,11 +384,11 @@ class PowerSpectrum(ABC):
         return self.frequencies[-1] * 2
 
     def __init__(
-            self,
-            values: Float[Array, " n_freq"] = jnp.array([]),
-            frequencies: Float[Array, " n_freq"] = jnp.array([]),
-            name: Optional[str] = None,
-        ) -> None:
+        self,
+        values: Float[Array, " n_freq"] = jnp.array([]),
+        frequencies: Float[Array, " n_freq"] = jnp.array([]),
+        name: Optional[str] = None,
+    ) -> None:
         """Initialize PowerSpectrum.
 
         Args:
@@ -448,8 +449,14 @@ class PowerSpectrum(ABC):
             PowerSpectrum: New power spectrum with interpolated values.
         """
         # NOTE: Why are we using cubic interpolation?
-        interp = interp1d(self.frequencies, self.values, kind=kind,
-                          fill_value=np.inf, bounds_error=False, **kws)
+        interp = interp1d(
+            self.frequencies,
+            self.values,
+            kind=kind,
+            fill_value=np.inf,
+            bounds_error=False,
+            **kws,
+        )
         return PowerSpectrum(interp(frequencies), frequencies, self.name)
 
     def simulate_data(
@@ -465,5 +472,6 @@ class PowerSpectrum(ABC):
             Complex frequency series of simulated noise data.
         """
         var = self.values / (4 * self.delta_f)
-        noise_real, noise_imag = jax.random.normal(key, shape=(2, var.shape)) * np.sqrt(var)
+        noise_real, noise_imag = \
+            jax.random.normal(key, shape=(2, *var.shape)) * np.sqrt(var)
         return noise_real + 1j * noise_imag

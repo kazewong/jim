@@ -8,7 +8,12 @@ import requests
 from beartype import beartype as typechecker
 from typing import Optional
 
-from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS, DEG_TO_RAD
+from jimgw.constants import (
+    C_SI,
+    EARTH_SEMI_MAJOR_AXIS,
+    EARTH_SEMI_MINOR_AXIS,
+    DEG_TO_RAD,
+)
 from jimgw.single_event.wave import Polarization
 from jimgw.single_event.data import Data, PowerSpectrum
 from jimgw.single_event.utils import inner_product, complex_inner_product
@@ -111,11 +116,12 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
         # Compute sliced frequencies, data and psd.
-        data, freqs_1  = self.data.frequency_slice(*self.frequency_bounds)
+        data, freqs_1 = self.data.frequency_slice(*self.frequency_bounds)
         psd, freqs_2 = self.psd.frequency_slice(*self.frequency_bounds)
 
-        assert all(freqs_1 == freqs_2), \
-            f"The {self.name} data and PSD must have same frequencies"
+        assert all(
+            freqs_1 == freqs_2
+        ), f"The {self.name} data and PSD must have same frequencies"
 
         self.sliced_frequencies = freqs_1
         self.fd_data_slice = data
@@ -296,7 +302,7 @@ class GroundBased2G(Detector):
     @property
     def frequencies(self) -> Float[Array, " n_sample"]:
         return self.data.frequencies
-    
+
     def fd_full_response(
         self,
         frequency: Float[Array, " n_sample"],
@@ -410,7 +416,7 @@ class GroundBased2G(Detector):
                 jnp.cos(theta),
             ]
         )
-        return jnp.einsum('i...,i->...', omega, delta_d) / C_SI
+        return jnp.einsum("i...,i->...", omega, delta_d) / C_SI
 
     def antenna_pattern(
         self, ra: Float, dec: Float, psi: Float, gmst: Float
@@ -443,7 +449,7 @@ class GroundBased2G(Detector):
 
     @jaxtyped(typechecker=typechecker)
     def load_and_set_psd(self, psd_file: str = "") -> Float[Array, " n_sample"]:
-        """Load power spectral density (PSD) from file or default GWTC-2 catalog, 
+        """Load power spectral density (PSD) from file or default GWTC-2 catalog,
             and set it to the detector.
 
         Args:
@@ -462,7 +468,7 @@ class GroundBased2G(Detector):
         else:
             f, psd_vals = loadtxt(psd_file, unpack=True)
 
-        _loaded_psd = PowerSpectrum(psd_vals, f, name=f'{self.name}_psd')
+        _loaded_psd = PowerSpectrum(psd_vals, f, name=f"{self.name}_psd")
         self.psd = _loaded_psd.interpolate(self.frequencies)
         return self.psd
 
@@ -499,9 +505,16 @@ class GroundBased2G(Detector):
             # not clear if we want to support this
             self.psd = PowerSpectrum(psd, **kws)
 
-    def inject_signal(self, duration: float, sampling_frequency: float, epoch: float,
-                      waveform_model, parameters: dict[str, float], is_zero_noise: bool = False,
-                      rng_key: PRNGKeyArray = jax.random.PRNGKey(0)) -> None:
+    def inject_signal(
+        self,
+        duration: float,
+        sampling_frequency: float,
+        epoch: float,
+        waveform_model,
+        parameters: dict[str, float],
+        is_zero_noise: bool = False,
+        rng_key: PRNGKeyArray = jax.random.PRNGKey(0),
+    ) -> None:
         """Inject a signal into the detector data.
 
         Note: The power spectral density must be set beforehand.
@@ -516,9 +529,9 @@ class GroundBased2G(Detector):
         # 1. Set empty data to initialise the detector
         n_times = int(duration * sampling_frequency)
         self.data = Data(
-            name=f'{self.name}_empty',
+            name=f"{self.name}_empty",
             td=jnp.zeros(n_times),
-            delta_t=1/sampling_frequency,
+            delta_t=1 / sampling_frequency,
             epoch=epoch,
         )
 
@@ -527,7 +540,9 @@ class GroundBased2G(Detector):
 
         # 3. Compute the projected strain from parameters
         polarisations = waveform_model(self.frequencies, parameters)
-        projected_strain = self.fd_full_response(self.frequencies, polarisations, parameters)
+        projected_strain = self.fd_full_response(
+            self.frequencies, polarisations, parameters
+        )
 
         # 4. Set the new data
         strain_data = projected_strain
@@ -535,22 +550,26 @@ class GroundBased2G(Detector):
             strain_data += self.psd.simulate_data(rng_key)
 
         self.data = Data.from_fd(
-            name=f'{self.name}_injected',
+            name=f"{self.name}_injected",
             fd=strain_data,
             frequencies=self.frequencies,
             epoch=self.data.epoch,
         )
 
-        optimal_snr = inner_product(projected_strain, projected_strain, self.psd, self.frequencies)
+        optimal_snr = inner_product(
+            projected_strain, projected_strain, self.psd, self.frequencies
+        )
         match_filtered_snr = complex_inner_product(
-            projected_strain, self.data.frequency_domain_data, self.psd, self.frequencies
+            projected_strain,
+            self.data.frequency_domain_data,
+            self.psd,
+            self.frequencies,
         )
 
         # NOTE: Change this to logging later.
-        print(f'For detector {self.name}, the injected signal has:')
-        print(f'  - Optimal SNR: {optimal_snr:.4f}')
-        print(f'  - Match filtered SNR: {match_filtered_snr:.4f}')
-
+        print(f"For detector {self.name}, the injected signal has:")
+        print(f"  - Optimal SNR: {optimal_snr:.4f}")
+        print(f"  - Match filtered SNR: {match_filtered_snr:.4f}")
 
     def set_data_from_file(self, filename: str) -> None:
         """Set data from a file.
@@ -588,6 +607,7 @@ class GroundBased2G(Detector):
             Float[Array, " n_sample"]: Whitened time-domain data.
         """
         pass
+
 
 H1 = GroundBased2G(
     "H1",
