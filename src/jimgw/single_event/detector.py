@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped
 from numpy import loadtxt
 import requests
 from beartype import beartype as typechecker
@@ -57,7 +57,7 @@ class Detector(ABC):
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
         **kwargs,
-    ) -> Float[Array, " n_sample"]:
+    ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
 
         Args:
@@ -310,7 +310,7 @@ class GroundBased2G(Detector):
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
         trigger_time: Float = 0.0,
-    ) -> Array:
+    ) -> Complex[Array, " n_sample"]:
         """Project the frequency-domain waveform onto the detector response,
         and apply the time shift to align the peak time to the data.
 
@@ -341,7 +341,7 @@ class GroundBased2G(Detector):
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
         **kwargs,
-    ) -> Array:
+    ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
 
         Args:
@@ -421,7 +421,7 @@ class GroundBased2G(Detector):
 
     def antenna_pattern(
         self, ra: Float, dec: Float, psi: Float, gmst: Float
-    ) -> dict[str, Float]:
+    ) -> dict[str, Complex]:
         """Compute antenna patterns for polarizations at specified sky location.
 
         In the long-wavelength approximation, the antenna pattern for a
@@ -435,7 +435,7 @@ class GroundBased2G(Detector):
             gmst (Float): Greenwich mean sidereal time (GMST) in radians.
 
         Returns:
-            dict[str, Float]: Dictionary mapping polarization names to their antenna pattern values.
+            dict[str, Complex]: Dictionary mapping polarization names to their antenna pattern values.
         """
         detector_tensor = self.tensor
 
@@ -588,9 +588,35 @@ class GroundBased2G(Detector):
         """
         pass
 
-    def whitened_frequency_domain_data(
-        self, frequency: Float[Array, " n_sample"]
-    ) -> Float[Array, " n_sample"]:
+    def get_whitened_frequency_domain_strain(
+            self, frequency_series: Complex[Array, " n_freq"]) -> Complex[Array, " n_freq"]:
+        """Get the whitened frequency-domain strain.
+        Args:
+            frequency_series (Complex[Array, " n_freq"]): Array of frequency domain data/signal.
+        Returns:
+            Complex[Array, " n_freq"]: Whitened frequency-domain strain.
+        """
+        scaled_asd = jnp.sqrt(self.psd_slice * self.duration / 4)
+        return (frequency_series / scaled_asd) * self.frequency_mask
+
+    def whitened_frequency_to_time_domain_strain(
+            self, whitened_frequency_series: Complex[Array, " n_time // 2 + 1"]) -> Float[Array, " n_time"]:
+        """Get the whitened frequency-domain strain.
+        Args:
+            whitened_frequency_series (Complex[Array, " n_time // 2 + 1"]): 
+                Array of whitened frequency domain data/signal.
+        Returns:
+            Float[Array, " n_time"]: Whitened time-domain strain/signal.
+        """
+        n_freq_in_band = jnp.sum(self.frequency_mask)
+        frequency_window_factor = (
+            n_freq_in_band
+            / len(self.frequency_mask)
+        )
+        return jnp.fft.irfft(whitened_frequency_series) * jnp.sqrt(n_freq_in_band) / frequency_window_factor
+
+    @property
+    def whitened_frequency_domain_data(self) -> Complex[Array, " n_sample"]:
         """Get the whitened frequency-domain data.
 
         Args:
@@ -599,11 +625,11 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_sample"]: Whitened frequency-domain data.
         """
-        return self.data.frequency_domain_data / jnp.sqrt(self.psd_slice)
+        
+        return self.get_whitened_frequency_domain_strain(self.data.fd)
 
-    def whitened_time_domain_data(
-        self, time: Float[Array, " n_sample"]
-    ) -> Float[Array, " n_sample"]:
+    @property
+    def whitened_time_domain_data(self) -> Float[Array, " n_sample"]:
         """Get the whitened time-domain data.
 
         Args:
@@ -612,7 +638,9 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_sample"]: Whitened time-domain data.
         """
-        pass
+        return self.whitened_frequency_to_time_domain_strain(
+            self.whitened_frequency_domain_data
+        )
 
 
 H1 = GroundBased2G(
