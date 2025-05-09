@@ -66,6 +66,7 @@ class TestUnivariatePrior:
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples["x"]))
+        assert jnp.all((samples["x"] > xmin) & (samples["x"] < xmax))
 
         # Check that the log_prob are finite
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -75,6 +76,9 @@ class TestUnivariatePrior:
         x = p.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
+
+        # Check that the log_prob are correct outside the support
+        assert jnp.allclose(jax.vmap(p.log_prob)(p.add_name(jnp.array([xmin - 1.0, xmax + 1.0])[None])), -jnp.inf)
 
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
@@ -88,6 +92,7 @@ class TestUnivariatePrior:
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples["x"]))
+        assert jnp.all((samples["x"] > 0.0) & (samples["x"] < jnp.pi))
 
         # Check that the log_prob are finite
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -99,6 +104,12 @@ class TestUnivariatePrior:
         y = jax.vmap(p.base_prior[0].transform)(y)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y["x"]) / 2.0))
+
+        # Check that the log_prob are correct outside the support
+        assert jnp.allclose(
+            jax.vmap(p.log_prob)(p.add_name(jnp.array([0.0 - 1.0, jnp.pi + 1.0])[None])),
+            -jnp.inf,
+        )
 
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
@@ -112,6 +123,7 @@ class TestUnivariatePrior:
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples["x"]))
+        assert jnp.all((samples["x"] > -jnp.pi / 2.0) & (samples["x"] < jnp.pi / 2.0))
 
         # Check that the log_prob are finite
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -122,6 +134,12 @@ class TestUnivariatePrior:
         y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y["x"]) / 2.0))
+
+        # Check that the log_prob are correct outside the support
+        assert jnp.allclose(
+            jax.vmap(p.log_prob)(p.add_name(jnp.array([-jnp.pi / 2.0 - 1.0, jnp.pi / 2.0 + 1.0])[None])),
+            -jnp.inf,
+        )
 
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
@@ -137,6 +155,9 @@ class TestUnivariatePrior:
         assert jnp.all(jnp.isfinite(samples["x_mag"]))
         assert jnp.all(jnp.isfinite(samples["x_theta"]))
         assert jnp.all(jnp.isfinite(samples["x_phi"]))
+        assert jnp.all((samples["x_mag"] > 0.0) & (samples["x_mag"] < 1.0))
+        assert jnp.all((samples["x_theta"] > 0.0) & (samples["x_theta"] < jnp.pi))
+        assert jnp.all((samples["x_phi"] > 0.0) & (samples["x_phi"] < 2 * jnp.pi))
 
         # Check that the log_prob are finite
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -151,6 +172,7 @@ class TestUnivariatePrior:
             # Check that all the samples are finite
             samples = p.sample(jax.random.PRNGKey(0), 10000)
             assert jnp.all(jnp.isfinite(samples["x"]))
+            assert jnp.all((samples["x"] > xmin) & (samples["x"] < xmax))
 
             # Check that the log_prob are finite
             log_prob = jax.vmap(p.log_prob)(samples)
@@ -180,6 +202,12 @@ class TestUnivariatePrior:
                     jax.vmap(p.log_prob)(y),
                     -jnp.log(y["x"]) - jnp.log(jnp.log(xmax) - jnp.log(xmin)),
                 )
+
+            # Check that the log_prob are correct outside the support
+            assert jnp.allclose(
+                jax.vmap(p.log_prob)(p.add_name(jnp.array([xmin - 1.0, xmax + 1.0])[None])),
+                -jnp.inf,
+            )
 
             # Check that log_prob is jittable
             jitted_log_prob = jax.jit(p.log_prob)
@@ -220,6 +248,7 @@ class TestUnivariatePrior:
         # Check that all the samples are finite
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all(jnp.isfinite(samples["x"]))
+        assert jnp.all(samples["x"] > 0.0)
 
         # Check that the log_prob are finite
         log_prob = jax.vmap(p.log_prob)(samples)
@@ -232,6 +261,12 @@ class TestUnivariatePrior:
         assert jnp.allclose(
             jax.vmap(p.log_prob)(y),
             stats.rayleigh.logpdf(y["x"], scale=sigma),
+        )
+
+        # Check that the log_prob are correct outside the support
+        assert jnp.allclose(
+            jax.vmap(p.log_prob)(p.add_name(jnp.array([0.0 - 1.0])[None])),
+            -jnp.inf,
         )
 
         # Check that log_prob is jittable
