@@ -28,3 +28,4 @@ DEG_TO_RAD = np.pi / 180
 
 HR_TO_RAD = 2 * np.pi / 24
 HR_TO_SEC: int = 3600
+SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC
