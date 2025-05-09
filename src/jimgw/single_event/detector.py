@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import requests
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Float, Complex, jaxtyped
 from beartype import beartype as typechecker
 from scipy.interpolate import interp1d
 from jimgw.single_event import data as jd
@@ -117,11 +117,38 @@ class Detector(ABC):
         psd, freqs_2 = self.psd.frequency_slice(*self.frequency_bounds)
 
         assert all(freqs_1 == freqs_2), \
-            f"The {self.name} data and PSD must have same frequencies"
+                f"The {self.name} data and PSD must have same frequencies"
 
-        self.sliced_frequencies = freqs_1
-        self.fd_data_slice = data
-        self.psd_slice = psd
+        self._sliced_frequencies = freqs_1
+        self._fd_data_slice = data
+        self._psd_slice = psd
+
+    @property
+    def sliced_frequencies(self) -> Float[Array, " n_freq"]:
+        """Get frequency-domain data slice based on frequency bounds.
+
+        Returns:
+            Float[Array, " n_sample"]: Sliced frequency-domain data.
+        """
+        return self._sliced_frequencies
+
+    @property
+    def fd_data_slice(self) -> Complex[Array, " n_freq"]:
+        """Get frequency-domain data slice based on frequency bounds.
+
+        Returns:
+            Complex[Array, " n_sample"]: Sliced frequency-domain data.
+        """
+        return self._fd_data_slice
+
+    @property
+    def psd_slice(self) -> Float[Array, " n_freq"]:
+        """Get PSD slice based on frequency bounds.
+
+        Returns:
+            Float[Array, " n_sample"]: Sliced power spectral density.
+        """
+        return self._psd_slice
 
 
 class GroundBased2G(Detector):
