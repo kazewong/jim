@@ -615,37 +615,16 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 
-        key = jax.random.PRNGKey(0)
-        initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
-        while not jax.tree.reduce(
-            jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
-        ).all():
-            non_finite_index = jnp.where(
-                jnp.any(
-                    ~jax.tree.reduce(
-                        jnp.logical_and,
-                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-                    ),
-                    axis=1,
-                )
-            )[0]
+        named_initial_position = prior.sample(jax.random.PRNGKey(0), popsize)
+        for transform in sample_transforms:
+            named_initial_position = jax.vmap(transform.forward)(named_initial_position)
+        initial_position = jnp.array(
+            jax.tree.leaves(
+                {key: named_initial_position[key] for key in parameter_names}
+            )
+        ).T
 
-            key, subkey = jax.random.split(key)
-            guess = prior.sample(subkey, popsize)
-            for transform in sample_transforms:
-                guess = jax.vmap(transform.forward)(guess)
-            guess = jnp.array(
-                jax.tree.leaves({key: guess[key] for key in parameter_names})
-            ).T
-            finite_guess = jnp.where(
-                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-            )[0]
-            common_length = min(len(finite_guess), len(non_finite_index))
-            initial_position = initial_position.at[
-                non_finite_index[:common_length]
-            ].set(guess[:common_length])
-
-        rng_key, best_fit = optimizer.optimize(
+        _, best_fit = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position, {}
         )
 
