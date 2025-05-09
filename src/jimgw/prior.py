@@ -402,8 +402,8 @@ class CosinePrior(SequentialTransformPrior):
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
 
-    xmin: Float = -jnp.pi / 2
-    xmax: Float = jnp.pi / 2
+    xmin: float = -jnp.pi / 2
+    xmax: float = jnp.pi / 2
 
     def __repr__(self):
         return f"CosinePrior(parameter_names={self.parameter_names})"
