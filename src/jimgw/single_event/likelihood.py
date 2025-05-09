@@ -57,7 +57,8 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert np.equal(_frequencies, axis=0).all(), "The frequency arrays are not all the same."
+        assert jax.tree.reduce(jnp.array_equal, _frequencies), \
+               "The frequency arrays are not all the same."
         self.detectors = detectors
         self.frequencies = _frequencies[0]
         self.waveform = waveform
