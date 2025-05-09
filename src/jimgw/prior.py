@@ -283,16 +283,16 @@ class CombinePrior(CompositePrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformPrior(SequentialTransformPrior):
-    xmin: Float
-    xmax: Float
+    xmin: float
+    xmax: float
 
     def __repr__(self):
         return f"UniformPrior(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        xmin: Float,
-        xmax: Float,
+        xmin: float,
+        xmax: float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
@@ -325,16 +325,16 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: Float
-    sigma: Float
+    mu: float
+    sigma: float
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        mu: Float,
-        sigma: Float,
+        mu: float,
+        sigma: float,
         parameter_names: list[str],
     ):
         """
@@ -432,7 +432,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], max_mag: Float = 1.0):
+    def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -455,16 +455,16 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
-    xmin: Float = 0.0
-    xmax: Float = jnp.inf
-    sigma: Float
+    xmin: float = 0.0
+    xmax: float = jnp.inf
+    sigma: float
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        sigma: Float,
+        sigma: float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
@@ -483,18 +483,18 @@ class RayleighPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class PowerLawPrior(SequentialTransformPrior):
-    xmin: Float
-    xmax: Float
-    alpha: Float
+    xmin: float
+    xmax: float
+    alpha: float
 
     def __repr__(self):
         return f"PowerLawPrior(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
 
     def __init__(
         self,
-        xmin: Float,
-        xmax: Float,
-        alpha: Float,
+        xmin: float,
+        xmax: float,
+        alpha: float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
