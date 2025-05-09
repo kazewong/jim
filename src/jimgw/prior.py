@@ -209,12 +209,12 @@ class SequentialTransformPrior(CompositePrior):
         for transform in self.transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
         if self.n_dim == 1:
-            x_min = getattr(self, 'xmin', -jnp.inf)
-            x_max = getattr(self, 'xmax', +jnp.inf)
+            x_min = getattr(self, "xmin", -jnp.inf)
+            x_max = getattr(self, "xmax", +jnp.inf)
             param_name = self.parameter_names[0]
             self.constraints = [
-                lambda x: (x[param_name] > x_min) * (x[param_name] < x_max) 
-                ]
+                lambda x: (x[param_name] > x_min) * (x[param_name] < x_max)
+            ]
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -236,9 +236,7 @@ class SequentialTransformPrior(CompositePrior):
         This is what flowMC should sample from
         """
         eval_result = self.eval_constraints(z)
-        return jnp.where(
-            eval_result, self._compute_log_prob(z), -jnp.inf
-        )
+        return jnp.where(eval_result, self._compute_log_prob(z), -jnp.inf)
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
@@ -285,16 +283,16 @@ class CombinePrior(CompositePrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformPrior(SequentialTransformPrior):
-    xmin: float
-    xmax: float
+    xmin: Float
+    xmax: Float
 
     def __repr__(self):
         return f"UniformPrior(xmin={self.xmin}, xmax={self.xmax}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
+        xmin: Float,
+        xmax: Float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
@@ -327,16 +325,16 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
-    mu: float
-    sigma: float
+    mu: Float
+    sigma: Float
 
     def __repr__(self):
         return f"GaussianPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        mu: float,
-        sigma: float,
+        mu: Float,
+        sigma: Float,
         parameter_names: list[str],
     ):
         """
@@ -403,6 +401,7 @@ class CosinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
+
     xmin: Float = -jnp.pi / 2
     xmax: Float = jnp.pi / 2
 
@@ -433,7 +432,7 @@ class UniformSpherePrior(CombinePrior):
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
-    def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
+    def __init__(self, parameter_names: list[str], max_mag: Float = 1.0):
         self.parameter_names = parameter_names
         assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
@@ -456,14 +455,16 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
-    sigma: float
+    xmin: Float = 0.0
+    xmax: Float = jnp.inf
+    sigma: Float
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
 
     def __init__(
         self,
-        sigma: float,
+        sigma: Float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
@@ -482,18 +483,18 @@ class RayleighPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class PowerLawPrior(SequentialTransformPrior):
-    xmin: float
-    xmax: float
-    alpha: float
+    xmin: Float
+    xmax: Float
+    alpha: Float
 
     def __repr__(self):
         return f"PowerLawPrior(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.parameter_names})"
 
     def __init__(
         self,
-        xmin: float,
-        xmax: float,
-        alpha: float,
+        xmin: Float,
+        xmax: Float,
+        alpha: Float,
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
