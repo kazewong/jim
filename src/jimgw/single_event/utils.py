@@ -3,6 +3,7 @@ from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float
 
 from jimgw.constants import MTSUN
+from jimgw.utils import safe_arctan2, carte_to_spherical_angles
 
 
 def inner_product(
@@ -12,27 +13,19 @@ def inner_product(
     psd: Float[Array, " n_sample"],
 ) -> Float:
     """
-        Evaluating the inner product of two waveforms h1 and h2 with the psd.
+        Evaluates the inner product of two waveforms h1 and h2 with the PSD.
 
-    Do psd interpolation outside the inner product loop to speed up the evaluation
+        Do psd interpolation outside the inner product loop to speed up the evaluation.
 
-        Parameters
-        ----------
-        h1 : Float[Array, "n_sample"]
-                First waveform. Can be complex.
-        h2 : Float[Array, "n_sample"]
-                Second waveform. Can be complex.
-        frequency : Float[Array, "n_sample"]
-                Frequency array.
-        psd : Float[Array, "n_sample"]
-                Power spectral density.
+    Args:
+        h1 (Float[Array, "n_sample"]): First waveform. Can be complex.
+        h2 (Float[Array, "n_sample"]): Second waveform. Can be complex.
+        frequency (Float[Array, "n_sample"]): Frequency array.
+        psd (Float[Array, "n_sample"]): Power spectral density.
 
-        Returns
-        -------
-        Float
-                Inner product of h1 and h2 with the psd.
+    Returns:
+        Float: Inner product of h1 and h2 with the PSD.
     """
-    # psd_interp = jnp.interp(frequency, psd_frequency, psd)
     df = frequency[1] - frequency[0]
     integrand = jnp.conj(h1) * h2 / psd
     return 4.0 * jnp.real(trapezoid(integrand, dx=df))
@@ -40,22 +33,15 @@ def inner_product(
 
 def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the Total mass M
+    Transforms the primary mass m1 and secondary mass m2 to the total mass M
     and mass ratio q.
 
-    Parameters
-        ----------
-        m1 : Float
-                Primary mass.
-        m2 : Float
-                Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-        Returns
-        -------
-        M_tot : Float
-                Total mass.
-        q : Float
-                Mass ratio.
+    Returns:
+        tuple[Float, Float]: Total mass (M_tot) and mass ratio (q).
     """
     M_tot = m1 + m2
     q = m2 / m1
@@ -64,22 +50,15 @@ def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
 
 def M_q_to_m1_m2(M_tot: Float, q: Float) -> tuple[Float, Float]:
     """
-    Transforming the Total mass M and mass ratio q to the primary mass m1 and
+    Transforms the total mass M and mass ratio q to the primary mass m1 and
     secondary mass m2.
 
-    Parameters
-    ----------
-    M_tot : Float
-            Total mass.
-    q : Float
-            Mass ratio.
+    Args:
+        M_tot (Float): Total mass.
+        q (Float): Mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     m1 = M_tot / (1 + q)
     m2 = m1 * q
@@ -88,22 +67,15 @@ def M_q_to_m1_m2(M_tot: Float, q: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    Transforms the primary mass m1 and secondary mass m2 to the chirp mass M_c
     and mass ratio q.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M_c : Float
-            Chirp mass.
-    q : Float
-            Mass ratio.
+    Returns:
+        tuple[Float, Float]: Chirp mass (M_c) and mass ratio (q).
     """
     M_tot = m1 + m2
     eta = m1 * m2 / M_tot**2
@@ -114,22 +86,15 @@ def m1_m2_to_Mc_q(m1: Float, m2: Float) -> tuple[Float, Float]:
 
 def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
     """
-    Transforming the chirp mass M_c and mass ratio q to the primary mass m1 and
+    Transforms the chirp mass M_c and mass ratio q to the primary mass m1 and
     secondary mass m2.
 
-    Parameters
-    ----------
-    M_c : Float
-            Chirp mass.
-    q : Float
-            Mass ratio.
+    Args:
+        M_c (Float): Chirp mass.
+        q (Float): Mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     eta = q / (1 + q) ** 2
     M_tot = M_c / eta ** (3.0 / 5)
@@ -140,22 +105,15 @@ def Mc_q_to_m1_m2(M_c: Float, q: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the total mass M
+    Transforms the primary mass m1 and secondary mass m2 to the total mass M
     and symmetric mass ratio eta.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M : Float
-            Total mass.
-    eta : Float
-            Symmetric mass ratio.
+    Returns:
+        tuple[Float, Float]: Total mass (M) and symmetric mass ratio (eta).
     """
     M_tot = m1 + m2
     eta = m1 * m2 / M_tot**2
@@ -164,22 +122,15 @@ def m1_m2_to_M_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
 
 def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
     """
-    Transforming the total mass M and symmetric mass ratio eta to the primary mass m1
+    Transforms the total mass M and symmetric mass ratio eta to the primary mass m1
     and secondary mass m2.
 
-    Parameters
-    ----------
-    M : Float
-            Total mass.
-    eta : Float
-            Symmetric mass ratio.
+    Args:
+        M_tot (Float): Total mass.
+        eta (Float): Symmetric mass ratio.
 
-    Returns
-    -------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Returns:
+        tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
     m1 = M_tot * (1 + jnp.sqrt(1 - 4 * eta)) / 2
     m2 = M_tot * (1 - jnp.sqrt(1 - 4 * eta)) / 2
@@ -188,22 +139,15 @@ def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
 
 def m1_m2_to_Mc_eta(m1: Float, m2: Float) -> tuple[Float, Float]:
     """
-    Transforming the primary mass m1 and secondary mass m2 to the chirp mass M_c
+    Transforms the primary mass m1 and secondary mass m2 to the chirp mass M_c
     and symmetric mass ratio eta.
 
-    Parameters
-    ----------
-    m1 : Float
-            Primary mass.
-    m2 : Float
-            Secondary mass.
+    Args:
+        m1 (Float): Primary mass.
+        m2 (Float): Secondary mass.
 
-    Returns
-    -------
-    M_c : Float
-            Chirp mass.
-    eta : Float
-            Symmetric mass ratio.
+    Returns:
+        tuple[Float, Float]: Chirp mass (M_c) and symmetric mass ratio (eta).
     """
     M = m1 + m2
     eta = m1 * m2 / M**2
@@ -640,8 +584,7 @@ def spin_angles_to_cartesian_spin(
 
     # Normalize J, and find theta0 and phi0 (the angles in starting frame)
     Jhat = J / jnp.linalg.norm(J)
-    theta0 = jnp.arccos(Jhat[2])
-    phi0 = jnp.arctan2(Jhat[1], Jhat[0])
+    theta0, phi0 = carte_to_spherical_angles(*Jhat)
 
     # Rotation 1: Rotate about z-axis by -phi0
     s1hat = rotate_z(-phi0, s1hat)
@@ -661,8 +604,7 @@ def spin_angles_to_cartesian_spin(
     N = jnp.array([0.0, jnp.sin(theta_jn), jnp.cos(theta_jn)])
     iota = jnp.arccos(jnp.dot(N, LNh))
 
-    thetaLJ = jnp.arccos(LNh[2])
-    phiL = jnp.arctan2(LNh[1], LNh[0])
+    thetaLJ, phiL = carte_to_spherical_angles(*LNh)
 
     # Rotation 4: Rotate about z-axis by -phiL
     s1hat = rotate_z(-phiL, s1hat)
@@ -675,7 +617,7 @@ def spin_angles_to_cartesian_spin(
     N = rotate_y(-thetaLJ, N)
 
     # Rotation 6:
-    phiN = jnp.arctan2(N[1], N[0])
+    phiN = safe_arctan2(N[1], N[0])
     s1hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s1hat)
     s2hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s2hat)
 
@@ -760,15 +702,11 @@ def cartesian_spin_to_spin_angles(
     s2hat = jnp.where(chi_2 > 0, s2_vec / chi_2, jnp.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
-    phi1 = jnp.arctan2(s1hat[1], s1hat[0])
-    phi2 = jnp.arctan2(s2hat[1], s2hat[0])
+    tilt_1, phi1 = carte_to_spherical_angles(*s1hat)
+    tilt_2, phi2 = carte_to_spherical_angles(*s2hat)
 
     phi_12 = phi2 - phi1
-
     phi_12 = (phi_12 + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_12 < 2pi
-
-    tilt_1 = jnp.arccos(s1hat[2])
-    tilt_2 = jnp.arccos(s2hat[2])
 
     # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
@@ -783,9 +721,7 @@ def cartesian_spin_to_spin_angles(
 
     # Normalize J
     Jhat = J / jnp.linalg.norm(J)
-
-    thetaJL = jnp.arccos(Jhat[2])
-    phiJ = jnp.arctan2(Jhat[1], Jhat[0])
+    thetaJL, phiJ = carte_to_spherical_angles(*Jhat)
 
     # Azimuthal angle from phase angle
     phi0 = 0.5 * jnp.pi - phiRef
@@ -804,10 +740,10 @@ def cartesian_spin_to_spin_angles(
     LNh = rotate_z(-phiJ, LNh)
     LNh = rotate_y(-thetaJL, LNh)
 
-    phiN = jnp.arctan2(N[1], N[0])
+    phiN = safe_arctan2(N[1], N[0])
     LNh = rotate_z(0.5 * jnp.pi - phiN, LNh)
 
-    phi_jl = jnp.arctan2(LNh[1], LNh[0])
+    phi_jl = safe_arctan2(LNh[1], LNh[0])
     phi_jl = (phi_jl + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_jl < 2pi
 
     return theta_jn, phi_jl, tilt_1, tilt_2, phi_12, chi_1, chi_2
