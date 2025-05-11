@@ -551,6 +551,7 @@ def inner_product(
     # Note: move this function to somewhere else, maybe utils,
     # or even inside Detector.
     if df is None:
+        assert frequencies is not None, "Either df or frequencies must be provided"
         df = frequencies[1] - frequencies[0]
 
     return 4 * jnp.sum((jnp.conj(array_1) * array_2) / psd * df)
