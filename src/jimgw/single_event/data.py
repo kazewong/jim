@@ -1,17 +1,17 @@
 __include__ = ["Data", "PowerSpectrum"]
 
 from abc import ABC
+import logging
 
-import numpy as np
-from gwpy.timeseries import TimeSeries
+import jax
+import jax.numpy as np
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
+
+from gwpy.timeseries import TimeSeries
 from typing import Optional
 from scipy.interpolate import interp1d
 import scipy.signal as sig
 from scipy.signal.windows import tukey
-import logging
-import jax
-import jax.numpy as jnp
 
 
 DEG_TO_RAD = np.pi / 180
@@ -46,8 +46,8 @@ class Data(ABC):
     td: Float[Array, " n_time"]
     fd: Complex[Array, " n_time // 2 + 1"]
 
-    epoch: float
-    delta_t: float
+    epoch: Float
+    delta_t: Float
 
     window: Float[Array, " n_time"]
 
@@ -119,7 +119,7 @@ class Data(ABC):
         Returns:
             Array: Array of time points in seconds.
         """
-        return jnp.arange(self.n_time) * self.delta_t + self.epoch
+        return np.arange(self.n_time) * self.delta_t + self.epoch
 
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
@@ -128,7 +128,7 @@ class Data(ABC):
         Returns:
             Array: Array of frequencies in Hz.
         """
-        return jnp.fft.rfftfreq(self.n_time, self.delta_t)
+        return np.fft.rfftfreq(self.n_time, self.delta_t)
 
     @property
     def has_fd(self) -> bool:
@@ -141,7 +141,7 @@ class Data(ABC):
 
     def __init__(
         self,
-        td: Float[Array, " n_time"] = jnp.array([]),
+        td: Float[Array, " n_time"] = np.array([]),
         delta_t: Float = 0.0,
         epoch: Float = 0.0,
         name: str = "",
@@ -158,7 +158,7 @@ class Data(ABC):
         """
         self.name = name or ""
         self.td = td
-        self.fd = jnp.zeros(self.n_freq)
+        self.fd = np.zeros(self.n_freq, dtype='complex128')
         self.delta_t = delta_t
         self.epoch = epoch
         if window is None:
@@ -185,7 +185,7 @@ class Data(ABC):
                 the fraction of the segment that is tapered on each side.
         """
         logging.info(f"Setting Tukey window to {self.name} data")
-        self.window = jnp.array(tukey(self.n_time, alpha))
+        self.window = np.array(tukey(self.n_time, alpha))
 
     def fft(
         self, window: Optional[Float[Array, " n_time"]] = None
@@ -201,18 +201,17 @@ class Data(ABC):
         if self.has_fd and (window is None or window == self.window):
             # Perhaps one needs to also check self.td and self.delta_t are the same.
             logging.debug(f"{self.name} has FD data, skipping FFT.")
-            return self.fd
         if window is None:
             window = self.window
 
         logging.info(f"Computing FFT of {self.name} data")
-        self.fd = jnp.fft.rfft(self.td * window) * self.delta_t
+        self.fd = np.fft.rfft(self.td * window) * self.delta_t
         self.window = window
         return self.fd
 
     def frequency_slice(
         self, f_min: Float, f_max: Float, auto_fft: bool = True
-    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+    ) -> tuple[Complex[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
@@ -279,7 +278,7 @@ class Data(ABC):
     @classmethod
     def from_fd(
         cls,
-        fd: Float[Array, " n_freq"],
+        fd: Complex[Array, " n_freq"],
         frequencies: Float[Array, " n_freq"],
         epoch: float = 0.0,
         name: str = "",
@@ -311,10 +310,10 @@ class Data(ABC):
         # form full data array
         data_fd_full = np.zeros(f.shape, dtype=np.array(fd).dtype)
         data_fd_full[(frequencies[-1] >= f) & (f >= frequencies[0])] = fd
-        data_fd_full = jnp.array(data_fd_full)
+        data_fd_full = np.array(data_fd_full)
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
-        data_td_full = jnp.fft.irfft(data_fd_full) / delta_t
+        data_td_full = np.fft.irfft(data_fd_full) / delta_t
         # check frequencies
         assert np.allclose(
             f, np.fft.rfftfreq(len(data_td_full), delta_t)
@@ -391,8 +390,8 @@ class PowerSpectrum(ABC):
 
     def __init__(
         self,
-        values: Float[Array, " n_freq"] = jnp.array([]),
-        frequencies: Float[Array, " n_freq"] = jnp.array([]),
+        values: Float[Array, " n_freq"] = np.array([]),
+        frequencies: Float[Array, " n_freq"] = np.array([]),
         name: Optional[str] = None,
     ) -> None:
         """Initialize PowerSpectrum.
