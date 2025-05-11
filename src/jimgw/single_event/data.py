@@ -158,7 +158,7 @@ class Data(ABC):
         """
         self.name = name or ""
         self.td = td
-        self.fd = np.zeros(self.n_freq, dtype='complex128')
+        self.fd = np.zeros(self.n_freq, dtype="complex128")
         self.delta_t = delta_t
         self.epoch = epoch
         if window is None:
@@ -309,7 +309,7 @@ class Data(ABC):
         f = np.arange(0, fnyq + delta_f, delta_f)
         # Form full data array
         data_fd_full = np.where(
-            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0+0.0j
+            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0 + 0.0j
         )
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
