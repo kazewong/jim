@@ -55,8 +55,9 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert jax.tree.reduce(jnp.array_equal, _frequencies), \
-               "The frequency arrays are not all the same."
+        assert jax.tree.reduce(
+            jnp.array_equal, _frequencies
+        ), "The frequency arrays are not all the same."
         self.detectors = detectors
         self.frequencies = _frequencies[0]
         self.waveform = waveform
@@ -193,7 +194,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             if self.marginalization == "phase":
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
-                self.rb_likelihood_function = phase_marginalized_relative_binning_likelihood
+                self.rb_likelihood_function = (
+                    phase_marginalized_relative_binning_likelihood
+                )
                 logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
@@ -539,12 +542,12 @@ likelihood_presets = {
 
 
 def inner_product(
-        array_1: Float[Array, " n_dim"],
-        array_2: Float[Array, " n_dim"],
-        psd: Float[Array, " n_dim"],
-        frequencies: Optional[Float[Array, " n_dim"]]=None,
-        df: Optional[Float]=None,
-    ):
+    array_1: Float[Array, " n_dim"],
+    array_2: Float[Array, " n_dim"],
+    psd: Float[Array, " n_dim"],
+    frequencies: Optional[Float[Array, " n_dim"]] = None,
+    df: Optional[Float] = None,
+):
     # Note: move this function to somewhere else, maybe utils,
     # or even inside Detector.
     if df is None:
@@ -592,7 +595,7 @@ def phase_marginalized_likelihood(
 
 
 def _get_tc_array(duration: Float, sampling_rate: Float):
-    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1/duration)
+    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1 / duration)
 
 
 def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:

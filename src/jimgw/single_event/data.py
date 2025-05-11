@@ -142,8 +142,8 @@ class Data(ABC):
     def __init__(
         self,
         td: Float[Array, " n_time"] = jnp.array([]),
-        delta_t: float = 0.0,
-        epoch: float = 0.0,
+        delta_t: Float = 0.0,
+        epoch: Float = 0.0,
         name: str = "",
         window: Optional[Float[Array, " n_time"]] = None,
     ) -> None:
@@ -187,7 +187,9 @@ class Data(ABC):
         logging.info(f"Setting Tukey window to {self.name} data")
         self.window = jnp.array(tukey(self.n_time, alpha))
 
-    def fft(self, window: Optional[Float[Array, " n_time"]] = None) -> None:
+    def fft(
+        self, window: Optional[Float[Array, " n_time"]] = None
+    ) -> Float[Array, " n_freq"]:
         """Compute the Fourier transform of the data and store it
         in the fd attribute.
 
@@ -206,10 +208,11 @@ class Data(ABC):
         logging.info(f"Computing FFT of {self.name} data")
         self.fd = jnp.fft.rfft(self.td * window) * self.delta_t
         self.window = window
+        return self.fd
 
     def frequency_slice(
-            self, f_min: float, f_max: float, auto_fft: bool = True
-        ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+        self, f_min: Float, f_max: Float, auto_fft: bool = True
+    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Slice the data in the frequency domain.
         This is the main function which interacts with the likelihood.
 
@@ -275,12 +278,12 @@ class Data(ABC):
 
     @classmethod
     def from_fd(
-            cls,
-            fd: Float[Array, " n_freq"],
-            frequencies: Float[Array, " n_freq"],
-            epoch: float = 0.0,
-            name: str = "",
-        ) -> "Data":
+        cls,
+        fd: Float[Array, " n_freq"],
+        frequencies: Float[Array, " n_freq"],
+        epoch: float = 0.0,
+        name: str = "",
+    ) -> "Data":
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -387,11 +390,11 @@ class PowerSpectrum(ABC):
         return self.frequencies[-1] * 2
 
     def __init__(
-            self,
-            values: Float[Array, " n_freq"] = jnp.array([]),
-            frequencies: Float[Array, " n_freq"] = jnp.array([]),
-            name: Optional[str] = None,
-        ) -> None:
+        self,
+        values: Float[Array, " n_freq"] = jnp.array([]),
+        frequencies: Float[Array, " n_freq"] = jnp.array([]),
+        name: Optional[str] = None,
+    ) -> None:
         """Initialize PowerSpectrum.
 
         Args:
