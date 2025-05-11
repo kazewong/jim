@@ -42,6 +42,10 @@ class Detector(ABC):
 
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
+    _sliced_frequencies: Float[Array, " n_sample"] = jnp.array([])
+    _fd_data_slice: Float[Array, " n_sample"] = jnp.array([])
+    _psd_slice: Float[Array, " n_sample"] = jnp.array([])
+
     @property
     def epoch(self):
         """The epoch of the data."""
