@@ -57,8 +57,9 @@ class Detector(ABC):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        trigger_time: Float = 0.0,
         **kwargs,
-    ) -> Float[Array, " n_sample"]:
+    ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
 
         Args:
@@ -71,10 +72,12 @@ class Detector(ABC):
                 - dec (float): Declination in radians
                 - psi (float): Polarization angle in radians
                 - gmst (float): Greenwich mean sidereal time in radians
+                - t_c (Float): Difference between geocent time and trigger time in sec
+            trigger_time (Float): Trigger time of the data in seconds.
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Float[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
+            Complex[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
         """
         pass
 
@@ -323,42 +326,12 @@ class GroundBased2G(Detector):
         z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
         return jnp.array([x, y, z])
 
-    def fd_full_response(
-        self,
-        frequency: Float[Array, " n_sample"],
-        h_sky: dict[str, Float[Array, " n_sample"]],
-        params: dict[str, Float],
-        trigger_time: Float = 0.0,
-    ) -> Array:
-        """Project the frequency-domain waveform onto the detector response,
-        and apply the time shift to align the peak time to the data.
-
-        Args:
-            frequency (Float[Array, " n_sample"]): Array of frequency samples.
-            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names
-                to frequency-domain waveforms. Keys are polarization names (e.g., 'plus', 'cross')
-                and values are complex strain arrays.
-            params (dict[str, Float]): Dictionary of source parameters containing:
-                - ra (Float): Right ascension in radians
-                - dec (Float): Declination in radians
-                - psi (Float): Polarization angle in radians
-                - gmst (Float): Greenwich mean sidereal time in radians
-            trigger_time (Float): Trigger time of the data in seconds.
-
-        Returns:
-            Array: Complex strain measured by the detector in frequency domain, obtained by
-                  combining the antenna patterns and time delays for each polarization mode.
-        """
-        projected_h = self.fd_response(frequency, h_sky, params)
-        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
-        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
-        return projected_h * phase_shift
-
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
+        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Array:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -373,11 +346,13 @@ class GroundBased2G(Detector):
                 - dec (Float): Declination in radians
                 - psi (Float): Polarization angle in radians
                 - gmst (Float): Greenwich mean sidereal time in radians
+                - t_c (Float): Difference between geocent time and trigger time in sec
+            trigger_time (Float): Trigger time of the data in seconds.
             **kwargs: Additional keyword arguments.
 
         Returns:
             Array: Complex strain measured by the detector in frequency domain, obtained by
-                  combining the antenna patterns and time delays for each polarization mode.
+                  combining the antenna patterns for each polarization mode.
         """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
@@ -389,7 +364,10 @@ class GroundBased2G(Detector):
             h_sky,
             antenna_pattern,
         )
-        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
+        projected_strain = jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
+        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
+        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
+        return projected_strain * phase_shift
 
     def td_response(
         self,
