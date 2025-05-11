@@ -45,6 +45,10 @@ class Detector(ABC):
 
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
+    _sliced_frequencies: Float[Array, " n_sample"] = jnp.array([])
+    _sliced_fd_data: Float[Array, " n_sample"] = jnp.array([])
+    _sliced_psd: Float[Array, " n_sample"] = jnp.array([])
+
     @property
     def epoch(self) -> Float:
         """The epoch of the data."""
@@ -73,6 +77,7 @@ class Detector(ABC):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
+        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -87,10 +92,12 @@ class Detector(ABC):
                 - dec (float): Declination in radians
                 - psi (float): Polarization angle in radians
                 - gmst (float): Greenwich mean sidereal time in radians
+                - t_c (Float): Difference between geocent time and trigger time in sec
+            trigger_time (Float): Trigger time of the data in seconds.
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Float[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
+            Complex[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
         """
         pass
 
@@ -140,9 +147,9 @@ class Detector(ABC):
             freqs_1 == freqs_2
         ), f"The {self.name} data and PSD must have same frequencies"
 
-        self.sliced_frequencies = freqs_1
-        self.sliced_fd_data = data
-        self.sliced_psd = psd
+        self._sliced_frequencies = freqs_1
+        self._sliced_fd_data = data
+        self._sliced_psd = psd
 
     def clear_data_and_psd(self) -> None:
         """Clear the data and PSD of the detector."""
@@ -151,12 +158,38 @@ class Detector(ABC):
         self.frequency_bounds = (0.0, float("inf"))
         for attrname in [
             "sliced_frequencies",
-            "frequency_mask",
             "sliced_fd_data",
             "sliced_psd",
         ]:
             if hasattr(self, attrname):
                 delattr(self, attrname)
+
+    @property
+    def sliced_frequencies(self) -> Float[Array, " n_freq"]:
+        """Get frequency-domain data slice based on frequency bounds.
+
+        Returns:
+            Float[Array, " n_sample"]: Sliced frequency-domain data.
+        """
+        return self._sliced_frequencies
+
+    @property
+    def sliced_fd_data(self) -> Complex[Array, " n_freq"]:
+        """Get frequency-domain data slice based on frequency bounds.
+
+        Returns:
+            Complex[Array, " n_sample"]: Sliced frequency-domain data.
+        """
+        return self._sliced_fd_data_slice
+
+    @property
+    def sliced_psd(self) -> Float[Array, " n_freq"]:
+        """Get PSD slice based on frequency bounds.
+
+        Returns:
+            Float[Array, " n_sample"]: Sliced power spectral density.
+        """
+        return self._sliced_psd
 
 
 class GroundBased2G(Detector):
@@ -326,6 +359,7 @@ class GroundBased2G(Detector):
         z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
         return jnp.array([x, y, z])
 
+<<<<<<< HEAD
     def fd_full_response(
         self,
         frequency: Float[Array, " n_sample"],
@@ -357,11 +391,14 @@ class GroundBased2G(Detector):
         phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
         return projected_h * phase_shift
 
+=======
+>>>>>>> use-start-time-in-likelihood
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
+        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -376,11 +413,13 @@ class GroundBased2G(Detector):
                 - dec (Float): Declination in radians
                 - psi (Float): Polarization angle in radians
                 - gmst (Float): Greenwich mean sidereal time in radians
+                - t_c (Float): Difference between geocent time and trigger time in sec
+            trigger_time (Float): Trigger time of the data in seconds.
             **kwargs: Additional keyword arguments.
 
         Returns:
             Array: Complex strain measured by the detector in frequency domain, obtained by
-                  combining the antenna patterns and time delays for each polarization mode.
+                  combining the antenna patterns for each polarization mode.
         """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
@@ -392,7 +431,12 @@ class GroundBased2G(Detector):
             h_sky,
             antenna_pattern,
         )
-        return jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
+        projected_strain = jnp.sum(
+            jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
+        )
+        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
+        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
+        return projected_strain * phase_shift
 
     def td_response(
         self,

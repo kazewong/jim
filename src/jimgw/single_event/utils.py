@@ -728,8 +728,8 @@ def cartesian_spin_to_spin_angles(
     s2hat = np.where(chi_2 > 0, s2_vec / chi_2, np.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
-    tilt_1, phi1 = carte_to_spherical_angles(*s1hat)
-    tilt_2, phi2 = carte_to_spherical_angles(*s2hat)
+    tilt_1, phi1 = carte_to_spherical_angles(*s1hat, default_value=0.0)
+    tilt_2, phi2 = carte_to_spherical_angles(*s2hat, default_value=0.0)
 
     phi_12 = phi2 - phi1
     phi_12 = (phi_12 + 2 * np.pi) % (2 * np.pi)  # Ensure 0 <= phi_12 < 2pi
