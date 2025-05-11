@@ -4,7 +4,6 @@ from abc import ABC
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from gwpy.timeseries import TimeSeries
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 from typing import Optional
@@ -306,7 +305,7 @@ class Data(ABC):
         f = jnp.arange(0, fnyq + delta_f, delta_f)
         # form full data array
         data_fd_full = jnp.where(
-            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0+0.0j
+            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0 + 0.0j
         )
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
@@ -463,8 +462,7 @@ class PowerSpectrum(ABC):
             self.frequencies,
             self.values,
             kind=kind,
-            fill_value=(self.values[0], self.values[-1]),
-            # fill_value=jnp.inf,
+            fill_value=(self.values[0], self.values[-1]),  # type: ignore
             bounds_error=False,
             **kws,
         )
@@ -483,6 +481,7 @@ class PowerSpectrum(ABC):
             Complex frequency series of simulated noise data.
         """
         var = self.values / (4 * self.delta_f)
-        noise_real, noise_imag = \
-            jax.random.normal(key, shape=(2, *var.shape)) * jnp.sqrt(var)
+        noise_real, noise_imag = jax.random.normal(
+            key, shape=(2, *var.shape)
+        ) * jnp.sqrt(var)
         return noise_real + 1j * noise_imag

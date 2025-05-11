@@ -84,7 +84,7 @@ class Polarization(eqx.Module):
                 -np.sin(theta),
             ]
         )
-        v = np.array([-np.sin(phi), np.cos(phi), phi*0.0])
+        v = np.array([-np.sin(phi), np.cos(phi), phi * 0.0])
         m = -u * np.sin(psi) - v * np.cos(psi)
         n = -u * np.cos(psi) + v * np.sin(psi)
 

@@ -180,7 +180,7 @@ class Detector(ABC):
         Returns:
             Complex[Array, " n_sample"]: Sliced frequency-domain data.
         """
-        return self._sliced_fd_data_slice
+        return self._sliced_fd_data
 
     @property
     def sliced_psd(self) -> Float[Array, " n_freq"]:
@@ -601,9 +601,7 @@ class GroundBased2G(Detector):
 
         # 2. Compute the projected strain from parameters
         polarisations = waveform_model(self.frequencies, parameters)
-        projected_strain = self.fd_full_response(
-            self.frequencies, polarisations, parameters
-        )
+        projected_strain = self.fd_response(self.frequencies, polarisations, parameters)
 
         # 3. Set the new data
         strain_data = jnp.where(self.frequency_mask, projected_strain, 0.0 + 0.0j)

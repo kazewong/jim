@@ -63,7 +63,9 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.detectors = detectors
         self.frequencies = _frequencies[0]
         self.waveform = waveform
-        self.gmst = Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        self.gmst = (
+            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
         self.trigger_time = trigger_time
         self.duration = self.detectors[0].data.duration
         self.kwargs = kwargs
@@ -313,9 +315,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 self.freq_grid_center, h_sky_center, self.ref_params, trigger_time
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                detector.fd_data_slice,
+                detector.sliced_fd_data,
                 waveform_ref,
-                detector.psd_slice,
+                detector.sliced_psd,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
