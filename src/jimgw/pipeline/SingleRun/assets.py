@@ -1,7 +1,6 @@
 import dagster as dg
 
 
-
 # Create asset group for run and configuration0
 
 

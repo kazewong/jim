@@ -69,7 +69,7 @@ def safe_polar_angle(
     return jnp.where(
         (jnp.abs(x) < EPS) & (jnp.abs(y) < EPS),
         jnp.arccos(jnp.sign(z)),
-        jnp.arccos(z / jnp.sqrt(x ** 2 + y ** 2 + z ** 2)),
+        jnp.arccos(z / jnp.sqrt(x**2 + y**2 + z**2)),
     )
 
 
@@ -101,7 +101,7 @@ def carte_to_spherical_angles(
     theta = jnp.where(
         align_condition,
         jnp.arccos(jnp.sign(z)),
-        jnp.arccos(z / jnp.sqrt(x ** 2 + y ** 2 + z ** 2)),
+        jnp.arccos(z / jnp.sqrt(x**2 + y**2 + z**2)),
     )
     phi = jnp.where(
         align_condition,

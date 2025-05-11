@@ -137,7 +137,7 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
 
         def named_inverse_transform(x):
             x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
-            mag = jnp.sqrt(x ** 2 + y ** 2 + z ** 2)
+            mag = jnp.sqrt(x**2 + y**2 + z**2)
             theta, phi = carte_to_spherical_angles(x, y, z)
             phi = jnp.mod(phi, 2.0 * jnp.pi)
             return {
@@ -404,7 +404,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
                 c_mode_term = c_iota_term * antenna_pattern["c"]
-                R_dets2 += p_mode_term ** 2 + c_mode_term ** 2
+                R_dets2 += p_mode_term**2 + c_mode_term**2
 
             return jnp.sqrt(R_dets2)
 
