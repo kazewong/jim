@@ -1,3 +1,4 @@
+from typing import Sequence
 import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
@@ -163,7 +164,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     def __init__(
         self,
         gps_time: Float,
-        ifos: list[GroundBased2G],
+        ifos: Sequence[GroundBased2G],
     ):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
@@ -365,14 +366,14 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
     """
 
     gmst: Float
-    ifos: list[GroundBased2G]
+    ifos: Sequence[GroundBased2G]
     dL_min: Float
     dL_max: Float
 
     def __init__(
         self,
         gps_time: Float,
-        ifos: list[GroundBased2G],
+        ifos: Sequence[GroundBased2G],
         dL_min: Float,
         dL_max: Float,
     ):

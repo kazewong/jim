@@ -13,7 +13,7 @@ repos:
     rev: v1.1.399
     hooks:
     - id: pyright
-      additional_dependencies: [beartype, jax, jaxtyping, pytest, typing_extensions, flowMC, ripplegw, gwpy, astropy, dagster]
+      additional_dependencies: [beartype, jax, jaxtyping, pytest, typing_extensions, flowMC, ripplegw, gwpy, astropy, dagster, corner]
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
