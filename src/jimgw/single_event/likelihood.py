@@ -301,7 +301,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = reference_waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = reference_waveform(self.freq_grid_center, self.ref_params)
 
-        for detector, data, psd in zip(self.detectors, self.datas, self.psds):
+        for detector in self.detectors:
             # Get the reference waveforms
             waveform_ref = detector.fd_response(
                 frequency_original, h_sky, self.ref_params, trigger_time
@@ -313,9 +313,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 self.freq_grid_center, h_sky_center, self.ref_params, trigger_time
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                data,
+                detector.fd_data_slice,
                 waveform_ref,
-                psd,
+                detector.psd_slice,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
