@@ -623,15 +623,17 @@ class GroundBased2G(Detector):
         self.set_frequency_bounds()
         masked_signal = projected_strain[self.frequency_mask]
 
-        optimal_snr = inner_product(
+        _optimal_snr_sq = inner_product(
             masked_signal, masked_signal, self.sliced_psd, self.sliced_frequencies
         )
+        optimal_snr = _optimal_snr_sq**0.5
         match_filtered_snr = complex_inner_product(
             masked_signal,
             self.sliced_fd_data,
             self.sliced_psd,
             self.sliced_frequencies,
         )
+        match_filtered_snr /= optimal_snr
 
         # NOTE: Change this to logging later.
         print(f"For detector {self.name}, the injected signal has:")
