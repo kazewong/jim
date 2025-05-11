@@ -359,40 +359,6 @@ class GroundBased2G(Detector):
         z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
         return jnp.array([x, y, z])
 
-<<<<<<< HEAD
-    def fd_full_response(
-        self,
-        frequency: Float[Array, " n_sample"],
-        h_sky: dict[str, Float[Array, " n_sample"]],
-        params: dict[str, Float],
-        trigger_time: Float = 0.0,
-    ) -> Complex[Array, " n_sample"]:
-        """Project the frequency-domain waveform onto the detector response,
-        and apply the time shift to align the peak time to the data.
-
-        Args:
-            frequency (Float[Array, " n_sample"]): Array of frequency samples.
-            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names
-                to frequency-domain waveforms. Keys are polarization names (e.g., 'plus', 'cross')
-                and values are complex strain arrays.
-            params (dict[str, Float]): Dictionary of source parameters containing:
-                - ra (Float): Right ascension in radians
-                - dec (Float): Declination in radians
-                - psi (Float): Polarization angle in radians
-                - gmst (Float): Greenwich mean sidereal time in radians
-            trigger_time (Float): Trigger time of the data in seconds.
-
-        Returns:
-            Array: Complex strain measured by the detector in frequency domain, obtained by
-                  combining the antenna patterns and time delays for each polarization mode.
-        """
-        projected_h = self.fd_response(frequency, h_sky, params)
-        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
-        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
-        return projected_h * phase_shift
-
-=======
->>>>>>> use-start-time-in-likelihood
     def fd_response(
         self,
         frequency: Float[Array, " n_sample"],
