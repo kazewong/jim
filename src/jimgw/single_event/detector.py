@@ -364,7 +364,9 @@ class GroundBased2G(Detector):
             h_sky,
             antenna_pattern,
         )
-        projected_strain = jnp.sum(jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0)
+        projected_strain = jnp.sum(
+            jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
+        )
         trigger_time_shift = trigger_time - self.epoch + params["t_c"]
         phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
         return projected_strain * phase_shift
