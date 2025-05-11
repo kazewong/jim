@@ -19,6 +19,8 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 
 import logging
 from typing import Sequence
+
+
 class SingleEventLikelihood(LikelihoodBase):
     detectors: Sequence[Detector]
     waveform: Waveform
@@ -56,9 +58,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         # make sure data has a Fourier representation
         for det in detectors:
             if not det.data:
-                raise ValueError(
-                    f"Detector {det.name} does not have data."
-                )
+                raise ValueError(f"Detector {det.name} does not have data.")
             if not det.data.has_fd:
                 logging.info("Computing FFT with default window")
                 det.data.fft()
@@ -74,22 +74,23 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             datas.append(data)
             psds.append(psd)
             # make sure the psd and data are consistent
-            assert (freq_0 == freq_1).all(), \
-                f"The {detector.name} data and PSD must have same frequencies"
-                
+            assert (
+                freq_0 == freq_1
+            ).all(), f"The {detector.name} data and PSD must have same frequencies"
+
         # make sure all detectors are consistent
-        assert all([(freqs[0] == freq).all() for freq in freqs]), \
-            "The detectors must have the same frequency grid"
-            
+        assert all(
+            [(freqs[0] == freq).all() for freq in freqs]
+        ), "The detectors must have the same frequency grid"
+
         self.frequencies = freqs[0]  # type: ignore
         self.datas = datas
         self.psds = psds
-        
+
         self.waveform = waveform
         self.trigger_time = trigger_time
         self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent",
-                                                           "greenwich").rad
+            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
 
         self.trigger_time = trigger_time
@@ -158,20 +159,17 @@ class TransientLikelihoodFD(SingleEventLikelihood):
 
     @property
     def epoch(self):
-        """The epoch of the data.
-        """
+        """The epoch of the data."""
         return self.duration - self.post_trigger_duration
 
     @property
     def ifos(self):
-        """The interferometers for the likelihood.
-        """
+        """The interferometers for the likelihood."""
         return [detector.name for detector in self.detectors]
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
-        """Evaluate the likelihood for a given set of parameters.
-        """
+        """Evaluate the likelihood for a given set of parameters."""
         frequencies = self.frequencies
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
@@ -679,9 +677,7 @@ def original_likelihood(
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
         # NOTE: do we want to take the slide outside the likelihood?
-        match_filter_SNR = (
-            4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
-        )
+        match_filter_SNR = 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df).real
         optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
 
@@ -703,9 +699,7 @@ def phase_marginalized_likelihood(
     df = freqs[1] - freqs[0]
     for detector, data, psd in zip(detectors, datas, psds):
         h_dec = detector.fd_response(freqs, h_sky, params) * align_time
-        complex_d_inner_h += 4 * jnp.sum(
-            (jnp.conj(h_dec) * data) / psd * df
-        )
+        complex_d_inner_h += 4 * jnp.sum((jnp.conj(h_dec) * data) / psd * df)
         optimal_SNR = 4 * jnp.sum(jnp.conj(h_dec) * h_dec / psd * df).real
         log_likelihood += -optimal_SNR / 2
 

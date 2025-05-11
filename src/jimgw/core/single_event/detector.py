@@ -22,6 +22,7 @@ asd_file_dict = {
     "V1": "https://dcc.ligo.org/public/0169/P2000251/001/O3-V1_sensitivity_strain_asd.txt",
 }
 
+
 class Detector(ABC):
     """Base class for all detectors.
 
@@ -39,7 +40,7 @@ class Detector(ABC):
     data: jd.Data
     psd: jd.PowerSpectrum
 
-    frequency_bounds: tuple[float, float] = (0., float("inf"))
+    frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
     @abstractmethod
     def fd_response(
@@ -50,11 +51,11 @@ class Detector(ABC):
         **kwargs,
     ) -> Float[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
-        
+
         Args:
             frequency (Float[Array, " n_sample"]): Array of frequency samples.
-            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names 
-                to frequency-domain waveforms. The keys are polarization names (e.g., 'plus', 'cross') 
+            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names
+                to frequency-domain waveforms. The keys are polarization names (e.g., 'plus', 'cross')
                 and values are complex strain arrays.
             params (dict): Dictionary of source parameters including:
                 - ra (float): Right ascension in radians
@@ -62,7 +63,7 @@ class Detector(ABC):
                 - psi (float): Polarization angle in radians
                 - gmst (float): Greenwich mean sidereal time in radians
             **kwargs: Additional keyword arguments.
-            
+
         Returns:
             Float[Array, " n_sample"]: Complex strain measured by the detector in frequency domain.
         """
@@ -77,22 +78,23 @@ class Detector(ABC):
         **kwargs,
     ) -> Float[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the time domain.
-        
+
         Args:
             time: Array of time samples.
             h_sky: Dictionary mapping polarization names to time-domain waveforms.
             params: Dictionary of source parameters.
             **kwargs: Additional keyword arguments.
-            
+
         Returns:
             Array of detector response in time domain.
         """
         pass
 
-    def set_frequency_bounds(self, f_min: Optional[float] = None,
-                             f_max: Optional[float] = None) -> None:
+    def set_frequency_bounds(
+        self, f_min: Optional[float] = None, f_max: Optional[float] = None
+    ) -> None:
         """Set the frequency bounds for the detector.
-        
+
         Args:
             f_min: Minimum frequency.
             f_max: Maximum frequency.
@@ -105,9 +107,11 @@ class Detector(ABC):
         self.frequency_bounds = tuple(bounds)  # type: ignore
 
     @property
-    def fd_data_slice(self) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
+    def fd_data_slice(
+        self,
+    ) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Get frequency-domain data slice based on frequency bounds.
-        
+
         Returns:
             Float[Array, " n_sample"]: Sliced frequency-domain data.
             Float[Array, " n_sample"]: Frequency array.
@@ -117,7 +121,7 @@ class Detector(ABC):
     @property
     def psd_slice(self) -> tuple[Float[Array, " n_sample"], Float[Array, " n_sample"]]:
         """Get PSD slice based on frequency bounds.
-        
+
         Returns:
             Float[Array, " n_sample"]: Sliced power spectral density.
             Float[Array, " n_sample"]: Frequency array.
@@ -127,8 +131,8 @@ class Detector(ABC):
 
 class GroundBased2G(Detector):
     """Object representing a ground-based detector.
-    
-    Contains information about the location and orientation of the detector on Earth, 
+
+    Contains information about the location and orientation of the detector on Earth,
     as well as actual strain data and the PSD of the associated noise.
 
     Attributes:
@@ -146,6 +150,7 @@ class GroundBased2G(Detector):
         data (jd.Data): Array of Fourier-domain strain data.
         psd (jd.PowerSpectrum): Power spectral density object.
     """
+
     polarization_mode: list[Polarization]
     data: jd.Data
     psd: jd.PowerSpectrum
@@ -161,10 +166,18 @@ class GroundBased2G(Detector):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.name})"
 
-    def __init__(self, name: str, latitude: float = 0, longitude: float = 0,
-                 elevation: float = 0, xarm_azimuth: float = 0,
-                 yarm_azimuth: float = 0, xarm_tilt: float = 0,
-                 yarm_tilt: float = 0, modes: str = "pc"):
+    def __init__(
+        self,
+        name: str,
+        latitude: float = 0,
+        longitude: float = 0,
+        elevation: float = 0,
+        xarm_azimuth: float = 0,
+        yarm_azimuth: float = 0,
+        xarm_tilt: float = 0,
+        yarm_tilt: float = 0,
+        modes: str = "pc",
+    ):
         """Initialize a ground-based detector.
 
         Args:
@@ -209,14 +222,10 @@ class GroundBased2G(Detector):
         """
         e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
         e_lat = jnp.array(
-            [-jnp.sin(lat) * jnp.cos(lon),
-             -jnp.sin(lat) * jnp.sin(lon),
-             jnp.cos(lat)]
+            [-jnp.sin(lat) * jnp.cos(lon), -jnp.sin(lat) * jnp.sin(lon), jnp.cos(lat)]
         )
         e_h = jnp.array(
-            [jnp.cos(lat) * jnp.cos(lon),
-             jnp.cos(lat) * jnp.sin(lon),
-             jnp.sin(lat)]
+            [jnp.cos(lat) * jnp.cos(lon), jnp.cos(lat) * jnp.sin(lon), jnp.sin(lat)]
         )
 
         return (
@@ -266,7 +275,7 @@ class GroundBased2G(Detector):
     @property
     def vertex(self) -> Float[Array, " 3"]:
         """Detector vertex coordinates in the reference celestial frame.
-        
+
         Based on arXiv:gr-qc/0008066 Eqs. (B11-B13) except for a typo in the
         definition of the local radius; see Section 2.1 of LIGO-T980044-10.
 
@@ -279,8 +288,8 @@ class GroundBased2G(Detector):
         h = self.elevation
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
-        r = major ** 2 * (
-            major ** 2 * jnp.cos(lat) ** 2 + minor ** 2 * jnp.sin(lat) ** 2
+        r = major**2 * (
+            major**2 * jnp.cos(lat) ** 2 + minor**2 * jnp.sin(lat) ** 2
         ) ** (-0.5)
         x = (r + h) * jnp.cos(lat) * jnp.cos(lon)
         y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
@@ -295,11 +304,11 @@ class GroundBased2G(Detector):
         **kwargs,
     ) -> Array:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
-        
+
         Args:
             frequency (Float[Array, " n_sample"]): Array of frequency samples.
-            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names 
-                to frequency-domain waveforms. Keys are polarization names (e.g., 'plus', 'cross') 
+            h_sky (dict[str, Float[Array, " n_sample"]]): Dictionary mapping polarization names
+                to frequency-domain waveforms. Keys are polarization names (e.g., 'plus', 'cross')
                 and values are complex strain arrays.
             params (dict[str, Float]): Dictionary of source parameters containing:
                 - ra (Float): Right ascension in radians
@@ -307,9 +316,9 @@ class GroundBased2G(Detector):
                 - psi (Float): Polarization angle in radians
                 - gmst (Float): Greenwich mean sidereal time in radians
             **kwargs: Additional keyword arguments.
-            
+
         Returns:
-            Array: Complex strain measured by the detector in frequency domain, obtained by 
+            Array: Complex strain measured by the detector in frequency domain, obtained by
                   combining the antenna patterns and time delays for each polarization mode.
         """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
@@ -332,13 +341,13 @@ class GroundBased2G(Detector):
         **kwargs,
     ) -> Array:
         """Modulate the waveform in the sky frame by the detector response in the time domain.
-        
+
         Args:
             time: Array of time samples.
             h_sky: Dictionary mapping polarization names to time-domain waveforms.
             params: Dictionary of source parameters.
             **kwargs: Additional keyword arguments.
-            
+
         Returns:
             Array of detector response in time domain.
         """
@@ -346,15 +355,15 @@ class GroundBased2G(Detector):
 
     def delay_from_geocenter(self, ra: Float, dec: Float, gmst: Float) -> Float:
         """Calculate time delay between two detectors in geocentric coordinates.
-        
+
         Based on XLALArrivaTimeDiff in TimeDelay.c
         https://lscsoft.docs.ligo.org/lalsuite/lal/group___time_delay__h.html
-        
+
         Args:
             ra (Float): Right ascension of the source in radians.
             dec (Float): Declination of the source in radians.
             gmst (Float): Greenwich mean sidereal time in radians.
-            
+
         Returns:
             Float: Time delay from Earth center in seconds.
         """
@@ -371,19 +380,21 @@ class GroundBased2G(Detector):
         )
         return jnp.dot(omega, delta_d) / C_SI
 
-    def antenna_pattern(self, ra: Float, dec: Float, psi: Float, gmst: Float) -> dict[str, Float]:
+    def antenna_pattern(
+        self, ra: Float, dec: Float, psi: Float, gmst: Float
+    ) -> dict[str, Float]:
         """Compute antenna patterns for polarizations at specified sky location.
-        
+
         In the long-wavelength approximation, the antenna pattern for a
         given polarization is the dyadic product between the detector
         tensor and the corresponding polarization tensor.
-        
+
         Args:
             ra (Float): Source right ascension in radians.
             dec (Float): Source declination in radians.
             psi (Float): Source polarization angle in radians.
             gmst (Float): Greenwich mean sidereal time (GMST) in radians.
-            
+
         Returns:
             dict[str, Float]: Dictionary mapping polarization names to their antenna pattern values.
         """
@@ -403,11 +414,11 @@ class GroundBased2G(Detector):
         self, freqs: Float[Array, " n_sample"], psd_file: str = ""
     ) -> Float[Array, " n_sample"]:
         """Load power spectral density (PSD) from file or default GWTC-2 catalog.
-        
+
         Args:
             freqs (Float[Array, " n_sample"]): Array of frequency samples to evaluate PSD at.
             psd_file (str, optional): Path to file containing PSD data. If empty, uses GWTC-2 PSD.
-            
+
         Returns:
             Float[Array, " n_sample"]: Array of PSD values at requested frequencies.
         """
@@ -417,7 +428,7 @@ class GroundBased2G(Detector):
             data = requests.get(url)
             open(self.name + ".txt", "wb").write(data.content)
             f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
-            psd_vals = asd_vals ** 2
+            psd_vals = asd_vals**2
         else:
             f, psd_vals = np.loadtxt(psd_file, unpack=True)
 
@@ -448,7 +459,7 @@ class GroundBased2G(Detector):
             psd (Union[jd.PowerSpectrum, Array]): PSD to be added to the detector, either as a `jd.PowerSpectrum`
                 object or as a timeseries array.
             **kws (dict): Additional keyword arguments to pass to `jd.PowerSpectrum` constructor.
-                
+
         Returns:
             None
         """

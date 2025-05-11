@@ -1,6 +1,5 @@
 import dagster as dg
 
-from jimgw.run.single_event_run_definition import SingleEventRunDefinition
 
 
 # Create asset group for run and configuration0
@@ -56,62 +55,137 @@ def run():
 
 # Create asset group for diagnostics
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_loss"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_loss"],
+    key_prefix="RealDataCatalog",
+)
 def loss_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_chains"],
+    key_prefix="RealDataCatalog",
+)
 def training_chains_corner_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_chains"],
+    key_prefix="RealDataCatalog",
+)
 def training_chains_trace_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_chains"],
+    key_prefix="RealDataCatalog",
+)
 def training_chains_rhat_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_log_prob"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_log_prob"],
+    key_prefix="RealDataCatalog",
+)
 def training_log_prob_distribution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_log_prob"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_log_prob"],
+    key_prefix="RealDataCatalog",
+)
 def training_log_prob_evolution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_local_acceptance"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_local_acceptance"],
+    key_prefix="RealDataCatalog",
+)
 def training_local_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_training_global_acceptance"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_training_global_acceptance"],
+    key_prefix="RealDataCatalog",
+)
 def training_global_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_chains"],
+    key_prefix="RealDataCatalog",
+)
 def production_chains_corner_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_chains"],
+    key_prefix="RealDataCatalog",
+)
 def production_chains_trace_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_chains"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_chains"],
+    key_prefix="RealDataCatalog",
+)
 def production_chains_rhat_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_log_prob"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_log_prob"],
+    key_prefix="RealDataCatalog",
+)
 def production_log_prob_distribution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_log_prob"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_log_prob"],
+    key_prefix="RealDataCatalog",
+)
 def production_log_prob_evolution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_local_acceptance"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_local_acceptance"],
+    key_prefix="RealDataCatalog",
+)
 def production_local_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=["RealDataCatalog_production_global_acceptance"], key_prefix="RealDataCatalog")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=["RealDataCatalog_production_global_acceptance"],
+    key_prefix="RealDataCatalog",
+)
 def production_global_acceptance_plot():
     pass

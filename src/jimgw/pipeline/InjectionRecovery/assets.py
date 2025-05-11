@@ -1,9 +1,9 @@
 import dagster as dg
 
-from jimgw.run.single_event_run_definition import SingleEventRunDefinition
 
 
 # Sample a fiducial population
+
 
 @dg.asset
 def sample_population():
@@ -13,6 +13,7 @@ def sample_population():
     """
     pass
 
+
 @dg.asset
 def generate_configs():
     """
@@ -21,7 +22,9 @@ def generate_configs():
     """
     pass
 
+
 # Create asset group for run and configuration0
+
 
 @dg.asset(
     group_name="prerun",
