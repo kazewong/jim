@@ -189,7 +189,7 @@ class Data(ABC):
 
     def fft(
         self, window: Optional[Float[Array, " n_time"]] = None
-    ) -> Float[Array, " n_freq"]:
+    ) -> Complex[Array, " n_freq"]:
         """Compute the Fourier transform of the data and store it
         in the fd attribute.
 
@@ -201,6 +201,7 @@ class Data(ABC):
         if self.has_fd and (window is None or window == self.window):
             # Perhaps one needs to also check self.td and self.delta_t are the same.
             logging.debug(f"{self.name} has FD data, skipping FFT.")
+            return self.fd
         if window is None:
             window = self.window
 
