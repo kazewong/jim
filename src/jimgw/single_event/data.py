@@ -307,10 +307,10 @@ class Data(ABC):
         if (fnyq + delta_f) % 2 == 0:
             fnyq = fnyq + delta_f
         f = np.arange(0, fnyq + delta_f, delta_f)
-        # form full data array
-        data_fd_full = np.zeros(f.shape, dtype=np.array(fd).dtype)
-        data_fd_full[(frequencies[-1] >= f) & (f >= frequencies[0])] = fd
-        data_fd_full = np.array(data_fd_full)
+        # Form full data array
+        data_fd_full = np.where(
+            (frequencies[-1] >= f) & (f >= frequencies[0]), fd, 0.0+0.0j
+        )
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
         data_td_full = np.fft.irfft(data_fd_full) / delta_t
