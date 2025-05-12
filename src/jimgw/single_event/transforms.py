@@ -21,6 +21,7 @@ from jimgw.single_event.utils import (
     euler_rotation,
     spin_angles_to_cartesian_spin,
     cartesian_spin_to_spin_angles,
+    carte_to_spherical_angles,
 )
 
 
@@ -71,20 +72,26 @@ class SpinAnglesToCartesianSpinTransform(ConditionalBijectiveTransform):
             }
 
         def named_inverse_transform(x):
-            theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = (
-                cartesian_spin_to_spin_angles(
-                    x["iota"],
-                    x["s1_x"],
-                    x["s1_y"],
-                    x["s1_z"],
-                    x["s2_x"],
-                    x["s2_y"],
-                    x["s2_z"],
-                    x["M_c"],
-                    x["q"],
-                    self.freq_ref,
-                    x["phase_c"],
-                )
+            (
+                theta_jn,
+                phi_jl,
+                tilt_1,
+                tilt_2,
+                phi_12,
+                a_1,
+                a_2,
+            ) = cartesian_spin_to_spin_angles(
+                x["iota"],
+                x["s1_x"],
+                x["s1_y"],
+                x["s1_z"],
+                x["s2_x"],
+                x["s2_y"],
+                x["s2_z"],
+                x["M_c"],
+                x["q"],
+                self.freq_ref,
+                x["phase_c"],
             )
 
             return {
@@ -131,8 +138,8 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
         def named_inverse_transform(x):
             x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
             mag = jnp.sqrt(x**2 + y**2 + z**2)
-            theta = jnp.arccos(z / mag)
-            phi = jnp.mod(jnp.arctan2(y, x), 2.0 * jnp.pi)
+            theta, phi = carte_to_spherical_angles(x, y, z)
+            phi = jnp.mod(phi, 2.0 * jnp.pi)
             return {
                 label + "_mag": mag,
                 label + "_theta": theta,
