@@ -610,8 +610,7 @@ class PeriodicTransform(BijectiveTransform):
             + (self.xmax - self.xmin)
             * (
                 0.5
-                + np.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]])
-                / (2 * np.pi)
+                + np.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]) / (2 * np.pi)
             ),
             name_mapping[0][0]: np.sqrt(
                 x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
