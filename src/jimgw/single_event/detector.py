@@ -156,13 +156,9 @@ class Detector(ABC):
         self.data = Data()
         self.psd = PowerSpectrum()
         self.frequency_bounds = (0.0, float("inf"))
-        for attrname in [
-            "sliced_frequencies",
-            "sliced_fd_data",
-            "sliced_psd",
-        ]:
-            if hasattr(self, attrname):
-                delattr(self, attrname)
+        self._sliced_frequencies = np.array([])
+        self._sliced_fd_data = np.array([])
+        self._sliced_psd = np.array([])
 
     @property
     def sliced_frequencies(self) -> Float[Array, " n_freq"]:
