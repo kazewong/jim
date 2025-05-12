@@ -516,7 +516,7 @@ class GroundBased2G(Detector):
         Return:
             Bool: True if the frequencies match, False otherwise.
         """
-        if self.psd.empty or self.data.empty:
+        if self.psd.is_empty or self.data.is_empty:
             # In this case, we simply skip the check
             return True
         if self.psd.n_freq != self.data.n_freq:

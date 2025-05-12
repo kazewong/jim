@@ -12,9 +12,8 @@ from typing import Optional
 from scipy.signal import welch
 from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
-import logging
 
-DEG_TO_RAD = np.pi / 180
+from jimgw.constants import DEG_TO_RAD
 
 
 # TODO: Need to expand this list. Currently it is only O3.
@@ -87,7 +86,7 @@ class Data(ABC):
         return self.n_time // 2 + 1
 
     @property
-    def empty(self) -> bool:
+    def is_empty(self) -> bool:
         """Checks if the data is empty.
 
         Returns:
@@ -138,7 +137,7 @@ class Data(ABC):
         Returns:
             bool: True if Fourier domain data exists, False otherwise.
         """
-        return bool(jnp.any(self.fd))
+        return bool(np.any(self.fd))
 
     def __init__(
         self,
@@ -316,17 +315,17 @@ class Data(ABC):
         delta_t = 1 / (2 * fnyq)
         data_td_full = np.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert jnp.allclose(
-            f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
+        assert np.allclose(
+            f, np.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
         # create jd.Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
-        assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
+        assert all(np.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
-            jnp.equal(f_new, frequencies)
+            np.equal(f_new, frequencies)
         ), "Frequencies do not match after slicing"
         return data
 
@@ -354,7 +353,7 @@ class PowerSpectrum(ABC):
         return len(self.values)
 
     @property
-    def empty(self) -> bool:
+    def is_empty(self) -> bool:
         """Checks if the data is empty.
 
         Returns:
@@ -488,5 +487,5 @@ class PowerSpectrum(ABC):
         var = self.values / (4 * self.delta_f)
         noise_real, noise_imag = jax.random.normal(
             key, shape=(2, *var.shape)
-        ) * jnp.sqrt(var)
+        ) * np.sqrt(var)
         return noise_real + 1j * noise_imag
