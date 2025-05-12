@@ -31,7 +31,6 @@ class Prior(eqx.Module):
     """
 
     parameter_names: list[str]
-    constraints: list[Callable]
 
     @property
     def n_dim(self) -> int:
@@ -45,7 +44,6 @@ class Prior(eqx.Module):
             A list of names for the parameters of the prior.
         """
         self.parameter_names = parameter_names
-        self.constraints = []
 
     def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
         """
@@ -71,9 +69,6 @@ class Prior(eqx.Module):
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         raise NotImplementedError
-
-    def eval_constraints(self, x: dict[str, Float]) -> Bool:
-        return jnp.array([constraint(x) for constraint in self.constraints]).all()
 
 
 @jaxtyped(typechecker=typechecker)
@@ -208,13 +203,6 @@ class SequentialTransformPrior(CompositePrior):
         self.transforms = transforms
         for transform in self.transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
-        if self.n_dim == 1:
-            x_min = getattr(self, "xmin", -jnp.inf)
-            x_max = getattr(self, "xmax", +jnp.inf)
-            param_name = self.parameter_names[0]
-            self.constraints = [
-                lambda x: (x[param_name] > x_min) * (x[param_name] < x_max)
-            ]
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -222,6 +210,43 @@ class SequentialTransformPrior(CompositePrior):
         output = self.base_prior[0].sample(rng_key, n_samples)
         return jax.vmap(self.transform)(output)
 
+    def log_prob(self, z: dict[str, Float]) -> Float:
+         """
+         Evaluating the probability of the transformed variable z.
+         This is what flowMC should sample from
+         """
+         output = 0
+         for transform in reversed(self.transforms):
+             z, log_jacobian = transform.inverse(z)
+             output += log_jacobian
+         output += self.base_prior[0].log_prob(z)
+         return output
+
+    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
+        for transform in self.transforms:
+            x = transform.forward(x)
+        return x
+
+
+@jaxtyped(typechecker=typechecker)
+class ConstrainedPrior(Prior):
+    """
+    A prior class that has constraints on the parameters.
+    """
+
+    constraints: list[Callable]
+
+    def __init__(
+        self,
+        parameter_names: list[str],
+        constraints: list[Callable] = [],
+    ):
+        super().__init__(parameter_names)
+        self.constraints = constraints
+
+    def eval_constraints(self, x: dict[str, Float]) -> Bool:
+        return jnp.array([constraint(x) for constraint in self.constraints]).all()
+    
     def _compute_log_prob(self, z):
         output = 0.0
         for transform in reversed(self.transforms):
@@ -237,11 +262,6 @@ class SequentialTransformPrior(CompositePrior):
         """
         eval_result = self.eval_constraints(z)
         return jnp.where(eval_result, self._compute_log_prob(z), -jnp.inf)
-
-    def transform(self, x: dict[str, Float]) -> dict[str, Float]:
-        for transform in self.transforms:
-            x = transform.forward(x)
-        return x
 
 
 class CombinePrior(CompositePrior):
@@ -402,9 +422,6 @@ class CosinePrior(SequentialTransformPrior):
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
 
-    xmin: float = -jnp.pi / 2
-    xmax: float = jnp.pi / 2
-
     def __repr__(self):
         return f"CosinePrior(parameter_names={self.parameter_names})"
 
@@ -455,8 +472,6 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
-    xmin: float = 0.0
-    xmax: float = jnp.inf
     sigma: float
 
     def __repr__(self):
