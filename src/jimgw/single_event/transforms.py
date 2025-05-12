@@ -207,15 +207,11 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
 
     gmst: Float
     ifo: GroundBased2G
-    tc_min: Float
-    tc_max: Float
 
     def __init__(
         self,
         gps_time: Float,
         ifo: GroundBased2G,
-        tc_min: Float,
-        tc_max: Float,
     ):
         name_mapping = (["t_c"], ["t_det_unbounded"])
         conditional_names = ["ra", "dec"]
@@ -225,8 +221,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
         self.ifo = ifo
-        self.tc_min = tc_min
-        self.tc_max = tc_max
 
         assert "t_c" in name_mapping[0] and "t_det_unbounded" in name_mapping[1]
         assert "ra" in conditional_names and "dec" in conditional_names
@@ -238,13 +232,9 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             time_shift = time_delay(x["ra"], x["dec"], self.gmst)
 
             t_det = x["t_c"] + time_shift
-            t_det_min = self.tc_min + time_shift
-            t_det_max = self.tc_max + time_shift
 
-            y = (t_det - t_det_min) / (t_det_max - t_det_min)
-            t_det_unbounded = jnp.log(y / (1.0 - y))
             return {
-                "t_det_unbounded": t_det_unbounded,
+                "t_det": t_det,
             }
 
         self.transform_func = named_transform
@@ -252,13 +242,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         def named_inverse_transform(x):
             time_shift = self.ifo.delay_from_geocenter(x["ra"], x["dec"], self.gmst)
 
-            t_det_min = self.tc_min + time_shift
-            t_det_max = self.tc_max + time_shift
-            t_det = (t_det_max - t_det_min) / (
-                1.0 + jnp.exp(-x["t_det_unbounded"])
-            ) + t_det_min
-
-            t_c = t_det - time_shift
+            t_c = x["t_det"] - time_shift
 
             return {
                 "t_c": t_c,
@@ -359,15 +343,11 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
 
     gmst: Float
     ifos: list[GroundBased2G]
-    dL_min: Float
-    dL_max: Float
 
     def __init__(
         self,
         gps_time: Float,
         ifos: list[GroundBased2G],
-        dL_min: Float,
-        dL_max: Float,
     ):
         name_mapping = (["d_L"], ["d_hat_unbounded"])
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
@@ -377,8 +357,6 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
         )
         self.ifos = ifos
-        self.dL_min = dL_min
-        self.dL_max = dL_max
 
         assert "d_L" in name_mapping[0] and "d_hat_unbounded" in name_mapping[1]
         assert (
@@ -411,33 +389,21 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
             d_hat = scale_factor * d_L
 
-            d_hat_min = scale_factor * self.dL_min
-            d_hat_max = scale_factor * self.dL_max
-
-            y = (d_hat - d_hat_min) / (d_hat_max - d_hat_min)
-            d_hat_unbounded = jnp.log(y / (1.0 - y))
-
             return {
-                "d_hat_unbounded": d_hat_unbounded,
+                "d_hat": d_hat,
             }
 
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            d_hat_unbounded, M_c = (
-                x["d_hat_unbounded"],
+            d_hat, M_c = (
+                x["d_hat"],
                 x["M_c"],
             )
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
 
-            d_hat_min = scale_factor * self.dL_min
-            d_hat_max = scale_factor * self.dL_max
-
-            d_hat = (d_hat_max - d_hat_min) / (
-                1.0 + jnp.exp(-d_hat_unbounded)
-            ) + d_hat_min
             d_L = d_hat / scale_factor
             return {
                 "d_L": d_L,
@@ -502,9 +468,13 @@ MassRatioToSymmetricMassRatioTransform.inverse_transform_func = named_eta_to_q
 ChirpMassMassRatioToComponentMassesTransform = reverse_bijective_transform(
     ComponentMassesToChirpMassMassRatioTransform
 )
+
+
 ChirpMassSymmetricMassRatioToComponentMassesTransform = reverse_bijective_transform(
     ComponentMassesToChirpMassSymmetricMassRatioTransform
 )
+
+
 SymmetricMassRatioToMassRatioTransform = reverse_bijective_transform(
     MassRatioToSymmetricMassRatioTransform
 )
