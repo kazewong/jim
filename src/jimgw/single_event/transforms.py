@@ -404,7 +404,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
                 c_mode_term = c_iota_term * antenna_pattern["c"]
-                R_dets2 += p_mode_term ** 2 + c_mode_term ** 2
+                R_dets2 += p_mode_term**2 + c_mode_term**2
 
             return np.sqrt(R_dets2)
 

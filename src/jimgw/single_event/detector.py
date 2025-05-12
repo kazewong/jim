@@ -364,7 +364,7 @@ class GroundBased2G(Detector):
             jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
         )
 
-        phase_shift = jnp.exp(- 2j * jnp.pi * frequency * time_shift)
+        phase_shift = jnp.exp(-2j * jnp.pi * frequency * time_shift)
         return projected_strain * phase_shift
 
     def td_response(

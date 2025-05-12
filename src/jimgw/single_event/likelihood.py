@@ -721,9 +721,7 @@ def original_relative_binning_likelihood(
     log_likelihood = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_response(
-            frequencies_low, waveform_sky_low, params
-        )
+        waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
         waveform_center = detector.fd_response(
             frequencies_low, waveform_sky_center, params
         )
@@ -763,9 +761,7 @@ def phase_marginalized_relative_binning_likelihood(
     complex_d_inner_h = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_response(
-            frequencies_low, waveform_sky_low, params
-        )
+        waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
         waveform_center = detector.fd_response(
             frequencies_center, waveform_sky_center, params
         )
