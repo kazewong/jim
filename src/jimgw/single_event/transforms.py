@@ -213,7 +213,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         gps_time: Float,
         ifo: GroundBased2G,
     ):
-        name_mapping = (["t_c"], ["t_det_unbounded"])
+        name_mapping = (["t_c"], ["t_det"])
         conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
@@ -222,7 +222,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         )
         self.ifo = ifo
 
-        assert "t_c" in name_mapping[0] and "t_det_unbounded" in name_mapping[1]
+        assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
         assert "ra" in conditional_names and "dec" in conditional_names
 
         def time_delay(ra, dec, gmst):
@@ -349,7 +349,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         gps_time: Float,
         ifos: list[GroundBased2G],
     ):
-        name_mapping = (["d_L"], ["d_hat_unbounded"])
+        name_mapping = (["d_L"], ["d_hat"])
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
@@ -358,7 +358,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         )
         self.ifos = ifos
 
-        assert "d_L" in name_mapping[0] and "d_hat_unbounded" in name_mapping[1]
+        assert "d_L" in name_mapping[0] and "d_hat" in name_mapping[1]
         assert (
             "ra" in conditional_names
             and "dec" in conditional_names
