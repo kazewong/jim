@@ -1,4 +1,4 @@
-'''
+"""
 This module computes a JAX-compatible conversion from GPS to UTC time and Julian day.
 Following the implementation in LALSuite and Bilby.
 
@@ -7,11 +7,13 @@ The conversion from GPS time to UTC date is typically done using the following p
 but none of them are JAX-compatible.
 There is the new `jax_datetime` package, but it does not compute the year and month.
 See: https://github.com/google/jax-datetime/
-'''
+"""
+
 from jax import config, jit
 import jax.numpy as np
-config.update("jax_enable_x64", True)
 from jaxtyping import Float, Int
+
+config.update("jax_enable_x64", True)
 
 # This UNIX timestamp is computed by:
 # datetime(1980, 1, 6, 0, 0, 0, tzinfo=timezone.utc).timestamp()
@@ -19,7 +21,7 @@ from jaxtyping import Float, Int
 # https://lscsoft.docs.ligo.org/lalsuite/lal/group___date__h.html#ga1c3cab00910987a1410a9d24d4fccdce
 GPS_EPOCH: int = 315964800
 EPOCH_J2000_0_JD: float = 2451545.0
-'''
+"""
  * Leap seconds list
  *
  * JD and GPS time of leap seconds and the value of TAI-UTC.
@@ -30,36 +32,37 @@ EPOCH_J2000_0_JD: float = 2451545.0
  * notes: the list below must be updated whenever a leap second is added
  * See also: https://lscsoft.docs.ligo.org/lalsuite/lal/_x_l_a_l_leap_seconds_8h_source.html
  * https://data.iana.org/time-zones/data/leap-seconds.list
-'''
-LEAP_SECONDS = np.array([
-    46828800,
-    78364801,
-    109900802,
-    173059203,
-    252028804,
-    315187205,
-    346723206,
-    393984007,
-    425520008,
-    457056009,
-    504489610,
-    551750411,
-    599184012,
-    820108813,
-    914803214,
-    1025136015,
-    1119744016,
-    1167264017,
-])
+"""
+LEAP_SECONDS = np.array(
+    [
+        46828800,
+        78364801,
+        109900802,
+        173059203,
+        252028804,
+        315187205,
+        346723206,
+        393984007,
+        425520008,
+        457056009,
+        504489610,
+        551750411,
+        599184012,
+        820108813,
+        914803214,
+        1025136015,
+        1119744016,
+        1167264017,
+    ]
+)
+
 
 def int_div(a: Int, b: Int) -> Int:
-    '''This is to emulate the C-style integer division in Python.
+    """This is to emulate the C-style integer division in Python.
     See: https://stackoverflow.com/a/61386872
-    '''
+    """
     q, r = a // b, a % b
-    return np.where(
-            ((a >= 0) != (b >= 0)) & r,
-            q + 1, q)
+    return np.where(((a >= 0) != (b >= 0)) & r, q + 1, q)
 
 
 def n_leap_seconds(date: Int) -> Int:
@@ -86,10 +89,11 @@ def n_leap_seconds(date: Int) -> Int:
     """
     return np.sum(date > LEAP_SECONDS).astype(np.float64)
 
+
 def is_leap_year(year):
-    '''Function to check if a year is a leap year.
-    '''
+    """Function to check if a year is a leap year."""
     return (year % 4 == 0) & ((year % 100 != 0) | (year % 400 == 0))
+
 
 # Constants
 SECONDS_IN_DAY = 24 * 60 * 60
@@ -106,8 +110,9 @@ YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2450)
 IS_LEAP_YEARS = is_leap_year(YEAR_ARRAY)
 LEAP_SEC_ARRAY = np.where(IS_LEAP_YEARS, LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
 
+
 def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
-    '''
+    """
     This function converts a UTC timestamp to a UTC date (year, month, day, seconds).
 
     This sole intention of this function is to be JAX-compatible and be used within Jim .
@@ -117,7 +122,7 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
 
     Note that the current implementation has an upper limit of year up to 2500,
     which is sufficient for most practical purposes.
-    '''
+    """
     # The lower bound assumes every year is a leap year
     year = timestamp // LEAP_YEAR_SECONDS + UNIX_EPOCH_YEAR
     seconds_before = np.where(YEAR_ARRAY < year, LEAP_SEC_ARRAY, 0).sum()
@@ -130,18 +135,21 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     remaining_seconds -= (is_more_than - is_negative) * sec_in_year
 
     # Adjust for leap year
-    sec_in_months = np.where(
-        is_leap_year(year),
-        DAYS_IN_MONTH.at[1].set(29),
-        DAYS_IN_MONTH,
-    ) * SECONDS_IN_DAY
+    sec_in_months = (
+        np.where(
+            is_leap_year(year),
+            DAYS_IN_MONTH.at[1].set(29),
+            DAYS_IN_MONTH,
+        )
+        * SECONDS_IN_DAY
+    )
 
     month = remaining_seconds // (28 * SECONDS_IN_DAY)
     month += (month == 0).astype(np.int64)
     seconds_before_mon = np.where(MONTH_ARRAY < month, sec_in_months, 0).sum()
     remaining_seconds -= seconds_before_mon
 
-    sec_in_month = sec_in_months[month-1]
+    sec_in_month = sec_in_months[month - 1]
     is_more_than = (remaining_seconds >= sec_in_month).astype(np.int64)
     is_negative = (remaining_seconds < 0).astype(np.int64)
     month += is_more_than - is_negative
@@ -153,12 +161,12 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
 
 
 def gps_to_utc_date(gps_time: Float) -> tuple[Int, Int, Int, Int]:
-    '''
+    """
     Args:
         gps_time (float): The GPS time to convert.
     Returns:
         tuple (int): A tuple containing the year, month, day, and seconds.
-    '''
+    """
     _sec = gps_time - n_leap_seconds(gps_time)
     return utc_date_from_timestamp(GPS_EPOCH + _sec.astype(int))
 
@@ -206,9 +214,7 @@ def greenwich_mean_sidereal_time(gps_time: Float) -> Float:
 
 
 @jit
-def greenwich_sidereal_time(
-        gps_time: Float,
-        equation_of_equinoxes: Float) -> Float:
+def greenwich_sidereal_time(gps_time: Float, equation_of_equinoxes: Float) -> Float:
     """
     Compute the Greenwich mean sidereal time from the GPS time and equation of
     equinoxes.
@@ -227,7 +233,9 @@ def greenwich_sidereal_time(
 
     t = t_hi + t_lo
 
-    sidereal_time = equation_of_equinoxes + (-6.2e-6 * t + 0.093104) * t**2 + 67310.54841
+    sidereal_time = (
+        equation_of_equinoxes + (-6.2e-6 * t + 0.093104) * t**2 + 67310.54841
+    )
     sidereal_time += 8640184.812866 * t_lo
     sidereal_time += 3155760000.0 * t_lo
     sidereal_time += 8640184.812866 * t_hi
