@@ -315,17 +315,19 @@ class Data(ABC):
         delta_t = 1 / (2 * fnyq)
         data_td_full = np.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert jnp.allclose(
-            f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
+        assert np.allclose(
+            f, np.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
         # create jd.Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
+        # This ensures the newly constructed Data in FD fully
+        # represents the input FD data.
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
-        assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
+        assert all(np.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
-            jnp.equal(f_new, frequencies)
+            np.equal(f_new, frequencies)
         ), "Frequencies do not match after slicing"
         return data
 
