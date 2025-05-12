@@ -59,7 +59,10 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert np.all(_frequencies, axis=0).all(), "The frequency arrays are not all the same."
+        assert jax.tree.reduce(
+            jnp.array_equal, _frequencies
+        ), "The frequency arrays are not all the same."
+
         self.detectors = detectors
         self.frequencies = _frequencies[0]
         self.duration = self.detectors[0].data.duration
@@ -194,7 +197,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             if self.marginalization == "phase":
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
-                self.rb_likelihood_function = phase_marginalized_relative_binning_likelihood
+                self.rb_likelihood_function = (
+                    phase_marginalized_relative_binning_likelihood
+                )
                 logging.info("Marginalizing over phase")
         else:
             self.param_func = lambda x: x
@@ -299,21 +304,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         h_sky_low = reference_waveform(self.freq_grid_low, self.ref_params)
         h_sky_center = reference_waveform(self.freq_grid_center, self.ref_params)
 
-        for detector, data, psd in zip(self.detectors, self.datas, self.psds):
+        for detector in self.detectors:
             # Get the reference waveforms
-            waveform_ref = detector.fd_full_response(
+            waveform_ref = detector.fd_response(
                 frequency_original, h_sky, self.ref_params, trigger_time
             )
-            self.waveform_low_ref[detector.name] = detector.fd_full_response(
+            self.waveform_low_ref[detector.name] = detector.fd_response(
                 self.freq_grid_low, h_sky_low, self.ref_params, trigger_time
             )
-            self.waveform_center_ref[detector.name] = detector.fd_full_response(
+            self.waveform_center_ref[detector.name] = detector.fd_response(
                 self.freq_grid_center, h_sky_center, self.ref_params, trigger_time
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                data,
+                detector.fd_data_slice,
                 waveform_ref,
-                psd,
+                detector.psd_slice,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
@@ -538,15 +543,16 @@ likelihood_presets = {
 
 
 def inner_product(
-        array_1: Float[Array, " n_dim"],
-        array_2: Float[Array, " n_dim"],
-        psd: Float[Array, " n_dim"],
-        frequencies: Optional[Float[Array, " n_dim"]]=None,
-        df: Optional[Float]=None,
-    ):
+    array_1: Float[Array, " n_dim"],
+    array_2: Float[Array, " n_dim"],
+    psd: Float[Array, " n_dim"],
+    frequencies: Optional[Float[Array, " n_dim"]] = None,
+    df: Optional[Float] = None,
+):
     # Note: move this function to somewhere else, maybe utils,
     # or even inside Detector.
     if df is None:
+        assert frequencies is not None, "Either df or frequencies must be provided"
         df = frequencies[1] - frequencies[0]
 
     return 4 * jnp.sum((jnp.conj(array_1) * array_2) / psd * df)
@@ -562,7 +568,7 @@ def original_likelihood(
     log_likelihood = 0.0
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
         match_filter_SNR = inner_product(h_dec, data, psd, freqs).real
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
@@ -581,7 +587,7 @@ def phase_marginalized_likelihood(
     complex_d_inner_h = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
         complex_d_inner_h += inner_product(h_dec, data, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += -optimal_SNR / 2
@@ -591,7 +597,7 @@ def phase_marginalized_likelihood(
 
 
 def _get_tc_array(duration: Float, sampling_rate: Float):
-    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1/duration)
+    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1 / duration)
 
 
 def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
@@ -620,7 +626,7 @@ def time_marginalized_likelihood(
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -668,7 +674,7 @@ def phase_time_marginalized_likelihood(
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_full_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -725,10 +731,10 @@ def original_relative_binning_likelihood(
     log_likelihood = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_full_response(
+        waveform_low = detector.fd_response(
             frequencies_low, waveform_sky_low, params, trigger_time
         )
-        waveform_center = detector.fd_full_response(
+        waveform_center = detector.fd_response(
             frequencies_low, waveform_sky_center, params, trigger_time
         )
 
@@ -768,10 +774,10 @@ def phase_marginalized_relative_binning_likelihood(
     complex_d_inner_h = 0.0
 
     for detector in detectors:
-        waveform_low = detector.fd_full_response(
+        waveform_low = detector.fd_response(
             frequencies_low, waveform_sky_low, params, trigger_time
         )
-        waveform_center = detector.fd_full_response(
+        waveform_center = detector.fd_response(
             frequencies_center, waveform_sky_center, params, trigger_time
         )
 
