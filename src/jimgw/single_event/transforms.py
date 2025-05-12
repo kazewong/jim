@@ -22,7 +22,7 @@ from jimgw.single_event.utils import (
     cartesian_spin_to_spin_angles,
     carte_to_spherical_angles,
 )
-from jimgw.gps_times import greenwich_mean_sidereal_time as jim_gmst
+from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 
 # Move these to constants.
 HR_TO_RAD = 2 * np.pi / 24
@@ -173,7 +173,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
 
-        self.gmst = jim_gmst(gps_time)
+        self.gmst = compute_gmst(gps_time)
         delta_x = ifos[0].vertex - ifos[1].vertex
         self.rotation = euler_rotation(delta_x)
         self.rotation_inv = np.linalg.inv(self.rotation)
@@ -231,7 +231,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = jim_gmst(gps_time)
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
         self.tc_min = tc_min
         self.tc_max = tc_max
@@ -308,7 +308,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = jim_gmst(gps_time)
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
 
         assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
@@ -380,7 +380,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = jim_gmst(gps_time)
+        self.gmst = compute_gmst(gps_time)
         self.ifos = ifos
         self.dL_min = dL_min
         self.dL_max = dL_max

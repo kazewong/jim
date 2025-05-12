@@ -14,7 +14,6 @@ from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
 from jimgw.single_event.waveform import Waveform
 from jimgw.transforms import BijectiveTransform, NtoMTransform
-from jimgw.gps_times import greenwich_mean_sidereal_time as jim_gmst
 import logging
 
 HR_TO_RAD = 2 * np.pi / 24
@@ -65,7 +64,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.duration = self.detectors[0].data.duration
         self.waveform = waveform
         self.trigger_time = trigger_time
-        self.gmst = jim_gmst(trigger_time)
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -119,7 +117,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters."""
-        params["gmst"] = self.gmst + params["t_c"] * SEC_TO_RAD
+        params["geocent_time"] = self.trigger_time + params["t_c"]
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
@@ -257,7 +255,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         logging.info("Constructing reference waveforms..")
 
-        self.ref_params["gmst"] = self.gmst + self.ref_params["t_c"] * SEC_TO_RAD
+        self.ref_params["geocent_time"] = self.trigger_time + self.ref_params["t_c"]
         # adjust the params due to different marginalzation scheme
         self.ref_params = self.param_func(self.ref_params)
         # adjust the params due to fixing parameters
@@ -327,7 +325,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
-        params["gmst"] = self.gmst + params["t_c"] * SEC_TO_RAD
+        params["geocent_time"] = self.trigger_time + params["t_c"]
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters
@@ -361,7 +359,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         Evaluate the likelihood for a given set of parameters.
         """
-        params["gmst"] = self.gmst + params["t_c"] * SEC_TO_RAD
+        params["geocent_time"] = self.trigger_time + params["t_c"]
         # adjust the params due to different marginalzation scheme
         params = self.param_func(params)
         # adjust the params due to fixing parameters

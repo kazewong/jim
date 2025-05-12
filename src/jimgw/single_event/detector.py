@@ -12,6 +12,7 @@ from typing import Optional
 
 from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
 from jimgw.single_event.wave import Polarization
+from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 
 DEG_TO_RAD = jnp.pi / 180
 
@@ -296,7 +297,6 @@ class GroundBased2G(Detector):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
-        trigger_time: Float = 0.0,
     ) -> Array:
         """Project the frequency-domain waveform onto the detector response,
         and apply the time shift to align the peak time to the data.
@@ -318,7 +318,7 @@ class GroundBased2G(Detector):
                   combining the antenna patterns and time delays for each polarization mode.
         """
         projected_h = self.fd_response(frequency, h_sky, params)
-        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
+        trigger_time_shift = params["geocent_time"] - self.epoch
         phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
         return projected_h * phase_shift
 
@@ -347,7 +347,8 @@ class GroundBased2G(Detector):
             Array: Complex strain measured by the detector in frequency domain, obtained by
                   combining the antenna patterns and time delays for each polarization mode.
         """
-        ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
+        ra, dec, psi = params["ra"], params["dec"], params["psi"]
+        gmst = compute_gmst(params["geocent_time"])
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         timeshift = self.delay_from_geocenter(ra, dec, gmst)
         h_detector = jax.tree_util.tree_map(
