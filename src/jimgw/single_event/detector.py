@@ -58,7 +58,6 @@ class Detector(ABC):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
-        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -72,9 +71,7 @@ class Detector(ABC):
                 - ra (float): Right ascension in radians
                 - dec (float): Declination in radians
                 - psi (float): Polarization angle in radians
-                - gmst (float): Greenwich mean sidereal time in radians
-                - t_c (Float): Difference between geocent time and trigger time in sec
-            trigger_time (Float): Trigger time of the data in seconds.
+                - geocent_time (float): The geocentric time in sec
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -345,9 +342,7 @@ class GroundBased2G(Detector):
                 - ra (Float): Right ascension in radians
                 - dec (Float): Declination in radians
                 - psi (Float): Polarization angle in radians
-                - gmst (Float): Greenwich mean sidereal time in radians
-                - t_c (Float): Difference between geocent time and trigger time in sec
-            trigger_time (Float): Trigger time of the data in seconds.
+                - geocent_time (float): The geocentric time in sec
             **kwargs: Additional keyword arguments.
 
         Returns:
