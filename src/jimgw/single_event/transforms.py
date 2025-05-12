@@ -142,9 +142,9 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
 
         def named_inverse_transform(x):
             x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
-            mag = jnp.sqrt(x**2 + y**2 + z**2)
+            mag = np.sqrt(x**2 + y**2 + z**2)
             theta, phi = carte_to_spherical_angles(x, y, z)
-            phi = jnp.mod(phi, 2.0 * jnp.pi)
+            phi = np.mod(phi, 2.0 * np.pi)
 
             return {
                 label + "_mag": mag,
