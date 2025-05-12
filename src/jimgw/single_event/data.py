@@ -448,7 +448,7 @@ class PowerSpectrum(ABC):
 
     def interpolate(
         self, frequencies: Float[Array, " n_sample"], kind: str = "linear", **kws
-    ) -> Self:
+    ) -> "PowerSpectrum":
         """Interpolate the power spectrum to new frequencies.
 
         Args:
