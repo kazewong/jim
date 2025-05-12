@@ -510,28 +510,19 @@ class PowerLawTransform(BijectiveTransform):
                 for i in range(len(name_mapping[1]))
             }
         else:
+            alphap1 = 1.0 + self.alpha
             self.transform_func = lambda x: {
                 name_mapping[1][i]: (
-                    self.xmin ** (1.0 + self.alpha)
-                    + x[name_mapping[0][i]]
-                    * (
-                        self.xmax ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
+                    self.xmin**alphap1
+                    + x[name_mapping[0][i]] * (self.xmax**alphap1 - self.xmin**alphap1)
                 )
-                ** (1.0 / (1.0 + self.alpha))
+                ** (1.0 / alphap1)
                 for i in range(len(name_mapping[0]))
             }
             self.inverse_transform_func = lambda x: {
                 name_mapping[0][i]: (
-                    (
-                        x[name_mapping[1][i]] ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
-                    / (
-                        self.xmax ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
+                    (x[name_mapping[1][i]] ** alphap1 - self.xmin**alphap1)
+                    / (self.xmax**alphap1 - self.xmin**alphap1)
                 )
                 for i in range(len(name_mapping[1]))
             }
@@ -589,29 +580,17 @@ class PeriodicTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
+        scaling = 2 * np.pi / (self.xmax - self.xmin)
         self.transform_func = lambda x: {
             f"{name_mapping[1][0]}": x[name_mapping[0][0]]
-            * np.cos(
-                2
-                * np.pi
-                * (x[name_mapping[0][1]] - self.xmin)
-                / (self.xmax - self.xmin)
-            ),
+            * np.cos(scaling * (x[name_mapping[0][1]] - self.xmin)),
             f"{name_mapping[1][1]}": x[name_mapping[0][0]]
-            * np.sin(
-                2
-                * np.pi
-                * (x[name_mapping[0][1]] - self.xmin)
-                / (self.xmax - self.xmin)
-            ),
+            * np.sin(scaling * (x[name_mapping[0][1]] - self.xmin)),
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][1]: self.xmin
-            + (self.xmax - self.xmin)
-            * (
-                0.5
-                + np.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]) / (2 * np.pi)
-            ),
+            + (np.pi + np.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]))
+            / scaling,
             name_mapping[0][0]: np.sqrt(
                 x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
             ),
