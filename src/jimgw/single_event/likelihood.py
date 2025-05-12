@@ -131,7 +131,6 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             params,
             waveform_sky,
             self.detectors,
-            self.trigger_time,
             **self.kwargs,
         )
 
@@ -305,13 +304,13 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for detector in self.detectors:
             # Get the reference waveforms
             waveform_ref = detector.fd_response(
-                frequency_original, h_sky, self.ref_params, trigger_time
+                frequency_original, h_sky, self.ref_params
             )
             self.waveform_low_ref[detector.name] = detector.fd_response(
-                self.freq_grid_low, h_sky_low, self.ref_params, trigger_time
+                self.freq_grid_low, h_sky_low, self.ref_params
             )
             self.waveform_center_ref[detector.name] = detector.fd_response(
-                self.freq_grid_center, h_sky_center, self.ref_params, trigger_time
+                self.freq_grid_center, h_sky_center, self.ref_params
             )
             A0, A1, B0, B1 = self.compute_coefficients(
                 detector.fd_data_slice,
@@ -351,7 +350,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.detectors,
             frequencies_low,
             frequencies_center,
-            self.trigger_time,
             **self.kwargs,
         )
         return log_likelihood
@@ -375,7 +373,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             params,
             waveform_sky,
             self.detectors,
-            self.trigger_time,
             **self.kwargs,
         )
 
@@ -560,13 +557,12 @@ def original_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params)
         match_filter_SNR = inner_product(h_dec, data, psd, freqs).real
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += match_filter_SNR - optimal_SNR / 2
@@ -578,14 +574,13 @@ def phase_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_d_inner_h = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params)
         complex_d_inner_h += inner_product(h_dec, data, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
         log_likelihood += -optimal_SNR / 2
@@ -617,14 +612,13 @@ def time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -665,14 +659,13 @@ def phase_time_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Float[Array, " n_dim"]],
     detectors: list[Detector],
-    trigger_time: Float,
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
-        h_dec = ifo.fd_response(freqs, h_sky, params, trigger_time)
+        h_dec = ifo.fd_response(freqs, h_sky, params)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -722,7 +715,6 @@ def original_relative_binning_likelihood(
     detectors,
     frequencies_low,
     frequencies_center,
-    trigger_time,
     **kwargs,
 ):
 
@@ -730,10 +722,10 @@ def original_relative_binning_likelihood(
 
     for detector in detectors:
         waveform_low = detector.fd_response(
-            frequencies_low, waveform_sky_low, params, trigger_time
+            frequencies_low, waveform_sky_low, params
         )
         waveform_center = detector.fd_response(
-            frequencies_low, waveform_sky_center, params, trigger_time
+            frequencies_low, waveform_sky_center, params
         )
 
         r0 = waveform_center / waveform_center_ref[detector.name]
@@ -765,7 +757,6 @@ def phase_marginalized_relative_binning_likelihood(
     detectors,
     frequencies_low,
     frequencies_center,
-    trigger_time,
     **kwargs,
 ):
     log_likelihood = 0.0
@@ -773,10 +764,10 @@ def phase_marginalized_relative_binning_likelihood(
 
     for detector in detectors:
         waveform_low = detector.fd_response(
-            frequencies_low, waveform_sky_low, params, trigger_time
+            frequencies_low, waveform_sky_low, params
         )
         waveform_center = detector.fd_response(
-            frequencies_center, waveform_sky_center, params, trigger_time
+            frequencies_center, waveform_sky_center, params
         )
 
         r0 = waveform_center / waveform_center_ref[detector.name]
