@@ -211,16 +211,16 @@ class SequentialTransformPrior(CompositePrior):
         return jax.vmap(self.transform)(output)
 
     def log_prob(self, z: dict[str, Float]) -> Float:
-         """
-         Evaluating the probability of the transformed variable z.
-         This is what flowMC should sample from
-         """
-         output = 0
-         for transform in reversed(self.transforms):
-             z, log_jacobian = transform.inverse(z)
-             output += log_jacobian
-         output += self.base_prior[0].log_prob(z)
-         return output
+        """
+        Evaluating the probability of the transformed variable z.
+        This is what flowMC should sample from
+        """
+        output = 0
+        for transform in reversed(self.transforms):
+            z, log_jacobian = transform.inverse(z)
+            output += log_jacobian
+        output += self.base_prior[0].log_prob(z)
+        return output
 
     def transform(self, x: dict[str, Float]) -> dict[str, Float]:
         for transform in self.transforms:
