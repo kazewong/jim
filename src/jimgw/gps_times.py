@@ -134,7 +134,7 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     year += is_more_than - is_negative
     remaining_seconds -= (is_more_than - is_negative) * sec_in_year
 
-    # This is to deal with the extreme cases (year ~2500)
+    # This is to deal with the extreme cases (year ~2500)
     sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
     is_more_than = (remaining_seconds >= sec_in_year).astype(np.int64)
     year += is_more_than

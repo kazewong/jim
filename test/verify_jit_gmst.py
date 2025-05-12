@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-This script verifies the JAX implementation of the conversion from GPS time 
-to UTC date and GMST values against the LAL and Bilby implementations, all 
+This script verifies the JAX implementation of the conversion from GPS time
+to UTC date and GMST values against the LAL and Bilby implementations, all
 the way up to year 2500 (and potentially beyond this).
 
 It is done in two parts:
@@ -26,81 +26,85 @@ The exact script used to prepare these values is appended as comments.
 
 The gps_time are generated from 1980-01-06 to 2500-12-31.
 Note that the LAL implementation, limited by overflow errors, can only compute up to the year 2038.
-The remaining years till 2500 (and more) are way beyond practical purposes, and are purely for the 
+The remaining years till 2500 (and more) are way beyond practical purposes, and are purely for the
 algorithmic comparison with the Bilby implementation.
 """
 import time
 import jax
 import jax.numpy as np
+
 jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platforms", 'cpu')
+jax.config.update("jax_platforms", "cpu")
 from jimgw.gps_times import gps_to_utc_date, greenwich_mean_sidereal_time as jim_gmst
 
-# This file contains 10 million GPS timestamps of which the UTC dates 
+# This file contains 10 million GPS timestamps of which the UTC dates
 # and GMST values are computed using LAL and Bilby.
-computed_times = np.load('lal_bilby_utc_gmst.npy')
+computed_times = np.load("lal_bilby_utc_gmst.npy")
 
-# This verification is done in chunks as it would apparently take 
+# This verification is done in chunks as it would apparently take
 # too much memory to laod and compare all JAX arrays at once.
 chunks = 8
 
 with jax.disable_jit():
-    print('================================')
-    print('Without JIT:')
-    print('================================')
+    print("================================")
+    print("Without JIT:")
+    print("================================")
     start = 0
     for end in np.linspace(0, 10_000_000 + 1, chunks, dtype=np.int32)[1:]:
-        print(f'================================')
-        print(f'Start index is: {start}')
-        print(f'================================')
+        print(f"================================")
+        print(f"Start index is: {start}")
+        print(f"================================")
         _computed_times = computed_times[start:end]
-        print(f'Computing {_computed_times.size} samples')
+        print(f"Computing {_computed_times.size} samples")
         start_time = time.time()
-        gps_times = np.asarray(_computed_times['gps_time'])
+        gps_times = np.asarray(_computed_times["gps_time"])
         utc_dates = jax.vmap(gps_to_utc_date)(gps_times)
         gmst_vals = jax.vmap(jim_gmst)(gps_times)
         print(f"--- Computation takes: {time.time() - start_time:.6f} seconds ---")
 
-        print('For LAL and Bilby:')
-        for item in ('year', 'month', 'day', 'sec', 'gmst'):
+        print("For LAL and Bilby:")
+        for item in ("year", "month", "day", "sec", "gmst"):
             is_agree = np.where(
-                _computed_times['lal']['year'] != 0,
-                (_computed_times['lal'][item] == _computed_times['bilby'][item]), 
-                True
+                _computed_times["lal"]["year"] != 0,
+                (_computed_times["lal"][item] == _computed_times["bilby"][item]),
+                True,
             ).all()
-            print(f' * {item} is agree:   {is_agree}')
+            print(f" * {item} is agree:   {is_agree}")
 
-        print('For Jim and Bilby:')
-        for key, jim_val in zip(('year', 'month', 'day', 'sec', 'gmst'), 
-                                (*utc_dates, gmst_vals)):
+        print("For Jim and Bilby:")
+        for key, jim_val in zip(
+            ("year", "month", "day", "sec", "gmst"), (*utc_dates, gmst_vals)
+        ):
             is_agree = (jim_val == _computed_times["bilby"][key]).all()
-            print(f' * {key} is agree:   {is_agree}')
+            print(f" * {key} is agree:   {is_agree}")
         start = end
 
-print('================================')
-print('With JIT:')
-print('================================')
+print("================================")
+print("With JIT:")
+print("================================")
 RTOL = 1e-16
 ATOL = 4e-10
 start = 0
 for end in np.linspace(0, 10_000_000 + 1, chunks, dtype=np.int32)[1:]:
-    print(f'================================')
-    print(f'Start index is: {start}')
-    print(f'================================')
+    print(f"================================")
+    print(f"Start index is: {start}")
+    print(f"================================")
     _computed_times = computed_times[start:end]
-    print(f'Computing {_computed_times.size} samples')
+    print(f"Computing {_computed_times.size} samples")
     start_time = time.time()
-    gps_times = np.asarray(_computed_times['gps_time'])
+    gps_times = np.asarray(_computed_times["gps_time"])
     utc_dates = jax.vmap(gps_to_utc_date)(gps_times)
     gmst_vals = jax.vmap(jim_gmst)(gps_times)
     print(f"--- Computation takes: {time.time() - start_time:.6f} seconds ---")
 
-    print('For Jim and Bilby:')
-    for key, jim_val in zip(('year', 'month', 'day', 'sec', 'gmst'), 
-                            (*utc_dates, gmst_vals)):
+    print("For Jim and Bilby:")
+    for key, jim_val in zip(
+        ("year", "month", "day", "sec", "gmst"), (*utc_dates, gmst_vals)
+    ):
         is_agree = jax.numpy.allclose(
-            jim_val, _computed_times["bilby"][key], rtol=RTOL, atol=ATOL)
-        print(f' * {key} is agree:   {is_agree}')
+            jim_val, _computed_times["bilby"][key], rtol=RTOL, atol=ATOL
+        )
+        print(f" * {key} is agree:   {is_agree}")
     start = end
 
 """
