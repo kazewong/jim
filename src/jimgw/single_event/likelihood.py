@@ -618,11 +618,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         named_initial_position = prior.sample(jax.random.PRNGKey(0), popsize)
         for transform in sample_transforms:
             named_initial_position = jax.vmap(transform.forward)(named_initial_position)
-        initial_position = jnp.array(
-            jax.tree.leaves(
-                {key: named_initial_position[key] for key in parameter_names}
-            )
-        ).T
+        initial_position = jnp.array([named_initial_position[key] for key in self.parameter_names]).T
 
         _, best_fit = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position, {}

@@ -158,11 +158,7 @@ class Jim(object):
                 named_initial_position = jax.vmap(transform.forward)(
                     named_initial_position
                 )
-            initial_position = jnp.array(
-                jax.tree.leaves(
-                    {key: named_initial_position[key] for key in self.parameter_names}
-                )
-            ).T
+            initial_position = jnp.array([named_initial_position[key] for key in self.parameter_names]).T
             self.sampler.rng_key = rng_key
         else:
             assert initial_position.ndim == 2
