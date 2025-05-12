@@ -145,7 +145,7 @@ class Detector(ABC):
         """Get frequency-domain data slice based on frequency bounds.
 
         Returns:
-            Complex[Array, " n_sample"]: Sliced frequency-domain data.
+            Complex[Array, " n_freq"]: Sliced frequency-domain data.
         """
         return self._fd_data_slice
 
@@ -154,7 +154,7 @@ class Detector(ABC):
         """Get PSD slice based on frequency bounds.
 
         Returns:
-            Float[Array, " n_sample"]: Sliced power spectral density.
+            Float[Array, " n_freq"]: Sliced power spectral density.
         """
         return self._psd_slice
 
