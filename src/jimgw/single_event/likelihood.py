@@ -276,9 +276,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         # Get frequency masks to be applied, for both original
         # and heterodyne frequency grid
-        h_amp = np.sum(
-            np.array([np.abs(h_sky[key]) for key in h_sky.keys()]), axis=0
-        )
+        h_amp = np.sum(np.array([np.abs(h_sky[key]) for key in h_sky.keys()]), axis=0)
         f_valid = frequency_original[np.where(h_amp > 0)[0]]
         f_max = np.max(f_valid)
         f_min = np.min(f_valid)
@@ -383,7 +381,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f: Float[Array, " n_freq"],
         f_low: float,
         f_high: float,
-        chi: Float = 1.0,
+        chi: float = 1.0,
     ):
         """
         Compute the maximum phase difference between the frequencies in the array.
@@ -404,12 +402,12 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         Float[Array, "n_dim"]
             Maximum phase difference between the frequencies in the array.
         """
-
-        gamma = np.arange(-5, 6, 1) / 3.0
-        f = np.repeat(f[:, None], len(gamma), axis=1)
-        f_star = np.repeat(f_low, len(gamma))
-        f_star[gamma >= 0] = f_high
-        return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
+        gamma = np.arange(-5, 6) / 3.0
+        f_2D = np.broadcast_to(f, (f.size, gamma.size))
+        f_star = np.where(gamma >= 0, f_high, f_low)
+        return (
+            2 * np.pi * chi * np.sum((f_2D / f_star) ** gamma * np.sign(gamma), axis=1)
+        )
 
     def make_binning_scheme(
         self, freqs: Float[Array, " n_freq"], n_bins: int, chi: float = 1
@@ -434,12 +432,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_bins_center: Float[Array, "n_bins"]
             The bin centers.
         """
-
-        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)
+        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)  # type: ignore
         bin_f = interp1d(phase_diff_array, freqs)
-        f_bins = np.array([])
-        for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1):
-            f_bins = np.append(f_bins, bin_f(i))
+        phase_diff = np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1)
+        f_bins = bin_f(phase_diff)
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
         return np.array(f_bins), np.array(f_bins_center)
 
