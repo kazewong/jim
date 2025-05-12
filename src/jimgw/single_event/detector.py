@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import jax
-import jax.numpy as jnp
+import jax.numpy as np
 from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped, Bool
 from numpy import loadtxt
 import requests
@@ -45,9 +45,9 @@ class Detector(ABC):
 
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
-    _sliced_frequencies: Float[Array, " n_sample"] = jnp.array([])
-    _sliced_fd_data: Float[Array, " n_sample"] = jnp.array([])
-    _sliced_psd: Float[Array, " n_sample"] = jnp.array([])
+    _sliced_frequencies: Float[Array, " n_sample"] = np.array([])
+    _sliced_fd_data: Float[Array, " n_sample"] = np.array([])
+    _sliced_psd: Float[Array, " n_sample"] = np.array([])
 
     @property
     def epoch(self) -> Float:
@@ -283,18 +283,18 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " 3"]: Detector arm vector in geocentric Cartesian coordinates.
         """
-        e_lon = jnp.array([-jnp.sin(lon), jnp.cos(lon), 0])
-        e_lat = jnp.array(
-            [-jnp.sin(lat) * jnp.cos(lon), -jnp.sin(lat) * jnp.sin(lon), jnp.cos(lat)]
+        e_lon = np.array([-np.sin(lon), np.cos(lon), 0])
+        e_lat = np.array(
+            [-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)]
         )
-        e_h = jnp.array(
-            [jnp.cos(lat) * jnp.cos(lon), jnp.cos(lat) * jnp.sin(lon), jnp.sin(lat)]
+        e_h = np.array(
+            [np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)]
         )
 
         return (
-            jnp.cos(tilt) * jnp.cos(azimuth) * e_lon
-            + jnp.cos(tilt) * jnp.sin(azimuth) * e_lat
-            + jnp.sin(tilt) * e_h
+            np.cos(tilt) * np.cos(azimuth) * e_lon
+            + np.cos(tilt) * np.sin(azimuth) * e_lat
+            + np.sin(tilt) * e_h
         )
 
     @property
@@ -332,7 +332,7 @@ class GroundBased2G(Detector):
         # TODO: this could easily be generalized for other detector geometries
         arm1, arm2 = self.arms
         return 0.5 * (
-            jnp.einsum("i,j->ij", arm1, arm1) - jnp.einsum("i,j->ij", arm2, arm2)
+            np.einsum("i,j->ij", arm1, arm1) - np.einsum("i,j->ij", arm2, arm2)
         )
 
     @property
@@ -352,12 +352,12 @@ class GroundBased2G(Detector):
         major, minor = EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
         # compute vertex location
         r = major**2 * (
-            major**2 * jnp.cos(lat) ** 2 + minor**2 * jnp.sin(lat) ** 2
+            major**2 * np.cos(lat) ** 2 + minor**2 * np.sin(lat) ** 2
         ) ** (-0.5)
-        x = (r + h) * jnp.cos(lat) * jnp.cos(lon)
-        y = (r + h) * jnp.cos(lat) * jnp.sin(lon)
-        z = ((minor / major) ** 2 * r + h) * jnp.sin(lat)
-        return jnp.array([x, y, z])
+        x = (r + h) * np.cos(lat) * np.cos(lon)
+        y = (r + h) * np.cos(lat) * np.sin(lon)
+        z = ((minor / major) ** 2 * r + h) * np.sin(lat)
+        return np.array([x, y, z])
 
     def fd_response(
         self,
@@ -393,15 +393,15 @@ class GroundBased2G(Detector):
         h_detector = jax.tree_util.tree_map(
             lambda h, antenna: h
             * antenna
-            * jnp.exp(-2j * jnp.pi * frequency * timeshift),
+            * np.exp(-2j * np.pi * frequency * timeshift),
             h_sky,
             antenna_pattern,
         )
-        projected_strain = jnp.sum(
-            jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
+        projected_strain = np.sum(
+            np.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
         )
         trigger_time_shift = trigger_time - self.epoch + params["t_c"]
-        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
+        phase_shift = np.exp(-2j * np.pi * frequency * trigger_time_shift)
         return projected_strain * phase_shift
 
     def td_response(
@@ -439,17 +439,17 @@ class GroundBased2G(Detector):
             Float: Time delay from Earth center in seconds.
         """
         delta_d = -self.vertex
-        gmst = jnp.mod(gmst, 2 * jnp.pi)
+        gmst = np.mod(gmst, 2 * np.pi)
         phi = ra - gmst
-        theta = jnp.pi / 2 - dec
-        omega = jnp.array(
+        theta = np.pi / 2 - dec
+        omega = np.array(
             [
-                jnp.sin(theta) * jnp.cos(phi),
-                jnp.sin(theta) * jnp.sin(phi),
-                jnp.cos(theta),
+                np.sin(theta) * np.cos(phi),
+                np.sin(theta) * np.sin(phi),
+                np.cos(theta),
             ]
         )
-        return jnp.einsum("i...,i->...", omega, delta_d) / C_SI
+        return np.einsum("i...,i->...", omega, delta_d) / C_SI
 
     def antenna_pattern(
         self, ra: Float, dec: Float, psi: Float, gmst: Float
@@ -474,7 +474,7 @@ class GroundBased2G(Detector):
         antenna_patterns = {}
         for polarization in self.polarization_mode:
             wave_tensor = polarization.tensor_from_sky(ra, dec, psi, gmst)
-            antenna_patterns[polarization.name] = jnp.einsum(
+            antenna_patterns[polarization.name] = np.einsum(
                 "ij,ij...->...", detector_tensor, wave_tensor
             )
 
@@ -593,7 +593,7 @@ class GroundBased2G(Detector):
         self.set_data(
             Data(
                 name=f"{self.name}_empty",
-                td=jnp.zeros(n_times),
+                td=np.zeros(n_times),
                 delta_t=1 / sampling_frequency,
                 epoch=epoch,
             )
@@ -604,9 +604,9 @@ class GroundBased2G(Detector):
         projected_strain = self.fd_response(self.frequencies, polarisations, parameters)
 
         # 3. Set the new data
-        strain_data = jnp.where(self.frequency_mask, projected_strain, 0.0 + 0.0j)
+        strain_data = np.where(self.frequency_mask, projected_strain, 0.0 + 0.0j)
         if not is_zero_noise:
-            strain_data += jnp.where(
+            strain_data += np.where(
                 self.frequency_mask, self.psd.simulate_data(rng_key), 0.0 + 0.0j
             )
 
@@ -649,7 +649,7 @@ class GroundBased2G(Detector):
         Returns:
             None
         """
-        pass
+        raise NotImplementedError
 
     def get_whitened_frequency_domain_strain(
         self, frequency_series: Complex[Array, " n_freq"]
@@ -660,7 +660,7 @@ class GroundBased2G(Detector):
         Returns:
             Complex[Array, " n_freq"]: Whitened frequency-domain strain.
         """
-        scaled_asd = jnp.sqrt(self.psd.values * self.duration / 4)
+        scaled_asd = np.sqrt(self.psd.values * self.duration / 4)
         return (frequency_series / scaled_asd) * self.frequency_mask
 
     def whitened_frequency_to_time_domain_strain(
@@ -673,10 +673,10 @@ class GroundBased2G(Detector):
         Returns:
             Float[Array, " n_time"]: Whitened time-domain strain/signal.
         """
-        freq_mask_ratio = len(self.frequency_mask) / jnp.sqrt(
-            jnp.sum(self.frequency_mask)
+        freq_mask_ratio = len(self.frequency_mask) / np.sqrt(
+            np.sum(self.frequency_mask)
         )
-        return jnp.fft.irfft(whitened_frequency_series) * freq_mask_ratio
+        return np.fft.irfft(whitened_frequency_series) * freq_mask_ratio
 
     @property
     def whitened_frequency_domain_data(self) -> Complex[Array, " n_sample"]:

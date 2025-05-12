@@ -1,5 +1,5 @@
 import jax
-import jax.numpy as jnp
+import jax.numpy as np
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
@@ -148,24 +148,24 @@ class Jim(object):
 
     def sample(
         self,
-        initial_position: Array = jnp.array([]),
+        initial_position: Array = np.array([]),
     ):
         if initial_position.size == 0:
             initial_position = (
-                jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
+                np.zeros((self.sampler.n_chains, self.prior.n_dim)) + np.nan
             )
 
             rng_key, subkey = jax.random.split(self.sampler.rng_key)
 
             while not jax.tree.reduce(
-                jnp.logical_and,
-                jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                np.logical_and,
+                jax.tree.map(lambda x: np.isfinite(x), initial_position),
             ).all():
-                non_finite_index = jnp.where(
-                    jnp.any(
+                non_finite_index = np.where(
+                    np.any(
                         ~jax.tree.reduce(
-                            jnp.logical_and,
-                            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                            np.logical_and,
+                            jax.tree.map(lambda x: np.isfinite(x), initial_position),
                         ),
                         axis=1,
                     )
@@ -175,11 +175,11 @@ class Jim(object):
                 guess = self.prior.sample(subkey, self.sampler.n_chains)
                 for transform in self.sample_transforms:
                     guess = jax.vmap(transform.forward)(guess)
-                guess = jnp.array(
+                guess = np.array(
                     jax.tree.leaves({key: guess[key] for key in self.parameter_names})
                 ).T
-                finite_guess = jnp.where(
-                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+                finite_guess = np.where(
+                    np.all(jax.tree.map(lambda x: np.isfinite(x), guess), axis=1)
                 )[0]
                 common_length = min(len(finite_guess), len(non_finite_index))
                 initial_position = initial_position.at[
