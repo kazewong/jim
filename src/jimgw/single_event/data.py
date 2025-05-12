@@ -8,13 +8,10 @@ import jax.numpy as np
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 
 from gwpy.timeseries import TimeSeries
-from typing import Optional
+from typing import Optional, Self
 from scipy.signal import welch
 from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
-
-from jimgw.constants import DEG_TO_RAD
-
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -251,7 +248,7 @@ class Data(ABC):
         gps_end_time: Float,
         cache: bool = True,
         **kws,
-    ) -> "Data":
+    ) -> Self:
         """Pull data from GWOSC.
 
         Args:
@@ -282,7 +279,7 @@ class Data(ABC):
         frequencies: Float[Array, " n_freq"],
         epoch: float = 0.0,
         name: str = "",
-    ) -> "Data":
+    ) -> Self:
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -318,7 +315,7 @@ class Data(ABC):
         assert np.allclose(
             f, np.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
-        # create jd.Data object
+        # create a Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
@@ -413,7 +410,7 @@ class PowerSpectrum(ABC):
         # NOTE: Are we sure the values and frequencies start from 0?
         self.values = values
         self.frequencies = frequencies
-        assert len(self.values) == len(
+        assert self.n_freq == len(
             self.frequencies
         ), "Values and frequencies must have the same length"
         self.name = name or ""
@@ -430,7 +427,7 @@ class PowerSpectrum(ABC):
         Returns:
             bool: True if power spectrum contains data, False otherwise.
         """
-        return len(self.values) > 0
+        return self.n_freq > 0
 
     def frequency_slice(
         self, f_min: float, f_max: float
@@ -451,7 +448,7 @@ class PowerSpectrum(ABC):
 
     def interpolate(
         self, frequencies: Float[Array, " n_sample"], kind: str = "linear", **kws
-    ) -> "PowerSpectrum":
+    ) -> Self:
         """Interpolate the power spectrum to new frequencies.
 
         Args:
