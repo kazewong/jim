@@ -106,7 +106,7 @@ UNIX_EPOCH_YEAR = 1970
 # **Someone in the future please update this**
 # This is surely not the most ideal way, but for the code to be jittable,
 # this seems to be a not too bad compromise.
-YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2450)
+YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2510)
 IS_LEAP_YEARS = is_leap_year(YEAR_ARRAY)
 LEAP_SEC_ARRAY = np.where(IS_LEAP_YEARS, LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
 
@@ -133,6 +133,12 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     is_negative = (remaining_seconds < 0).astype(np.int64)
     year += is_more_than - is_negative
     remaining_seconds -= (is_more_than - is_negative) * sec_in_year
+
+    # This is to deal with the extreme cases (year ~2500)
+    sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
+    is_more_than = (remaining_seconds >= sec_in_year).astype(np.int64)
+    year += is_more_than
+    remaining_seconds -= is_more_than * sec_in_year
 
     # Adjust for leap year
     sec_in_months = (
