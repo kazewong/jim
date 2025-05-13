@@ -229,39 +229,37 @@ class SequentialTransformPrior(CompositePrior):
 
 
 @jaxtyped(typechecker=typechecker)
-class ConstrainedPrior(Prior):
+class FullRangePrior(Prior):
     """
-    A prior class that has constraints on the parameters.
+    A prior class that returns -inf instead of NaN when the constraints are not satisfied.
+    Takes a SequentialTransformPrior as base_prior.
     """
 
     constraints: list[Callable]
 
     def __init__(
         self,
-        parameter_names: list[str],
-        constraints: list[Callable] = [],
+        base_prior: SequentialTransformPrior,
+        extra_constraints: list[Callable] = [],
     ):
-        super().__init__(parameter_names)
-        self.constraints = constraints
+        super().__init__(base_prior.parameter_names)
+        self.base_prior = base_prior
+        # Copy the constraints list to avoid mutating the input list
+        self.constraints = list(extra_constraints)
+        # Add constraints for xmin/xmax if present
+        if hasattr(base_prior, 'xmin'):
+            xmin = getattr(base_prior, 'xmin')
+            self.constraints.append(lambda z: z[self.parameter_names[0]] >= xmin)
+        if hasattr(base_prior, 'xmax'):
+            xmax = getattr(base_prior, 'xmax')
+            self.constraints.append(lambda z: z[self.parameter_names[0]] <= xmax)
 
     def eval_constraints(self, x: dict[str, Float]) -> Bool:
         return jnp.array([constraint(x) for constraint in self.constraints]).all()
-    
-    def _compute_log_prob(self, z):
-        output = 0.0
-        for transform in reversed(self.transforms):
-            z, log_jacobian = transform.inverse(z)
-            output += log_jacobian
-        output += self.base_prior[0].log_prob(z)
-        return output
 
     def log_prob(self, z: dict[str, Float]) -> Float:
-        """
-        Evaluating the probability of the transformed variable z.
-        This is what flowMC should sample from
-        """
         eval_result = self.eval_constraints(z)
-        return jnp.where(eval_result, self._compute_log_prob(z), -jnp.inf)
+        return jnp.where(eval_result, self.base_prior.log_prob(z), -jnp.inf)
 
 
 class CombinePrior(CompositePrior):
@@ -394,6 +392,9 @@ class SinePrior(SequentialTransformPrior):
     A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
     """
 
+    xmin: float = 0.0
+    xmax: float = jnp.pi
+
     def __repr__(self):
         return f"SinePrior(parameter_names={self.parameter_names})"
 
@@ -421,6 +422,9 @@ class CosinePrior(SequentialTransformPrior):
     """
     A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
     """
+
+    xmin: float = -jnp.pi / 2
+    xmax: float = jnp.pi / 2
 
     def __repr__(self):
         return f"CosinePrior(parameter_names={self.parameter_names})"
@@ -472,6 +476,7 @@ class RayleighPrior(SequentialTransformPrior):
     A prior distribution following the Rayleigh distribution with scale parameter sigma.
     """
 
+    xmin: float = 0.0
     sigma: float
 
     def __repr__(self):
