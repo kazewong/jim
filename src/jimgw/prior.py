@@ -264,15 +264,21 @@ class FullRangePrior(Prior):
         object.__setattr__(self, "base_prior", base_prior)
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
+
         # --- Closure helper for constraints ---
         def _make_bound_constraint(name, bound, is_min: bool):
             if is_min:
+
                 def constraint(z):
                     return z[name] > bound
+
             else:
+
                 def constraint(z):
                     return z[name] < bound
+
             return constraint
+
         # Add constraints for xmin/xmax if present
         if isinstance(base_prior, CombinePrior):
             # Handle CombinePrior
@@ -288,10 +294,14 @@ class FullRangePrior(Prior):
             # Handle 1D case
             if hasattr(base_prior, "xmin"):
                 xmin = getattr(base_prior, "xmin")
-                self.constraints.append(_make_bound_constraint(self.parameter_names[0], xmin, True))
+                self.constraints.append(
+                    _make_bound_constraint(self.parameter_names[0], xmin, True)
+                )
             if hasattr(base_prior, "xmax"):
                 xmax = getattr(base_prior, "xmax")
-                self.constraints.append(_make_bound_constraint(self.parameter_names[0], xmax, False))
+                self.constraints.append(
+                    _make_bound_constraint(self.parameter_names[0], xmax, False)
+                )
 
     def eval_constraints(self, x: dict[str, Float]) -> Bool:
         return jnp.array([constraint(x) for constraint in self.constraints]).all()
