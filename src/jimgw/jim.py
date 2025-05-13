@@ -159,11 +159,21 @@ class Jim(object):
                     named_initial_position
                 )
             initial_position = jnp.array([named_initial_position[key] for key in self.parameter_names]).T
+            assert jnp.isnan(initial_position).sum() == 0, (
+                "Initial position contains NaN values. "
+                "Please check the prior and sample transforms."
+            )
             self.sampler.rng_key = rng_key
         else:
-            assert initial_position.ndim == 2
-            assert initial_position.shape[0] == self.sampler.n_chains
-            assert initial_position.shape[1] == self.prior.n_dim
+            assert initial_position.ndim == 2, "Initial position must be a 2D array."
+            assert initial_position.shape[0] == self.sampler.n_chains, (
+                f"Initial position must have {self.sampler.n_chains} rows, "
+                f"but got {initial_position.shape[0]}."
+            )
+            assert initial_position.shape[1] == self.prior.n_dim, (
+                f"Initial position must have {self.prior.n_dim} columns, "
+                f"but got {initial_position.shape[1]}."
+            )
 
         self.sampler.sample(initial_position, {})  # type: ignore
 
