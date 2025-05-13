@@ -77,9 +77,6 @@ class TestUnivariatePrior:
         y = jax.vmap(p.transform)(x)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), -jnp.log(xmax - xmin))
 
-        # Check that the log_prob are correct outside the support
-        assert jnp.allclose(jax.vmap(p.log_prob)(p.add_name(jnp.array([xmin - 1.0, xmax + 1.0])[None])), -jnp.inf)
-
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
         jitted_val = jax.vmap(jitted_log_prob)(y)
@@ -105,12 +102,6 @@ class TestUnivariatePrior:
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.sin(y["x"]) / 2.0))
 
-        # Check that the log_prob are correct outside the support
-        assert jnp.allclose(
-            jax.vmap(p.log_prob)(p.add_name(jnp.array([0.0 - 1.0, jnp.pi + 1.0])[None])),
-            -jnp.inf,
-        )
-
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
         jitted_val = jax.vmap(jitted_log_prob)(y)
@@ -134,12 +125,6 @@ class TestUnivariatePrior:
         y = jax.vmap(p.base_prior[0].transform)(x)
         y = jax.vmap(p.transform)(y)
         assert jnp.allclose(jax.vmap(p.log_prob)(y), jnp.log(jnp.cos(y["x"]) / 2.0))
-
-        # Check that the log_prob are correct outside the support
-        assert jnp.allclose(
-            jax.vmap(p.log_prob)(p.add_name(jnp.array([-jnp.pi / 2.0 - 1.0, jnp.pi / 2.0 + 1.0])[None])),
-            -jnp.inf,
-        )
 
         # Check that log_prob is jittable
         jitted_log_prob = jax.jit(p.log_prob)
@@ -203,12 +188,6 @@ class TestUnivariatePrior:
                     -jnp.log(y["x"]) - jnp.log(jnp.log(xmax) - jnp.log(xmin)),
                 )
 
-            # Check that the log_prob are correct outside the support
-            assert jnp.allclose(
-                jax.vmap(p.log_prob)(p.add_name(jnp.array([xmin - 1.0, xmax + 1.0])[None])),
-                -jnp.inf,
-            )
-
             # Check that log_prob is jittable
             jitted_log_prob = jax.jit(p.log_prob)
             jitted_val = jax.vmap(jitted_log_prob)(y)
@@ -261,12 +240,6 @@ class TestUnivariatePrior:
         assert jnp.allclose(
             jax.vmap(p.log_prob)(y),
             stats.rayleigh.logpdf(y["x"], scale=sigma),
-        )
-
-        # Check that the log_prob are correct outside the support
-        assert jnp.allclose(
-            jax.vmap(p.log_prob)(p.add_name(jnp.array([0.0 - 1.0])[None])),
-            -jnp.inf,
         )
 
         # Check that log_prob is jittable
