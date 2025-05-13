@@ -71,7 +71,8 @@ class Prior(eqx.Module):
 @jaxtyped(typechecker=typechecker)
 class CompositePrior(Prior):
     """
-    Composite prior consisting of multiple independent priors.
+    Composite prior consisting of multiple priors, including SequentialTransformPrior and CombinePrior.
+    This class is used to create complex prior distributions from simpler ones.
 
     Attributes:
         base_prior (list[Prior]): List of prior objects.
