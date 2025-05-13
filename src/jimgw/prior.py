@@ -191,6 +191,7 @@ class StandardNormalDistribution(Prior):
         return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
 
 
+@jaxtyped(typechecker=typechecker)
 class SequentialTransformPrior(CompositePrior):
     """
     Prior distribution transformed by a sequence of bijective transforms.
@@ -254,6 +255,7 @@ class FullRangePrior(Prior):
     """
 
     constraints: list[Callable]
+    base_prior: SequentialTransformPrior
 
     def __init__(
         self,
@@ -335,6 +337,7 @@ class FullRangePrior(Prior):
         return jax.tree.map(lambda x: x[:n_samples], valid_samples)
 
 
+@jaxtyped(typechecker=typechecker)
 class CombinePrior(CompositePrior):
     """
     Multivariate prior constructed by joining multiple independent priors.
