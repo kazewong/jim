@@ -261,17 +261,16 @@ class FullRangePrior(Prior):
         extra_constraints: list[Callable] = [],
     ):
         super().__init__(base_prior.parameter_names)
-        self.base_prior = base_prior
-        self.sample = base_prior.sample
+        object.__setattr__(self, 'base_prior', base_prior)
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
         # Add constraints for xmin/xmax if present
         if hasattr(base_prior, "xmin"):
             xmin = getattr(base_prior, "xmin")
-            self.constraints.append(lambda z: z[self.parameter_names[0]] >= xmin)
+            self.constraints.append(lambda z: z[self.parameter_names[0]] > xmin)
         if hasattr(base_prior, "xmax"):
             xmax = getattr(base_prior, "xmax")
-            self.constraints.append(lambda z: z[self.parameter_names[0]] <= xmax)
+            self.constraints.append(lambda z: z[self.parameter_names[0]] < xmax)
 
     def eval_constraints(self, x: dict[str, Float]) -> Bool:
         return jnp.array([constraint(x) for constraint in self.constraints]).all()
@@ -279,6 +278,12 @@ class FullRangePrior(Prior):
     def log_prob(self, z: dict[str, Float]) -> Float:
         eval_result = self.eval_constraints(z)
         return jnp.where(eval_result, self.base_prior.log_prob(z), -jnp.inf)
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        # Delegate to base_prior's sample method
+        return self.base_prior.sample(rng_key, n_samples)
 
 
 class CombinePrior(CompositePrior):

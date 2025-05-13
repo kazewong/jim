@@ -11,6 +11,7 @@ from jimgw.prior import (
     PowerLawPrior,
     GaussianPrior,
     RayleighPrior,
+    FullRangePrior,
 )
 
 import scipy.stats as stats
@@ -247,3 +248,37 @@ class TestUnivariatePrior:
         jitted_val = jax.vmap(jitted_log_prob)(y)
         assert jnp.all(jnp.isfinite(jitted_val))
         assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
+
+    def test_full_range_prior(self):
+        # Define a uniform prior over [0, 1]
+        base = UniformPrior(0.0, 1.0, ["x"])
+        # FullRangePrior with no extra constraints (should behave like base)
+        p = FullRangePrior(base)
+
+        # All samples should be in [0, 1]
+        samples = p.sample(jax.random.PRNGKey(0), 10000)
+        assert jnp.all((samples["x"] > 0.0) & (samples["x"] < 1.0))
+        # log_prob should be finite in [0, 1], -inf outside
+        xs = jnp.linspace(-0.5, 1.5, 1000)
+        xs_dict = p.add_name(xs[None])
+        logp = jax.vmap(p.log_prob)(xs_dict)
+        mask = (xs >= 0.0) & (xs <= 1.0)
+        assert jnp.all(jnp.isfinite(logp[mask]))
+        assert jnp.all(logp[~mask] == -jnp.inf)
+        # Should match base prior in valid region
+        base_logp = jax.vmap(base.log_prob)(xs_dict)
+        assert jnp.allclose(logp[mask], base_logp[mask])
+
+        # Add an extra constraint: x < 0.5
+        p2 = FullRangePrior(base, extra_constraints=[lambda z: z["x"] < 0.5])
+        xs2 = jnp.linspace(-0.5, 1.5, 1000)
+        xs2_dict = p2.add_name(xs2[None])
+        logp2 = jax.vmap(p2.log_prob)(xs2_dict)
+        mask2 = (xs2 >= 0.0) & (xs2 < 0.5)
+        assert jnp.all(jnp.isfinite(logp2[mask2]))
+        assert jnp.all(logp2[~mask2] == -jnp.inf)
+
+        # Check vmap/jit compatibility
+        jitted_log_prob = jax.jit(p.log_prob)
+        jitted_vals = jax.vmap(jitted_log_prob)(xs_dict)
+        assert jnp.allclose(jitted_vals, logp)
