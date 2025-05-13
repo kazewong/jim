@@ -255,7 +255,7 @@ class TestUnivariatePrior:
         # FullRangePrior with no extra constraints (should behave like base)
         p = FullRangePrior(base)
 
-        # All samples should be in [0, 1]
+        # All samples should be in (0, 1)
         samples = p.sample(jax.random.PRNGKey(0), 10000)
         assert jnp.all((samples["x"] > 0.0) & (samples["x"] < 1.0))
         # log_prob should be finite in [0, 1], -inf outside
@@ -282,3 +282,7 @@ class TestUnivariatePrior:
         jitted_log_prob = jax.jit(p.log_prob)
         jitted_vals = jax.vmap(jitted_log_prob)(xs_dict)
         assert jnp.allclose(jitted_vals, logp)
+
+        # Test sampling with extra constraint: x < 0.5
+        samples2 = p2.sample(jax.random.PRNGKey(1), 10000)
+        assert jnp.all((samples2["x"] >= 0.0) & (samples2["x"] < 0.5))

@@ -261,16 +261,17 @@ class FullRangePrior(Prior):
         extra_constraints: list[Callable] = [],
     ):
         super().__init__(base_prior.parameter_names)
-        object.__setattr__(self, 'base_prior', base_prior)
+        object.__setattr__(self, "base_prior", base_prior)
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
         # Add constraints for xmin/xmax if present
-        if hasattr(base_prior, "xmin"):
-            xmin = getattr(base_prior, "xmin")
-            self.constraints.append(lambda z: z[self.parameter_names[0]] > xmin)
-        if hasattr(base_prior, "xmax"):
-            xmax = getattr(base_prior, "xmax")
-            self.constraints.append(lambda z: z[self.parameter_names[0]] < xmax)
+        if self.n_dim == 1:
+            if hasattr(base_prior, "xmin"):
+                xmin = getattr(base_prior, "xmin")
+                self.constraints.append(lambda z: z[self.parameter_names[0]] > xmin)
+            if hasattr(base_prior, "xmax"):
+                xmax = getattr(base_prior, "xmax")
+                self.constraints.append(lambda z: z[self.parameter_names[0]] < xmax)
 
     def eval_constraints(self, x: dict[str, Float]) -> Bool:
         return jnp.array([constraint(x) for constraint in self.constraints]).all()
@@ -282,8 +283,26 @@ class FullRangePrior(Prior):
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
-        # Delegate to base_prior's sample method
-        return self.base_prior.sample(rng_key, n_samples)
+        rng_key, subkey = jax.random.split(rng_key)
+        samples = self.base_prior.sample(subkey, n_samples)
+
+        mask = jax.vmap(self.eval_constraints)(samples)
+        valid_samples = jax.tree.map(lambda x: x[mask], samples)
+        n_valid = mask.sum()
+
+        while n_valid < n_samples:
+            rng_key, subkey = jax.random.split(rng_key)
+            new_samples = self.base_prior.sample(subkey, n_samples - n_valid)
+            new_mask = jax.vmap(self.eval_constraints)(new_samples)
+            valid_new_samples = jax.tree.map(lambda x: x[new_mask], new_samples)
+            valid_samples = jax.tree.map(
+                lambda x, y: jnp.concatenate([x, y], axis=0),
+                valid_samples,
+                valid_new_samples,
+            )
+            n_valid = valid_samples[list(valid_samples.keys())[0]].shape[0]
+
+        return jax.tree.map(lambda x: x[:n_samples], valid_samples)
 
 
 class CombinePrior(CompositePrior):
