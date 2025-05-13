@@ -244,7 +244,7 @@ class SequentialTransformPrior(CompositePrior):
         return x
 
 
-class FullRangePrior(Prior):
+class FullRangePrior(CompositePrior):
     """
     Prior that enforces constraints on the parameter range, returning -inf if constraints are not satisfied.
 
@@ -254,15 +254,14 @@ class FullRangePrior(Prior):
     """
 
     constraints: list[Callable]
-    base_prior: SequentialTransformPrior
 
     def __init__(
         self,
-        base_prior: SequentialTransformPrior,
+        base_prior: list[Prior],
         extra_constraints: list[Callable] = [],
     ):
-        super().__init__(base_prior.parameter_names)
-        object.__setattr__(self, "base_prior", base_prior)
+        assert len(base_prior) == 1, "FullRangePrior only takes one base prior"
+        super().__init__(base_prior)
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
 
@@ -281,10 +280,10 @@ class FullRangePrior(Prior):
             return constraint
 
         # Add constraints for xmin/xmax if present
-        if isinstance(base_prior, CombinePrior):
+        if isinstance(base_prior[0], CombinePrior):
             # Handle CombinePrior
             for i, name in enumerate(self.parameter_names):
-                subprior = base_prior.base_prior[i]
+                subprior = base_prior[0].base_prior[i]
                 if hasattr(subprior, "xmin"):
                     xmin = getattr(subprior, "xmin")
                     self.constraints.append(_make_bound_constraint(name, xmin, True))
@@ -293,13 +292,13 @@ class FullRangePrior(Prior):
                     self.constraints.append(_make_bound_constraint(name, xmax, False))
         elif self.n_dim == 1:
             # Handle 1D case
-            if hasattr(base_prior, "xmin"):
-                xmin = getattr(base_prior, "xmin")
+            if hasattr(base_prior[0], "xmin"):
+                xmin = getattr(base_prior[0], "xmin")
                 self.constraints.append(
                     _make_bound_constraint(self.parameter_names[0], xmin, True)
                 )
-            if hasattr(base_prior, "xmax"):
-                xmax = getattr(base_prior, "xmax")
+            if hasattr(base_prior[0], "xmax"):
+                xmax = getattr(base_prior[0], "xmax")
                 self.constraints.append(
                     _make_bound_constraint(self.parameter_names[0], xmax, False)
                 )
@@ -309,13 +308,13 @@ class FullRangePrior(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         eval_result = self.eval_constraints(z)
-        return jnp.where(eval_result, self.base_prior.log_prob(z), -jnp.inf)
+        return jnp.where(eval_result, self.base_prior[0].log_prob(z), -jnp.inf)
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
     ) -> dict[str, Float[Array, " n_samples"]]:
         rng_key, subkey = jax.random.split(rng_key)
-        samples = self.base_prior.sample(subkey, n_samples)
+        samples = self.base_prior[0].sample(subkey, n_samples)
 
         mask = jax.vmap(self.eval_constraints)(samples)
         valid_samples = jax.tree.map(lambda x: x[mask], samples)
@@ -323,7 +322,7 @@ class FullRangePrior(Prior):
 
         while n_valid < n_samples:
             rng_key, subkey = jax.random.split(rng_key)
-            new_samples = self.base_prior.sample(subkey, n_samples - n_valid)
+            new_samples = self.base_prior[0].sample(subkey, n_samples - n_valid)
             new_mask = jax.vmap(self.eval_constraints)(new_samples)
             valid_new_samples = jax.tree.map(lambda x: x[new_mask], new_samples)
             valid_samples = jax.tree.map(
