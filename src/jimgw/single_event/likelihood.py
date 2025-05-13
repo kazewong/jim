@@ -499,8 +499,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         initial_position = jnp.array(
             [named_initial_position[key] for key in parameter_names]
         ).T
-        assert jnp.isnan(initial_position).sum() == 0, (
-            "Initial position contains NaN values. "
+        assert jnp.isfinite(initial_position).all(), (
+            "Initial position contains NaN or Inf values. "
             "Please check the prior and transforms."
         )
 
