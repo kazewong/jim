@@ -262,6 +262,7 @@ class FullRangePrior(Prior):
     ):
         super().__init__(base_prior.parameter_names)
         self.base_prior = base_prior
+        self.sample = base_prior.sample
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
         # Add constraints for xmin/xmax if present
