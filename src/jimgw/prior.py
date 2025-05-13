@@ -92,7 +92,6 @@ class CompositePrior(Prior):
             parameter_names += prior.parameter_names
         self.base_prior = priors
         self.parameter_names = parameter_names
-        self.constraints = []
 
     def trace_prior_parent(self, output: list[Prior] = []) -> list[Prior]:
         for subprior in self.base_prior:
@@ -302,8 +301,6 @@ class CombinePrior(CompositePrior):
         priors: list[Prior],
     ):
         super().__init__(priors)
-        for prior in priors:
-            self.constraints += prior.constraints
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
