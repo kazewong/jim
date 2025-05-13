@@ -584,8 +584,8 @@ class RayleighPrior(SequentialTransformPrior):
         parameter_names (list[str]): Name of the parameter.
     """
 
-    xmin: float = 0.0
     sigma: float
+    xmin: float = 0.0
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
