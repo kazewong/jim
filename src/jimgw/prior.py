@@ -266,11 +266,11 @@ class FullRangePrior(Prior):
         # Copy the constraints list to avoid mutating the input list
         self.constraints = list(extra_constraints)
         # Add constraints for xmin/xmax if present
-        if hasattr(base_prior, 'xmin'):
-            xmin = getattr(base_prior, 'xmin')
+        if hasattr(base_prior, "xmin"):
+            xmin = getattr(base_prior, "xmin")
             self.constraints.append(lambda z: z[self.parameter_names[0]] >= xmin)
-        if hasattr(base_prior, 'xmax'):
-            xmax = getattr(base_prior, 'xmax')
+        if hasattr(base_prior, "xmax"):
+            xmax = getattr(base_prior, "xmax")
             self.constraints.append(lambda z: z[self.parameter_names[0]] <= xmax)
 
     def eval_constraints(self, x: dict[str, Float]) -> Bool:

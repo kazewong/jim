@@ -496,7 +496,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         named_initial_position = prior.sample(jax.random.PRNGKey(0), popsize)
         for transform in sample_transforms:
             named_initial_position = jax.vmap(transform.forward)(named_initial_position)
-        initial_position = jnp.array([named_initial_position[key] for key in self.parameter_names]).T
+        initial_position = jnp.array(
+            [named_initial_position[key] for key in self.parameter_names]
+        ).T
         assert jnp.isnan(initial_position).sum() == 0, (
             "Initial position contains NaN values. "
             "Please check the prior and transforms."
