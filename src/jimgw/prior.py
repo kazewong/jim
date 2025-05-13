@@ -22,12 +22,9 @@ from jimgw.transforms import (
 
 class Prior(eqx.Module):
     """
-    A base class for prior distributions.
+    Base class for prior distributions.
 
-    Should not be used directly since it does not implement any of the real method.
-
-    The rationale behind this is to have a class that can be used to keep track of
-    the names of the parameters and the transforms that are applied to them.
+    This class should not be used directly. It provides a common interface and bookkeeping for parameter names and transforms.
     """
 
     parameter_names: list[str]
@@ -74,7 +71,11 @@ class Prior(eqx.Module):
 @jaxtyped(typechecker=typechecker)
 class CompositePrior(Prior):
     """
-    A prior class that is a composite of multiple priors.
+    Composite prior consisting of multiple independent priors.
+
+    Attributes:
+        base_prior (list[Prior]): List of prior objects.
+        parameter_names (list[str]): Names of all parameters in the composite prior.
     """
 
     base_prior: list[Prior]
@@ -104,6 +105,12 @@ class CompositePrior(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
+    """
+    One-dimensional logistic distribution prior.
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
+    """
 
     def __repr__(self):
         return f"LogisticDistribution(parameter_names={self.parameter_names})"
@@ -142,6 +149,12 @@ class LogisticDistribution(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class StandardNormalDistribution(Prior):
+    """
+    One-dimensional standard normal (Gaussian) distribution prior.
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
+    """
 
     def __repr__(self):
         return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
@@ -181,9 +194,12 @@ class StandardNormalDistribution(Prior):
 
 class SequentialTransformPrior(CompositePrior):
     """
-    Transform a prior distribution by applying a sequence of transforms.
-    The space before the transform is named as x,
-    and the space after the transform is named as z
+    Prior distribution transformed by a sequence of bijective transforms.
+
+    Attributes:
+        base_prior (list[Prior]): The base prior to transform.
+        transforms (list[BijectiveTransform]): List of transforms to apply sequentially.
+        parameter_names (list[str]): Names of the parameters after all transforms.
     """
 
     transforms: list[BijectiveTransform]
@@ -231,8 +247,11 @@ class SequentialTransformPrior(CompositePrior):
 @jaxtyped(typechecker=typechecker)
 class FullRangePrior(Prior):
     """
-    A prior class that returns -inf instead of NaN when the constraints are not satisfied.
-    Takes a SequentialTransformPrior as base_prior.
+    Prior that enforces constraints on the parameter range, returning -inf if constraints are not satisfied.
+
+    Attributes:
+        base_prior (SequentialTransformPrior): The base prior distribution.
+        constraints (list[Callable]): List of constraint functions to apply.
     """
 
     constraints: list[Callable]
@@ -264,8 +283,11 @@ class FullRangePrior(Prior):
 
 class CombinePrior(CompositePrior):
     """
-    A prior class constructed by joinning multiple priors together to form a multivariate prior.
-    This assumes the priors composing the Combine class are independent.
+    Multivariate prior constructed by joining multiple independent priors.
+
+    Attributes:
+        base_prior (list[Prior]): List of independent priors.
+        parameter_names (list[str]): Names of all parameters in the combined prior.
     """
 
     base_prior: list[Prior] = field(default_factory=list)
@@ -301,6 +323,15 @@ class CombinePrior(CompositePrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformPrior(SequentialTransformPrior):
+    """
+    Uniform prior over a finite interval [xmin, xmax].
+
+    Attributes:
+        xmin (float): Lower bound of the interval.
+        xmax (float): Upper bound of the interval.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     xmin: float
     xmax: float
 
@@ -343,6 +374,15 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
+    """
+    Gaussian (normal) prior with specified mean and standard deviation.
+
+    Attributes:
+        mu (float): Mean of the distribution.
+        sigma (float): Standard deviation of the distribution.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     mu: float
     sigma: float
 
@@ -389,7 +429,10 @@ class GaussianPrior(SequentialTransformPrior):
 @jaxtyped(typechecker=typechecker)
 class SinePrior(SequentialTransformPrior):
     """
-    A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
+    Prior with PDF proportional to sin(x) over [0, pi].
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
     """
 
     xmin: float = 0.0
@@ -420,7 +463,10 @@ class SinePrior(SequentialTransformPrior):
 @jaxtyped(typechecker=typechecker)
 class CosinePrior(SequentialTransformPrior):
     """
-    A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
+    Prior with PDF proportional to cos(x) over [-pi/2, pi/2].
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
     """
 
     xmin: float = -jnp.pi / 2
@@ -449,6 +495,12 @@ class CosinePrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformSpherePrior(CombinePrior):
+    """
+    Uniform prior over a sphere, parameterized by magnitude, theta, and phi.
+
+    Attributes:
+        parameter_names (list[str]): Names of the vector, theta, and phi parameters.
+    """
 
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
@@ -473,7 +525,11 @@ class UniformSpherePrior(CombinePrior):
 @jaxtyped(typechecker=typechecker)
 class RayleighPrior(SequentialTransformPrior):
     """
-    A prior distribution following the Rayleigh distribution with scale parameter sigma.
+    Rayleigh distribution prior with scale parameter sigma.
+
+    Attributes:
+        sigma (float): Scale parameter of the Rayleigh distribution.
+        parameter_names (list[str]): Name of the parameter.
     """
 
     xmin: float = 0.0
@@ -503,6 +559,16 @@ class RayleighPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class PowerLawPrior(SequentialTransformPrior):
+    """
+    Power-law prior over [xmin, xmax] with exponent alpha.
+
+    Attributes:
+        xmin (float): Lower bound of the interval.
+        xmax (float): Upper bound of the interval.
+        alpha (float): Power-law exponent.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     xmin: float
     xmax: float
     alpha: float
