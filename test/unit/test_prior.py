@@ -272,7 +272,7 @@ class TestFullRangePrior:
     def test_full_range_prior_1d(self):
         """Test FullRangePrior for correct constraint enforcement and sampling."""
         base = UniformPrior(0.0, 1.0, ["x"])
-        p = FullRangePrior(base)
+        p = FullRangePrior([base])
 
         # Draw samples and check they are finite and in range
         samples = p.sample(jax.random.PRNGKey(0), 10000)
@@ -291,7 +291,7 @@ class TestFullRangePrior:
         assert jnp.allclose(logp[mask], base_logp[mask])
 
         # Add extra constraint
-        p2 = FullRangePrior(base, extra_constraints=[lambda z: z["x"] < 0.5])
+        p2 = FullRangePrior([base], extra_constraints=[lambda z: z["x"] < 0.5])
 
         # Draw samples and check they are finite and in range
         samples2 = p2.sample(jax.random.PRNGKey(1), 10000)
@@ -318,7 +318,7 @@ class TestFullRangePrior:
         # Combine into a 2D prior
         base = CombinePrior([base1, base2])
         # No extra constraints: should behave like the product prior
-        p = FullRangePrior(base)
+        p = FullRangePrior([base])
 
         # Draw samples and check they are finite and in range
         samples = p.sample(jax.random.PRNGKey(0), 10000)
@@ -338,7 +338,7 @@ class TestFullRangePrior:
         assert jnp.all(logp[~mask] == -jnp.inf)
 
         # Add a joint constraint: x + y < 1
-        p2 = FullRangePrior(base, extra_constraints=[lambda z: z["x"] + z["y"] < 1.0])
+        p2 = FullRangePrior([base], extra_constraints=[lambda z: z["x"] + z["y"] < 1.0])
 
         # Draw samples and check they are finite and in range
         samples2 = p2.sample(jax.random.PRNGKey(1), 10000)
