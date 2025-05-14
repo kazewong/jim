@@ -12,7 +12,6 @@ from typing import Optional
 
 from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
 from jimgw.single_event.wave import Polarization
-from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 
 DEG_TO_RAD = jnp.pi / 180
 
@@ -68,10 +67,12 @@ class Detector(ABC):
                 to frequency-domain waveforms. The keys are polarization names (e.g., 'plus', 'cross')
                 and values are complex strain arrays.
             params (dict): Dictionary of source parameters including:
-                - ra (float): Right ascension in radians
-                - dec (float): Declination in radians
-                - psi (float): Polarization angle in radians
-                - geocent_time (float): The geocentric time in sec
+                - ra (Float): Right ascension in radians
+                - dec (Float): Declination in radians
+                - psi (Float): Polarization angle in radians
+                - trigger_time (Float): The trigger time in sec
+                - t_c (Float): The difference between peak time and trigger time in sec
+                - gmst (Float): The greenwich mean sidereal time at the trigger time in radian
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -342,18 +343,19 @@ class GroundBased2G(Detector):
                 - ra (Float): Right ascension in radians
                 - dec (Float): Declination in radians
                 - psi (Float): Polarization angle in radians
-                - geocent_time (float): The geocentric time in sec
+                - trigger_time (Float): The trigger time in sec
+                - t_c (Float): The difference between peak time and trigger time in sec
+                - gmst (Float): The greenwich mean sidereal time at the trigger time in radian
             **kwargs: Additional keyword arguments.
 
         Returns:
             Array: Complex strain measured by the detector in frequency domain, obtained by
                   combining the antenna patterns for each polarization mode.
         """
-        ra, dec, psi = params["ra"], params["dec"], params["psi"]
-        gmst = compute_gmst(params["geocent_time"])
+        ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         time_shift = self.delay_from_geocenter(ra, dec, gmst)
-        time_shift += params["geocent_time"] - self.epoch
+        time_shift += params["trigger_time"] + params["t_c"] - self.epoch
 
         h_detector = jax.tree_util.tree_map(
             lambda h, antenna: h * antenna,

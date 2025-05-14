@@ -243,7 +243,6 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         def time_delay(ra, dec, gmst):
             return self.ifo.delay_from_geocenter(ra, dec, gmst)
 
-        # TODO: Need to check whether time_delay needs t_c input
         def named_transform(x):
             time_shift = time_delay(x["ra"], x["dec"], self.gmst)
 
