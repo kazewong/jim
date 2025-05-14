@@ -355,7 +355,7 @@ class GroundBased2G(Detector):
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
         time_shift = self.delay_from_geocenter(ra, dec, gmst)
-        time_shift += params["trigger_time"] + params["t_c"] - self.epoch
+        time_shift += params["trigger_time"] - self.epoch + params["t_c"]
 
         h_detector = jax.tree_util.tree_map(
             lambda h, antenna: h * antenna,
