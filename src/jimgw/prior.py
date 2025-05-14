@@ -251,9 +251,23 @@ class FullRangePrior(CompositePrior):
     Attributes:
         base_prior (SequentialTransformPrior): The base prior distribution.
         constraints (list[Callable]): List of constraint functions to apply.
+
+    Warning:
+        The log_prob method of FullRangePrior is not normalized.
+        The probability density is set to -inf outside the allowed region (as defined by constraints), but the remaining region is not renormalized.
+        This means the resulting distribution is not a true probability density function.
+
+        Note:
+            This lack of normalization does not cause any practical issue for MCMC or similar inference methods,
+            since only probability ratios are needed and the evidence (normalization constant) is not computed.
     """
 
     constraints: list[Callable]
+
+    def __repr__(self):
+        return (
+            f"FullRangePrior(prior={self.base_prior}, constraints={self.constraints})"
+        )
 
     def __init__(
         self,
