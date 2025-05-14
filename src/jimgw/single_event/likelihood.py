@@ -1,5 +1,5 @@
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 from astropy.time import Time
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
@@ -56,7 +56,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
         assert jax.tree.reduce(
-            np.array_equal, _frequencies
+            jnp.array_equal, _frequencies
         ), "The frequency arrays are not all the same."
         self.detectors = detectors
         self.frequencies = _frequencies[0]
@@ -228,7 +228,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # Get the grid of the relative binning scheme (contains the final endpoint)
         # and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
-            np.array(frequency_original), n_bins
+            jnp.array(frequency_original), n_bins
         )
         self.freq_grid_low = freq_grid[:-1]
 
@@ -252,7 +252,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             )
         # safe guard for the reference parameters
         # since ripple cannot handle eta=0.25
-        if np.isclose(self.ref_params["eta"], 0.25):
+        if jnp.isclose(self.ref_params["eta"], 0.25):
             self.ref_params["eta"] = 0.249995
             logging.info("The eta of the reference parameter is close to 0.25")
             logging.info(f"The eta is adjusted to {self.ref_params['eta']}")
@@ -276,16 +276,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         # Get frequency masks to be applied, for both original
         # and heterodyne frequency grid
-        h_amp = np.sum(np.array([np.abs(h_sky[key]) for key in h_sky.keys()]), axis=0)
-        f_valid = frequency_original[np.where(h_amp > 0)[0]]
-        f_max = np.max(f_valid)
-        f_min = np.min(f_valid)
+        h_amp = jnp.sum(
+            jnp.array([jnp.abs(h_sky[key]) for key in h_sky.keys()]), axis=0
+        )
+        f_valid = frequency_original[jnp.where(h_amp > 0)[0]]
+        f_max = jnp.max(f_valid)
+        f_min = jnp.min(f_valid)
 
-        mask_heterodyne_grid = np.where((freq_grid <= f_max) & (freq_grid >= f_min))[0]
-        mask_heterodyne_low = np.where(
+        mask_heterodyne_grid = jnp.where((freq_grid <= f_max) & (freq_grid >= f_min))[0]
+        mask_heterodyne_low = jnp.where(
             (self.freq_grid_low <= f_max) & (self.freq_grid_low >= f_min)
         )[0]
-        mask_heterodyne_center = np.where(
+        mask_heterodyne_center = jnp.where(
             (self.freq_grid_center <= f_max) & (self.freq_grid_center >= f_min)
         )[0]
         freq_grid = freq_grid[mask_heterodyne_grid]
@@ -402,11 +404,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         Float[Array, "n_dim"]
             Maximum phase difference between the frequencies in the array.
         """
-        gamma = np.arange(-5, 6) / 3.0
-        f_2D = np.broadcast_to(f, (f.size, gamma.size))
-        f_star = np.where(gamma >= 0, f_high, f_low)
+        gamma = jnp.arange(-5, 6) / 3.0
+        f_2D = jnp.broadcast_to(f, (f.size, gamma.size))
+        f_star = jnp.where(gamma >= 0, f_high, f_low)
         return (
-            2 * np.pi * chi * np.sum((f_2D / f_star) ** gamma * np.sign(gamma), axis=1)
+            2
+            * jnp.pi
+            * chi
+            * jnp.sum((f_2D / f_star) ** gamma * jnp.sign(gamma), axis=1)
         )
 
     def make_binning_scheme(
@@ -434,10 +439,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)  # type: ignore
         bin_f = interp1d(phase_diff_array, freqs)
-        phase_diff = np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1)
+        phase_diff = jnp.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1)
         f_bins = bin_f(phase_diff)
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
-        return np.array(f_bins), np.array(f_bins_center)
+        return jnp.array(f_bins), jnp.array(f_bins_center)
 
     @staticmethod
     def compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center):
@@ -447,20 +452,20 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         B1_array = []
 
         df = freqs[1] - freqs[0]
-        data_prod = np.array(data * h_ref.conj()) / psd
-        self_prod = np.array(h_ref * h_ref.conj()) / psd
+        data_prod = jnp.array(data * h_ref.conj()) / psd
+        self_prod = jnp.array(h_ref * h_ref.conj()) / psd
         for i in range(len(f_bins) - 1):
-            f_index = np.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
+            f_index = jnp.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
             freq_shift = freqs[f_index] - f_bins_center[i]
-            A0_array.append(4 * np.sum(data_prod[f_index]) * df)
-            A1_array.append(4 * np.sum(data_prod[f_index] * freq_shift) * df)
-            B0_array.append(4 * np.sum(self_prod[f_index]) * df)
-            B1_array.append(4 * np.sum(self_prod[f_index] * freq_shift) * df)
+            A0_array.append(4 * jnp.sum(data_prod[f_index]) * df)
+            A1_array.append(4 * jnp.sum(data_prod[f_index] * freq_shift) * df)
+            B0_array.append(4 * jnp.sum(self_prod[f_index]) * df)
+            B1_array.append(4 * jnp.sum(self_prod[f_index] * freq_shift) * df)
 
-        A0_array = np.array(A0_array)
-        A1_array = np.array(A1_array)
-        B0_array = np.array(B0_array)
-        B1_array = np.array(B1_array)
+        A0_array = jnp.array(A0_array)
+        A1_array = jnp.array(A1_array)
+        B0_array = jnp.array(B0_array)
+        B1_array = jnp.array(B1_array)
         return A0_array, A1_array, B0_array, B1_array
 
     def maximize_likelihood(
@@ -490,15 +495,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         key = jax.random.PRNGKey(0)
-        initial_position = np.zeros((popsize, prior.n_dim)) + np.nan
+        initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
         while not jax.tree.reduce(
-            np.logical_and, jax.tree.map(lambda x: np.isfinite(x), initial_position)
+            jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
         ).all():
-            non_finite_index = np.where(
-                np.any(
+            non_finite_index = jnp.where(
+                jnp.any(
                     ~jax.tree.reduce(
-                        np.logical_and,
-                        jax.tree.map(lambda x: np.isfinite(x), initial_position),
+                        jnp.logical_and,
+                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
                     ),
                     axis=1,
                 )
@@ -508,11 +513,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             guess = prior.sample(subkey, popsize)
             for transform in sample_transforms:
                 guess = jax.vmap(transform.forward)(guess)
-            guess = np.array(
+            guess = jnp.array(
                 jax.tree.leaves({key: guess[key] for key in parameter_names})
             ).T
-            finite_guess = np.where(
-                np.all(jax.tree.map(lambda x: np.isfinite(x), guess), axis=1)
+            finite_guess = jnp.where(
+                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
             )[0]
             common_length = min(len(finite_guess), len(non_finite_index))
             initial_position = initial_position.at[
@@ -571,12 +576,12 @@ def phase_marginalized_likelihood(
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)
         log_likelihood += -optimal_SNR / 2
 
-    log_likelihood += log_i0(np.absolute(complex_d_inner_h))
+    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
     return log_likelihood
 
 
 def _get_tc_array(duration: Float, sampling_rate: Float):
-    return np.fft.fftfreq(int(duration * sampling_rate / 2), 1 / duration)
+    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1 / duration)
 
 
 def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
@@ -584,13 +589,13 @@ def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
     duration = detector.data.duration
     delta_f = 1 / duration
 
-    pad_low = np.zeros(int(f_low * duration))
+    pad_low = jnp.zeros(int(f_low * duration))
 
     f_Nyquist_diff = fs / 2.0 - delta_f - f_high
-    if np.isclose(f_Nyquist_diff, 0):
-        pad_high = np.array([])
+    if jnp.isclose(f_Nyquist_diff, 0):
+        pad_high = jnp.array([])
     else:
-        pad_high = np.zeros(int(f_Nyquist_diff * duration))
+        pad_high = jnp.zeros(int(f_Nyquist_diff * duration))
     return pad_low, pad_high
 
 
@@ -619,25 +624,25 @@ def time_marginalized_likelihood(
 
     # padding the complex_h_inner_d
     # this array is the hd*/S for f in [0, fs / 2 - df]
-    complex_h_inner_d_positive_f = np.concatenate(
+    complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
 
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
     # w.r.t. the tc_array
-    fft_h_inner_d = np.fft.fft(complex_h_inner_d_positive_f, norm="backward")
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
 
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp
-    fft_h_inner_d = np.where(
+    fft_h_inner_d = jnp.where(
         (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
         fft_h_inner_d.real,
-        np.zeros_like(fft_h_inner_d.real) - np.inf,
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
     )
 
     # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(fft_h_inner_d) - np.log(len(tc_array))
+    log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(tc_array))
     return log_likelihood
 
 
@@ -666,25 +671,25 @@ def phase_time_marginalized_likelihood(
 
     # padding the complex_h_inner_d
     # this array is the hd*/S for f in [0, fs / 2 - df]
-    complex_h_inner_d_positive_f = np.concatenate(
+    complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
 
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
     # w.r.t. the tc_array
-    fft_h_inner_d = np.fft.fft(complex_h_inner_d_positive_f, norm="backward")
+    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
 
     # set the values to -inf when it is outside the tc range
     # so that they will disappear after the logsumexp
-    log_i0_abs_fft = np.where(
+    log_i0_abs_fft = jnp.where(
         (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
-        log_i0(np.absolute(fft_h_inner_d)),
-        np.zeros_like(fft_h_inner_d.real) - np.inf,
+        log_i0(jnp.absolute(fft_h_inner_d)),
+        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
     )
 
     # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(log_i0_abs_fft) - np.log(len(tc_array))
+    log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(tc_array))
     return log_likelihood
 
 
@@ -719,11 +724,11 @@ def original_relative_binning_likelihood(
         r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
             frequencies_low - frequencies_center
         )
-        match_filter_SNR = np.sum(
+        match_filter_SNR = jnp.sum(
             A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
         )
-        optimal_SNR = np.sum(
-            B0_array[detector.name] * np.abs(r0) ** 2
+        optimal_SNR = jnp.sum(
+            B0_array[detector.name] * jnp.abs(r0) ** 2
             + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
         )
         log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
@@ -762,15 +767,15 @@ def phase_marginalized_relative_binning_likelihood(
         r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
             frequencies_low - frequencies_center
         )
-        complex_d_inner_h += np.sum(
+        complex_d_inner_h += jnp.sum(
             A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
         )
-        optimal_SNR = np.sum(
-            B0_array[detector.name] * np.abs(r0) ** 2
+        optimal_SNR = jnp.sum(
+            B0_array[detector.name] * jnp.abs(r0) ** 2
             + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
         )
         log_likelihood += -optimal_SNR.real / 2
 
-    log_likelihood += log_i0(np.absolute(complex_d_inner_h))
+    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
 
     return log_likelihood

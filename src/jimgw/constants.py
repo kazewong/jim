@@ -1,4 +1,4 @@
-import jax.numpy as np
+import jax.numpy as jnp
 from astropy.constants import pc  # type: ignore TODO: fix astropy stubs
 import astropy.units as u  # type: ignore
 
@@ -24,8 +24,8 @@ EARTH_SEMI_MINOR_AXIS = 6356752.314  # in m
 DAYSID_SI = 86164.09053133354
 DAYJUL_SI: int = 86400
 
-DEG_TO_RAD = np.pi / 180
+DEG_TO_RAD = jnp.pi / 180
 
-HR_TO_RAD = 2 * np.pi / 24
+HR_TO_RAD = 2 * jnp.pi / 24
 HR_TO_SEC: int = 3600
 SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC

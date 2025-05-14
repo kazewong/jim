@@ -1,4 +1,4 @@
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
@@ -127,9 +127,9 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
 
         def named_transform(x):
             mag, theta, phi = x[label + "_mag"], x[label + "_theta"], x[label + "_phi"]
-            x = mag * np.sin(theta) * np.cos(phi)
-            y = mag * np.sin(theta) * np.sin(phi)
-            z = mag * np.cos(theta)
+            x = mag * jnp.sin(theta) * jnp.cos(phi)
+            y = mag * jnp.sin(theta) * jnp.sin(phi)
+            z = mag * jnp.cos(theta)
             return {
                 label + "_x": x,
                 label + "_y": y,
@@ -138,9 +138,9 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
 
         def named_inverse_transform(x):
             x, y, z = x[label + "_x"], x[label + "_y"], x[label + "_z"]
-            mag = np.sqrt(x**2 + y**2 + z**2)
+            mag = jnp.sqrt(x**2 + y**2 + z**2)
             theta, phi = carte_to_spherical_angles(x, y, z)
-            phi = np.mod(phi, 2.0 * np.pi)
+            phi = jnp.mod(phi, 2.0 * jnp.pi)
             return {
                 label + "_mag": mag,
                 label + "_theta": theta,
@@ -174,7 +174,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         )
         delta_x = ifos[0].vertex - ifos[1].vertex
         self.rotation = euler_rotation(delta_x)
-        self.rotation_inv = np.linalg.inv(self.rotation)
+        self.rotation_inv = jnp.linalg.inv(self.rotation)
 
         def named_transform(x):
             zenith, azimuth = ra_dec_to_zenith_azimuth(
@@ -263,7 +263,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             t_det_min = self.tc_min + time_shift
             t_det_max = self.tc_max + time_shift
             t_det = (t_det_max - t_det_min) / (
-                1.0 + np.exp(-x["t_det_unbounded"])
+                1.0 + jnp.exp(-x["t_det_unbounded"])
             ) + t_det_min
 
             t_c = t_det - time_shift
@@ -321,14 +321,14 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         )
 
         def _calc_R_det_arg(ra, dec, psi, iota, gmst):
-            p_iota_term = (1.0 + np.cos(iota) ** 2) / 2.0
-            c_iota_term = np.cos(iota)
+            p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
+            c_iota_term = jnp.cos(iota)
 
             antenna_pattern = self.ifo.antenna_pattern(ra, dec, psi, gmst)
             p_mode_term = p_iota_term * antenna_pattern["p"]
             c_mode_term = c_iota_term * antenna_pattern["c"]
 
-            return np.angle(p_mode_term - 1j * c_mode_term)
+            return jnp.angle(p_mode_term - 1j * c_mode_term)
 
         def named_transform(x):
             R_det_arg = _calc_R_det_arg(
@@ -336,7 +336,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             )
             phase_det = R_det_arg + x["phase_c"] / 2.0
             return {
-                "phase_det": phase_det % (2.0 * np.pi),
+                "phase_det": phase_det % (2.0 * jnp.pi),
             }
 
         self.transform_func = named_transform
@@ -347,7 +347,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
             )
             phase_c = -R_det_arg + x["phase_det"] * 2.0
             return {
-                "phase_c": phase_c % (2.0 * np.pi),
+                "phase_c": phase_c % (2.0 * jnp.pi),
             }
 
         self.inverse_transform_func = named_inverse_transform
@@ -398,8 +398,8 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         )
 
         def _calc_R_dets(ra, dec, psi, iota):
-            p_iota_term = (1.0 + np.cos(iota) ** 2) / 2.0
-            c_iota_term = np.cos(iota)
+            p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
+            c_iota_term = jnp.cos(iota)
             R_dets2 = 0.0
             for ifo in self.ifos:
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
@@ -407,7 +407,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
                 c_mode_term = c_iota_term * antenna_pattern["c"]
                 R_dets2 += p_mode_term**2 + c_mode_term**2
 
-            return np.sqrt(R_dets2)
+            return jnp.sqrt(R_dets2)
 
         def named_transform(x):
             d_L, M_c = (
@@ -416,7 +416,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             )
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
-            scale_factor = 1.0 / np.power(M_c, 5.0 / 6.0) / R_dets
+            scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
             d_hat = scale_factor * d_L
 
             d_hat_min = scale_factor * self.dL_min
@@ -438,13 +438,13 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             )
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
-            scale_factor = 1.0 / np.power(M_c, 5.0 / 6.0) / R_dets
+            scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
 
             d_hat_min = scale_factor * self.dL_min
             d_hat_max = scale_factor * self.dL_max
 
             d_hat = (d_hat_max - d_hat_min) / (
-                1.0 + np.exp(-d_hat_unbounded)
+                1.0 + jnp.exp(-d_hat_unbounded)
             ) + d_hat_min
             d_L = d_hat / scale_factor
             return {

@@ -1,7 +1,7 @@
 from dataclasses import field
 
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
@@ -136,7 +136,7 @@ class LogisticDistribution(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
-        return -variable - 2 * np.log(1 + np.exp(-variable))
+        return -variable - 2 * jnp.log(1 + jnp.exp(-variable))
 
 
 @jaxtyped(typechecker=typechecker)
@@ -175,7 +175,7 @@ class StandardNormalDistribution(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
-        return -0.5 * (variable**2 + np.log(2 * np.pi))
+        return -0.5 * (variable**2 + jnp.log(2 * jnp.pi))
 
 
 class SequentialTransformPrior(CompositePrior):
@@ -377,7 +377,7 @@ class SinePrior(SequentialTransformPrior):
                             [f"{self.parameter_names[0]}"],
                         )
                     ),
-                    np.pi / 2,
+                    jnp.pi / 2,
                 )
             ],
         )
@@ -428,7 +428,7 @@ class UniformSpherePrior(CombinePrior):
             [
                 UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
                 SinePrior([self.parameter_names[1]]),
-                UniformPrior(0.0, 2 * np.pi, [self.parameter_names[2]]),
+                UniformPrior(0.0, 2 * jnp.pi, [self.parameter_names[2]]),
             ]
         )
 
@@ -518,7 +518,7 @@ class PowerLawPrior(SequentialTransformPrior):
 #     """
 
 #     xmin: float = 0.0
-#     xmax: float = np.inf
+#     xmax: float = jnp.inf
 #     alpha: float = -1.0
 #     normalization: float = 1.0
 
@@ -536,10 +536,10 @@ class PowerLawPrior(SequentialTransformPrior):
 #     ):
 #         super().__init__(naming, transforms)
 #         if alpha < 0.0:
-#             assert xmin != -np.inf, "With negative alpha, xmin must finite"
+#             assert xmin != -jnp.inf, "With negative alpha, xmin must finite"
 #         if alpha > 0.0:
-#             assert xmax != np.inf, "With positive alpha, xmax must finite"
-#         assert not np.isclose(alpha, 0.0), "alpha=zero is given, use Uniform instead"
+#             assert xmax != jnp.inf, "With positive alpha, xmax must finite"
+#         assert not jnp.isclose(alpha, 0.0), "alpha=zero is given, use Uniform instead"
 #         assert self.n_dim == 1, "Exponential needs to be 1D distributions"
 
 #         self.xmax = xmax
@@ -547,7 +547,7 @@ class PowerLawPrior(SequentialTransformPrior):
 #         self.alpha = alpha
 
 #         self.normalization = self.alpha / (
-#             np.exp(self.alpha * self.xmax) - np.exp(self.alpha * self.xmin)
+#             jnp.exp(self.alpha * self.xmax) - jnp.exp(self.alpha * self.xmin)
 #         )
 
 #     def sample(
@@ -572,8 +572,8 @@ class PowerLawPrior(SequentialTransformPrior):
 #         q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
 #         samples = (
 #             self.xmin
-#             + np.log1p(
-#                 q_samples * (np.exp(self.alpha * (self.xmax - self.xmin)) - 1.0)
+#             + jnp.log1p(
+#                 q_samples * (jnp.exp(self.alpha * (self.xmax - self.xmin)) - 1.0)
 #             )
 #             / self.alpha
 #         )
@@ -581,10 +581,10 @@ class PowerLawPrior(SequentialTransformPrior):
 
 #     def log_prob(self, x: dict[str, Float]) -> Float:
 #         variable = x[self.naming[0]]
-#         log_in_range = np.where(
+#         log_in_range = jnp.where(
 #             (variable >= self.xmax) | (variable <= self.xmin),
-#             np.zeros_like(variable) - np.inf,
-#             np.zeros_like(variable),
+#             jnp.zeros_like(variable) - jnp.inf,
+#             jnp.zeros_like(variable),
 #         )
-#         log_p = self.alpha * variable + np.log(self.normalization)
+#         log_p = self.alpha * variable + jnp.log(self.normalization)
 #         return log_p + log_in_range

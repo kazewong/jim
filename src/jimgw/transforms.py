@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Callable
 
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
@@ -87,9 +87,9 @@ class NtoNTransform(NtoMTransform):
         transform_params = dict((key, x_copy[key]) for key in self.name_mapping[0])
         output_params = self.transform_func(transform_params)
         jacobian = jax.jacfwd(self.transform_func)(transform_params)
-        jacobian = np.array(jax.tree.leaves(jacobian))
-        jacobian = np.log(
-            np.absolute(np.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         )
         jax.tree.map(
             lambda key: x_copy.pop(key),
@@ -126,9 +126,9 @@ class BijectiveTransform(NtoNTransform):
         transform_params = dict((key, y_copy[key]) for key in self.name_mapping[1])
         output_params = self.inverse_transform_func(transform_params)
         jacobian = jax.jacfwd(self.inverse_transform_func)(transform_params)
-        jacobian = np.array(jax.tree.leaves(jacobian))
-        jacobian = np.log(
-            np.absolute(np.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian = jnp.array(jax.tree.leaves(jacobian))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         )
         jax.tree.map(
             lambda key: y_copy.pop(key),
@@ -191,9 +191,9 @@ class ConditionalBijectiveTransform(BijectiveTransform):
             key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[0]}
             for key1 in self.name_mapping[1]
         }
-        jacobian = np.array(jax.tree.leaves(jacobian_copy))
-        jacobian = np.log(
-            np.absolute(np.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         )
         jax.tree.map(
             lambda key: x_copy.pop(key),
@@ -217,9 +217,9 @@ class ConditionalBijectiveTransform(BijectiveTransform):
             key1: {key2: jacobian[key1][key2] for key2 in self.name_mapping[1]}
             for key1 in self.name_mapping[0]
         }
-        jacobian = np.array(jax.tree.leaves(jacobian_copy))
-        jacobian = np.log(
-            np.absolute(np.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
+        jacobian = jnp.array(jax.tree.leaves(jacobian_copy))
+        jacobian = jnp.log(
+            jnp.absolute(jnp.linalg.det(jacobian.reshape(self.n_dim, self.n_dim)))
         )
         jax.tree.map(
             lambda key: y_copy.pop(key),
@@ -292,7 +292,7 @@ class LogitTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: {
-            name_mapping[1][i]: 1 / (1 + np.exp(-x[name_mapping[0][i]]))
+            name_mapping[1][i]: 1 / (1 + jnp.exp(-x[name_mapping[0][i]]))
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
@@ -321,11 +321,11 @@ class SineTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: {
-            name_mapping[1][i]: np.sin(x[name_mapping[0][i]])
+            name_mapping[1][i]: jnp.sin(x[name_mapping[0][i]])
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: np.arcsin(x[name_mapping[1][i]])
+            name_mapping[0][i]: jnp.arcsin(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
 
@@ -350,11 +350,11 @@ class CosineTransform(BijectiveTransform):
     ):
         super().__init__(name_mapping)
         self.transform_func = lambda x: {
-            name_mapping[1][i]: np.cos(x[name_mapping[0][i]])
+            name_mapping[1][i]: jnp.cos(x[name_mapping[0][i]])
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: np.arccos(x[name_mapping[1][i]])
+            name_mapping[0][i]: jnp.arccos(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
 
@@ -417,8 +417,8 @@ class BoundToUnbound(BijectiveTransform):
     ):
 
         super().__init__(name_mapping)
-        self.original_lower_bound = np.atleast_1d(original_lower_bound)
-        self.original_upper_bound = np.atleast_1d(original_upper_bound)
+        self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
+        self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
 
         self.transform_func = lambda x: {
             name_mapping[1][i]: logit(
@@ -431,7 +431,7 @@ class BoundToUnbound(BijectiveTransform):
             name_mapping[0][i]: (
                 self.original_upper_bound[i] - self.original_lower_bound[i]
             )
-            / (1 + np.exp(-x[name_mapping[1][i]]))
+            / (1 + jnp.exp(-x[name_mapping[1][i]]))
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
@@ -457,16 +457,16 @@ class SingleSidedUnboundTransform(BijectiveTransform):
         original_lower_bound: Float,
     ):
         super().__init__(name_mapping)
-        self.original_lower_bound = np.atleast_1d(original_lower_bound)
+        self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
 
         self.transform_func = lambda x: {
-            name_mapping[1][i]: np.log(
+            name_mapping[1][i]: jnp.log(
                 x[name_mapping[0][i]] - self.original_lower_bound[i]
             )
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: np.exp(x[name_mapping[1][i]])
+            name_mapping[0][i]: jnp.exp(x[name_mapping[1][i]])
             + self.original_lower_bound[i]
             for i in range(len(name_mapping[1]))
         }
@@ -499,13 +499,13 @@ class PowerLawTransform(BijectiveTransform):
         if alpha == -1.0:
             self.transform_func = lambda x: {
                 name_mapping[1][i]: self.xmin
-                * np.exp(x[name_mapping[0][i]] * np.log(self.xmax / self.xmin))
+                * jnp.exp(x[name_mapping[0][i]] * jnp.log(self.xmax / self.xmin))
                 for i in range(len(name_mapping[0]))
             }
             self.inverse_transform_func = lambda x: {
                 name_mapping[0][i]: (
-                    np.log(x[name_mapping[1][i]] / self.xmin)
-                    / np.log(self.xmax / self.xmin)
+                    jnp.log(x[name_mapping[1][i]] / self.xmin)
+                    / jnp.log(self.xmax / self.xmin)
                 )
                 for i in range(len(name_mapping[1]))
             }
@@ -549,19 +549,19 @@ class CartesianToPolarTransform(BijectiveTransform):
             )
         )
         self.transform_func = lambda x: {
-            f"{parameter_name}_theta": np.arctan2(
+            f"{parameter_name}_theta": jnp.arctan2(
                 x[f"{parameter_name}_y"], x[f"{parameter_name}_x"]
             )
-            + np.pi,
-            f"{parameter_name}_r": np.sqrt(
+            + jnp.pi,
+            f"{parameter_name}_r": jnp.sqrt(
                 x[f"{parameter_name}_x"] ** 2 + x[f"{parameter_name}_y"] ** 2
             ),
         }
         self.inverse_transform_func = lambda x: {
             f"{parameter_name}_x": x[f"{parameter_name}_r"]
-            * np.cos(x[f"{parameter_name}_theta"]),
+            * jnp.cos(x[f"{parameter_name}_theta"]),
             f"{parameter_name}_y": x[f"{parameter_name}_r"]
-            * np.sin(x[f"{parameter_name}_theta"]),
+            * jnp.sin(x[f"{parameter_name}_theta"]),
         }
 
 
@@ -580,18 +580,18 @@ class PeriodicTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
-        scaling = 2 * np.pi / (self.xmax - self.xmin)
+        scaling = 2 * jnp.pi / (self.xmax - self.xmin)
         self.transform_func = lambda x: {
             f"{name_mapping[1][0]}": x[name_mapping[0][0]]
-            * np.cos(scaling * (x[name_mapping[0][1]] - self.xmin)),
+            * jnp.cos(scaling * (x[name_mapping[0][1]] - self.xmin)),
             f"{name_mapping[1][1]}": x[name_mapping[0][0]]
-            * np.sin(scaling * (x[name_mapping[0][1]] - self.xmin)),
+            * jnp.sin(scaling * (x[name_mapping[0][1]] - self.xmin)),
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][1]: self.xmin
-            + (np.pi + np.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]))
+            + (jnp.pi + jnp.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]))
             / scaling,
-            name_mapping[0][0]: np.sqrt(
+            name_mapping[0][0]: jnp.sqrt(
                 x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
             ),
         }
@@ -615,11 +615,11 @@ class RayleighTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.sigma = sigma
         self.transform_func = lambda x: {
-            name_mapping[1][i]: sigma * np.sqrt(-2 * np.log(x[name_mapping[0][i]]))
+            name_mapping[1][i]: sigma * jnp.sqrt(-2 * jnp.log(x[name_mapping[0][i]]))
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: np.exp(-((x[name_mapping[1][i]] / sigma) ** 2) / 2)
+            name_mapping[0][i]: jnp.exp(-((x[name_mapping[1][i]] / sigma) ** 2) / 2)
             for i in range(len(name_mapping[1]))
         }
 

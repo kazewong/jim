@@ -1,6 +1,6 @@
 from abc import ABC
 
-import jax.numpy as np
+import jax.numpy as jnp
 from jaxtyping import Array, Float
 from ripplegw.waveforms.IMRPhenomD import gen_IMRPhenomD_hphc
 from ripplegw.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
@@ -28,7 +28,7 @@ class RippleIMRPhenomD(Waveform):
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
     ) -> dict[str, Float[Array, " n_dim"]]:
         output = {}
-        theta = np.array(
+        theta = jnp.array(
             [
                 params["M_c"],
                 params["eta"],
@@ -59,7 +59,7 @@ class RippleIMRPhenomPv2(Waveform):
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
     ) -> dict[str, Float[Array, " n_dim"]]:
         output = {}
-        theta = np.array(
+        theta = jnp.array(
             [
                 params["M_c"],
                 params["eta"],
@@ -105,7 +105,7 @@ class RippleTaylorF2(Waveform):
             first_lambda_param = params["lambda_1"]
             second_lambda_param = params["lambda_2"]
 
-        theta = np.array(
+        theta = jnp.array(
             [
                 params["M_c"],
                 params["eta"],
@@ -165,7 +165,7 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
             first_lambda_param = params["lambda_1"]
             second_lambda_param = params["lambda_2"]
 
-        theta = np.array(
+        theta = jnp.array(
             [
                 params["M_c"],
                 params["eta"],

@@ -1,4 +1,4 @@
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float, Complex
 from typing import Optional
@@ -30,7 +30,7 @@ def complex_inner_product(
         Complex: Noise-weighted inner product of h1 and h2 with given the PSD.
                 If either h1, h2 is the strain data, this is the match-filtered SNR.
     """
-    integrand = np.conj(h1) * h2 / psd
+    integrand = jnp.conj(h1) * h2 / psd
     return 4.0 * trapezoid(integrand, x=frequency, dx=df)
 
 
@@ -159,8 +159,8 @@ def M_eta_to_m1_m2(M_tot: Float, eta: Float) -> tuple[Float, Float]:
     Returns:
         tuple[Float, Float]: Primary mass (m1) and secondary mass (m2).
     """
-    m1 = M_tot * (1 + np.sqrt(1 - 4 * eta)) / 2
-    m2 = M_tot * (1 - np.sqrt(1 - 4 * eta)) / 2
+    m1 = M_tot * (1 + jnp.sqrt(1 - 4 * eta)) / 2
+    m2 = M_tot * (1 - jnp.sqrt(1 - 4 * eta)) / 2
     return m1, m2
 
 
@@ -202,8 +202,8 @@ def Mc_eta_to_m1_m2(M_c: Float, eta: Float) -> tuple[Float, Float]:
             Secondary mass.
     """
     M = M_c / eta ** (3.0 / 5)
-    m1 = M * (1 + np.sqrt(1 - 4 * eta)) / 2
-    m2 = M * (1 - np.sqrt(1 - 4 * eta)) / 2
+    m1 = M * (1 + jnp.sqrt(1 - 4 * eta)) / 2
+    m2 = M * (1 - jnp.sqrt(1 - 4 * eta)) / 2
     return m1, m2
 
 
@@ -257,20 +257,20 @@ def euler_rotation(delta_x: Float[Array, " 3"]) -> Float[Array, " 3 3"]:
 
     Copied and modified from bilby-cython/geometry.pyx
     """
-    norm = np.linalg.vector_norm(delta_x)
+    norm = jnp.linalg.vector_norm(delta_x)
 
     cos_beta = delta_x[2] / norm
-    sin_beta = np.sqrt(1 - cos_beta**2)
+    sin_beta = jnp.sqrt(1 - cos_beta**2)
 
-    alpha = np.arctan2(-delta_x[1] * cos_beta, delta_x[0])
-    gamma = np.arctan2(delta_x[1], delta_x[0])
+    alpha = jnp.arctan2(-delta_x[1] * cos_beta, delta_x[0])
+    gamma = jnp.arctan2(delta_x[1], delta_x[0])
 
-    cos_alpha = np.cos(alpha)
-    sin_alpha = np.sin(alpha)
-    cos_gamma = np.cos(gamma)
-    sin_gamma = np.sin(gamma)
+    cos_alpha = jnp.cos(alpha)
+    sin_alpha = jnp.sin(alpha)
+    cos_gamma = jnp.cos(gamma)
+    sin_gamma = jnp.sin(gamma)
 
-    rotation = np.array(
+    rotation = jnp.array(
         [
             [
                 cos_alpha * cos_beta * cos_gamma - sin_alpha * sin_gamma,
@@ -314,19 +314,19 @@ def angle_rotation(
     phi : Float
             Azimuthal angle.
     """
-    sky_loc_vec = np.array(
+    sky_loc_vec = jnp.array(
         [
-            np.sin(zenith) * np.cos(azimuth),
-            np.sin(zenith) * np.sin(azimuth),
-            np.cos(zenith),
+            jnp.sin(zenith) * jnp.cos(azimuth),
+            jnp.sin(zenith) * jnp.sin(azimuth),
+            jnp.cos(zenith),
         ]
     )
-    rotated_vec = np.einsum("ij,j...->i...", rotation, sky_loc_vec)
+    rotated_vec = jnp.einsum("ij,j...->i...", rotation, sky_loc_vec)
 
-    theta = np.acos(rotated_vec[2])
-    phi = np.fmod(
-        np.arctan2(rotated_vec[1], rotated_vec[0]) + 2 * np.pi,
-        2 * np.pi,
+    theta = jnp.acos(rotated_vec[2])
+    phi = jnp.fmod(
+        jnp.arctan2(rotated_vec[1], rotated_vec[0]) + 2 * jnp.pi,
+        2 * jnp.pi,
     )
     return theta, phi
 
@@ -352,8 +352,8 @@ def theta_phi_to_ra_dec(theta: Float, phi: Float, gmst: Float) -> tuple[Float, F
             Declination.
     """
     ra = phi + gmst
-    dec = np.pi / 2 - theta
-    ra = ra % (2 * np.pi)
+    dec = jnp.pi / 2 - theta
+    ra = ra % (2 * jnp.pi)
     return ra, dec
 
 
@@ -410,8 +410,8 @@ def ra_dec_to_theta_phi(ra: Float, dec: Float, gmst: Float) -> tuple[Float, Floa
             Azimuthal angle.
     """
     phi = ra - gmst
-    theta = np.pi / 2 - dec
-    phi = (phi + 2 * np.pi) % (2 * np.pi)
+    theta = jnp.pi / 2 - dec
+    phi = (phi + 2 * jnp.pi) % (2 * jnp.pi)
     return theta, phi
 
 
@@ -460,12 +460,12 @@ def rotate_y(angle: Float, vec: Float[Array, " 3"]) -> Float[Array, " 3"]:
         Rotated vector.
     -------
     """
-    cos_angle = np.cos(angle)
-    sin_angle = np.sin(angle)
-    rotation_matrix = np.array(
+    cos_angle = jnp.cos(angle)
+    sin_angle = jnp.sin(angle)
+    rotation_matrix = jnp.array(
         [[cos_angle, 0, sin_angle], [0, 1, 0], [-sin_angle, 0, cos_angle]]
     )
-    rotated_vec = np.dot(rotation_matrix, vec)
+    rotated_vec = jnp.dot(rotation_matrix, vec)
     return rotated_vec
 
 
@@ -484,12 +484,12 @@ def rotate_z(angle: Float, vec: Float[Array, " 3"]) -> Float[Array, " 3"]:
     rotated_vec : Float[Array, " 3"]
         Rotated vector.
     """
-    cos_angle = np.cos(angle)
-    sin_angle = np.sin(angle)
-    rotation_matrix = np.array(
+    cos_angle = jnp.cos(angle)
+    sin_angle = jnp.sin(angle)
+    rotation_matrix = jnp.array(
         [[cos_angle, -sin_angle, 0], [sin_angle, cos_angle, 0], [0, 0, 1]]
     )
-    rotated_vec = np.dot(rotation_matrix, vec)
+    rotated_vec = jnp.dot(rotation_matrix, vec)
     return rotated_vec
 
 
@@ -582,35 +582,35 @@ def spin_angles_to_cartesian_spin(
 
     # Starting frame: LNh along the z-axis
     # S1hat on the x-z plane
-    LNh = np.array([0.0, 0.0, 1.0])
+    LNh = jnp.array([0.0, 0.0, 1.0])
 
     # Define the spin vectors in the LNh frame
-    s1hat = np.array(
+    s1hat = jnp.array(
         [
-            np.sin(tilt_1) * np.cos(phiRef),
-            np.sin(tilt_1) * np.sin(phiRef),
-            np.cos(tilt_1),
+            jnp.sin(tilt_1) * jnp.cos(phiRef),
+            jnp.sin(tilt_1) * jnp.sin(phiRef),
+            jnp.cos(tilt_1),
         ]
     )
-    s2hat = np.array(
+    s2hat = jnp.array(
         [
-            np.sin(tilt_2) * np.cos(phi_12 + phiRef),
-            np.sin(tilt_2) * np.sin(phi_12 + phiRef),
-            np.cos(tilt_2),
+            jnp.sin(tilt_2) * jnp.cos(phi_12 + phiRef),
+            jnp.sin(tilt_2) * jnp.sin(phi_12 + phiRef),
+            jnp.cos(tilt_2),
         ]
     )
 
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    v0 = np.cbrt((m1 + m2) * MTSUN * np.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     # Define S1, S2, and J
     Lmag = Lmag_2PN(m1, m2, v0)
     s1 = m1 * m1 * chi_1 * s1hat
     s2 = m2 * m2 * chi_2 * s2hat
-    J = s1 + s2 + np.array([0.0, 0.0, Lmag])
+    J = s1 + s2 + jnp.array([0.0, 0.0, Lmag])
 
     # Normalize J, and find theta0 and phi0 (the angles in starting frame)
-    Jhat = J / np.linalg.norm(J)
+    Jhat = J / jnp.linalg.norm(J)
     theta0, phi0 = carte_to_spherical_angles(*Jhat)
 
     # Rotation 1: Rotate about z-axis by -phi0
@@ -623,13 +623,13 @@ def spin_angles_to_cartesian_spin(
     s2hat = rotate_y(-theta0, s2hat)
 
     # Rotation 3: Rotate about z-axis by -phi_jl
-    LNh = rotate_z(phi_jl - np.pi, LNh)
-    s1hat = rotate_z(phi_jl - np.pi, s1hat)
-    s2hat = rotate_z(phi_jl - np.pi, s2hat)
+    LNh = rotate_z(phi_jl - jnp.pi, LNh)
+    s1hat = rotate_z(phi_jl - jnp.pi, s1hat)
+    s2hat = rotate_z(phi_jl - jnp.pi, s2hat)
 
     # Compute iota
-    N = np.array([0.0, np.sin(theta_jn), np.cos(theta_jn)])
-    iota = np.arccos(np.dot(N, LNh))
+    N = jnp.array([0.0, jnp.sin(theta_jn), jnp.cos(theta_jn)])
+    iota = jnp.arccos(jnp.dot(N, LNh))
 
     thetaLJ, phiL = carte_to_spherical_angles(*LNh)
 
@@ -645,8 +645,8 @@ def spin_angles_to_cartesian_spin(
 
     # Rotation 6:
     phiN = safe_arctan2(N[1], N[0])
-    s1hat = rotate_z(np.pi / 2.0 - phiN - phiRef, s1hat)
-    s2hat = rotate_z(np.pi / 2.0 - phiN - phiRef, s2hat)
+    s1hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s1hat)
+    s2hat = rotate_z(jnp.pi / 2.0 - phiN - phiRef, s2hat)
 
     S1 = s1hat * chi_1
     S2 = s2hat * chi_2
@@ -716,28 +716,28 @@ def cartesian_spin_to_spin_angles(
         Secondary object aligned spin:
     """
     # Starting frame: LNh along the z-axis
-    LNh = np.array([0.0, 0.0, 1.0])
+    LNh = jnp.array([0.0, 0.0, 1.0])
 
     # Define the dimensionless component spin vectors and magnitudes
-    s1_vec = np.array([S1x, S1y, S1z])
-    s2_vec = np.array([S2x, S2y, S2z])
-    chi_1 = np.linalg.norm(s1_vec)
-    chi_2 = np.linalg.norm(s2_vec)
+    s1_vec = jnp.array([S1x, S1y, S1z])
+    s2_vec = jnp.array([S2x, S2y, S2z])
+    chi_1 = jnp.linalg.norm(s1_vec)
+    chi_2 = jnp.linalg.norm(s2_vec)
 
     # Define the spin unit vectors in the LNh frame
-    s1hat = np.where(chi_1 > 0, s1_vec / chi_1, np.zeros_like(s1_vec))
-    s2hat = np.where(chi_2 > 0, s2_vec / chi_2, np.zeros_like(s2_vec))
+    s1hat = jnp.where(chi_1 > 0, s1_vec / chi_1, jnp.zeros_like(s1_vec))
+    s2hat = jnp.where(chi_2 > 0, s2_vec / chi_2, jnp.zeros_like(s2_vec))
 
     # Azimuthal and polar angles of the spin vectors
     tilt_1, phi1 = carte_to_spherical_angles(*s1hat, default_value=0.0)
     tilt_2, phi2 = carte_to_spherical_angles(*s2hat, default_value=0.0)
 
     phi_12 = phi2 - phi1
-    phi_12 = (phi_12 + 2 * np.pi) % (2 * np.pi)  # Ensure 0 <= phi_12 < 2pi
+    phi_12 = (phi_12 + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_12 < 2pi
 
     # Get angles in the J-N frame
     m1, m2 = Mc_q_to_m1_m2(M_c, q)
-    v0 = np.cbrt((m1 + m2) * MTSUN * np.pi * fRef)
+    v0 = jnp.cbrt((m1 + m2) * MTSUN * jnp.pi * fRef)
 
     # Define S1, S2, J
     S1 = m1 * m1 * s1_vec
@@ -747,18 +747,18 @@ def cartesian_spin_to_spin_angles(
     J = S1 + S2 + Lmag * LNh
 
     # Normalize J
-    Jhat = J / np.linalg.norm(J)
+    Jhat = J / jnp.linalg.norm(J)
     thetaJL, phiJ = carte_to_spherical_angles(*Jhat)
 
     # Azimuthal angle from phase angle
-    phi0 = 0.5 * np.pi - phiRef
+    phi0 = 0.5 * jnp.pi - phiRef
     # Line-of-sight vector in L-frame
-    N = np.array(
-        [np.sin(iota) * np.cos(phi0), np.sin(iota) * np.sin(phi0), np.cos(iota)]
+    N = jnp.array(
+        [jnp.sin(iota) * jnp.cos(phi0), jnp.sin(iota) * jnp.sin(phi0), jnp.cos(iota)]
     )
 
     # Inclination w.r.t. J
-    theta_jn = np.arccos(np.dot(Jhat, N))
+    theta_jn = jnp.arccos(jnp.dot(Jhat, N))
 
     # Rotate from L-frame to J-frame
     N = rotate_z(-phiJ, N)
@@ -768,9 +768,9 @@ def cartesian_spin_to_spin_angles(
     LNh = rotate_y(-thetaJL, LNh)
 
     phiN = safe_arctan2(N[1], N[0])
-    LNh = rotate_z(0.5 * np.pi - phiN, LNh)
+    LNh = rotate_z(0.5 * jnp.pi - phiN, LNh)
 
     phi_jl = safe_arctan2(LNh[1], LNh[0])
-    phi_jl = (phi_jl + 2 * np.pi) % (2 * np.pi)  # Ensure 0 <= phi_jl < 2pi
+    phi_jl = (phi_jl + 2 * jnp.pi) % (2 * jnp.pi)  # Ensure 0 <= phi_jl < 2pi
 
     return theta_jn, phi_jl, tilt_1, tilt_2, phi_12, chi_1, chi_2
