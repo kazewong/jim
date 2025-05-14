@@ -31,7 +31,7 @@ algorithmic comparison with the Bilby implementation.
 """
 import time
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platforms", "cpu")
@@ -39,7 +39,7 @@ from jimgw.gps_times import gps_to_utc_date, greenwich_mean_sidereal_time as jim
 
 # This file contains 10 million GPS timestamps of which the UTC dates
 # and GMST values are computed using LAL and Bilby.
-computed_times = np.load("lal_bilby_utc_gmst.npy")
+computed_times = jnp.load("lal_bilby_utc_gmst.npy")
 
 # This verification is done in chunks as it would apparently take
 # too much memory to laod and compare all JAX arrays at once.
@@ -50,21 +50,21 @@ with jax.disable_jit():
     print("Without JIT:")
     print("================================")
     start = 0
-    for end in np.linspace(0, 10_000_000 + 1, chunks, dtype=np.int32)[1:]:
+    for end in jnp.linspace(0, 10_000_000 + 1, chunks, dtype=jnp.int32)[1:]:
         print(f"================================")
         print(f"Start index is: {start}")
         print(f"================================")
         _computed_times = computed_times[start:end]
         print(f"Computing {_computed_times.size} samples")
         start_time = time.time()
-        gps_times = np.asarray(_computed_times["gps_time"])
+        gps_times = jnp.asarray(_computed_times["gps_time"])
         utc_dates = jax.vmap(gps_to_utc_date)(gps_times)
         gmst_vals = jax.vmap(jim_gmst)(gps_times)
         print(f"--- Computation takes: {time.time() - start_time:.6f} seconds ---")
 
         print("For LAL and Bilby:")
         for item in ("year", "month", "day", "sec", "gmst"):
-            is_agree = np.where(
+            is_agree = jnp.where(
                 _computed_times["lal"]["year"] != 0,
                 (_computed_times["lal"][item] == _computed_times["bilby"][item]),
                 True,
@@ -85,14 +85,14 @@ print("================================")
 RTOL = 1e-16
 ATOL = 4e-10
 start = 0
-for end in np.linspace(0, 10_000_000 + 1, chunks, dtype=np.int32)[1:]:
+for end in jnp.linspace(0, 10_000_000 + 1, chunks, dtype=jnp.int32)[1:]:
     print(f"================================")
     print(f"Start index is: {start}")
     print(f"================================")
     _computed_times = computed_times[start:end]
     print(f"Computing {_computed_times.size} samples")
     start_time = time.time()
-    gps_times = np.asarray(_computed_times["gps_time"])
+    gps_times = jnp.asarray(_computed_times["gps_time"])
     utc_dates = jax.vmap(gps_to_utc_date)(gps_times)
     gmst_vals = jax.vmap(jim_gmst)(gps_times)
     print(f"--- Computation takes: {time.time() - start_time:.6f} seconds ---")
@@ -135,7 +135,7 @@ Note: This script can quite some time to run.
 '''
 import time
 from calendar import timegm
-import numpy as np
+import numpy as jnp
 
 from lal import GPSToUTC, \
     GreenwichMeanSiderealTime as LAL_gmst
@@ -158,10 +158,10 @@ print(f'{start_time = }, and {end_time = }.')
 def compute_seconds_from_utc_date(hour: int, min: int, sec: int) -> int:
     return sec + min * 60 + hour * 3600
 
-rng = np.random.default_rng(seed=1234)
-gps_times = np.geomspace(start_time, end_time, SIZE, dtype=np.int64)
+rng = jnp.random.default_rng(seed=1234)
+gps_times = jnp.geomspace(start_time, end_time, SIZE, dtype=jnp.int64)
 print('Here are the machine precision limits:')
-print(np.iinfo(np.int32), np.iinfo(np.int64))
+print(jnp.iinfo(jnp.int32), jnp.iinfo(jnp.int64))
 
 none_tuple = tuple([0] * 9)
 
@@ -193,10 +193,10 @@ for gps_time in gps_times:
 
 print(f"--- {time.time() - start_time:.6f} seconds ---")
 
-np_results = np.array(results, dtype=[
-    ('gps_time', np.int64),
-    ('lal', [('year', np.int32), ('month', np.int32), ('day', np.int32), ('sec', np.int32), ('gmst', np.float64)]),
-    ('bilby', [('year', np.int64), ('month', np.int64), ('day', np.int64), ('sec', np.int64), ('gmst', np.float64)])
+np_results = jnp.array(results, dtype=[
+    ('gps_time', jnp.int64),
+    ('lal', [('year', jnp.int32), ('month', jnp.int32), ('day', jnp.int32), ('sec', jnp.int32), ('gmst', jnp.float64)]),
+    ('bilby', [('year', jnp.int64), ('month', jnp.int64), ('day', jnp.int64), ('sec', jnp.int64), ('gmst', jnp.float64)])
 ])
-np.save('lal_bilby_utc_gmst.npy', np_results)
+jnp.save('lal_bilby_utc_gmst.npy', np_results)
 """

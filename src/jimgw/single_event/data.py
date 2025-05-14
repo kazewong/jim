@@ -4,7 +4,7 @@ from abc import ABC
 import logging
 
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 
 from gwpy.timeseries import TimeSeries
@@ -14,7 +14,7 @@ import scipy.signal as sig
 from scipy.signal.windows import tukey
 
 
-DEG_TO_RAD = np.pi / 180
+DEG_TO_RAD = jnp.pi / 180
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -119,7 +119,7 @@ class Data(ABC):
         Returns:
             Array: Array of time points in seconds.
         """
-        return np.arange(self.n_time) * self.delta_t + self.epoch
+        return jnp.arange(self.n_time) * self.delta_t + self.epoch
 
     @property
     def frequencies(self) -> Float[Array, " n_time // 2 + 1"]:
@@ -128,7 +128,7 @@ class Data(ABC):
         Returns:
             Array: Array of frequencies in Hz.
         """
-        return np.fft.rfftfreq(self.n_time, self.delta_t)
+        return jnp.fft.rfftfreq(self.n_time, self.delta_t)
 
     @property
     def has_fd(self) -> bool:
@@ -137,11 +137,11 @@ class Data(ABC):
         Returns:
             bool: True if Fourier domain data exists, False otherwise.
         """
-        return bool(np.any(self.fd))
+        return bool(jnp.any(self.fd))
 
     def __init__(
         self,
-        td: Float[Array, " n_time"] = np.array([]),
+        td: Float[Array, " n_time"] = jnp.array([]),
         delta_t: Float = 0.0,
         epoch: Float = 0.0,
         name: str = "",
@@ -158,7 +158,7 @@ class Data(ABC):
         """
         self.name = name or ""
         self.td = td
-        self.fd = np.zeros(self.n_freq, dtype="complex128")
+        self.fd = jnp.zeros(self.n_freq, dtype="complex128")
         self.delta_t = delta_t
         self.epoch = epoch
         if window is None:
@@ -185,7 +185,7 @@ class Data(ABC):
                 the fraction of the segment that is tapered on each side.
         """
         logging.info(f"Setting Tukey window to {self.name} data")
-        self.window = np.array(tukey(self.n_time, alpha))
+        self.window = jnp.array(tukey(self.n_time, alpha))
 
     def fft(
         self, window: Optional[Float[Array, " n_time"]] = None
@@ -206,7 +206,7 @@ class Data(ABC):
             window = self.window
 
         logging.info(f"Computing FFT of {self.name} data")
-        self.fd = np.fft.rfft(self.td * window) * self.delta_t
+        self.fd = jnp.fft.rfft(self.td * window) * self.delta_t
         self.window = window
         return self.fd
 
@@ -306,17 +306,17 @@ class Data(ABC):
         # the Nyquist frequency)
         if (fnyq + delta_f) % 2 == 0:
             fnyq = fnyq + delta_f
-        f = np.arange(0, fnyq + delta_f, delta_f)
+        f = jnp.arange(0, fnyq + delta_f, delta_f)
         # Form full data array
-        data_fd_full = np.where(
+        data_fd_full = jnp.where(
             (frequencies[0] <= f) & (f <= frequencies[-1]), fd, 0.0 + 0.0j
         )
         # IFFT into time domain
         delta_t = 1 / (2 * fnyq)
-        data_td_full = np.fft.irfft(data_fd_full) / delta_t
+        data_td_full = jnp.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert np.allclose(
-            f, np.fft.rfftfreq(len(data_td_full), delta_t)
+        assert jnp.allclose(
+            f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
         # create jd.Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
@@ -325,9 +325,9 @@ class Data(ABC):
         # This ensures the newly constructed Data in FD fully
         # represents the input FD data.
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
-        assert all(np.equal(d_new, fd)), "Data do not match after slicing"
+        assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
-            np.equal(f_new, frequencies)
+            jnp.equal(f_new, frequencies)
         ), "Frequencies do not match after slicing"
         return data
 
@@ -392,8 +392,8 @@ class PowerSpectrum(ABC):
 
     def __init__(
         self,
-        values: Float[Array, " n_freq"] = np.array([]),
-        frequencies: Float[Array, " n_freq"] = np.array([]),
+        values: Float[Array, " n_freq"] = jnp.array([]),
+        frequencies: Float[Array, " n_freq"] = jnp.array([]),
         name: Optional[str] = None,
     ) -> None:
         """Initialize PowerSpectrum.
@@ -471,6 +471,6 @@ class PowerSpectrum(ABC):
         """
         key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
-        noise_real = jax.random.normal(key, shape=var.shape) * np.sqrt(var)
-        noise_imag = jax.random.normal(subkey, shape=var.shape) * np.sqrt(var)
+        noise_real = jax.random.normal(key, shape=var.shape) * jnp.sqrt(var)
+        noise_imag = jax.random.normal(subkey, shape=var.shape) * jnp.sqrt(var)
         return noise_real + 1j * noise_imag

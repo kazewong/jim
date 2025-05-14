@@ -17,7 +17,7 @@ from jimgw.transforms import BijectiveTransform, NtoMTransform
 from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 import logging
 
-HR_TO_RAD = 2 * np.pi / 24
+HR_TO_RAD = 2 * jnp.pi / 24
 HR_TO_SEC = 3600
 SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC
 

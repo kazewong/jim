@@ -10,7 +10,7 @@ See: https://github.com/google/jax-datetime/
 """
 
 from jax import config, jit
-import jax.numpy as np
+import jax.numpy as jnp
 from jaxtyping import Float, Int
 
 config.update("jax_enable_x64", True)
@@ -33,7 +33,7 @@ EPOCH_J2000_0_JD: float = 2451545.0
  * See also: https://lscsoft.docs.ligo.org/lalsuite/lal/_x_l_a_l_leap_seconds_8h_source.html
  * https://data.iana.org/time-zones/data/leap-seconds.list
 """
-LEAP_SECONDS = np.array(
+LEAP_SECONDS = jnp.array(
     [
         46828800,
         78364801,
@@ -62,7 +62,7 @@ def int_div(a: Int, b: Int) -> Int:
     See: https://stackoverflow.com/a/61386872
     """
     q, r = a // b, a % b
-    return np.where(((a >= 0) != (b >= 0)) & r, q + 1, q)
+    return jnp.where(((a >= 0) != (b >= 0)) & r, q + 1, q)
 
 
 def n_leap_seconds(date: Int) -> Int:
@@ -87,7 +87,7 @@ def n_leap_seconds(date: Int) -> Int:
     Returns:
         int: The number of leap seconds.
     """
-    return np.sum(date > LEAP_SECONDS).astype(np.float64)
+    return jnp.sum(date > LEAP_SECONDS).astype(jnp.float64)
 
 
 def is_leap_year(year):
@@ -99,16 +99,16 @@ def is_leap_year(year):
 SECONDS_IN_DAY = 24 * 60 * 60
 SECONDS_IN_YEAR = 365 * SECONDS_IN_DAY
 LEAP_YEAR_SECONDS = 366 * SECONDS_IN_DAY
-MONTH_ARRAY = np.arange(1, 13)
-DAYS_IN_MONTH = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
+MONTH_ARRAY = jnp.arange(1, 13)
+DAYS_IN_MONTH = jnp.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 UNIX_EPOCH_YEAR = 1970
 
 # **Someone in the future please update this**
 # This is surely not the most ideal way, but for the code to be jittable,
 # this seems to be a not too bad compromise.
-YEAR_ARRAY = np.arange(UNIX_EPOCH_YEAR, 2510)
+YEAR_ARRAY = jnp.arange(UNIX_EPOCH_YEAR, 2510)
 IS_LEAP_YEARS = is_leap_year(YEAR_ARRAY)
-LEAP_SEC_ARRAY = np.where(IS_LEAP_YEARS, LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
+LEAP_SEC_ARRAY = jnp.where(IS_LEAP_YEARS, LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
 
 
 def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
@@ -125,24 +125,24 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     """
     # The lower bound assumes every year is a leap year
     year = timestamp // LEAP_YEAR_SECONDS + UNIX_EPOCH_YEAR
-    seconds_before = np.where(YEAR_ARRAY < year, LEAP_SEC_ARRAY, 0).sum()
+    seconds_before = jnp.where(YEAR_ARRAY < year, LEAP_SEC_ARRAY, 0).sum()
 
     remaining_seconds = timestamp - seconds_before
-    sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
-    is_more_than = (remaining_seconds >= sec_in_year).astype(np.int64)
-    is_negative = (remaining_seconds < 0).astype(np.int64)
+    sec_in_year = jnp.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
+    is_more_than = (remaining_seconds >= sec_in_year).astype(jnp.int64)
+    is_negative = (remaining_seconds < 0).astype(jnp.int64)
     year += is_more_than - is_negative
     remaining_seconds -= (is_more_than - is_negative) * sec_in_year
 
     # This is to deal with the extreme cases (year ~2500)
-    sec_in_year = np.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
-    is_more_than = (remaining_seconds >= sec_in_year).astype(np.int64)
+    sec_in_year = jnp.where(is_leap_year(year), LEAP_YEAR_SECONDS, SECONDS_IN_YEAR)
+    is_more_than = (remaining_seconds >= sec_in_year).astype(jnp.int64)
     year += is_more_than
     remaining_seconds -= is_more_than * sec_in_year
 
     # Adjust for leap year
     sec_in_months = (
-        np.where(
+        jnp.where(
             is_leap_year(year),
             DAYS_IN_MONTH.at[1].set(29),
             DAYS_IN_MONTH,
@@ -151,19 +151,19 @@ def utc_date_from_timestamp(timestamp: Int) -> tuple[Int, Int, Int, Int]:
     )
 
     month = remaining_seconds // (28 * SECONDS_IN_DAY)
-    month += (month == 0).astype(np.int64)
-    seconds_before_mon = np.where(MONTH_ARRAY < month, sec_in_months, 0).sum()
+    month += (month == 0).astype(jnp.int64)
+    seconds_before_mon = jnp.where(MONTH_ARRAY < month, sec_in_months, 0).sum()
     remaining_seconds -= seconds_before_mon
 
     sec_in_month = sec_in_months[month - 1]
-    is_more_than = (remaining_seconds >= sec_in_month).astype(np.int64)
-    is_negative = (remaining_seconds < 0).astype(np.int64)
+    is_more_than = (remaining_seconds >= sec_in_month).astype(jnp.int64)
+    is_negative = (remaining_seconds < 0).astype(jnp.int64)
     month += is_more_than - is_negative
     remaining_seconds -= (is_more_than - is_negative) * sec_in_month
 
     # Calculate the day and seconds
     day, seconds = divmod(remaining_seconds, SECONDS_IN_DAY)
-    return year, month, day + 1, seconds.astype(np.int64)
+    return year, month, day + 1, seconds.astype(jnp.int64)
 
 
 def gps_to_utc_date(gps_time: Float) -> tuple[Int, Int, Int, Int]:
@@ -247,4 +247,4 @@ def greenwich_sidereal_time(gps_time: Float, equation_of_equinoxes: Float) -> Fl
     sidereal_time += 8640184.812866 * t_hi
     sidereal_time += 3155760000.0 * t_hi
 
-    return sidereal_time * np.pi / 43200.0
+    return sidereal_time * jnp.pi / 43200.0
