@@ -483,6 +483,7 @@ class PowerSpectrum(ABC):
         Returns:
             Complex frequency series of simulated noise data.
         """
+        key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)
         noise_real = jax.random.normal(key, shape=var.shape) * jnp.sqrt(var)
         noise_imag = jax.random.normal(subkey, shape=var.shape) * jnp.sqrt(var)
