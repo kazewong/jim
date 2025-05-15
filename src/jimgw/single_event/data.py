@@ -319,6 +319,8 @@ class Data(ABC):
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
+        # This ensures the newly constructed Data in FD fully
+        # represents the input FD data.
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
         assert all(
@@ -482,7 +484,6 @@ class PowerSpectrum(ABC):
             Complex frequency series of simulated noise data.
         """
         var = self.values / (4 * self.delta_f)
-        noise_real, noise_imag = jax.random.normal(
-            key, shape=(2, *var.shape)
-        ) * jnp.sqrt(var)
+        noise_real = jax.random.normal(key, shape=var.shape) * jnp.sqrt(var)
+        noise_imag = jax.random.normal(subkey, shape=var.shape) * jnp.sqrt(var)
         return noise_real + 1j * noise_imag

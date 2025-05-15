@@ -77,7 +77,6 @@ class Detector(ABC):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict,
-        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -88,12 +87,12 @@ class Detector(ABC):
                 to frequency-domain waveforms. The keys are polarization names (e.g., 'plus', 'cross')
                 and values are complex strain arrays.
             params (dict): Dictionary of source parameters including:
-                - ra (float): Right ascension in radians
-                - dec (float): Declination in radians
-                - psi (float): Polarization angle in radians
-                - gmst (float): Greenwich mean sidereal time in radians
-                - t_c (Float): Difference between geocent time and trigger time in sec
-            trigger_time (Float): Trigger time of the data in seconds.
+                - ra (Float): Right ascension in radians
+                - dec (Float): Declination in radians
+                - psi (Float): Polarization angle in radians
+                - trigger_time (Float): The trigger time in sec
+                - t_c (Float): The difference between peak time and trigger time in sec
+                - gmst (Float): The greenwich mean sidereal time at the trigger time in radian
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -360,7 +359,6 @@ class GroundBased2G(Detector):
         frequency: Float[Array, " n_sample"],
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
-        trigger_time: Float = 0.0,
         **kwargs,
     ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
@@ -374,9 +372,9 @@ class GroundBased2G(Detector):
                 - ra (Float): Right ascension in radians
                 - dec (Float): Declination in radians
                 - psi (Float): Polarization angle in radians
-                - gmst (Float): Greenwich mean sidereal time in radians
-                - t_c (Float): Difference between geocent time and trigger time in sec
-            trigger_time (Float): Trigger time of the data in seconds.
+                - trigger_time (Float): The trigger time in sec
+                - t_c (Float): The difference between peak time and trigger time in sec
+                - gmst (Float): The greenwich mean sidereal time at the trigger time in radian
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -385,19 +383,19 @@ class GroundBased2G(Detector):
         """
         ra, dec, psi, gmst = params["ra"], params["dec"], params["psi"], params["gmst"]
         antenna_pattern = self.antenna_pattern(ra, dec, psi, gmst)
-        timeshift = self.delay_from_geocenter(ra, dec, gmst)
+        time_shift = self.delay_from_geocenter(ra, dec, gmst)
+        time_shift += params["trigger_time"] - self.epoch + params["t_c"]
+
         h_detector = jax.tree_util.tree_map(
-            lambda h, antenna: h
-            * antenna
-            * jnp.exp(-2j * jnp.pi * frequency * timeshift),
+            lambda h, antenna: h * antenna,
             h_sky,
             antenna_pattern,
         )
         projected_strain = jnp.sum(
             jnp.stack(jax.tree_util.tree_leaves(h_detector)), axis=0
         )
-        trigger_time_shift = trigger_time - self.epoch + params["t_c"]
-        phase_shift = jnp.exp(-2j * jnp.pi * frequency * trigger_time_shift)
+
+        phase_shift = jnp.exp(-2j * jnp.pi * frequency * time_shift)
         return projected_strain * phase_shift
 
     def td_response(
