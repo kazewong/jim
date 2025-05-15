@@ -151,32 +151,39 @@ class Jim(object):
         initial_position: Array = jnp.array([]),
     ):
         if initial_position.size == 0:
+            initial_position = (
+                jnp.zeros((self.sampler.n_chains, self.prior.n_dim)) + jnp.nan
+            )
+
             rng_key, subkey = jax.random.split(self.sampler.rng_key)
 
-            named_initial_position = self.prior.sample(subkey, self.sampler.n_chains)
-            for transform in self.sample_transforms:
-                named_initial_position = jax.vmap(transform.forward)(
-                    named_initial_position
-                )
-            initial_position = jnp.array(
-                [named_initial_position[key] for key in self.parameter_names]
-            ).T
-            assert jnp.isfinite(initial_position).all(), (
-                "Initial position contains NaN or Inf values. "
-                "Please check the prior and transforms."
-            )
-            self.sampler.rng_key = rng_key
-        else:
-            assert initial_position.ndim == 2, "Initial position must be a 2D array."
-            assert initial_position.shape[0] == self.sampler.n_chains, (
-                f"Initial position must have {self.sampler.n_chains} rows, "
-                f"but got {initial_position.shape[0]}."
-            )
-            assert initial_position.shape[1] == self.prior.n_dim, (
-                f"Initial position must have {self.prior.n_dim} columns, "
-                f"but got {initial_position.shape[1]}."
-            )
+            while not jax.tree.reduce(
+                jnp.logical_and,
+                jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+            ).all():
+                non_finite_index = jnp.where(
+                    jnp.any(
+                        ~jax.tree.reduce(
+                            jnp.logical_and,
+                            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
+                        ),
+                        axis=1,
+                    )
+                )[0]
 
+                rng_key, subkey = jax.random.split(rng_key)
+                guess = self.prior.sample(subkey, self.sampler.n_chains)
+                for transform in self.sample_transforms:
+                    guess = jax.vmap(transform.forward)(guess)
+                guess = jnp.array([guess[key] for key in self.parameter_names]).T
+                finite_guess = jnp.where(
+                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+                )[0]
+                common_length = min(len(finite_guess), len(non_finite_index))
+                initial_position = initial_position.at[
+                    non_finite_index[:common_length]
+                ].set(guess[:common_length])
+            self.sampler.rng_key = rng_key
         self.sampler.sample(initial_position, {})  # type: ignore
 
     def get_samples(self, training: bool = False) -> dict:
