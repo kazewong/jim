@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
-from astropy.time import Time
 
 from jimgw.single_event.detector import GroundBased2G
 from jimgw.transforms import (
@@ -23,6 +22,12 @@ from jimgw.single_event.utils import (
     cartesian_spin_to_spin_angles,
     carte_to_spherical_angles,
 )
+from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
+
+# Move these to constants.
+HR_TO_RAD = 2 * jnp.pi / 24
+HR_TO_SEC = 3600
+SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC
 
 
 @jaxtyped(typechecker=typechecker)
@@ -140,6 +145,7 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
             mag = jnp.sqrt(x**2 + y**2 + z**2)
             theta, phi = carte_to_spherical_angles(x, y, z)
             phi = jnp.mod(phi, 2.0 * jnp.pi)
+
             return {
                 label + "_mag": mag,
                 label + "_theta": theta,
@@ -168,9 +174,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         delta_x = ifos[0].vertex - ifos[1].vertex
         self.rotation = euler_rotation(delta_x)
         self.rotation_inv = jnp.linalg.inv(self.rotation)
@@ -224,9 +228,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
 
         assert "t_c" in name_mapping[0] and "t_det" in name_mapping[1]
@@ -290,9 +292,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
 
         assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
@@ -360,9 +360,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifos = ifos
 
         assert "d_L" in name_mapping[0] and "d_hat" in name_mapping[1]
@@ -378,6 +376,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
             R_dets2 = 0.0
+
             for ifo in self.ifos:
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
