@@ -1,8 +1,8 @@
 from typing import Sequence
 import jax.numpy as jnp
+from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
-from astropy.time import Time
 
 from jimgw.core.single_event.detector import GroundBased2G
 from jimgw.core.transforms import (
@@ -24,6 +24,12 @@ from jimgw.core.single_event.utils import (
     cartesian_spin_to_spin_angles,
     carte_to_spherical_angles,
 )
+from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
+
+# Move these to constants.
+HR_TO_RAD = 2 * jnp.pi / 24
+HR_TO_SEC = 3600
+SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC
 
 
 @jaxtyped(typechecker=typechecker)
@@ -141,6 +147,7 @@ class SphereSpinToCartesianSpinTransform(BijectiveTransform):
             mag = jnp.sqrt(x**2 + y**2 + z**2)
             theta, phi = carte_to_spherical_angles(x, y, z)
             phi = jnp.mod(phi, 2.0 * jnp.pi)
+
             return {
                 label + "_mag": mag,
                 label + "_theta": theta,
@@ -169,9 +176,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         delta_x = ifos[0].vertex - ifos[1].vertex
         self.rotation = euler_rotation(delta_x)
         self.rotation_inv = jnp.linalg.inv(self.rotation)
@@ -229,9 +234,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
         conditional_names = ["ra", "dec"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
         self.tc_min = tc_min
         self.tc_max = tc_max
@@ -250,7 +253,7 @@ class GeocentricArrivalTimeToDetectorArrivalTimeTransform(
             t_det_max = self.tc_max + time_shift
 
             y = (t_det - t_det_min) / (t_det_max - t_det_min)
-            t_det_unbounded = jnp.log(y / (1.0 - y))
+            t_det_unbounded = logit(y)
             return {
                 "t_det_unbounded": t_det_unbounded,
             }
@@ -307,9 +310,7 @@ class GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         conditional_names = ["ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifo = ifo
 
         assert "phase_c" in name_mapping[0] and "phase_det" in name_mapping[1]
@@ -381,9 +382,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]
         super().__init__(name_mapping, conditional_names)
 
-        self.gmst = (
-            Time(gps_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(gps_time)
         self.ifos = ifos
         self.dL_min = dL_min
         self.dL_max = dL_max
@@ -401,6 +400,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             p_iota_term = (1.0 + jnp.cos(iota) ** 2) / 2.0
             c_iota_term = jnp.cos(iota)
             R_dets2 = 0.0
+
             for ifo in self.ifos:
                 antenna_pattern = ifo.antenna_pattern(ra, dec, psi, self.gmst)
                 p_mode_term = p_iota_term * antenna_pattern["p"]
@@ -423,7 +423,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             d_hat_max = scale_factor * self.dL_max
 
             y = (d_hat - d_hat_min) / (d_hat_max - d_hat_min)
-            d_hat_unbounded = jnp.log(y / (1.0 - y))
+            d_hat_unbounded = logit(y)
 
             return {
                 "d_hat_unbounded": d_hat_unbounded,

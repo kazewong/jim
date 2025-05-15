@@ -168,35 +168,22 @@ class Jim(object):
                 )
             )[0]
 
-            rng_key, subkey = jax.random.split(rng_key)
-            guess = self.prior.sample(subkey, self.sampler.n_chains)
-            for transform in self.sample_transforms:
-                guess = jax.vmap(transform.forward)(guess)
-            guess = jnp.array(
-                jax.tree.leaves({key: guess[key] for key in self.parameter_names})
-            ).T
-            finite_guess = jnp.where(
-                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-            )[0]
-            common_length = min(len(finite_guess), len(non_finite_index))
-            initial_position = initial_position.at[
-                non_finite_index[:common_length]
-            ].set(guess[:common_length])
-        self.sampler.rng_key = rng_key
-        return initial_position
+                rng_key, subkey = jax.random.split(rng_key)
+                guess = self.prior.sample(subkey, self.sampler.n_chains)
+                for transform in self.sample_transforms:
+                    guess = jax.vmap(transform.forward)(guess)
+                guess = jnp.array([guess[key] for key in self.parameter_names]).T
+                finite_guess = jnp.where(
+                    jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+                )[0]
+                common_length = min(len(finite_guess), len(non_finite_index))
+                initial_position = initial_position.at[
+                    non_finite_index[:common_length]
+                ].set(guess[:common_length])
+            self.sampler.rng_key = rng_key
+        self.sampler.sample(initial_position, {})  # type: ignore
 
-    def sample(
-        self,
-        initial_position: Float[Array, "n_chains n_dims"],
-    ):
-        if initial_position.size == 0:
-            initial_position = self.sample_initial_condition()
-
-        self.sampler.sample(initial_position, {})
-
-    def get_samples(
-        self, training: bool = False
-    ) -> dict[str, Float[Array, "n_chains n_dims"]]:
+    def get_samples(self, training: bool = False) -> dict:
         """
         Get the samples from the sampler
 
