@@ -77,7 +77,7 @@ def carte_to_spherical_angles(
     x: Float[Array, " n"],
     y: Float[Array, " n"],
     z: Float[Array, " n"],
-    default_value: Float[Array, "1"] = jnp.array(0.0),
+    default_value: float = 0.0,
 ) -> tuple[Float[Array, " n"], Float[Array, " n"]]:
     """
     A numerically stable method to compute the spherical angles upon taking gradient.

@@ -15,8 +15,8 @@ from jimgw.core.constants import (
     DEG_TO_RAD,
 )
 from jimgw.core.single_event.wave import Polarization
-from jimgw.single_event.data import Data, PowerSpectrum
-from jimgw.single_event.utils import inner_product, complex_inner_product
+from jimgw.core.single_event.data import Data, PowerSpectrum
+from jimgw.core.single_event.utils import inner_product, complex_inner_product
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
