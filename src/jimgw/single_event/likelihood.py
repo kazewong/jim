@@ -521,11 +521,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
 
-        rng_key, best_fit = optimizer.optimize(
+        rng_key, best_fit, log_prob = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position, {}
         )
 
-        named_params = dict(zip(parameter_names, best_fit))
+        named_params = dict(zip(parameter_names, best_fit[jnp.argmin(log_prob)]))
         for transform in reversed(sample_transforms):
             named_params = transform.backward(named_params)
         for transform in likelihood_transforms:
