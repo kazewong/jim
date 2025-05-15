@@ -1,5 +1,4 @@
 from dataclasses import field
-from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -247,83 +246,40 @@ class SequentialTransformPrior(CompositePrior):
 
 class FullRangePrior(CompositePrior):
     """
-    Prior that enforces constraints on the parameter range, returning -inf if constraints are not satisfied.
+    Abstract prior that enforces constraints on the parameter space, returning -inf for log_prob and rejecting samples outside the allowed region.
 
-    Attributes:
-        base_prior (SequentialTransformPrior): The base prior distribution.
-        constraints (list[Callable]): List of constraint functions to apply.
+    This class wraps a base prior and applies additional constraints, which must be implemented by subclasses via the `constraints` method.
+    The log_prob is set to -inf for any input that does not satisfy the constraints, and the sample method repeatedly draws from the base prior until enough valid samples are found.
 
     Warning:
         The log_prob method of FullRangePrior is not normalized.
         The probability density is set to -inf outside the allowed region (as defined by constraints), but the remaining region is not renormalized.
         This means the resulting distribution is not a true probability density function.
 
-        Note:
-            This lack of normalization does not cause any practical issue for MCMC or similar inference methods,
-            since only probability ratios are needed and the evidence (normalization constant) is not computed.
+    Note:
+        This lack of normalization does not cause any practical issue for MCMC or similar inference methods, since only probability ratios are needed and the evidence (normalization constant) is not computed.
     """
 
-    constraints: list[Callable]
-
     def __repr__(self):
-        return (
-            f"FullRangePrior(prior={self.base_prior}, constraints={self.constraints})"
-        )
+        return f"FullRangePrior(prior={self.base_prior})"
 
     def __init__(
         self,
         base_prior: list[Prior],
-        extra_constraints: list[Callable] = [],
     ):
         assert len(base_prior) == 1, "FullRangePrior only takes one base prior"
         super().__init__(base_prior)
-        # Copy the constraints list to avoid mutating the input list
-        self.constraints = list(extra_constraints)
 
-        # --- Closure helper for constraints ---
-        def _make_bound_constraint(name, bound, is_min: bool):
-            if is_min:
-
-                def constraint(z):
-                    return z[name] > bound
-
-            else:
-
-                def constraint(z):
-                    return z[name] < bound
-
-            return constraint
-
-        # Add constraints for xmin/xmax if present
-        if isinstance(base_prior[0], CombinePrior):
-            # Handle CombinePrior
-            for i, name in enumerate(self.parameter_names):
-                subprior = base_prior[0].base_prior[i]
-                if hasattr(subprior, "xmin"):
-                    xmin = getattr(subprior, "xmin")
-                    self.constraints.append(_make_bound_constraint(name, xmin, True))
-                if hasattr(subprior, "xmax"):
-                    xmax = getattr(subprior, "xmax")
-                    self.constraints.append(_make_bound_constraint(name, xmax, False))
-        elif self.n_dim == 1:
-            # Handle 1D case
-            if hasattr(base_prior[0], "xmin"):
-                xmin = getattr(base_prior[0], "xmin")
-                self.constraints.append(
-                    _make_bound_constraint(self.parameter_names[0], xmin, True)
-                )
-            if hasattr(base_prior[0], "xmax"):
-                xmax = getattr(base_prior[0], "xmax")
-                self.constraints.append(
-                    _make_bound_constraint(self.parameter_names[0], xmax, False)
-                )
-
-    def eval_constraints(self, x: dict[str, Float]) -> Bool:
-        return jnp.array([constraint(x) for constraint in self.constraints]).all()
+    @abstractmethod
+    def constraints(self, x: dict[str, Float]) -> Bool:
+        """
+        Constraints to be applied to the parameter space.
+        This method should be overridden in subclasses to define specific constraints.
+        """
+        raise NotImplementedError
 
     def log_prob(self, z: dict[str, Float]) -> Float:
-        eval_result = self.eval_constraints(z)
-        return jnp.where(eval_result, self.base_prior[0].log_prob(z), -jnp.inf)
+        return jnp.where(self.constraints(z), self.base_prior[0].log_prob(z), -jnp.inf)
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -331,14 +287,16 @@ class FullRangePrior(CompositePrior):
         rng_key, subkey = jax.random.split(rng_key)
         samples = self.base_prior[0].sample(subkey, n_samples)
 
-        mask = jax.vmap(self.eval_constraints)(samples)
+        constraints = jax.vmap(self.constraints)
+
+        mask = constraints(samples)
         valid_samples = jax.tree.map(lambda x: x[mask], samples)
         n_valid = mask.sum()
 
         while n_valid < n_samples:
             rng_key, subkey = jax.random.split(rng_key)
             new_samples = self.base_prior[0].sample(subkey, n_samples - n_valid)
-            new_mask = jax.vmap(self.eval_constraints)(new_samples)
+            new_mask = constraints(new_samples)
             valid_new_samples = jax.tree.map(lambda x: x[new_mask], new_samples)
             valid_samples = jax.tree.map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
