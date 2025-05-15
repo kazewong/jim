@@ -161,9 +161,9 @@ class Jim(object):
             initial_position = jnp.array(
                 [named_initial_position[key] for key in self.parameter_names]
             ).T
-            assert jnp.isnan(initial_position).sum() == 0, (
-                "Initial position contains NaN values. "
-                "Please check the prior and sample transforms."
+            assert jnp.isfinite(initial_position).all(), (
+                "Initial position contains NaN or Inf values. "
+                "Please check the prior and transforms."
             )
             self.sampler.rng_key = rng_key
         else:
