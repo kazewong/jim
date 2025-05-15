@@ -904,9 +904,13 @@ class TestSpinAnglesToCartesianSpinTransform:
 
 
 class TestSkyFrameToDetectorFrameSkyPositionTransform:
-    # Since Bilby and Jim use different algorithm for gmst, which
-    # induces errors to RA, and this is the minimum precision that passes
-    RA_ATOL = 5e-5
+    # This was the custom tolerance for RA as Bilby and Jim use different
+    # algorithm to compute gmst, which induces errors to RA, and this 
+    # was the minimum precision that passes. 
+    # In the latter version, Jim has adopted the Bilby/LAL algorithm to
+    # compute gmst, and the agreement is at the level of 0.0, which 
+    # renders this tolerance obsolete.
+    # RA_ATOL = 5e-5
 
     def test_backward_transform(self):
         """
@@ -928,10 +932,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
             # test the forward transform
             jim_outputs, jacobian = jax.vmap(transform.inverse)(zenith_azimuth)
 
-            # Use the tailored atol for RA
-            assert jnp.allclose(
-                jim_outputs["ra"], bilby_outputs["ra"], atol=self.RA_ATOL
-            )
+            assert jnp.allclose(jim_outputs["ra"], bilby_outputs["ra"])
             assert jnp.allclose(jim_outputs["dec"], bilby_outputs["dec"])
             assert not jnp.isnan(jacobian).any()
 
