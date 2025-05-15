@@ -8,13 +8,10 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, Complex, PRNGKeyArray
 
 from gwpy.timeseries import TimeSeries
-from typing import Optional
-from scipy.interpolate import interp1d
-import scipy.signal as sig
+from typing import Optional, Self
+from scipy.signal import welch
 from scipy.signal.windows import tukey
-
-
-DEG_TO_RAD = jnp.pi / 180
+from scipy.interpolate import interp1d
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -68,15 +65,6 @@ class Data(ABC):
         return iter(self.td)
 
     @property
-    def empty(self) -> bool:
-        """Checks if the data is empty.
-
-        Returns:
-            bool: True if data is empty, False otherwise.
-        """
-        return len(self.td) == 0
-
-    @property
     def n_time(self) -> int:
         """Gets number of time samples.
 
@@ -93,6 +81,15 @@ class Data(ABC):
             int: Number of frequency domain samples.
         """
         return self.n_time // 2 + 1
+
+    @property
+    def is_empty(self) -> bool:
+        """Checks if the data is empty.
+
+        Returns:
+            bool: True if data is empty, False otherwise.
+        """
+        return self.n_time == 0
 
     @property
     def duration(self) -> float:
@@ -240,7 +237,7 @@ class Data(ABC):
         """
         if not self.has_fd:
             self.fft()
-        freq, psd = sig.welch(self.td, fs=self.sampling_frequency, **kws)
+        freq, psd = welch(self.td, fs=self.sampling_frequency, **kws)
         return PowerSpectrum(psd, freq, self.name)
 
     @classmethod
@@ -251,7 +248,7 @@ class Data(ABC):
         gps_end_time: Float,
         cache: bool = True,
         **kws,
-    ) -> "Data":
+    ) -> Self:
         """Pull data from GWOSC.
 
         Args:
@@ -282,7 +279,7 @@ class Data(ABC):
         frequencies: Float[Array, " n_freq"],
         epoch: float = 0.0,
         name: str = "",
-    ) -> "Data":
+    ) -> Self:
         """Create a Data object starting from (potentially incomplete)
         Fourier domain data.
 
@@ -301,7 +298,7 @@ class Data(ABC):
         # form full frequency array
         delta_f = frequencies[1] - frequencies[0]
         fnyq = frequencies[-1]
-        # complete frequencies to adjacent power of 2
+        # complete frequencies to adjacent multiple of 2
         # (sometimes this is needed because frequency arrays do not include
         # the Nyquist frequency)
         if (fnyq + delta_f) % 2 == 0:
@@ -318,7 +315,7 @@ class Data(ABC):
         assert jnp.allclose(
             f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
         ), "Generated frequencies do not match the input frequencies"
-        # create jd.Data object
+        # create a Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
 
@@ -353,6 +350,15 @@ class PowerSpectrum(ABC):
             int: Number of frequency samples.
         """
         return len(self.values)
+
+    @property
+    def is_empty(self) -> bool:
+        """Checks if the data is empty.
+
+        Returns:
+            bool: True if data is empty, False otherwise.
+        """
+        return self.n_freq == 0
 
     @property
     def delta_f(self) -> Float:
@@ -403,9 +409,10 @@ class PowerSpectrum(ABC):
             frequencies: Array of frequencies in Hz. Defaults to empty array.
             name: Name of the power spectrum. Defaults to None.
         """
+        # NOTE: Are we sure the values and frequencies start from 0?
         self.values = values
         self.frequencies = frequencies
-        assert len(self.values) == len(
+        assert self.n_freq == len(
             self.frequencies
         ), "Values and frequencies must have the same length"
         self.name = name or ""
@@ -422,7 +429,7 @@ class PowerSpectrum(ABC):
         Returns:
             bool: True if power spectrum contains data, False otherwise.
         """
-        return len(self.values) > 0
+        return self.n_freq > 0
 
     def frequency_slice(
         self, f_min: float, f_max: float
@@ -442,20 +449,27 @@ class PowerSpectrum(ABC):
         return self.values[mask], self.frequencies[mask]
 
     def interpolate(
-        self, f: Float[Array, " n_sample"], kind: str = "cubic", **kws
+        self, frequencies: Float[Array, " n_sample"], kind: str = "linear", **kws
     ) -> "PowerSpectrum":
         """Interpolate the power spectrum to new frequencies.
 
         Args:
             f: Frequencies to interpolate to.
-            kind: Interpolation method. Defaults to 'cubic'.
+            kind: Interpolation method. Defaults to 'linear'.
             **kws: Additional keyword arguments for scipy.interpolate.interp1d.
 
         Returns:
             PowerSpectrum: New power spectrum with interpolated values.
         """
-        interp = interp1d(self.frequencies, self.values, kind=kind, **kws)
-        return PowerSpectrum(interp(f), f, self.name)
+        interp = interp1d(
+            self.frequencies,
+            self.values,
+            kind=kind,
+            fill_value=(self.values[0], self.values[-1]),  # type: ignore
+            bounds_error=False,
+            **kws,
+        )
+        return PowerSpectrum(interp(frequencies), frequencies, self.name)
 
     def simulate_data(
         self,
@@ -467,7 +481,7 @@ class PowerSpectrum(ABC):
             key: JAX PRNG key for random number generation.
 
         Returns:
-            Complex array of simulated noise data.
+            Complex frequency series of simulated noise data.
         """
         key, subkey = jax.random.split(key, 2)
         var = self.values / (4 * self.delta_f)

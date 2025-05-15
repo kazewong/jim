@@ -2,18 +2,21 @@ from abc import ABC, abstractmethod
 
 import jax
 import jax.numpy as jnp
-import numpy as np
+from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped, Bool
+from numpy import loadtxt
 import requests
-from jaxtyping import Array, Float, Complex, jaxtyped
 from beartype import beartype as typechecker
-from scipy.interpolate import interp1d
-from jimgw.single_event import data as jd
 from typing import Optional
 
-from jimgw.constants import C_SI, EARTH_SEMI_MAJOR_AXIS, EARTH_SEMI_MINOR_AXIS
+from jimgw.constants import (
+    C_SI,
+    EARTH_SEMI_MAJOR_AXIS,
+    EARTH_SEMI_MINOR_AXIS,
+    DEG_TO_RAD,
+)
 from jimgw.single_event.wave import Polarization
-
-DEG_TO_RAD = jnp.pi / 180
+from jimgw.single_event.data import Data, PowerSpectrum
+from jimgw.single_event.utils import inner_product, complex_inner_product
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -28,8 +31,8 @@ class Detector(ABC):
 
     Attributes:
         name (str): Name of the detector.
-        data (jd.Data): Detector data object.
-        psd (jd.PowerSpectrum): Power spectral density object.
+        data (Data): Detector data object.
+        psd (PowerSpectrum): Power spectral density object.
         frequency_bounds (tuple[float, float]): Lower and upper frequency bounds.
     """
 
@@ -37,19 +40,36 @@ class Detector(ABC):
 
     # NOTE: for some detectors (e.g. LISA, ET) data could be a list of Data
     # objects so this might be worth revisiting
-    data: jd.Data
-    psd: jd.PowerSpectrum
+    data: Data
+    psd: PowerSpectrum
 
     frequency_bounds: tuple[float, float] = (0.0, float("inf"))
 
     _sliced_frequencies: Float[Array, " n_sample"] = jnp.array([])
-    _fd_data_slice: Float[Array, " n_sample"] = jnp.array([])
-    _psd_slice: Float[Array, " n_sample"] = jnp.array([])
+    _sliced_fd_data: Float[Array, " n_sample"] = jnp.array([])
+    _sliced_psd: Float[Array, " n_sample"] = jnp.array([])
 
     @property
-    def epoch(self):
+    def epoch(self) -> Float:
         """The epoch of the data."""
         return self.data.epoch
+
+    @property
+    def times(self) -> Float[Array, " n_sample"]:
+        return self.data.times
+
+    @property
+    def frequencies(self) -> Float[Array, " n_sample"]:
+        return self.data.frequencies
+
+    @property
+    def duration(self) -> Float:
+        return self.data.duration
+
+    @property
+    def frequency_mask(self) -> Bool[Array, " n_sample"]:
+        f_min, f_max = self.frequency_bounds
+        return (f_min <= self.frequencies) & (self.frequencies <= f_max)
 
     @abstractmethod
     def fd_response(
@@ -127,8 +147,17 @@ class Detector(ABC):
         ), f"The {self.name} data and PSD must have same frequencies"
 
         self._sliced_frequencies = freqs_1
-        self._fd_data_slice = data
-        self._psd_slice = psd
+        self._sliced_fd_data = data
+        self._sliced_psd = psd
+
+    def clear_data_and_psd(self) -> None:
+        """Clear the data and PSD of the detector."""
+        self.data = Data()
+        self.psd = PowerSpectrum()
+        self.frequency_bounds = (0.0, float("inf"))
+        self._sliced_frequencies = jnp.array([])
+        self._sliced_fd_data = jnp.array([])
+        self._sliced_psd = jnp.array([])
 
     @property
     def sliced_frequencies(self) -> Float[Array, " n_freq"]:
@@ -140,22 +169,22 @@ class Detector(ABC):
         return self._sliced_frequencies
 
     @property
-    def fd_data_slice(self) -> Complex[Array, " n_freq"]:
+    def sliced_fd_data(self) -> Complex[Array, " n_freq"]:
         """Get frequency-domain data slice based on frequency bounds.
 
         Returns:
             Complex[Array, " n_freq"]: Sliced frequency-domain data.
         """
-        return self._fd_data_slice
+        return self._sliced_fd_data
 
     @property
-    def psd_slice(self) -> Float[Array, " n_freq"]:
+    def sliced_psd(self) -> Float[Array, " n_freq"]:
         """Get PSD slice based on frequency bounds.
 
         Returns:
             Float[Array, " n_freq"]: Sliced power spectral density.
         """
-        return self._psd_slice
+        return self._sliced_psd
 
 
 class GroundBased2G(Detector):
@@ -176,13 +205,13 @@ class GroundBased2G(Detector):
         polarization_mode (list[Polarization]): List of polarization modes (`pc` for plus and cross) to be used in
             computing antenna patterns; in the future, this could be expanded to
             include non-GR modes.
-        data (jd.Data): Array of Fourier-domain strain data.
-        psd (jd.PowerSpectrum): Power spectral density object.
+        data (Data): Array of Fourier-domain strain data.
+        psd (PowerSpectrum): Power spectral density object.
     """
 
     polarization_mode: list[Polarization]
-    data: jd.Data
-    psd: jd.PowerSpectrum
+    data: Data
+    psd: PowerSpectrum
 
     latitude: Float = 0
     longitude: Float = 0
@@ -231,8 +260,8 @@ class GroundBased2G(Detector):
         self.yarm_tilt = yarm_tilt
 
         self.polarization_mode = [Polarization(m) for m in modes]
-        self.data = jd.Data()
-        self.psd = jd.PowerSpectrum()
+        self.data = Data()
+        self.psd = PowerSpectrum()
 
     @staticmethod
     def _get_arm(
@@ -331,7 +360,7 @@ class GroundBased2G(Detector):
         h_sky: dict[str, Float[Array, " n_sample"]],
         params: dict[str, Float],
         **kwargs,
-    ) -> Array:
+    ) -> Complex[Array, " n_sample"]:
         """Modulate the waveform in the sky frame by the detector response in the frequency domain.
 
         Args:
@@ -414,11 +443,11 @@ class GroundBased2G(Detector):
                 jnp.cos(theta),
             ]
         )
-        return jnp.dot(omega, delta_d) / C_SI
+        return jnp.einsum("i...,i->...", omega, delta_d) / C_SI
 
     def antenna_pattern(
         self, ra: Float, dec: Float, psi: Float, gmst: Float
-    ) -> dict[str, Float]:
+    ) -> dict[str, Complex]:
         """Compute antenna patterns for polarizations at specified sky location.
 
         In the long-wavelength approximation, the antenna pattern for a
@@ -432,7 +461,7 @@ class GroundBased2G(Detector):
             gmst (Float): Greenwich mean sidereal time (GMST) in radians.
 
         Returns:
-            dict[str, Float]: Dictionary mapping polarization names to their antenna pattern values.
+            dict[str, Complex]: Dictionary mapping polarization names to their antenna pattern values.
         """
         detector_tensor = self.tensor
 
@@ -440,70 +469,236 @@ class GroundBased2G(Detector):
         for polarization in self.polarization_mode:
             wave_tensor = polarization.tensor_from_sky(ra, dec, psi, gmst)
             antenna_patterns[polarization.name] = jnp.einsum(
-                "ij,ij->", detector_tensor, wave_tensor
+                "ij,ij...->...", detector_tensor, wave_tensor
             )
 
         return antenna_patterns
 
     @jaxtyped(typechecker=typechecker)
-    def load_psd(
-        self, freqs: Float[Array, " n_sample"], psd_file: str = ""
-    ) -> Float[Array, " n_sample"]:
-        """Load power spectral density (PSD) from file or default GWTC-2 catalog.
+    def load_and_set_psd(self, psd_file: str = "", asd_file: str = "") -> PowerSpectrum:
+        """Load power spectral density (PSD) from file or default GWTC-2 catalog,
+            and set it to the detector.
 
         Args:
-            freqs (Float[Array, " n_sample"]): Array of frequency samples to evaluate PSD at.
             psd_file (str, optional): Path to file containing PSD data. If empty, uses GWTC-2 PSD.
 
         Returns:
-            Float[Array, " n_sample"]: Array of PSD values at requested frequencies.
+            Float[Array, " n_sample"]: Array of PSD values of the detector.
         """
-        if psd_file == "":
+        if psd_file != "":
+            f, psd_vals = loadtxt(psd_file, unpack=True)
+        elif asd_file != "":
+            f, asd_vals = loadtxt(asd_file, unpack=True)
+            psd_vals = asd_vals**2
+        else:
             print("Grabbing GWTC-2 PSD for " + self.name)
             url = asd_file_dict[self.name]
             data = requests.get(url)
-            open(self.name + ".txt", "wb").write(data.content)
-            f, asd_vals = np.loadtxt(self.name + ".txt", unpack=True)
+            tmp_file_name = f"fetched_default_asd_{self.name}.txt"
+            open(tmp_file_name, "wb").write(data.content)
+            f, asd_vals = loadtxt(tmp_file_name, unpack=True)
             psd_vals = asd_vals**2
-        else:
-            f, psd_vals = np.loadtxt(psd_file, unpack=True)
 
-        psd = interp1d(f, psd_vals, fill_value=(psd_vals[0], psd_vals[-1]), bounds_error=False)(freqs)  # type: ignore
-        psd = jnp.array(psd)
-        return psd
+        _loaded_psd = PowerSpectrum(psd_vals, f, name=f"{self.name}_psd")
+        self.set_psd(_loaded_psd)
+        return self.psd
 
-    def set_data(self, data: jd.Data | Array, **kws) -> None:
+    def _equal_data_psd_frequencies(self) -> Bool:
+        """Check if the frequencies of the data and PSD match.
+        A helper function for `set_data` and `set_psd`.
+
+        Return:
+            Bool: True if the frequencies match, False otherwise.
+        """
+        if self.psd.is_empty or self.data.is_empty:
+            # In this case, we simply skip the check
+            return True
+        if self.psd.n_freq != self.data.n_freq:
+            # Cannot proceed comparison, needs interpolation
+            return False
+        if (self.psd.frequencies == self.data.frequencies).all():
+            # Frequencies match
+            return True
+        # This case means the frequencies are different
+        return False
+
+    def set_data(self, data: Data | Array, **kws) -> None:
         """Add data to the detector.
 
         Args:
-            data (Union[jd.Data, Array]): Data to be added to the detector, either as a `jd.Data` object
+            data (Union[Data, Array]): Data to be added to the detector, either as a `Data` object
                 or as a timeseries array.
-            **kws (dict): Additional keyword arguments to pass to `jd.Data` constructor.
+            **kws (dict): Additional keyword arguments to pass to `Data` constructor.
 
         Returns:
             None
         """
-        if isinstance(data, jd.Data):
+        if isinstance(data, Data):
             self.data = data
         else:
-            self.data = jd.Data(data, **kws)
+            self.data = Data(data, **kws)
+        # Assert PSD frequencies agree with data
+        if not ((self.psd is None) or self._equal_data_psd_frequencies()):
+            self.psd = self.psd.interpolate(self.data.frequencies)
 
-    def set_psd(self, psd: jd.PowerSpectrum | Array, **kws) -> None:
+    def set_psd(self, psd: PowerSpectrum | Array, **kws) -> None:
         """Add PSD to the detector.
 
         Args:
-            psd (Union[jd.PowerSpectrum, Array]): PSD to be added to the detector, either as a `jd.PowerSpectrum`
+            psd (Union[PowerSpectrum, Array]): PSD to be added to the detector, either as a `PowerSpectrum`
                 object or as a timeseries array.
-            **kws (dict): Additional keyword arguments to pass to `jd.PowerSpectrum` constructor.
+            **kws (dict): Additional keyword arguments to pass to `PowerSpectrum` constructor.
 
         Returns:
             None
         """
-        if isinstance(psd, jd.PowerSpectrum):
+        if isinstance(psd, PowerSpectrum):
             self.psd = psd
         else:
             # not clear if we want to support this
-            self.psd = jd.PowerSpectrum(psd, **kws)
+            self.psd = PowerSpectrum(psd, **kws)
+        # Assert PSD frequencies agree with data frequencies
+        if not ((self.data is None) or self._equal_data_psd_frequencies()):
+            self.psd = self.psd.interpolate(self.data.frequencies)
+
+    def inject_signal(
+        self,
+        duration: float,
+        sampling_frequency: float,
+        epoch: float,
+        waveform_model,
+        parameters: dict[str, float],
+        is_zero_noise: bool = False,
+        rng_key: PRNGKeyArray = jax.random.PRNGKey(0),
+    ) -> None:
+        """Inject a signal into the detector data.
+
+        Note: The power spectral density must be set beforehand.
+
+        Args:
+            waveform_model: The waveform model to be injected.
+            parameters (dict): Dictionary of parameters for the waveform model.
+
+        Returns:
+            None
+        """
+        # 1. Set empty data to initialise the detector
+        n_times = int(duration * sampling_frequency)
+        self.set_data(
+            Data(
+                name=f"{self.name}_empty",
+                td=jnp.zeros(n_times),
+                delta_t=1 / sampling_frequency,
+                epoch=epoch,
+            )
+        )
+
+        # 2. Compute the projected strain from parameters
+        polarisations = waveform_model(self.frequencies, parameters)
+        projected_strain = self.fd_response(self.frequencies, polarisations, parameters)
+
+        # 3. Set the new data
+        strain_data = jnp.where(self.frequency_mask, projected_strain, 0.0 + 0.0j)
+        if not is_zero_noise:
+            strain_data += jnp.where(
+                self.frequency_mask, self.psd.simulate_data(rng_key), 0.0 + 0.0j
+            )
+
+        self.set_data(
+            Data.from_fd(
+                name=f"{self.name}_injected",
+                fd=strain_data,
+                frequencies=self.frequencies,
+                epoch=self.data.epoch,
+            )
+        )
+
+        # 4. Update the sliced data and psd with the (potentially) new frequency bounds
+        self.set_frequency_bounds()
+        masked_signal = projected_strain[self.frequency_mask]
+
+        _optimal_snr_sq = inner_product(
+            masked_signal, masked_signal, self.sliced_psd, self.sliced_frequencies
+        )
+        optimal_snr = _optimal_snr_sq**0.5
+        match_filtered_snr = complex_inner_product(
+            masked_signal,
+            self.sliced_fd_data,
+            self.sliced_psd,
+            self.sliced_frequencies,
+        )
+        match_filtered_snr /= optimal_snr
+
+        # NOTE: Change this to logging later.
+        print(f"For detector {self.name}, the injected signal has:")
+        print(f"  - Optimal SNR: {optimal_snr:.4f}")
+        print(f"  - Match filtered SNR: {match_filtered_snr:.4f}")
+
+    def set_data_from_file(self, filename: str) -> None:
+        """Set data from a file.
+
+        Args:
+            filename (str): Path to the file containing the data.
+
+        Returns:
+            None
+        """
+        # TODO: Implement this
+        raise NotImplementedError
+
+    def get_whitened_frequency_domain_strain(
+        self, frequency_series: Complex[Array, " n_freq"]
+    ) -> Complex[Array, " n_freq"]:
+        """Get the whitened frequency-domain strain.
+        Args:
+            frequency_series (Complex[Array, " n_freq"]): Array of frequency domain data/signal.
+        Returns:
+            Complex[Array, " n_freq"]: Whitened frequency-domain strain.
+        """
+        scaled_asd = jnp.sqrt(self.psd.values * self.duration / 4)
+        return (frequency_series / scaled_asd) * self.frequency_mask
+
+    def whitened_frequency_to_time_domain_strain(
+        self, whitened_frequency_series: Complex[Array, " n_time // 2 + 1"]
+    ) -> Float[Array, " n_time"]:
+        """Get the whitened frequency-domain strain.
+        Args:
+            whitened_frequency_series (Complex[Array, " n_time // 2 + 1"]):
+                Array of whitened frequency domain data/signal.
+        Returns:
+            Float[Array, " n_time"]: Whitened time-domain strain/signal.
+        """
+        freq_mask_ratio = len(self.frequency_mask) / jnp.sqrt(
+            jnp.sum(self.frequency_mask)
+        )
+        return jnp.fft.irfft(whitened_frequency_series) * freq_mask_ratio
+
+    @property
+    def whitened_frequency_domain_data(self) -> Complex[Array, " n_sample"]:
+        """Get the whitened frequency-domain data.
+
+        Args:
+            frequency (Float[Array, " n_sample"]): Array of frequency samples.
+
+        Returns:
+            Float[Array, " n_sample"]: Whitened frequency-domain data.
+        """
+
+        return self.get_whitened_frequency_domain_strain(self.data.fd)
+
+    @property
+    def whitened_time_domain_data(self) -> Float[Array, " n_sample"]:
+        """Get the whitened time-domain data.
+
+        Args:
+            time (Float[Array, " n_sample"]): Array of time samples.
+
+        Returns:
+            Float[Array, " n_sample"]: Whitened time-domain data.
+        """
+        return self.whitened_frequency_to_time_domain_strain(
+            self.whitened_frequency_domain_data
+        )
 
 
 H1 = GroundBased2G(
