@@ -1,25 +1,20 @@
 import jax
 import jax.numpy as jnp
-import numpy as np
-import numpy.typing as npt
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Complex
 from typing import Optional
 from scipy.interpolate import interp1d
 
-from jimgw.base import LikelihoodBase
-from jimgw.prior import Prior
-from jimgw.single_event.detector import Detector
 from jimgw.utils import log_i0
-from jimgw.single_event.waveform import Waveform
+from jimgw.prior import Prior
+from jimgw.base import LikelihoodBase
 from jimgw.transforms import BijectiveTransform, NtoMTransform
+from jimgw.single_event.detector import Detector
+from jimgw.single_event.waveform import Waveform
+from jimgw.single_event.utils import inner_product
 from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 import logging
-
-HR_TO_RAD = 2 * jnp.pi / 24
-HR_TO_SEC = 3600
-SEC_TO_RAD = HR_TO_RAD / HR_TO_SEC
 
 
 class SingleEventLikelihood(LikelihoodBase):
@@ -231,7 +226,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # Get the grid of the relative binning scheme (contains the final endpoint)
         # and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
-            np.array(frequency_original), n_bins
+            jnp.array(frequency_original), n_bins
         )
         self.freq_grid_low = freq_grid[:-1]
 
@@ -317,9 +312,9 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 self.freq_grid_center, h_sky_center, self.ref_params
             )
             A0, A1, B0, B1 = self.compute_coefficients(
-                detector.fd_data_slice,
+                detector.sliced_fd_data,
                 waveform_ref,
-                detector.psd_slice,
+                detector.sliced_psd,
                 frequency_original,
                 freq_grid,
                 self.freq_grid_center,
@@ -384,10 +379,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     @staticmethod
     def max_phase_diff(
-        f: npt.NDArray[np.floating],
+        f: Float[Array, " n_freq"],
         f_low: float,
         f_high: float,
-        chi: Float = 1.0,
+        chi: float = 1.0,
     ):
         """
         Compute the maximum phase difference between the frequencies in the array.
@@ -408,15 +403,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         Float[Array, "n_dim"]
             Maximum phase difference between the frequencies in the array.
         """
-
-        gamma = np.arange(-5, 6, 1) / 3.0
-        f = np.repeat(f[:, None], len(gamma), axis=1)
-        f_star = np.repeat(f_low, len(gamma))
-        f_star[gamma >= 0] = f_high
-        return 2 * np.pi * chi * np.sum((f / f_star) ** gamma * np.sign(gamma), axis=1)
+        gamma = jnp.arange(-5, 6) / 3.0
+        f_2D = jnp.broadcast_to(f, (f.size, gamma.size))
+        f_star = jnp.where(gamma >= 0, f_high, f_low)
+        return (
+            2
+            * jnp.pi
+            * chi
+            * jnp.sum((f_2D / f_star) ** gamma * jnp.sign(gamma), axis=1)
+        )
 
     def make_binning_scheme(
-        self, freqs: npt.NDArray[np.floating], n_bins: int, chi: float = 1
+        self, freqs: Float[Array, " n_freq"], n_bins: int, chi: float = 1
     ) -> tuple[Float[Array, " n_bins+1"], Float[Array, " n_bins"]]:
         """
         Make a binning scheme based on the maximum phase difference between the
@@ -438,12 +436,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         f_bins_center: Float[Array, "n_bins"]
             The bin centers.
         """
-
-        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)
+        phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)  # type: ignore
         bin_f = interp1d(phase_diff_array, freqs)
-        f_bins = np.array([])
-        for i in np.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1):
-            f_bins = np.append(f_bins, bin_f(i))
+        phase_diff = jnp.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1)
+        f_bins = bin_f(phase_diff)
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
         return jnp.array(f_bins), jnp.array(f_bins_center)
 
@@ -455,15 +451,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         B1_array = []
 
         df = freqs[1] - freqs[0]
-        data_prod = np.array(data * h_ref.conj()) / psd
-        self_prod = np.array(h_ref * h_ref.conj()) / psd
+        data_prod = jnp.array(data * h_ref.conj()) / psd
+        self_prod = jnp.array(h_ref * h_ref.conj()) / psd
         for i in range(len(f_bins) - 1):
-            f_index = np.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
+            f_index = jnp.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
             freq_shift = freqs[f_index] - f_bins_center[i]
-            A0_array.append(4 * np.sum(data_prod[f_index]) * df)
-            A1_array.append(4 * np.sum(data_prod[f_index] * freq_shift) * df)
-            B0_array.append(4 * np.sum(self_prod[f_index]) * df)
-            B1_array.append(4 * np.sum(self_prod[f_index] * freq_shift) * df)
+            A0_array.append(4 * jnp.sum(data_prod[f_index]) * df)
+            A1_array.append(4 * jnp.sum(data_prod[f_index] * freq_shift) * df)
+            B0_array.append(4 * jnp.sum(self_prod[f_index]) * df)
+            B1_array.append(4 * jnp.sum(self_prod[f_index] * freq_shift) * df)
 
         A0_array = jnp.array(A0_array)
         A1_array = jnp.array(A1_array)
@@ -526,31 +522,15 @@ likelihood_presets = {
 }
 
 
-def inner_product(
-    array_1: Float[Array, " n_dim"],
-    array_2: Float[Array, " n_dim"],
-    psd: Float[Array, " n_dim"],
-    frequencies: Optional[Float[Array, " n_dim"]] = None,
-    df: Optional[Float] = None,
-):
-    # Note: move this function to somewhere else, maybe utils,
-    # or even inside Detector.
-    if df is None:
-        assert frequencies is not None, "Either df or frequencies must be provided"
-        df = frequencies[1] - frequencies[0]
-
-    return 4 * jnp.sum((jnp.conj(array_1) * array_2) / psd * df)
-
-
 def original_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
+    h_sky: dict[str, Complex[Array, " n_dim"]],
     detectors: list[Detector],
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_response(freqs, h_sky, params)
         match_filter_SNR = inner_product(h_dec, data, psd, freqs).real
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -561,14 +541,14 @@ def original_likelihood(
 
 def phase_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
+    h_sky: dict[str, Complex[Array, " n_dim"]],
     detectors: list[Detector],
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_d_inner_h = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_response(freqs, h_sky, params)
         complex_d_inner_h += inner_product(h_dec, data, psd, freqs)
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs).real
@@ -599,14 +579,14 @@ def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
 
 def time_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
+    h_sky: dict[str, Complex[Array, " n_dim"]],
     detectors: list[Detector],
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_response(freqs, h_sky, params)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)
@@ -646,14 +626,14 @@ def time_marginalized_likelihood(
 
 def phase_time_marginalized_likelihood(
     params: dict[str, Float],
-    h_sky: dict[str, Float[Array, " n_dim"]],
+    h_sky: dict[str, Complex[Array, " n_dim"]],
     detectors: list[Detector],
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
     complex_h_inner_d = 0.0 + 0.0j
     for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.fd_data_slice, ifo.psd_slice
+        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_response(freqs, h_sky, params)
         # using <h|d> instead of <d|h>
         complex_h_inner_d += inner_product(data, h_dec, psd, freqs)

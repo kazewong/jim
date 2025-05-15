@@ -3,6 +3,7 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Array, Float, Bool, PRNGKeyArray, jaxtyped
 from abc import abstractmethod
@@ -139,7 +140,7 @@ class LogisticDistribution(Prior):
 
         """
         samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
-        samples = jnp.log(samples / (1 - samples))
+        samples = logit(samples)
         return self.add_name(samples[None])
 
     def log_prob(self, z: dict[str, Float]) -> Float:
@@ -189,7 +190,7 @@ class StandardNormalDistribution(Prior):
 
     def log_prob(self, z: dict[str, Float]) -> Float:
         variable = z[self.parameter_names[0]]
-        return -0.5 * variable**2 - 0.5 * jnp.log(2 * jnp.pi)
+        return -0.5 * (variable**2 + jnp.log(2 * jnp.pi))
 
 
 class SequentialTransformPrior(CompositePrior):
