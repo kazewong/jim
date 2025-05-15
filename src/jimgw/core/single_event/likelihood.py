@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float, Complex
-from typing import Iterable, Optional
+from typing import Optional
 from scipy.interpolate import interp1d
 
 from jimgw.core.utils import log_i0
@@ -13,7 +13,9 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 from jimgw.core.single_event.detector import Detector
 from jimgw.core.single_event.waveform import Waveform
 from jimgw.core.single_event.utils import inner_product
-from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
 import logging
 from typing import Sequence
 
@@ -129,7 +131,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         return self.likelihood_function(
             params,
             waveform_sky,
-            self.detectors, # type: ignore
+            self.detectors,  # type: ignore
             **self.kwargs,
         )
 
@@ -374,7 +376,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return self.likelihood_function(
             params,
             waveform_sky,
-            self.detectors, # type: ignore
+            self.detectors,  # type: ignore
             **self.kwargs,
         )
 

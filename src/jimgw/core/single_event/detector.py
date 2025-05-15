@@ -6,8 +6,6 @@ from jaxtyping import Array, Float, Complex, PRNGKeyArray, jaxtyped, Bool
 from numpy import loadtxt
 import requests
 from beartype import beartype as typechecker
-from scipy.interpolate import interp1d
-from jimgw.core.single_event import data as jd
 from typing import Optional
 
 from jimgw.core.constants import (

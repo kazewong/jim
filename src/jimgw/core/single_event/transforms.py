@@ -24,7 +24,9 @@ from jimgw.core.single_event.utils import (
     cartesian_spin_to_spin_angles,
     carte_to_spherical_angles,
 )
-from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
 
 # Move these to constants.
 HR_TO_RAD = 2 * jnp.pi / 24
