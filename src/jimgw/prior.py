@@ -244,7 +244,7 @@ class SequentialTransformPrior(CompositePrior):
         return x
 
 
-class FullRangePrior(CompositePrior):
+class UnboundedPrior(CompositePrior):
     """
     Abstract prior that enforces constraints on the parameter space, returning -inf for log_prob and rejecting samples outside the allowed region.
 
@@ -252,7 +252,7 @@ class FullRangePrior(CompositePrior):
     The log_prob is set to -inf for any input that does not satisfy the constraints, and the sample method repeatedly draws from the base prior until enough valid samples are found.
 
     Warning:
-        The log_prob method of FullRangePrior is not normalized.
+        The log_prob method of UnboundedPrior is not normalized.
         The probability density is set to -inf outside the allowed region (as defined by constraints), but the remaining region is not renormalized.
         This means the resulting distribution is not a true probability density function.
 
@@ -261,13 +261,13 @@ class FullRangePrior(CompositePrior):
     """
 
     def __repr__(self):
-        return f"FullRangePrior(prior={self.base_prior})"
+        return f"UnboundedPrior(prior={self.base_prior})"
 
     def __init__(
         self,
         base_prior: list[Prior],
     ):
-        assert len(base_prior) == 1, "FullRangePrior only takes one base prior"
+        assert len(base_prior) == 1, "UnboundedPrior only takes one base prior"
         super().__init__(base_prior)
 
     @abstractmethod
@@ -306,6 +306,44 @@ class FullRangePrior(CompositePrior):
             n_valid = valid_samples[list(valid_samples.keys())[0]].shape[0]
 
         return jax.tree.map(lambda x: x[:n_samples], valid_samples)
+
+
+@jaxtyped(typechecker=typechecker)
+class SimpleUnboundedPrior(UnboundedPrior):
+    """
+    Unbounded prior that automatically applies bound constraints (xmin/xmax) from its base prior.
+
+    This class wraps a 1D base prior and inspects it for `xmin` and `xmax` attributes.
+    If these attributes are present, it constructs a constraint function that enforces the bounds on the parameter space.
+
+    The constraints are enforced in both `log_prob` and `sample` methods via the parent `UnboundedPrior` class.
+
+    Note:
+        - Only works with 1D priors.
+        - The resulting prior is not normalized over the constrained region (see `UnboundedPrior` for details).
+    """
+
+    xmin: float
+    xmax: float
+
+    def __repr__(self):
+        return f"SimpleUnboundedPrior(prior={self.base_prior})"
+
+    def __init__(
+        self,
+        base_prior: list[Prior],
+    ):
+        super().__init__(base_prior)
+
+        # Add constraints for xmin/xmax if present
+        p = self.base_prior[0]
+        assert p.n_dim == 1, "SimpleUnboundedPrior only works with 1D priors"
+        self.xmin = getattr(p, "xmin", -jnp.inf)
+        self.xmax = getattr(p, "xmax", jnp.inf)
+
+    def constraints(self, x: dict[str, Float]) -> Bool:
+        variable = x[self.parameter_names[0]]
+        return jnp.logical_and(variable >= self.xmin, variable <= self.xmax)
 
 
 class CombinePrior(CompositePrior):
