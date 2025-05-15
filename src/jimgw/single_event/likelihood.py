@@ -17,7 +17,6 @@ from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
 import logging
 
 
-
 class SingleEventLikelihood(LikelihoodBase):
     detectors: list[Detector]
     waveform: Waveform
