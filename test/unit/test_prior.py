@@ -12,8 +12,8 @@ from jimgw.prior import (
     PowerLawPrior,
     GaussianPrior,
     RayleighPrior,
-    SimpleUnboundedPrior,
-    UnboundedPrior,
+    ConstrainedPrior,
+    SimpleConstrainedPrior,
     CombinePrior,
 )
 
@@ -269,11 +269,11 @@ class TestUnivariatePrior:
         assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
 
 
-class TestUnboundedPrior:
+class TestConstrainedPrior:
     def test_simple_unbounded_prior_1d(self):
-        """Test SimpleUnboundedPrior for correct constraint enforcement and sampling."""
+        """Test SimpleConstrainedPrior for correct constraint enforcement and sampling."""
         base = UniformPrior(0.0, 1.0, ["x"])
-        p = SimpleUnboundedPrior([base])
+        p = SimpleConstrainedPrior([base])
 
         # Draw samples and check they are finite and in range
         samples = p.sample(jax.random.PRNGKey(0), 10000)
@@ -291,8 +291,8 @@ class TestUnboundedPrior:
         base_logp = jax.vmap(base.log_prob)(xs_dict)
         assert jnp.allclose(logp[mask], base_logp[mask])
 
-        # Add extra constraint (simulate by subclassing SimpleUnboundedPrior)
-        class ExtraConstraintPrior(SimpleUnboundedPrior):
+        # Add extra constraint (simulate by subclassing SimpleConstrainedPrior)
+        class ExtraConstraintPrior(SimpleConstrainedPrior):
             def constraints(self, x):
                 return jnp.logical_and(super().constraints(x), x["x"] < 0.5)
 
@@ -316,15 +316,15 @@ class TestUnboundedPrior:
         assert jnp.allclose(jitted_vals, logp)
 
     def test_unbounded_prior_2d(self):
-        """Test UnboundedPrior for 2D priors with joint constraints and sampling."""
+        """Test ConstrainedPrior for 2D priors with joint constraints and sampling."""
 
-        class JointConstraintPrior(UnboundedPrior):
+        class JointConstraintPrior(ConstrainedPrior):
             def __init__(self):
                 base_priors = [
                     CombinePrior(
                         [
-                            SimpleUnboundedPrior([UniformPrior(0.0, 1.0, ["x"])]),
-                            SimpleUnboundedPrior([UniformPrior(-2.0, 2.0, ["y"])]),
+                            SimpleConstrainedPrior([UniformPrior(0.0, 1.0, ["x"])]),
+                            SimpleConstrainedPrior([UniformPrior(-2.0, 2.0, ["y"])]),
                         ]
                     ),
                 ]
