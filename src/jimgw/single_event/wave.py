@@ -32,21 +32,22 @@ class Polarization(eqx.Module):
         defined by orthonormal vectors (x, y) in arbitrary Cartesian
         coordinates.
         """
+        outer_fmt = "i...,j...->ij..."
         if self.name == "p":
-            return jnp.einsum("i,j->ij", x, x) - jnp.einsum("i,j->ij", y, y)
+            return jnp.einsum(outer_fmt, x, x) - jnp.einsum(outer_fmt, y, y)
         elif self.name == "c":
-            return jnp.einsum("i,j->ij", x, y) + jnp.einsum("i,j->ij", y, x)
+            return jnp.einsum(outer_fmt, x, y) + jnp.einsum(outer_fmt, y, x)
         elif self.name == "x":
             z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", x, z) + jnp.einsum("i,j->ij", z, x)
+            return jnp.einsum(outer_fmt, x, z) + jnp.einsum(outer_fmt, z, x)
         elif self.name == "y":
             z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", y, z) + jnp.einsum("i,j->ij", z, y)
+            return jnp.einsum(outer_fmt, y, z) + jnp.einsum(outer_fmt, z, y)
         elif self.name == "b":
-            return jnp.einsum("i,j->ij", x, x) + jnp.einsum("i,j->ij", y, y)
+            return jnp.einsum(outer_fmt, x, x) + jnp.einsum(outer_fmt, y, y)
         elif self.name == "l":
             z = jnp.cross(x, y)
-            return jnp.einsum("i,j->ij", z, z)
+            return jnp.einsum(outer_fmt, z, z)
         else:
             raise ValueError(f"unrecognized polarization {self.name}")
 
@@ -83,7 +84,7 @@ class Polarization(eqx.Module):
                 -jnp.sin(theta),
             ]
         )
-        v = jnp.array([-jnp.sin(phi), jnp.cos(phi), 0])
+        v = jnp.array([-jnp.sin(phi), jnp.cos(phi), phi * 0.0])
         m = -u * jnp.sin(psi) - v * jnp.cos(psi)
         n = -u * jnp.cos(psi) + v * jnp.sin(psi)
 

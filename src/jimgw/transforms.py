@@ -3,6 +3,7 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
@@ -295,9 +296,7 @@ class LogitTransform(BijectiveTransform):
             for i in range(len(name_mapping[0]))
         }
         self.inverse_transform_func = lambda x: {
-            name_mapping[0][i]: jnp.log(
-                x[name_mapping[1][i]] / (1 - x[name_mapping[1][i]])
-            )
+            name_mapping[0][i]: logit(x[name_mapping[1][i]])
             for i in range(len(name_mapping[1]))
         }
 
@@ -417,9 +416,6 @@ class BoundToUnbound(BijectiveTransform):
         original_upper_bound: Float,
     ):
 
-        def logit(x):
-            return jnp.log(x / (1 - x))
-
         super().__init__(name_mapping)
         self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
         self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
@@ -514,28 +510,19 @@ class PowerLawTransform(BijectiveTransform):
                 for i in range(len(name_mapping[1]))
             }
         else:
+            alphap1 = 1.0 + self.alpha
             self.transform_func = lambda x: {
                 name_mapping[1][i]: (
-                    self.xmin ** (1.0 + self.alpha)
-                    + x[name_mapping[0][i]]
-                    * (
-                        self.xmax ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
+                    self.xmin**alphap1
+                    + x[name_mapping[0][i]] * (self.xmax**alphap1 - self.xmin**alphap1)
                 )
-                ** (1.0 / (1.0 + self.alpha))
+                ** (1.0 / alphap1)
                 for i in range(len(name_mapping[0]))
             }
             self.inverse_transform_func = lambda x: {
                 name_mapping[0][i]: (
-                    (
-                        x[name_mapping[1][i]] ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
-                    / (
-                        self.xmax ** (1.0 + self.alpha)
-                        - self.xmin ** (1.0 + self.alpha)
-                    )
+                    (x[name_mapping[1][i]] ** alphap1 - self.xmin**alphap1)
+                    / (self.xmax**alphap1 - self.xmin**alphap1)
                 )
                 for i in range(len(name_mapping[1]))
             }
@@ -593,30 +580,17 @@ class PeriodicTransform(BijectiveTransform):
         super().__init__(name_mapping)
         self.xmin = xmin
         self.xmax = xmax
+        scaling = 2 * jnp.pi / (self.xmax - self.xmin)
         self.transform_func = lambda x: {
             f"{name_mapping[1][0]}": x[name_mapping[0][0]]
-            * jnp.cos(
-                2
-                * jnp.pi
-                * (x[name_mapping[0][1]] - self.xmin)
-                / (self.xmax - self.xmin)
-            ),
+            * jnp.cos(scaling * (x[name_mapping[0][1]] - self.xmin)),
             f"{name_mapping[1][1]}": x[name_mapping[0][0]]
-            * jnp.sin(
-                2
-                * jnp.pi
-                * (x[name_mapping[0][1]] - self.xmin)
-                / (self.xmax - self.xmin)
-            ),
+            * jnp.sin(scaling * (x[name_mapping[0][1]] - self.xmin)),
         }
         self.inverse_transform_func = lambda x: {
             name_mapping[0][1]: self.xmin
-            + (self.xmax - self.xmin)
-            * (
-                0.5
-                + jnp.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]])
-                / (2 * jnp.pi)
-            ),
+            + (jnp.pi + jnp.arctan2(x[name_mapping[1][1]], x[name_mapping[1][0]]))
+            / scaling,
             name_mapping[0][0]: jnp.sqrt(
                 x[name_mapping[1][0]] ** 2 + x[name_mapping[1][1]] ** 2
             ),
