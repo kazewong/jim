@@ -643,6 +643,7 @@ class GroundBased2G(Detector):
         Returns:
             None
         """
+        # TODO: Implement this
         raise NotImplementedError
 
     def get_whitened_frequency_domain_strain(
