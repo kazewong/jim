@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-from jax.scipy.special import logit
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
