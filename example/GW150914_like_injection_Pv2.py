@@ -15,6 +15,7 @@ from jimgw.prior import (
     PowerLawPrior,
     UniformSpherePrior,
     RayleighPrior,
+    SimpleConstrainedPrior,
 )
 from jimgw.single_event.detector import H1, L1
 from jimgw.single_event.likelihood import TransientLikelihoodFD
@@ -121,8 +122,8 @@ prior = [
     UniformSpherePrior(parameter_names=["s1"]),
     UniformSpherePrior(parameter_names=["s2"]),
     SinePrior(parameter_names=["iota"]),
-    PowerLawPrior(dL_min, dL_max, 2.0, parameter_names=["d_L"]),
-    UniformPrior(-0.1, 0.1, parameter_names=["t_c"]),
+    SimpleConstrainedPrior([PowerLawPrior(dL_min, dL_max, 2.0, parameter_names=["d_L"])]),
+    SimpleConstrainedPrior([UniformPrior(-0.1, 0.1, parameter_names=["t_c"])]),
     UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"]),
     UniformPrior(0.0, jnp.pi, parameter_names=["psi"]),
     UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"]),
@@ -142,14 +143,14 @@ prior = CombinePrior(prior)
 # Defining Transforms
 sample_transforms = [
     DistanceToSNRWeightedDistanceTransform(
-        gps_time=gps_time, ifos=ifos, dL_min=dL_min, dL_max=dL_max
+        gps_time=gps_time, ifos=ifos
     ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
         gps_time=gps_time, ifo=ifos[0]
     ),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps_time, ifos=ifos),
     GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-        tc_min=-0.1, tc_max=0.1, gps_time=gps_time, ifo=ifos[0]
+        gps_time=gps_time, ifo=ifos[0]
     ),
     PeriodicTransform(
         name_mapping=(["periodic_1", "s1_phi"], ["s1_phi_x", "s1_phi_y"]),
