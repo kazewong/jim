@@ -144,3 +144,4 @@ test_data
 # Out directory of runs
 outdir
 jim.code-workspace
+.tmp_dagster*

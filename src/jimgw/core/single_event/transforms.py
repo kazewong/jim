@@ -1,14 +1,15 @@
+from typing import Sequence
 import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jaxtyping import Float, Array, jaxtyped
 
-from jimgw.single_event.detector import GroundBased2G
-from jimgw.transforms import (
+from jimgw.core.single_event.detector import GroundBased2G
+from jimgw.core.transforms import (
     ConditionalBijectiveTransform,
     BijectiveTransform,
     reverse_bijective_transform,
 )
-from jimgw.single_event.utils import (
+from jimgw.core.single_event.utils import (
     m1_m2_to_Mc_q,
     Mc_q_to_m1_m2,
     m1_m2_to_Mc_eta,
@@ -22,7 +23,9 @@ from jimgw.single_event.utils import (
     cartesian_spin_to_spin_angles,
     carte_to_spherical_angles,
 )
-from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
 
 # Move these to constants.
 HR_TO_RAD = 2 * jnp.pi / 24
@@ -169,7 +172,7 @@ class SkyFrameToDetectorFrameSkyPositionTransform(BijectiveTransform):
     def __init__(
         self,
         gps_time: Float,
-        ifos: list[GroundBased2G],
+        ifos: Sequence[GroundBased2G],
     ):
         name_mapping = (["ra", "dec"], ["zenith", "azimuth"])
         super().__init__(name_mapping)
@@ -349,12 +352,12 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
     """
 
     gmst: Float
-    ifos: list[GroundBased2G]
+    ifos: Sequence[GroundBased2G]
 
     def __init__(
         self,
         gps_time: Float,
-        ifos: list[GroundBased2G],
+        ifos: Sequence[GroundBased2G],
     ):
         name_mapping = (["d_L"], ["d_hat"])
         conditional_names = ["M_c", "ra", "dec", "psi", "iota"]

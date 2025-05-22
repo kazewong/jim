@@ -28,7 +28,7 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
 
 #################################################
 ########## Parse the input settings #############

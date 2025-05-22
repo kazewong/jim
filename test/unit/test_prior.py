@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import scipy.stats as stats
 
-from jimgw.prior import (
+from jimgw.core.prior import (
     LogisticDistribution,
     StandardNormalDistribution,
     UniformPrior,

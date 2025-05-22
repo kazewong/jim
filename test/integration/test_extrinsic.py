@@ -3,12 +3,12 @@ from astropy.time import Time
 import jax
 import jax.numpy as jnp
 
-from jimgw.jim import Jim
-from jimgw.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
-from jimgw.single_event.detector import H1, L1, V1
-from jimgw.single_event.likelihood import ZeroLikelihood
-from jimgw.transforms import BoundToUnbound, SingleSidedUnboundTransform
-from jimgw.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, DistanceToSNRWeightedDistanceTransform, GeocentricArrivalTimeToDetectorArrivalTimeTransform, GeocentricArrivalPhaseToDetectorArrivalPhaseTransform
+from jimgw.core.jim import Jim
+from jimgw.core.prior import CombinePrior, UniformPrior, CosinePrior, SinePrior, PowerLawPrior
+from jimgw.core.single_event.detector import H1, L1, V1
+from jimgw.core.single_event.likelihood import ZeroLikelihood
+from jimgw.core.transforms import BoundToUnbound, SingleSidedUnboundTransform
+from jimgw.core.single_event.transforms import MassRatioToSymmetricMassRatioTransform, SkyFrameToDetectorFrameSkyPositionTransform, DistanceToSNRWeightedDistanceTransform, GeocentricArrivalTimeToDetectorArrivalTimeTransform, GeocentricArrivalPhaseToDetectorArrivalPhaseTransform
 from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)

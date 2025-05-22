@@ -5,10 +5,10 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Float
 
-from jimgw.prior import UniformPrior, CombinePrior
-from jimgw.single_event.transforms import ChirpMassMassRatioToComponentMassesTransform
-from jimgw.base import LikelihoodBase
-from jimgw.jim import Jim
+from jimgw.core.prior import UniformPrior, CombinePrior
+from jimgw.core.single_event.transforms import ChirpMassMassRatioToComponentMassesTransform
+from jimgw.core.base import LikelihoodBase
+from jimgw.core.jim import Jim
 
 params = {"axes.grid": True,
         "text.usetex" : True,

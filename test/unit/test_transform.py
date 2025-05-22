@@ -5,7 +5,7 @@ import numpy as np
 from itertools import combinations
 from pathlib import Path
 
-from jimgw.transforms import (
+from jimgw.core.transforms import (
     ScaleTransform,
     OffsetTransform,
     LogitTransform,
@@ -17,15 +17,15 @@ from jimgw.transforms import (
     PowerLawTransform,
     reverse_bijective_transform,
 )
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.transforms import (
     DistanceToSNRWeightedDistanceTransform,
     SphereSpinToCartesianSpinTransform,
     SpinAnglesToCartesianSpinTransform,
     SkyFrameToDetectorFrameSkyPositionTransform,
 )
 
-from jimgw.single_event.utils import m1_m2_to_Mc_q
-from jimgw.single_event.detector import H1, L1, V1, detector_preset
+from jimgw.core.single_event.utils import m1_m2_to_Mc_q
+from jimgw.core.single_event.detector import H1, L1, V1, detector_preset
 
 jax.config.update("jax_enable_x64", True)
 

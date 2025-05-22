@@ -8,7 +8,7 @@ from jaxtyping import Array, Float, Bool, PRNGKeyArray, jaxtyped
 from abc import abstractmethod
 import equinox as eqx
 
-from jimgw.transforms import (
+from jimgw.core.transforms import (
     BijectiveTransform,
     LogitTransform,
     ScaleTransform,
@@ -30,7 +30,7 @@ class Prior(eqx.Module):
     parameter_names: list[str]
 
     @property
-    def n_dim(self) -> int:
+    def n_dims(self) -> int:
         return len(self.parameter_names)
 
     def __init__(self, parameter_names: list[str]):
@@ -42,14 +42,14 @@ class Prior(eqx.Module):
         """
         self.parameter_names = parameter_names
 
-    def add_name(self, x: Float[Array, " n_dim"]) -> dict[str, Float]:
+    def add_name(self, x: Float[Array, " n_dims"]) -> dict[str, Float]:
         """
         Turn an array into a dictionary
 
         Parameters
         ----------
         x : Array
-            An array of parameters. Shape (n_dim,).
+            An array of parameters. Shape (n_dims,).
         """
 
         return dict(zip(self.parameter_names, x))
@@ -117,7 +117,7 @@ class LogisticDistribution(Prior):
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
-        assert self.n_dim == 1, "LogisticDistribution needs to be 1D distributions"
+        assert self.n_dims == 1, "LogisticDistribution needs to be 1D distributions"
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -162,7 +162,7 @@ class StandardNormalDistribution(Prior):
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
         assert (
-            self.n_dim == 1
+            self.n_dims == 1
         ), "StandardNormalDistribution needs to be 1D distributions"
 
     def sample(
@@ -408,7 +408,7 @@ class UniformPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "UniformPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "UniformPrior needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         super().__init__(
@@ -468,7 +468,7 @@ class GaussianPrior(SequentialTransformPrior):
             parameter_names: A list of names for the parameters of the prior.
         """
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "GaussianPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "GaussianPrior needs to be 1D distributions"
         self.mu = mu
         self.sigma = sigma
         super().__init__(
@@ -506,7 +506,7 @@ class SinePrior(SequentialTransformPrior):
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "SinePrior needs to be 1D distributions"
+        assert self.n_dims == 1, "SinePrior needs to be 1D distributions"
         super().__init__(
             [CosinePrior([f"{self.parameter_names[0]}-pi/2"])],
             [
@@ -540,7 +540,7 @@ class CosinePrior(SequentialTransformPrior):
 
     def __init__(self, parameter_names: list[str]):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "CosinePrior needs to be 1D distributions"
+        assert self.n_dims == 1, "CosinePrior needs to be 1D distributions"
         super().__init__(
             [UniformPrior(-1.0, 1.0, [f"sin({self.parameter_names[0]})"])],
             [
@@ -570,7 +570,7 @@ class UniformSpherePrior(CombinePrior):
 
     def __init__(self, parameter_names: list[str], max_mag: float = 1.0):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "UniformSpherePrior only takes the name of the vector"
+        assert self.n_dims == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
             f"{self.parameter_names[0]}_mag",
             f"{self.parameter_names[0]}_theta",
@@ -607,7 +607,7 @@ class RayleighPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "RayleighPrior needs to be 1D distributions"
+        assert self.n_dims == 1, "RayleighPrior needs to be 1D distributions"
         self.sigma = sigma
         super().__init__(
             [UniformPrior(0.0, 1.0, [f"{self.parameter_names[0]}_base"])],
@@ -647,7 +647,7 @@ class PowerLawPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         self.parameter_names = parameter_names
-        assert self.n_dim == 1, "Power law needs to be 1D distributions"
+        assert self.n_dims == 1, "Power law needs to be 1D distributions"
         self.xmax = xmax
         self.xmin = xmin
         self.alpha = alpha
@@ -673,85 +673,3 @@ class PowerLawPrior(SequentialTransformPrior):
                 ),
             ],
         )
-
-
-# ====================== Things below may need rework ======================
-
-# @jaxtyped(typechecker=typechecker)
-# class Exponential(Prior):
-#     """
-#     A prior following the power-law with alpha in the range [xmin, xmax).
-#     p(x) ~ exp(\alpha x)
-#     """
-
-#     xmin: float = 0.0
-#     xmax: float = jnp.inf
-#     alpha: float = -1.0
-#     normalization: float = 1.0
-
-#     def __repr__(self):
-#         return f"Exponential(xmin={self.xmin}, xmax={self.xmax}, alpha={self.alpha}, naming={self.naming})"
-
-#     def __init__(
-#         self,
-#         xmin: Float,
-#         xmax: Float,
-#         alpha: Union[Int, Float],
-#         naming: list[str],
-#         transforms: dict[str, tuple[str, Callable]] = {},
-#         **kwargs,
-#     ):
-#         super().__init__(naming, transforms)
-#         if alpha < 0.0:
-#             assert xmin != -jnp.inf, "With negative alpha, xmin must finite"
-#         if alpha > 0.0:
-#             assert xmax != jnp.inf, "With positive alpha, xmax must finite"
-#         assert not jnp.isclose(alpha, 0.0), "alpha=zero is given, use Uniform instead"
-#         assert self.n_dim == 1, "Exponential needs to be 1D distributions"
-
-#         self.xmax = xmax
-#         self.xmin = xmin
-#         self.alpha = alpha
-
-#         self.normalization = self.alpha / (
-#             jnp.exp(self.alpha * self.xmax) - jnp.exp(self.alpha * self.xmin)
-#         )
-
-#     def sample(
-#         self, rng_key: PRNGKeyArray, n_samples: int
-#     ) -> dict[str, Float[Array, " n_samples"]]:
-#         """
-#         Sample from a exponential distribution.
-
-#         Parameters
-#         ----------
-#         rng_key : PRNGKeyArray
-#             A random key to use for sampling.
-#         n_samples : int
-#             The number of samples to draw.
-
-#         Returns
-#         -------
-#         samples : dict
-#             Samples from the distribution. The keys are the names of the parameters.
-
-#         """
-#         q_samples = jax.random.uniform(rng_key, (n_samples,), minval=0.0, maxval=1.0)
-#         samples = (
-#             self.xmin
-#             + jnp.log1p(
-#                 q_samples * (jnp.exp(self.alpha * (self.xmax - self.xmin)) - 1.0)
-#             )
-#             / self.alpha
-#         )
-#         return self.add_name(samples[None])
-
-#     def log_prob(self, x: dict[str, Float]) -> Float:
-#         variable = x[self.naming[0]]
-#         log_in_range = jnp.where(
-#             (variable >= self.xmax) | (variable <= self.xmin),
-#             jnp.zeros_like(variable) - jnp.inf,
-#             jnp.zeros_like(variable),
-#         )
-#         log_p = self.alpha * variable + jnp.log(self.normalization)
-#         return log_p + log_in_range
