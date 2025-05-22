@@ -4,20 +4,20 @@ import jax
 import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
-from jimgw.jim import Jim
-from jimgw.prior import (
+from jimgw.core.jim import Jim
+from jimgw.core.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
     SinePrior,
     PowerLawPrior,
 )
-from jimgw.single_event.data import Data
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.data import Data
+from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.waveform import RippleIMRPhenomD
+from jimgw.core.transforms import BoundToUnbound
+from jimgw.core.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,

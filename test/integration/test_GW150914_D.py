@@ -1,26 +1,27 @@
 import jax
 import jax.numpy as jnp
+
 jax.config.update("jax_enable_x64", True)
 
-from jimgw.jim import Jim
-from jimgw.prior import (
+from jimgw.core.jim import Jim
+from jimgw.core.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
     SinePrior,
     PowerLawPrior,
 )
-from jimgw.single_event.data import Data
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomD
-from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.data import Data
+from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.waveform import RippleIMRPhenomD
+from jimgw.core.transforms import BoundToUnbound
+from jimgw.core.single_event.transforms import (
     ComponentMassesToChirpMassSymmetricMassRatioTransform,
     SkyFrameToDetectorFrameSkyPositionTransform,
     ComponentMassesToChirpMassMassRatioTransform,
 )
-from jimgw.single_event.utils import Mc_q_to_m1_m2
+from jimgw.core.single_event.utils import Mc_q_to_m1_m2
 
 ###########################################
 ########## First we grab data #############
@@ -41,7 +42,7 @@ for ifo in ifos:
     data = Data.from_gwosc(ifo.name, start, end)
     ifo.set_data(data)
 
-    psd_data = Data.from_gwosc(ifo.name, gps-16, gps+16)
+    psd_data = Data.from_gwosc(ifo.name, gps - 16, gps + 16)
     psd_fftlength = data.duration * data.sampling_frequency
     ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
 
@@ -86,17 +87,61 @@ prior = CombinePrior(
 sample_transforms = [
     ComponentMassesToChirpMassMassRatioTransform,
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping=[["M_c"], ["M_c_unbounded"]], original_lower_bound=M_c_min, original_upper_bound=M_c_max,),
-    BoundToUnbound(name_mapping=[["q"], ["q_unbounded"]], original_lower_bound=q_min, original_upper_bound=q_max,),
-    BoundToUnbound(name_mapping=[["s1_z"], ["s1_z_unbounded"]], original_lower_bound=-1.0, original_upper_bound=1.0,),
-    BoundToUnbound(name_mapping=[["s2_z"], ["s2_z_unbounded"]], original_lower_bound=-1.0, original_upper_bound=1.0,),
-    BoundToUnbound(name_mapping=[["d_L"], ["d_L_unbounded"]], original_lower_bound=0.0, original_upper_bound=2000.0,),
-    BoundToUnbound(name_mapping=[["t_c"], ["t_c_unbounded"]], original_lower_bound=-0.05, original_upper_bound=0.05,),
-    BoundToUnbound(name_mapping=[["phase_c"], ["phase_c_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
-    BoundToUnbound(name_mapping=[["iota"], ["iota_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=[["psi"], ["psi_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=[["zenith"], ["zenith_unbounded"]], original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=[["azimuth"], ["azimuth_unbounded"]], original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
+    BoundToUnbound(
+        name_mapping=[["M_c"], ["M_c_unbounded"]],
+        original_lower_bound=M_c_min,
+        original_upper_bound=M_c_max,
+    ),
+    BoundToUnbound(
+        name_mapping=[["q"], ["q_unbounded"]],
+        original_lower_bound=q_min,
+        original_upper_bound=q_max,
+    ),
+    BoundToUnbound(
+        name_mapping=[["s1_z"], ["s1_z_unbounded"]],
+        original_lower_bound=-1.0,
+        original_upper_bound=1.0,
+    ),
+    BoundToUnbound(
+        name_mapping=[["s2_z"], ["s2_z_unbounded"]],
+        original_lower_bound=-1.0,
+        original_upper_bound=1.0,
+    ),
+    BoundToUnbound(
+        name_mapping=[["d_L"], ["d_L_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=2000.0,
+    ),
+    BoundToUnbound(
+        name_mapping=[["t_c"], ["t_c_unbounded"]],
+        original_lower_bound=-0.05,
+        original_upper_bound=0.05,
+    ),
+    BoundToUnbound(
+        name_mapping=[["phase_c"], ["phase_c_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=[["iota"], ["iota_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=[["psi"], ["psi_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=[["zenith"], ["zenith_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=[["azimuth"], ["azimuth_unbounded"]],
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
 ]
 
 likelihood_transforms = [

@@ -4,8 +4,8 @@ import jax
 import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
-from jimgw.jim import Jim
-from jimgw.prior import (
+from jimgw.core.jim import Jim
+from jimgw.core.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
@@ -13,12 +13,12 @@ from jimgw.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.data import Data
-from jimgw.single_event.waveform import RippleIMRPhenomPv2
-from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.data import Data
+from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
+from jimgw.core.transforms import BoundToUnbound
+from jimgw.core.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
@@ -154,12 +154,6 @@ likelihood = TransientLikelihoodFD(
     f_min=fmin,
     f_max=fmax,
 )
-
-mass_matrix = jnp.eye(prior.n_dim)
-# mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-# mass_matrix = mass_matrix.at[9, 9].set(1e-3)
-local_sampler_arg = {"step_size": mass_matrix * 1e-3}
-
 
 jim = Jim(
     likelihood,

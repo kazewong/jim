@@ -6,22 +6,25 @@ from jaxtyping import Array, Float, Complex
 from typing import Optional
 from scipy.interpolate import interp1d
 
-from jimgw.utils import log_i0
-from jimgw.prior import Prior
-from jimgw.base import LikelihoodBase
-from jimgw.transforms import BijectiveTransform, NtoMTransform
-from jimgw.single_event.detector import Detector
-from jimgw.single_event.waveform import Waveform
-from jimgw.single_event.utils import inner_product, complex_inner_product
-from jimgw.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.utils import log_i0
+from jimgw.core.prior import Prior
+from jimgw.core.base import LikelihoodBase
+from jimgw.core.transforms import BijectiveTransform, NtoMTransform
+from jimgw.core.single_event.detector import Detector
+from jimgw.core.single_event.waveform import Waveform
+from jimgw.core.single_event.utils import inner_product, complex_inner_product
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
 import logging
+from typing import Sequence
 
 
 class SingleEventLikelihood(LikelihoodBase):
-    detectors: list[Detector]
+    detectors: Sequence[Detector]
     waveform: Waveform
 
-    def __init__(self, detectors: list[Detector], waveform: Waveform) -> None:
+    def __init__(self, detectors: Sequence[Detector], waveform: Waveform) -> None:
         self.detectors = detectors
         self.waveform = waveform
 
@@ -38,7 +41,7 @@ class ZeroLikelihood(LikelihoodBase):
 class TransientLikelihoodFD(SingleEventLikelihood):
     def __init__(
         self,
-        detectors: list[Detector],
+        detectors: Sequence[Detector],
         waveform: Waveform,
         f_min: Float = 0,
         f_max: Float = float("inf"),
@@ -128,7 +131,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         return self.likelihood_function(
             params,
             waveform_sky,
-            self.detectors,
+            self.detectors,  # type: ignore
             **self.kwargs,
         )
 
@@ -159,7 +162,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     def __init__(
         self,
-        detectors: list[Detector],
+        detectors: Sequence[Detector],
         waveform: Waveform,
         f_min: Float = 0,
         f_max: Float = float("inf"),
@@ -373,7 +376,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         return self.likelihood_function(
             params,
             waveform_sky,
-            self.detectors,
+            self.detectors,  # type: ignore
             **self.kwargs,
         )
 
@@ -389,7 +392,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         Parameters
         ----------
-        f: Float[Array, "n_dim"]
+        f: Float[Array, "n_dims"]
             Array of frequencies to be binned.
         f_low: float
             Lower frequency bound.
@@ -400,7 +403,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         Returns
         -------
-        Float[Array, "n_dim"]
+        Float[Array, "n_dims"]
             Maximum phase difference between the frequencies in the array.
         """
         gamma = jnp.arange(-5, 6) / 3.0
@@ -479,7 +482,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
-        def y(x: Float[Array, " n_dim"], data: dict) -> Float:
+        def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
@@ -494,7 +497,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         key = jax.random.PRNGKey(0)
-        initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
+        initial_position = jnp.zeros((popsize, prior.n_dims)) + jnp.nan
         while not jax.tree.reduce(
             jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
         ).all():

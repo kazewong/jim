@@ -1,5 +1,3 @@
-__include__ = ["Data", "PowerSpectrum"]
-
 from abc import ABC
 import logging
 
@@ -164,6 +162,10 @@ class Data(ABC):
             self.window = window
 
     def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(name='{self.name}', "
+            + f"delta_t={self.delta_t}, epoch={self.epoch})"
+        )
         return (
             f"{self.__class__.__name__}(name='{self.name}', "
             + f"delta_t={self.delta_t}, epoch={self.epoch})"

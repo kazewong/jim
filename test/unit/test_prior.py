@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from jimgw.prior import (
+from jimgw.core.prior import (
     LogisticDistribution,
     StandardNormalDistribution,
     UniformPrior,

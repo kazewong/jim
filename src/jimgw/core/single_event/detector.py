@@ -8,15 +8,15 @@ import requests
 from beartype import beartype as typechecker
 from typing import Optional
 
-from jimgw.constants import (
+from jimgw.core.constants import (
     C_SI,
     EARTH_SEMI_MAJOR_AXIS,
     EARTH_SEMI_MINOR_AXIS,
     DEG_TO_RAD,
 )
-from jimgw.single_event.wave import Polarization
-from jimgw.single_event.data import Data, PowerSpectrum
-from jimgw.single_event.utils import inner_product, complex_inner_product
+from jimgw.core.single_event.wave import Polarization
+from jimgw.core.single_event.data import Data, PowerSpectrum
+from jimgw.core.single_event.utils import inner_product, complex_inner_product
 
 # TODO: Need to expand this list. Currently it is only O3.
 asd_file_dict = {
@@ -165,6 +165,7 @@ class Detector(ABC):
 
         Returns:
             Float[Array, " n_sample"]: Sliced frequency-domain data.
+            Float[Array, " n_sample"]: Frequency array.
         """
         return self._sliced_frequencies
 

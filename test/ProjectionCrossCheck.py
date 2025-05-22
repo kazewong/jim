@@ -79,9 +79,9 @@ import numpy as np
 from ripple import Mc_eta_to_ms
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 
-from jimgw.PE.detector_preset import *
-from jimgw.PE.detector_projection import make_detector_response
-from jimgw.PE.heterodyneLikelihood import \
+from jimgw.core.PE.detector_preset import *
+from jimgw.core.PE.detector_projection import make_detector_response
+from jimgw.core.PE.heterodyneLikelihood import \
     make_heterodyne_likelihood_mutliple_detector
 
 
