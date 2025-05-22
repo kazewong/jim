@@ -337,7 +337,7 @@ class SimpleConstrainedPrior(ConstrainedPrior):
 
         # Add constraints for xmin/xmax if present
         p = self.base_prior[0]
-        assert p.n_dim == 1, "SimpleConstrainedPrior only works with 1D priors"
+        assert p.n_dims == 1, "SimpleConstrainedPrior only works with 1D priors"
         self.xmin = getattr(p, "xmin", -jnp.inf)
         self.xmax = getattr(p, "xmax", jnp.inf)
 

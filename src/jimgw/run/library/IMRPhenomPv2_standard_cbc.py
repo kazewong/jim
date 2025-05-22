@@ -195,15 +195,11 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             DistanceToSNRWeightedDistanceTransform(
                 gps_time=self.gps,
                 ifos=self.ifos,
-                dL_min=self.dL_range[0],
-                dL_max=self.dL_range[1],
             ),
             GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
                 gps_time=self.gps, ifo=self.ifos[0]
             ),
             GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-                tc_min=self.t_c_range[0],
-                tc_max=self.t_c_range[1],
                 gps_time=self.gps,
                 ifo=self.ifos[0],
             ),
