@@ -147,7 +147,7 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample_initial_condition(self) -> Float[Array, "n_chains n_dims"]:
+    def sample_initial_condition(self) -> Float[Array, " n_chains n_dims"]:
         initial_position = (
             jnp.zeros((self.sampler.n_chains, self.prior.n_dims)) + jnp.nan
         )
@@ -186,7 +186,7 @@ class Jim(object):
 
     def sample(
         self,
-        initial_position: Float[Array, "n_chains n_dims"],
+        initial_position: Float[Array, " n_chains n_dims"],
     ):
         if initial_position.size == 0:
             initial_position = self.sample_initial_condition()
@@ -195,7 +195,7 @@ class Jim(object):
 
     def get_samples(
         self, training: bool = False
-    ) -> dict[str, Float[Array, "n_chains n_dims"]]:
+    ) -> dict[str, Float[Array, " n_chains n_dims"]]:
         """
         Get the samples from the sampler
 
