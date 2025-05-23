@@ -384,7 +384,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             Maximum phase difference between the frequencies in the array.
         """
         gamma = jnp.arange(-5, 6) / 3.0
-        f_2D = jnp.broadcast_to(f, (f.size, gamma.size))
+        f_2D = jnp.broadcast_to(f.reshape(f.size, 1), (f.size, gamma.size))
         f_star = jnp.where(gamma >= 0, f_high, f_low)
         return (
             2
