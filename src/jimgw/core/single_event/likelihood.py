@@ -459,7 +459,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
-        def y(self, x: Float[Array, " n_dims"], data: dict) -> Float:
+        def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
