@@ -357,29 +357,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
         return log_likelihood
 
-    def evaluate_original(
-        self, params: dict[str, Float], data: dict
-    ) -> (
-        Float
-    ):  # TODO: Test whether we need to pass data in or with class changes is fine.
-        """
-        Evaluate the likelihood for a given set of parameters.
-        """
-        params["trigger_time"] = self.trigger_time
-        params["gmst"] = self.gmst
-        # adjust the params due to different marginalzation scheme
-        params = self.param_func(params)
-        # adjust the params due to fixing parameters
-        params = self.fixing_func(params)
-        # evaluate the waveform as usual
-        waveform_sky = self.waveform(self.frequencies, params)
-        return self.likelihood_function(
-            params,
-            waveform_sky,
-            self.detectors,  # type: ignore
-            **self.kwargs,
-        )
-
     @staticmethod
     def max_phase_diff(
         f: Float[Array, " n_freq"],
@@ -488,7 +465,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -self.evaluate_original(named_params, data)
+            return -self.super().evaluate(named_params, data)
 
         print("Starting the optimizer")
 
@@ -524,7 +501,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
 
-        rng_key, best_fit, log_prob = optimizer.optimize(
+        _, best_fit, log_prob = optimizer.optimize(
             jax.random.PRNGKey(12094), y, initial_position, {}
         )
 
