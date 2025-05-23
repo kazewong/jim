@@ -186,7 +186,7 @@ class Jim(object):
 
     def sample(
         self,
-        initial_position: Float[Array, " n_chains n_dims"],
+        initial_position: Float[Array, " n_chains n_dims"] = jnp.array([]),
     ):
         if initial_position.size == 0:
             initial_position = self.sample_initial_condition()
