@@ -465,7 +465,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -SingleEventLikelihood.evaluate(self, named_params, data)
+            return -TransientLikelihoodFD.evaluate(self, named_params, data)
 
         print("Starting the optimizer")
 
