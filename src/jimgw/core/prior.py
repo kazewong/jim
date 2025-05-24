@@ -246,18 +246,22 @@ class SequentialTransformPrior(CompositePrior):
 
 class ConstrainedPrior(CompositePrior):
     """
-    Abstract prior that enforces constraints on the parameter space, returning -inf for log_prob and rejecting samples outside the allowed region.
+    An abstract prior class that allow additional constraints be imposed on the parameter space.
+    For inputs outside of the constrained support, it assigns the value `-inf` to the `log_prob`,
+        which can effectively reject the undesired samples during sampling.
 
     This class wraps a base prior and applies additional constraints, which must be implemented by subclasses via the `constraints` method.
     The log_prob is set to -inf for any input that does not satisfy the constraints, and the sample method repeatedly draws from the base prior until enough valid samples are found.
 
     Warning:
-        The log_prob method of ConstrainedPrior is not normalized.
-        The probability density is set to -inf outside the allowed region (as defined by constraints), but the remaining region is not renormalized.
-        This means the resulting distribution is not a true probability density function.
+        The log_prob method of ConstrainedPrior may not be properly normalized.
+        The probability density is set to -inf outside of the intended domain (as defined by the constraints),
+            which may leave the density function not normalised under the newly constrained support.
+        This means the resulting distribution may not be a true probability density function.
 
     Note:
-        This lack of normalization does not cause any practical issue for MCMC or similar inference methods, since only probability ratios are needed and the evidence (normalization constant) is not computed.
+        For the purpose of MCMC or similar inference methods, the prior need not be normalised,
+            since only the probability ratios are needed and the evidence (normalization constant) is not computed.
     """
 
     def __repr__(self):
@@ -293,6 +297,8 @@ class ConstrainedPrior(CompositePrior):
         valid_samples = jax.tree.map(lambda x: x[mask], samples)
         n_valid = mask.sum()
 
+        # TODO: Add a loop count and a warning message for inefficient resampling,
+        #       which is often likely be an issue in the prior than a small sample space.
         while n_valid < n_samples:
             rng_key, subkey = jax.random.split(rng_key)
             new_samples = self.base_prior[0].sample(subkey, n_samples - n_valid)
@@ -311,7 +317,7 @@ class ConstrainedPrior(CompositePrior):
 @jaxtyped(typechecker=typechecker)
 class SimpleConstrainedPrior(ConstrainedPrior):
     """
-    Unbounded prior that automatically applies bound constraints (xmin/xmax) from its base prior.
+    A prior class with a constraint being the bounds (xmin, xmax) of the base prior.
 
     This class wraps a 1D base prior and inspects it for `xmin` and `xmax` attributes.
     If these attributes are present, it constructs a constraint function that enforces the bounds on the parameter space.
@@ -572,10 +578,7 @@ class UniformSpherePrior(CombinePrior):
         self.parameter_names = parameter_names
         assert self.n_dims == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
-            f"{self.parameter_names[0]}_mag",
-            f"{self.parameter_names[0]}_theta",
-            f"{self.parameter_names[0]}_phi",
-        ]
+            f"{self.parameter_names[0]}_{suffix}" for suffix in ('mag', 'theta', 'phi')]
         super().__init__(
             [
                 UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
