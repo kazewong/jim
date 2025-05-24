@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
+from jax.lax import broadcast_in_dim
 from jaxtyping import Array, Float, Complex
 from typing import Optional
 from scipy.interpolate import interp1d
@@ -359,7 +360,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
     @staticmethod
     def max_phase_diff(
-        f: Float[Array, " n_freq"],
+        freqs: Float[Array, " n_freq"],
         f_low: float,
         f_high: float,
         chi: float = 1.0,
@@ -367,9 +368,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         """
         Compute the maximum phase difference between the frequencies in the array.
 
+        See Eq.(7) in arXiv:2302.05333.
+
         Parameters
         ----------
-        f: Float[Array, "n_dims"]
+        freqs: Float[Array, "n_freq"]
             Array of frequencies to be binned.
         f_low: float
             Lower frequency bound.
@@ -380,18 +383,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         Returns
         -------
-        Float[Array, "n_dims"]
+        Float[Array, "n_freq"]
             Maximum phase difference between the frequencies in the array.
         """
         gamma = jnp.arange(-5, 6) / 3.0
-        f_2D = jnp.broadcast_to(f.reshape(f.size, 1), (f.size, gamma.size))
+        # Promotes freqs to 2D with shape (n_freq, 10) for later f/f_star
+        freq_2D = broadcast_in_dim(freqs, (freqs.size, gamma.size), [0])
         f_star = jnp.where(gamma >= 0, f_high, f_low)
-        return (
-            2
-            * jnp.pi
-            * chi
-            * jnp.sum((f_2D / f_star) ** gamma * jnp.sign(gamma), axis=1)
-        )
+        summand = (freq_2D / f_star) ** gamma * jnp.sign(gamma)
+        return 2 * jnp.pi * chi * jnp.sum(summand, axis=1)
 
     def make_binning_scheme(
         self, freqs: Float[Array, " n_freq"], n_bins: int, chi: float = 1
@@ -417,9 +417,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             The bin centers.
         """
         phase_diff_array = self.max_phase_diff(freqs, freqs[0], freqs[-1], chi=chi)  # type: ignore
-        bin_f = interp1d(phase_diff_array, freqs)
         phase_diff = jnp.linspace(phase_diff_array[0], phase_diff_array[-1], n_bins + 1)
-        f_bins = bin_f(phase_diff)
+        f_bins = interp1d(phase_diff_array, freqs)(phase_diff)
         f_bins_center = (f_bins[:-1] + f_bins[1:]) / 2
         return jnp.array(f_bins), jnp.array(f_bins_center)
 
@@ -436,15 +435,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for i in range(len(f_bins) - 1):
             f_index = jnp.where((freqs >= f_bins[i]) & (freqs < f_bins[i + 1]))[0]
             freq_shift = freqs[f_index] - f_bins_center[i]
-            A0_array.append(4 * jnp.sum(data_prod[f_index]) * df)
-            A1_array.append(4 * jnp.sum(data_prod[f_index] * freq_shift) * df)
-            B0_array.append(4 * jnp.sum(self_prod[f_index]) * df)
-            B1_array.append(4 * jnp.sum(self_prod[f_index] * freq_shift) * df)
+            A0_array.append(jnp.sum(data_prod[f_index]))
+            A1_array.append(jnp.sum(data_prod[f_index] * freq_shift))
+            B0_array.append(jnp.sum(self_prod[f_index]))
+            B1_array.append(jnp.sum(self_prod[f_index] * freq_shift))
 
-        A0_array = jnp.array(A0_array)
-        A1_array = jnp.array(A1_array)
-        B0_array = jnp.array(B0_array)
-        B1_array = jnp.array(B1_array)
+        A0_array = 4 * df * jnp.array(A0_array)
+        A1_array = 4 * df * jnp.array(A1_array)
+        B0_array = 4 * df * jnp.array(B0_array)
+        B1_array = 4 * df * jnp.array(B1_array)
         return A0_array, A1_array, B0_array, B1_array
 
     def maximize_likelihood(
