@@ -247,16 +247,16 @@ class SequentialTransformPrior(CompositePrior):
 class ConstrainedPrior(CompositePrior):
     """
     An abstract prior class that allow additional constraints be imposed on the parameter space.
-    For inputs outside of the constrained support, it assigns the value `-inf` to the `log_prob`,
-        which can effectively reject the undesired samples during sampling.
+    For inputs outside of the constrained support, `log_prob` returns the value `-inf`,
+        for rejecting the undesired samples during sampling.
 
     This class wraps a base prior and applies additional constraints, which must be implemented by subclasses via the `constraints` method.
     The log_prob is set to -inf for any input that does not satisfy the constraints, and the sample method repeatedly draws from the base prior until enough valid samples are found.
 
     Warning:
-        The log_prob method of ConstrainedPrior may not be properly normalized.
-        The probability density is set to -inf outside of the intended domain (as defined by the constraints),
-            which may leave the density function not normalised under the newly constrained support.
+        The `log_prob` method under the ConstrainedPrior may not be normalized to 1.
+        This will be the case when the constrained support is a proper subset of
+            the original support on which the density function is normalised.
         This means the resulting distribution may not be a true probability density function.
 
     Note:
@@ -271,14 +271,14 @@ class ConstrainedPrior(CompositePrior):
         self,
         base_prior: list[Prior],
     ):
-        assert len(base_prior) == 1, "ConstrainedPrior only takes one base prior"
+        assert len(base_prior) == 1, "ConstrainedPrior takes one base prior only"
         super().__init__(base_prior)
 
     @abstractmethod
     def constraints(self, x: dict[str, Float]) -> Bool:
         """
         Constraints to be applied to the parameter space.
-        This method should be overridden in subclasses to define specific constraints.
+        Subclasses should overwrite this method to define their constraints.
         """
         raise NotImplementedError
 
