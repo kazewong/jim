@@ -58,8 +58,9 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert jnp.array_equiv(_frequencies[0], _frequencies), \
-                "The frequency arrays are not all the same."
+        assert jnp.array_equiv(
+            _frequencies[0], _frequencies
+        ), "The frequency arrays are not all the same."
 
         self.detectors = detectors
         self.frequencies = _frequencies[0]
