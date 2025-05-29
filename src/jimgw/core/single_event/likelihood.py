@@ -118,9 +118,10 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         """The interferometers for the likelihood."""
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+    def evaluate(self, input_params: dict[str, Float], data: dict) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters."""
+        params = input_params.copy()
         params["trigger_time"] = self.trigger_time
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
@@ -235,7 +236,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.freq_grid_low = freq_grid[:-1]
 
         if ref_params:
-            self.ref_params = ref_params
+            self.ref_params = ref_params.copy()
             logging.info(f"Reference parameters provided, which are {self.ref_params}")
         elif prior:
             logging.info("No reference parameters are provided, finding it...")
@@ -329,9 +330,10 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
-    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+    def evaluate(self, input_params: dict[str, Float], data: dict) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
+        params = input_params.copy()
         params["trigger_time"] = self.trigger_time
         params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
