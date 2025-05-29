@@ -226,15 +226,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         else:
             self.fixing_func = lambda x: x
 
-        # Get the original frequency grid
-        frequency_original = self.frequencies
-        # Get the grid of the relative binning scheme (contains the final endpoint)
-        # and the center points
-        freq_grid, self.freq_grid_center = self.make_binning_scheme(
-            jnp.array(frequency_original), n_bins
-        )
-        self.freq_grid_low = freq_grid[:-1]
-
         if ref_params:
             self.ref_params = ref_params.copy()
             logging.info(f"Reference parameters provided, which are {self.ref_params}")
@@ -276,12 +267,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.B0_array = {}
         self.B1_array = {}
 
-        h_sky = reference_waveform(frequency_original, self.ref_params)
+        # Get the original frequency grid
+        # Need to check all detectors have same sliced frequencies
+        frequency_original = self.detectors[0].sliced_frequencies
+        # Get the grid of the relative binning scheme (contains the final endpoint)
+        # and the center points
+        freq_grid, self.freq_grid_center = self.make_binning_scheme(
+            jnp.array(frequency_original), n_bins
+        )
+        self.freq_grid_low = freq_grid[:-1]        
 
+        h_sky = reference_waveform(frequency_original, self.ref_params)
         # Get frequency masks to be applied, for both original
         # and heterodyne frequency grid
         h_amp = jnp.sum(
-            jnp.array([jnp.abs(h_sky[key]) for key in h_sky.keys()]), axis=0
+            jnp.array([jnp.abs(h_sky[pol]) for pol in h_sky.keys()]), axis=0
         )
         f_valid = frequency_original[jnp.where(h_amp > 0)[0]]
         f_max = jnp.max(f_valid)
@@ -324,7 +324,6 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 freq_grid,
                 self.freq_grid_center,
             )
-
             self.A0_array[detector.name] = A0[mask_heterodyne_center]
             self.A1_array[detector.name] = A1[mask_heterodyne_center]
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
@@ -686,13 +685,12 @@ def original_relative_binning_likelihood(
     frequencies_center,
     **kwargs,
 ):
-
     log_likelihood = 0.0
 
     for detector in detectors:
         waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
         waveform_center = detector.fd_response(
-            frequencies_low, waveform_sky_center, params
+            frequencies_center, waveform_sky_center, params
         )
 
         r0 = waveform_center / waveform_center_ref[detector.name]
