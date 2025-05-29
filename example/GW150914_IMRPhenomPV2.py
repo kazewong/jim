@@ -166,7 +166,7 @@ jim = Jim(
     n_training_loops=200,
     n_production_loops=100,
     n_epochs=20,
-    mala_step_size=mass_matrix * 2e-3,
+    mala_step_size=2e-3,
     rq_spline_hidden_units=[128, 128],
     rq_spline_n_bins=10,
     rq_spline_n_layers=8,
@@ -183,7 +183,7 @@ jim = Jim(
     verbose=True,
 )
 #
-jim.sample(jax.random.PRNGKey(42))
+jim.sample()
 
 print("Done!")
 
