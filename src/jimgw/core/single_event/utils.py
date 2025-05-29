@@ -31,6 +31,7 @@ def complex_inner_product(
                 If either h1, h2 is the strain data, this is the match-filtered SNR.
     """
     integrand = jnp.conj(h1) * h2 / psd
+    # Use trapezoid instead of sum gives differences of order 0.1
     return 4.0 * trapezoid(integrand, x=frequency, dx=df)
 
 
