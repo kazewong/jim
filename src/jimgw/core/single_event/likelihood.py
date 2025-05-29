@@ -118,7 +118,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         """The interferometers for the likelihood."""
         return [detector.name for detector in self.detectors]
 
-    def evaluate(self, input_params: dict[str, Float], data: dict) -> Float:
+    def evaluate(self, input_params: dict[str, Float], data: Optional[dict]) -> Float:
         # TODO: Test whether we need to pass data in or with class changes is fine.
         """Evaluate the likelihood for a given set of parameters."""
         params = input_params.copy()
@@ -330,7 +330,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
-    def evaluate(self, input_params: dict[str, Float], data: dict) -> Float:
+    def evaluate(self, input_params: dict[str, Float], data: Optional[dict]) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
         params = input_params.copy()
