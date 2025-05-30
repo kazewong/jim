@@ -161,10 +161,10 @@ jim = Jim(
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
     n_chains=500,
-    n_local_steps=20,
-    n_global_steps=5,
-    n_training_loops=200,
-    n_production_loops=100,
+    n_local_steps=100,
+    n_global_steps=1000,
+    n_training_loops=20,
+    n_production_loops=10,
     n_epochs=20,
     mala_step_size=2e-3,
     rq_spline_hidden_units=[128, 128],
@@ -172,12 +172,12 @@ jim = Jim(
     rq_spline_n_layers=8,
     learning_rate=1e-3,
     batch_size=10000,
-    n_max_examples=10000,
-    n_NFproposal_batch_size=5,
+    n_max_examples=30000,
+    n_NFproposal_batch_size=100,
     local_thinning=1,
-    global_thinning=1,
+    global_thinning=100,
     history_window=200,
-    n_temperatures=10,
+    n_temperatures=0,
     max_temperature=20.0,
     n_tempered_steps=10,
     verbose=True,
@@ -190,4 +190,10 @@ print("Done!")
 logprob = jim.sampler.resources["log_prob_production"].data
 print(jnp.mean(logprob))
 
-jim.get_samples()
+chains = jim.get_samples()
+
+import numpy as np
+import corner
+
+fig = corner.corner(np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10])
+fig.savefig('test')
