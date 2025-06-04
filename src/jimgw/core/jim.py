@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Optional
 import jax
 import jax.numpy as jnp
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
@@ -186,9 +186,9 @@ class Jim(object):
 
     def sample(
         self,
-        initial_position: Float[Array, " n_chains n_dims"] = jnp.array([]),
+        initial_position: Optional[Float[Array, " n_chains n_dims"]] = None,
     ):
-        if initial_position.size == 0:
+        if initial_position is None:
             initial_position = self.sample_initial_condition()
 
         self.sampler.sample(initial_position, {})
