@@ -40,9 +40,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
     dL_range: tuple[float, float]
     t_c_range: tuple[float, float]
     phase_c_range: tuple[float, float]
-    psi_prior: tuple[float, float]
-    ra_prior: tuple[float, float]
-    dec_prior: tuple[float, float]
+    psi_range: tuple[float, float]
+    ra_range: tuple[float, float]
+    dec_range: tuple[float, float]
 
     @property
     def n_dims(self):
@@ -66,8 +66,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         dL_range: tuple[float, float],
         t_c_range: tuple[float, float],
         phase_c_range: tuple[float, float],
-        psi_prior: tuple[float, float],
-        ra_prior: tuple[float, float],
+        psi_range: tuple[float, float],
+        ra_range: tuple[float, float],
+        dec_range: tuple[float, float]
     ):
 
         self.seed = seed
@@ -87,8 +88,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         self.dL_range = dL_range
         self.t_c_range = t_c_range
         self.phase_c_range = phase_c_range
-        self.psi_prior = psi_prior
-        self.ra_prior = ra_prior
+        self.psi_range = psi_range
+        self.ra_range = ra_range
+        self.dec_range = dec_range
 
         self.likelihood = self.initialize_likelihood()
         self.prior = self.initialize_prior()
@@ -158,10 +160,10 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             self.phase_c_range[0], self.phase_c_range[1], parameter_names=["phase_c"]
         )
         psi_prior = UniformPrior(
-            self.psi_prior[0], self.psi_prior[1], parameter_names=["psi"]
+            self.psi_range[0], self.psi_range[1], parameter_names=["psi"]
         )
         ra_prior = UniformPrior(
-            self.ra_prior[0], self.ra_prior[1], parameter_names=["ra"]
+            self.ra_range[0], self.ra_range[1], parameter_names=["ra"]
         )
         dec_prior = CosinePrior(parameter_names=["dec"])
 
@@ -262,8 +264,8 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             ),
             BoundToUnbound(
                 name_mapping=(["psi"], ["psi_unbounded"]),
-                original_lower_bound=self.psi_prior[0],
-                original_upper_bound=self.psi_prior[1],
+                original_lower_bound=self.psi_range[0],
+                original_upper_bound=self.psi_range[1],
             ),
             BoundToUnbound(
                 name_mapping=(["zenith"], ["zenith_unbounded"]),
@@ -295,8 +297,8 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             "dL_range": self.dL_range,
             "t_c_range": self.t_c_range,
             "phase_c_range": self.phase_c_range,
-            "psi_prior": self.psi_prior,
-            "ra_prior": self.ra_prior,
+            "psi_prior": self.psi_range,
+            "ra_prior": self.ra_range,
         }
         with open(path, "w") as f:
             yaml.dump(run_dict, f)
@@ -352,7 +354,7 @@ class TestIMRPhenomPv2StandardCBCRunDefinition(IMRPhenomPv2StandardCBCRunDefinit
             dL_range=(1.0, 10000.0),
             t_c_range=(-0.05, 0.05),
             phase_c_range=(0.0, 2 * jnp.pi),
-            psi_prior=(0.0, jnp.pi),
-            ra_prior=(0.0, 2 * jnp.pi),
+            psi_range=(0.0, jnp.pi),
+            ra_range=(0.0, 2 * jnp.pi),
         )
         self.likelihood = ZeroLikelihood()
