@@ -51,9 +51,9 @@ with jax.disable_jit():
     print("================================")
     start = 0
     for end in jnp.linspace(0, 10_000_000 + 1, chunks, dtype=jnp.int32)[1:]:
-        print(f"================================")
+        print("================================")
         print(f"Start index is: {start}")
-        print(f"================================")
+        print("================================")
         _computed_times = computed_times[start:end]
         print(f"Computing {_computed_times.size} samples")
         start_time = time.time()
@@ -86,9 +86,9 @@ RTOL = 1e-16
 ATOL = 4e-10
 start = 0
 for end in jnp.linspace(0, 10_000_000 + 1, chunks, dtype=jnp.int32)[1:]:
-    print(f"================================")
+    print("================================")
     print(f"Start index is: {start}")
-    print(f"================================")
+    print("================================")
     _computed_times = computed_times[start:end]
     print(f"Computing {_computed_times.size} samples")
     start_time = time.time()

@@ -1,7 +1,7 @@
 import bilby
 import jax.numpy as jnp
 import numpy as np
-from jax import grad, jit
+from jax import jit
 from jax.config import config
 
 config.update("jax_enable_x64", True)
@@ -66,15 +66,11 @@ waveform_frequency = waveform_frequency[jnp.isfinite(psd)]
 psd_frequency = psd_frequency[jnp.isfinite(psd)]
 psd = psd[jnp.isfinite(psd)]
 
-from jax import grad, jacfwd, jacrev, jit, random, value_and_grad, vmap
-from jax.experimental.optimizers import adam, sgd
-from jaxgw.likelihood.detector_projection import (antenna_response,
-                                                  construct_arm,
-                                                  detector_tensor,
-                                                  get_detector_response)
+from jax import value_and_grad
+from jax.experimental.optimizers import adam
+from jaxgw.likelihood.detector_projection import (construct_arm,
+                                                  detector_tensor)
 from jaxgw.likelihood.utils import inner_product
-from jaxgw.waveform.IMRPhenomB import IMRPhenomB, Lorentzian, getPhenomCoef
-from jaxgw.waveform.IMRPhenomC import IMRPhenomC
 from jaxgw.waveform.TaylorF2 import TaylorF2
 
 waveform = TaylorF2(waveform_frequency, injection_parameters)

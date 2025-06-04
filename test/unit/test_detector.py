@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 from copy import deepcopy
 from scipy.signal import welch
-from jimgw.single_event.detector import H1
 from jimgw.single_event.data import Data, PowerSpectrum
 
 
