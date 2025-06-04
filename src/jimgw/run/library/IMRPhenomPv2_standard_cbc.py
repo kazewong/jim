@@ -325,8 +325,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             dL_range=tuple(run_dict["dL_range"]),
             t_c_range=tuple(run_dict["t_c_range"]),
             phase_c_range=tuple(run_dict["phase_c_range"]),
-            psi_prior=tuple(run_dict["psi_prior"]),
-            ra_prior=tuple(run_dict["ra_prior"]),
+            psi_range=tuple(run_dict["psi_range"]),
+            ra_range=tuple(run_dict["ra_range"]),
+            dec_range=tuple(run_dict["dec_range"]),
         )
         return run
 
@@ -356,5 +357,6 @@ class TestIMRPhenomPv2StandardCBCRunDefinition(IMRPhenomPv2StandardCBCRunDefinit
             phase_c_range=(0.0, 2 * jnp.pi),
             psi_range=(0.0, jnp.pi),
             ra_range=(0.0, 2 * jnp.pi),
+            dec_range=(-jnp.pi / 2, jnp.pi / 2),
         )
         self.likelihood = ZeroLikelihood()
