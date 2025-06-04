@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float, PRNGKeyArray
+from typing import Sequence
 
 from jimgw.core.prior import Prior
 from jimgw.core.transforms import BijectiveTransform
@@ -117,7 +118,7 @@ def carte_to_spherical_angles(
 
 def generate_initial_samples(
     prior: Prior,
-    sample_transforms: list[BijectiveTransform],
+    sample_transforms: Sequence[BijectiveTransform],
     n_samples: int,
     rng_key: PRNGKeyArray,
 ) -> tuple[Float[Array, " n_samples n_dims"], PRNGKeyArray]:

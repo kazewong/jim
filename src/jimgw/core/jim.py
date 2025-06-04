@@ -1,5 +1,6 @@
 from typing import Sequence
 import jax
+import jax.numpy as jnp
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
