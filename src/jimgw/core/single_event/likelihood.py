@@ -40,6 +40,10 @@ class ZeroLikelihood(LikelihoodBase):
 
 
 class TransientLikelihoodFD(SingleEventLikelihood):
+    """
+    We should explain our choice of one `f_min` for all detectors here,
+    and how should the user achieve data masking properly, either in the PSD or data.
+    """
     def __init__(
         self,
         detectors: Sequence[Detector],
@@ -268,8 +272,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         self.B1_array = {}
 
         # Get the original frequency grid
-        # Need to check all detectors have same sliced frequencies
-        frequency_original = self.detectors[0].sliced_frequencies
+        frequency_original = self.frequencies
         # Get the grid of the relative binning scheme (contains the final endpoint)
         # and the center points
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
