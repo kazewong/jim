@@ -159,7 +159,7 @@ class Jim(object):
 
     def sample(
         self,
-        initial_position: Float[Array, "n_chains n_dims"],
+        initial_position: Float[Array, " n_chains n_dims"] = jnp.array([]),
     ):
         if initial_position.size == 0:
             initial_position = self.sample_initial_condition()
@@ -168,7 +168,7 @@ class Jim(object):
 
     def get_samples(
         self, training: bool = False
-    ) -> dict[str, Float[Array, "n_chains n_dims"]]:
+    ) -> dict[str, Float[Array, " n_chains n_dims"]]:
         """
         Get the samples from the sampler
 
