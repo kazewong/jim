@@ -1,6 +1,10 @@
+import jax
 import jax.numpy as jnp
 from jax.scipy.special import i0e
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, PRNGKeyArray
+
+from jimgw.core.prior import Prior
+from jimgw.core.transforms import BijectiveTransform
 
 EPS = 1e-15
 
@@ -109,3 +113,43 @@ def carte_to_spherical_angles(
         jnp.atan2(y, x),
     )
     return theta, phi
+
+
+def generate_initial_samples(
+    prior: Prior,
+    sample_transforms: list[BijectiveTransform],
+    n_samples: int,
+    rng_key: PRNGKeyArray,
+) -> tuple[Float[Array, " n_samples n_dims"], PRNGKeyArray]:
+    """
+    Generate valid initial samples for MCMC chains, applying sample transforms and ensuring all values are finite.
+
+    Args:
+        prior: The prior object with a .sample method and .n_dims attribute.
+        sample_transforms: Sequence of BijectiveTransform objects to apply to the samples.
+        n_samples (int): Number of samples to generate.
+        rng_key: JAX random key.
+
+    Returns:
+        tuple:
+            - initial_position (jnp.ndarray): Array of shape (n_samples, n_dims) with valid initial samples.
+            - rng_key: Updated random key after sampling.
+    """
+    initial_position = jnp.zeros((n_samples, prior.n_dims)) + jnp.nan
+    while not jnp.isfinite(initial_position).all():
+        non_finite_index = jnp.where(~jnp.all(jnp.isfinite(initial_position), axis=1))[
+            0
+        ]
+        rng_key, subkey = jax.random.split(rng_key)
+        guess = prior.sample(subkey, n_samples)
+        for transform in sample_transforms:
+            guess = jax.vmap(transform.forward)(guess)
+        guess = jnp.array([guess[key] for key in guess.keys()]).T
+        finite_guess = jnp.where(
+            jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
+        )[0]
+        common_length = min(len(finite_guess), len(non_finite_index))
+        initial_position = initial_position.at[non_finite_index[:common_length]].set(
+            guess[:common_length]
+        )
+    return initial_position, rng_key
