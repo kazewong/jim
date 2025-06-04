@@ -275,7 +275,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         freq_grid, self.freq_grid_center = self.make_binning_scheme(
             jnp.array(frequency_original), n_bins
         )
-        self.freq_grid_low = freq_grid[:-1]        
+        self.freq_grid_low = freq_grid[:-1]
 
         h_sky = reference_waveform(frequency_original, self.ref_params)
         # Get frequency masks to be applied, for both original
