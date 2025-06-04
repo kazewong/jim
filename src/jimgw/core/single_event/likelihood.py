@@ -54,12 +54,12 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         # explicitly what the arguments are accepted
 
         # Set the frequency bounds for the detectors
-        _frequencies: list[Float[Array, " n_freq"]] = []
+        _frequencies = []
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
         assert jnp.array_equiv(
-            _frequencies[0], _frequencies
+            _frequencies[0], jnp.asarray(_frequencies)
         ), "The frequency arrays are not all the same."
 
         self.detectors = detectors
@@ -329,21 +329,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             self.B0_array[detector.name] = B0[mask_heterodyne_center]
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
-    def evaluate(self, input_params: dict[str, Float], data: Optional[dict] = None) -> Float:
+    def evaluate(self, params: dict[str, Float], data: Optional[dict] = None) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
-        params = input_params.copy()
-        params["trigger_time"] = self.trigger_time
-        params["gmst"] = self.gmst
+        _params = params.copy()
+        _params["trigger_time"] = self.trigger_time
+        _params["gmst"] = self.gmst
         # adjust the params due to different marginalzation scheme
-        params = self.param_func(params)
+        _params = self.param_func(_params)
         # adjust the params due to fixing parameters
-        params = self.fixing_func(params)
+        _params = self.fixing_func(_params)
         # evaluate the waveforms as usual
-        waveform_sky_low = self.waveform(frequencies_low, params)
-        waveform_sky_center = self.waveform(frequencies_center, params)
+        waveform_sky_low = self.waveform(frequencies_low, _params)
+        waveform_sky_center = self.waveform(frequencies_center, _params)
         log_likelihood = self.rb_likelihood_function(
-            params,
+            _params,
             self.A0_array,
             self.A1_array,
             self.B0_array,
