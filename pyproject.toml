@@ -62,3 +62,12 @@ modules = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pyright]
+include = ["src"]
+exclude = ["docs"]
+
+[tool.ruff]
+# In addition to the standard set of exclusions, omit all tests, plus a specific file.
+exclude = ["tests","docs"]
+
