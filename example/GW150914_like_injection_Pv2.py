@@ -4,10 +4,9 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 
-jax.config.update("jax_enable_x64", True)
 
-from jimgw.jim import Jim
-from jimgw.prior import (
+from jimgw.core.jim import Jim
+from jimgw.core.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
@@ -16,11 +15,11 @@ from jimgw.prior import (
     UniformSpherePrior,
     RayleighPrior,
 )
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomPv2
-from jimgw.transforms import PeriodicTransform
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
+from jimgw.core.transforms import PeriodicTransform
+from jimgw.core.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
@@ -29,6 +28,7 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
+jax.config.update("jax_enable_x64", True)
 
 #################################################
 ########## Parse the input settings #############
