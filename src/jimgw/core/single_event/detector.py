@@ -188,7 +188,7 @@ class Detector(ABC):
         return self._sliced_psd
 
     def __init__(self):
-        if not jax.config.jax_enable_x64:
+        if not jax.config.read("jax_enable_x64"):
             raise RuntimeError(
                 "Detector requires JAX to run in 64-bit (float64) mode, "
                 "but jax_enable_x64 is currently False.\n\n"
