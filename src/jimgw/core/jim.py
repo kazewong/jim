@@ -147,7 +147,7 @@ class Jim(object):
             named_params = transform.forward(named_params)
         return self.likelihood.evaluate(named_params, data) + prior
 
-    def sample_initial_condition(self) -> Float[Array, "n_chains n_dims"]:
+    def sample_initial_condition(self) -> Float[Array, " n_chains n_dims"]:
         initial_position, new_rng_key = generate_initial_samples(
             self.prior,
             self.sample_transforms,

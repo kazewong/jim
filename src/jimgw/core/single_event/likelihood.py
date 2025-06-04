@@ -8,6 +8,7 @@ from typing import Optional
 from scipy.interpolate import interp1d
 
 from jimgw.core.utils import log_i0, generate_initial_samples
+from jimgw.core.utils import log_i0, generate_initial_samples
 from jimgw.core.prior import Prior
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
