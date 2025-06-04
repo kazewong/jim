@@ -189,8 +189,29 @@ class Jim(object):
         initial_position: Optional[Float[Array, " n_chains n_dims"]] = None,
     ):
         if initial_position is None:
+            print("No initial_position provided. Sampling from prior.")
             initial_position = self.sample_initial_condition()
-
+        else:
+            initial_position = jnp.asarray(initial_position)
+            if initial_position.ndim == 1:
+                if initial_position.shape[0] != self.prior.n_dims:
+                    raise ValueError(
+                        f"initial_position must have shape (n_dims,) or (n_chains, n_dims). Got shape {initial_position.shape}."
+                    )
+                print("1D initial_position provided. Broadcasting it to all chains.")
+                initial_position = jnp.broadcast_to(
+                    initial_position, (self.sampler.n_chains, self.prior.n_dims)
+                )
+            elif initial_position.ndim == 2:
+                if initial_position.shape != (self.sampler.n_chains, self.prior.n_dims):
+                    raise ValueError(
+                        f"initial_position must have shape (n_dims,) or (n_chains, n_dims). Got shape {initial_position.shape}."
+                    )
+                print("Using the provided initial positions for sampling.")
+            else:
+                raise ValueError(
+                    f"initial_position must have shape (n_dims,) or (n_chains, n_dims). Got shape {initial_position.shape}."
+                )
         self.sampler.sample(initial_position, {})
 
     def get_samples(
