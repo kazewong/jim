@@ -301,7 +301,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             "ra_prior": self.ra_range,
         }
         with open(path, "w") as f:
-            yaml.dump(run_dict, f)
+            yaml.dump(run_dict, f, default_flow_style=False, sort_keys=False)
         print(f"Run serialized to {path}")
 
     @classmethod

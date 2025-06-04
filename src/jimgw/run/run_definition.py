@@ -16,7 +16,9 @@ class RunDefinition(ABC):
     The most important property of a Run instance is it needs to be able to deterministically declared. All arguments to a run has to be explicitly provided, and the content of a Run should be exactly the same given the same arguments.
     """
 
+    working_dir: str
     seed: int
+    flowMC_params: dict[str, float | int]
     likelihood: LikelihoodBase
     prior: Prior
     sample_transforms: Sequence[BijectiveTransform]

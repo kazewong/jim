@@ -15,10 +15,9 @@ import os
 class RunManager:
     run: RunDefinition
     jim: Jim
-    result_dir: str
 
     def __init__(
-        self, run: RunDefinition | str, result_dir: str = "./runs", **flowMC_params
+        self, run: RunDefinition | str
     ):
         if isinstance(run, RunDefinition):
             self.run = run
@@ -35,12 +34,12 @@ class RunManager:
             run.prior,
             run.sample_transforms,
             run.likelihood_transforms,
-            **flowMC_params,
+            **run.flowMC_params, # type: ignore
         )
 
-        if not os.path.exists(result_dir):
-            os.makedirs(result_dir)
-        self.result_dir = result_dir
+        if not os.path.exists(run.working_dir):
+            os.makedirs(run.working_dir)
+        self.working_dir = run.working_dir
 
     ### Utility functions ###
 
@@ -77,7 +76,7 @@ class RunManager:
             title_fmt=title_fmt,
             use_math_text=use_math_text,
         )
-        path = f"{self.result_dir}/corner.jpeg"
+        path = f"{self.working_dir}/corner.jpeg"
         plt.savefig(path)
         plt.close()
 
@@ -94,7 +93,7 @@ class RunManager:
         plt.xlabel("iteration")
         plt.xlim(0, None)
         plt.ylabel("loss")
-        path = f"{self.result_dir}/loss.jpeg"
+        path = f"{self.working_dir}/loss.jpeg"
         plt.savefig(path)
         plt.close()
 
@@ -116,7 +115,7 @@ class RunManager:
             title_fmt=".2E",
             use_math_text=True,
         )
-        path = f"{self.result_dir}/nf_samples.jpeg"
+        path = f"{self.working_dir}/nf_samples.jpeg"
         plt.savefig(path)
         plt.close()
 
@@ -135,7 +134,7 @@ class RunManager:
             title_fmt=".2E",
             use_math_text=True,
         )
-        path = f"{self.result_dir}/prior_samples.jpeg"
+        path = f"{self.working_dir}/prior_samples.jpeg"
         plt.savefig(path)
         plt.close()
 
@@ -163,7 +162,7 @@ class RunManager:
         axs[1].set_ylabel("Acceptance rate")
 
         plt.tight_layout(rect=(0, 0, 1, 0.96))  # Adjust layout to fit the suptitle
-        path = f"{self.result_dir}/acceptance_rates.jpeg"
+        path = f"{self.working_dir}/acceptance_rates.jpeg"
         plt.savefig(path)
         plt.close()
 
@@ -196,4 +195,4 @@ class RunManager:
         """
         Serialize the run object to a file.
         """
-        self.run.serialize(self.result_dir + "/config.yaml")
+        self.run.serialize(self.working_dir + "/config.yaml")
