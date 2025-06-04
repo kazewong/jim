@@ -306,6 +306,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
 
     @classmethod
     def deserialize(cls, path: str) -> Self:
+        print(f"Deserializing run from {path}")
         with open(path, "r") as f:
             run_dict = yaml.safe_load(f)
         run = cls(
