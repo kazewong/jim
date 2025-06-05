@@ -44,6 +44,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
     We should explain our choice of one `f_min` for all detectors here,
     and how should the user achieve data masking properly, either in the PSD or data.
     """
+
     def __init__(
         self,
         detectors: Sequence[Detector],
