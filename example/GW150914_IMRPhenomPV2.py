@@ -145,7 +145,6 @@ likelihood_transforms = [
 ]
 
 
-
 likelihood = TransientLikelihoodFD(
     [H1, L1],
     waveform=waveform,
