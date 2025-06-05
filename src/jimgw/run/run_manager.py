@@ -29,6 +29,10 @@ class RunManager:
         assert isinstance(
             run, RunDefinition
         ), "Run object or path not given. Please provide a Run object or a path to a serialized Run object."
+        
+        # Initialize the jim objects needed for the run
+        run.initialize_jim_objects()
+        
         self.jim = Jim(
             run.likelihood,
             run.prior,

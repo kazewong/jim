@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     definitions_name = yaml.safe_load(open(args.run_definition))['definition_name']
 
-    assert isinstance(definition := AvailableDefinitions[definitions_name], RunDefinition), f"Invalid run definition: {definitions_name}"
+    assert issubclass(definition := AvailableDefinitions[definitions_name].value, RunDefinition), f"Invalid run definition: {definitions_name}"
 
     # Load the run definition
     run_definition = definition.from_file(args.run_definition)

@@ -50,14 +50,6 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
 
     def __init__(
         self,
-        seed: int,
-        gps: float,
-        segment_length: float,
-        post_trigger_length: float,
-        f_min: float,
-        f_max: float,
-        ifos: set[str],
-        f_ref: float,
         M_c_range: tuple[float, float],
         q_range: tuple[float, float],
         max_s1: float,
@@ -68,17 +60,11 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         phase_c_range: tuple[float, float],
         psi_range: tuple[float, float],
         ra_range: tuple[float, float],
-        dec_range: tuple[float, float]
+        dec_range: tuple[float, float],
+        **kwargs,
     ):
+        super().__init__(**kwargs)
 
-        self.seed = seed
-        self.gps = gps
-        self.segment_length = segment_length
-        self.post_trigger_length = post_trigger_length
-        self.f_min = f_min
-        self.f_max = f_max
-        self.ifos = [detector_preset[ifo] for ifo in ifos]
-        self.f_ref = f_ref
 
         self.M_c_range = M_c_range
         self.q_range = q_range
@@ -92,6 +78,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         self.ra_range = ra_range
         self.dec_range = dec_range
 
+    def initialize_jim_objects(self):
         self.likelihood = self.initialize_likelihood()
         self.prior = self.initialize_prior()
         self.likelihood_transforms = self.initialize_likelihood_transforms()
@@ -279,31 +266,27 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             ),
         ]
 
-    def serialize(self, path: str = "./"):
-        run_dict = {
-            "definition_name": "IMRPhenomPv2StandardCBC",
-            "seed": self.seed,
-            "gps": self.gps,
-            "segment_length": self.segment_length,
-            "post_trigger_length": self.post_trigger_length,
-            "f_min": self.f_min,
-            "f_max": self.f_max,
-            "ifos": [ifo.name for ifo in self.ifos],
-            "f_ref": self.f_ref,
-            "M_c_range": self.M_c_range,
-            "q_range": self.q_range,
-            "max_s1": self.max_s1,
-            "max_s2": self.max_s2,
-            "iota_range": self.iota_range,
-            "dL_range": self.dL_range,
-            "t_c_range": self.t_c_range,
-            "phase_c_range": self.phase_c_range,
-            "psi_prior": self.psi_range,
-            "ra_prior": self.ra_range,
-        }
-        with open(path, "w") as f:
-            yaml.dump(run_dict, f, default_flow_style=False, sort_keys=False)
-        print(f"Run serialized to {path}")
+    def serialize(self, path: str = "./") -> dict:
+      run_dict = super().serialize(path)
+      run_dict.update({
+          "definition_name": "IMRPhenomPv2StandardCBC",
+          "M_c_range": list(self.M_c_range),
+          "q_range": list(self.q_range),
+          "max_s1": self.max_s1,
+          "max_s2": self.max_s2,
+          "iota_range": list(self.iota_range),
+          "dL_range": list(self.dL_range),
+          "t_c_range": list(self.t_c_range),
+          "phase_c_range": list(self.phase_c_range),
+          "psi_range": list(self.psi_range),
+          "ra_range": list(self.ra_range),
+          "dec_range": list(self.dec_range),
+      })
+      with open(path, "w") as f:
+          yaml.dump(run_dict, f, default_flow_style=False, sort_keys=False)
+      print(f"Run serialized to {path}")
+      
+      return run_dict
 
     @classmethod
     def deserialize(cls, path: str) -> Self:
@@ -331,6 +314,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             ra_range=tuple(run_dict["ra_range"]),
             dec_range=tuple(run_dict["dec_range"]),
         )
+        run.load_flowMC_params(run_dict)
         return run
 
 

@@ -5,4 +5,4 @@ class AvailableDefinitions(enum.Enum):
     """
     Enum for available run definitions.
     """
-    IMRPHENOMPV2STANDARDCBC = IMRPhenomPv2StandardCBCRunDefinition
+    IMRPhenomPv2StandardCBC = IMRPhenomPv2StandardCBCRunDefinition
