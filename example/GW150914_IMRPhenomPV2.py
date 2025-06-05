@@ -144,29 +144,7 @@ likelihood_transforms = [
     SphereSpinToCartesianSpinTransform("s2"),
 ]
 
-from jimgw.run.library.IMRPhenomPv2_standard_cbc import IMRPhenomPv2StandardCBCRunDefinition
 
-IMRPhenomPv2StandardCBCRunDefinition(
-  seed=0,
-  gps = 1126259462.4,
-  segment_length = 4,
-  post_trigger_length=2,
-  f_min=20.0,
-  f_max=1024.0,
-  ifos=set(["H1", "L1"]),
-  f_ref=20.0,
-  M_c_range=(10.0 , 80.0),
-  q_range=(0.125, 1.0),
-  max_s1=0.99,
-  max_s2=0.99,
-  iota_range=(0.0, jnp.pi),
-  dL_range=(1.0, 2000.0),
-  t_c_range=(-0.05, 0.05),
-  phase_c_range=(0.0, 2 * jnp.pi),
-  psi_range=(0.0, jnp.pi),
-  ra_range=(0.0, 2 * jnp.pi),
-  dec_range=(-jnp.pi / 2, jnp.pi / 2),
-)
 
 likelihood = TransientLikelihoodFD(
     [H1, L1],

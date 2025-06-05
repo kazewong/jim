@@ -281,6 +281,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
 
     def serialize(self, path: str = "./"):
         run_dict = {
+            "definition_name": "IMRPhenomPv2StandardCBC",
             "seed": self.seed,
             "gps": self.gps,
             "segment_length": self.segment_length,

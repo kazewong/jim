@@ -1,3 +1,4 @@
+Definition: IMRPhenomPv2StandardCBC
 seed: 0
 gps: 1126259462.4
 segment_length: 4
@@ -5,8 +6,8 @@ post_trigger_length: 2
 f_min: 20.0
 f_max: 1024.0
 ifos:
-- L1g
 - H1
+- L1
 f_ref: 20.0
 M_c_range: !!python/tuple
 - 10.0
