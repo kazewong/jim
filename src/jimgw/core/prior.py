@@ -578,7 +578,8 @@ class UniformSpherePrior(CombinePrior):
         self.parameter_names = parameter_names
         assert self.n_dims == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
-            f"{self.parameter_names[0]}_{suffix}" for suffix in ('mag', 'theta', 'phi')]
+            f"{self.parameter_names[0]}_{suffix}" for suffix in ("mag", "theta", "phi")
+        ]
         super().__init__(
             [
                 UniformPrior(0.0, max_mag, [self.parameter_names[0]]),
