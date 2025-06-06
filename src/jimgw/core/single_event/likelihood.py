@@ -180,8 +180,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         ref_params: dict = {},
         reference_waveform: Optional[Waveform] = None,
         prior: Optional[Prior] = None,
-        sample_transforms: list[BijectiveTransform] = [],
-        likelihood_transforms: list[NtoMTransform] = [],
+        sample_transforms: Sequence[BijectiveTransform] = [],
+        likelihood_transforms: Sequence[NtoMTransform] = [],
         **kwargs,
     ) -> None:
         super().__init__(detectors, waveform, f_min, f_max, trigger_time)
@@ -454,8 +454,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
     def maximize_likelihood(
         self,
         prior: Prior,
-        likelihood_transforms: list[NtoMTransform],
-        sample_transforms: list[BijectiveTransform],
+        likelihood_transforms: Sequence[NtoMTransform],
+        sample_transforms: Sequence[BijectiveTransform],
         popsize: int = 100,
         n_steps: int = 2000,
     ):
