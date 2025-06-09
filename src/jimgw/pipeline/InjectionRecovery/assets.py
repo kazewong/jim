@@ -1,5 +1,5 @@
 import dagster as dg
-
+from jimgw.core.population.injection_util import generate_fidiual_population
 
 # Sample a fiducial population
 
@@ -10,16 +10,23 @@ def sample_population():
     This is a placeholder function for the fiducial population.
     It is used to demonstrate how to create a Dagster asset.
     """
-    pass
+    generate_fidiual_population(
+        path_prefix="./data/",
+    )
 
 
-@dg.asset
-def generate_configs():
+@dg.asset(
+  deps=["sample_population"],
+)
+def generate_data():
     """
-    This is a placeholder function for the generation of configuration files.
-    It is used to demonstrate how to create a Dagster asset.
+    This is a placeholder function for the data generation.
     """
-    pass
+    with open("./data/fiducial_population.json", "r") as f:
+        population = f.read()
+        
+    
+    
 
 
 # Create asset group for run and configuration0

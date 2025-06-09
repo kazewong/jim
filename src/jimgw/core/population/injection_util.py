@@ -15,7 +15,7 @@ from jimgw.core.prior import (
   CombinePrior,
 )
 
-def generate_fidiual_population(seed: int = 2046, n_events: int = 100):
+def generate_fidiual_population(path_prefix:str = "./", seed: int = 2046, n_events: int = 100):
   prior = []
   M_c_min, M_c_max = 10.0, 80.0
   q_min, q_max = 0.125, 1.0
@@ -60,7 +60,7 @@ def generate_fidiual_population(seed: int = 2046, n_events: int = 100):
   )
   
   # Save in a csv file
-  with open("fiducial_population.csv", "w") as f:
+  with open(path_prefix + "fiducial_population.csv", "w") as f:
     f.write(",".join(samples.keys()) + "\n")
     for i in range(n_events):
       f.write(",".join([str(samples[key][i]) for key in samples.keys()]) + "\n")
