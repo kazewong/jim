@@ -31,7 +31,6 @@ import logging
 
 
 class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
-
     M_c_range: tuple[float, float]
     q_range: tuple[float, float]
     max_s1: float
@@ -65,7 +64,6 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
     ):
         super().__init__(**kwargs)
 
-
         self.M_c_range = M_c_range
         self.q_range = q_range
         self.max_s1 = max_s1
@@ -79,22 +77,26 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         self.dec_range = dec_range
 
     def initialize_jim_objects(self):
-        self.likelihood = self.initialize_likelihood(injection_data_prefix=self.injection_data_prefix)
+        self.likelihood = self.initialize_likelihood(
+            local_data_prefix=self.local_data_prefix
+        )
         self.prior = self.initialize_prior()
         self.likelihood_transforms = self.initialize_likelihood_transforms()
         self.sample_transforms = self.initialize_sample_transforms()
 
-    def initialize_likelihood(self, injection_data_prefix: Optional[str] = None) -> TransientLikelihoodFD:
+    def initialize_likelihood(
+        self, local_data_prefix: Optional[str] = None
+    ) -> TransientLikelihoodFD:
         logging.info("Initializing likelihood...")
-        
+
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
         psd_start = gps - 2048
         psd_end = gps + 2048
 
-        if self.injection_data_prefix == None:
-            logging.info("No injection data provided, using GWOSC data.")
+        if self.local_data_prefix == None:
+            logging.info("No local data provided, using GWOSC data.")
             for ifo in self.ifos:
                 if ifo not in detector_preset.values():
                     raise ValueError(f"Invalid detector: {ifo}")
@@ -104,8 +106,16 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
                 psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
                 ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
         else:
-            logging.info(f"Using injection data from {injection_data_prefix}.")
-            # TODO: Load injection data from a file, and the PSD correspondingly.
+            logging.info(f"Using local data from {local_data_prefix}.")
+            # TODO: Load local data from a file, and the PSD correspondingly.
+            for ifo in self.ifos:
+                if ifo not in detector_preset.values():
+                    raise ValueError(f"Invalid detector: {ifo}")
+                ifo_data = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}.hdf5")
+                ifo.set_data(ifo_data)
+                ifo_psd = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}_psd.hdf5")
+                psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
+                ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
 
@@ -120,7 +130,6 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         return likelihood
 
     def initialize_prior(self) -> CombinePrior:
-
         logging.info("Initializing prior...")
         # Mass prior
         Mc_prior = UniformPrior(
@@ -132,13 +141,6 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         s2_prior = UniformSpherePrior(parameter_names=["s2"], max_mag=self.max_s1)
         iota_prior = SinePrior(parameter_names=["iota"])
         # Extrinsic prior
-        dL_prior = PowerLawPrior(1.0, 2000.0, 2.0, parameter_names=["d_L"])
-        t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
-        phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
-        psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
-        ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
-        dec_prior = CosinePrior(parameter_names=["dec"])
-
         dL_prior = PowerLawPrior(
             self.dL_range[0],
             self.dL_range[1],
@@ -272,26 +274,28 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         ]
 
     def serialize(self, path: str = "./") -> dict:
-      run_dict = super().serialize(path)
-      run_dict.update({
-          "definition_name": "IMRPhenomPv2StandardCBC",
-          "M_c_range": list(self.M_c_range),
-          "q_range": list(self.q_range),
-          "max_s1": self.max_s1,
-          "max_s2": self.max_s2,
-          "iota_range": list(self.iota_range),
-          "dL_range": list(self.dL_range),
-          "t_c_range": list(self.t_c_range),
-          "phase_c_range": list(self.phase_c_range),
-          "psi_range": list(self.psi_range),
-          "ra_range": list(self.ra_range),
-          "dec_range": list(self.dec_range),
-      })
-      with open(path, "w") as f:
-          yaml.dump(run_dict, f, default_flow_style=False, sort_keys=False)
-      print(f"Run serialized to {path}")
-      
-      return run_dict
+        run_dict = super().serialize(path)
+        run_dict.update(
+            {
+                "definition_name": "IMRPhenomPv2StandardCBC",
+                "M_c_range": list(self.M_c_range),
+                "q_range": list(self.q_range),
+                "max_s1": self.max_s1,
+                "max_s2": self.max_s2,
+                "iota_range": list(self.iota_range),
+                "dL_range": list(self.dL_range),
+                "t_c_range": list(self.t_c_range),
+                "phase_c_range": list(self.phase_c_range),
+                "psi_range": list(self.psi_range),
+                "ra_range": list(self.ra_range),
+                "dec_range": list(self.dec_range),
+            }
+        )
+        with open(path, "w") as f:
+            yaml.dump(run_dict, f, default_flow_style=False, sort_keys=False)
+        print(f"Run serialized to {path}")
+
+        return run_dict
 
     @classmethod
     def deserialize(cls, path: str) -> Self:
