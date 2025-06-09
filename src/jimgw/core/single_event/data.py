@@ -513,3 +513,42 @@ class PowerSpectrum(ABC):
         noise_real = jax.random.normal(key, shape=var.shape) * jnp.sqrt(var)
         noise_imag = jax.random.normal(subkey, shape=var.shape) * jnp.sqrt(var)
         return noise_real + 1j * noise_imag
+
+    # TODO: Add function to save to file and load data from file.
+    @classmethod
+    def from_file(
+        cls,
+        path: str
+    ) -> Self:
+        """Load power spectrum from a file. This assumes the data to be in .npz format.
+        It should at least contains the keys 'values', 'frequencies', and 'name'.
+        `values` is the PSD values, `frequencies` is the frequencies of the PSD.
+
+        Args:
+            path (str): Path to the .npz file containing the data.
+        """
+        data = jnp.load(path, allow_pickle=True)
+        if "values" not in data or "frequencies" not in data:
+            raise ValueError(
+                "The file must contain 'values' and 'frequencies' keys."
+            )
+        values = data["values"]
+        frequencies = data["frequencies"]
+        name = data.get("name", "")
+        return cls(values, frequencies, name)
+        
+    def to_file(
+        self,
+        path: str
+    ):
+        """Save the power spectrum to a file in .npz format.
+
+        Args:
+            path (str): Path to save the .npz file.
+        """
+        jnp.savez(
+            path,
+            values=self.values,
+            frequencies=self.frequencies,
+            name=self.name,
+        )

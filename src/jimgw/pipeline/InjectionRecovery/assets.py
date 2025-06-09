@@ -1,8 +1,11 @@
 import dagster as dg
 from jimgw.core.population.injection_util import generate_fidiual_population
+from jimgw.core.single_event.detector import detector_preset
 from jimgw.run.library.IMRPhenomPv2_standard_cbc import IMRPhenomPv2StandardCBCRunDefinition
+from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 import numpy as np
 import os
+import yaml
 
 """
 TODO: Make a IO manager to handle the common prefix.
@@ -77,8 +80,32 @@ def raw_data():
     It is used to demonstrate how to create a Dagster asset.
     """
     parameters = np.genfromtxt('./data/fiducial_population.csv', delimiter=',', names=True)
+    keys = list(parameters.dtype.names) # type: ignore
     for idx, param in enumerate(parameters):
         os.makedirs(f"./data/runs/{idx}/strains/", exist_ok=True)
+        config_path = f"./data/runs/{idx}/config.yaml"
+        injection_parameters = {key: float(param[idx]) for idx, key in enumerate(keys)}
+        print(injection_parameters)
+        # with open(config_path, 'r') as file:
+        #     config = yaml.safe_load(file)
+        #     ifos = config['ifos']
+        #     f_min = config['f_min']
+        #     f_max = config['f_max']
+        #     duration = config['segment_length']
+        #     sampling_frequency = f_max * 2
+        #     f_ref = config['f_ref']
+        #     for ifo in ifos:
+        #         detector = detector_preset[ifo]
+        #         detector.load_and_set_psd()
+        #         detector.frequency_bounds = (f_min, f_max)
+        #         detector.inject_signal(
+        #             duration,
+        #             sampling_frequency,
+        #             0.0,
+        #             RippleIMRPhenomPv2(f_ref=20),
+        #             injection_parameters,
+        #             is_zero_noise=False,
+        #         )
 
 
 @dg.multi_asset(
