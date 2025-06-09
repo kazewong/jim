@@ -25,7 +25,7 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
-from typing import Sequence, Self
+from typing import Optional, Sequence, Self
 import yaml
 import logging
 
@@ -79,28 +79,33 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         self.dec_range = dec_range
 
     def initialize_jim_objects(self):
-        self.likelihood = self.initialize_likelihood()
+        self.likelihood = self.initialize_likelihood(injection_data_prefix=self.injection_data_prefix)
         self.prior = self.initialize_prior()
         self.likelihood_transforms = self.initialize_likelihood_transforms()
         self.sample_transforms = self.initialize_sample_transforms()
 
-    def initialize_likelihood(self) -> TransientLikelihoodFD:
+    def initialize_likelihood(self, injection_data_prefix: Optional[str] = None) -> TransientLikelihoodFD:
         logging.info("Initializing likelihood...")
-        # first, fetch a 4s segment centered on GW150914
+        
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
         psd_start = gps - 2048
         psd_end = gps + 2048
 
-        for ifo in self.ifos:
-            if ifo not in detector_preset.values():
-                raise ValueError(f"Invalid detector: {ifo}")
-            ifo_data = jd.Data.from_gwosc(ifo.name, start, end)
-            ifo.set_data(ifo_data)
-            ifo_psd = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
-            psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
-            ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
+        if self.injection_data_prefix == None:
+            logging.info("No injection data provided, using GWOSC data.")
+            for ifo in self.ifos:
+                if ifo not in detector_preset.values():
+                    raise ValueError(f"Invalid detector: {ifo}")
+                ifo_data = jd.Data.from_gwosc(ifo.name, start, end)
+                ifo.set_data(ifo_data)
+                ifo_psd = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+                psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
+                ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
+        else:
+            logging.info(f"Using injection data from {injection_data_prefix}.")
+            # TODO: Load injection data from a file, and the PSD correspondingly.
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
 
