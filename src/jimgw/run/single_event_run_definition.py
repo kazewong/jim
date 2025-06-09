@@ -1,6 +1,6 @@
 from jimgw.run.run_definition import RunDefinition
 from jimgw.core.single_event.detector import GroundBased2G
-from typing import Sequence
+from typing import Optional, Sequence
 from jimgw.core.single_event.detector import detector_preset
 
 
@@ -21,7 +21,7 @@ class SingleEventRunDefinition(RunDefinition):
     f_max: float  # Maximum frequency
     ifos: Sequence[GroundBased2G]  # Set of detectors
     f_ref: float  # Reference frequency
-    injection: bool = False  # Whether the run is an injection run
+    injection_data_prefix: Optional[str] = None
     
     def __init__(
       self,
@@ -32,7 +32,7 @@ class SingleEventRunDefinition(RunDefinition):
       f_max: float,
       ifos: set[str],
       f_ref: float,
-      injection: bool = False,
+      injection_data_prefix: Optional[str] = None,
       **kwargs
       ):
           super().__init__(**kwargs)
@@ -43,7 +43,7 @@ class SingleEventRunDefinition(RunDefinition):
           self.f_max = f_max
           self.ifos = [detector_preset[ifo] for ifo in ifos]
           self.f_ref = f_ref
-          self.injection = injection
+          self.injection_data_prefix = injection_data_prefix
 
     
     def serialize(self, path: str = "./") -> dict:
@@ -57,6 +57,6 @@ class SingleEventRunDefinition(RunDefinition):
             "f_max": self.f_max,
             "ifos": [ifo.name for ifo in self.ifos],
             "f_ref": self.f_ref,
-            "injection": self.injection,
+            "injection_data_prefix": self.injection_data_prefix,
         })
         return run_dict
