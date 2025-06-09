@@ -329,6 +329,29 @@ class Data(ABC):
             jnp.equal(f_new, frequencies)
         ), "Frequencies do not match after slicing"
         return data
+        
+    @classmethod
+    def from_file(
+        cls,
+        path: str
+    ) -> Self:
+        """Load data from a file. This assumes the data to be in .npz format.
+        It should at least contains the keys 'td', 'dt', and 'epoch'.
+        `td` is the time domain data, `dt` is the time step, and `epoch` is the
+        epoch of the data in seconds.
+
+        Args:
+            path (str): Path to the .npz file containing the data.
+        """
+        data = jnp.load(path, allow_pickle=True)
+        if "td" not in data or "dt" not in data or "epoch" not in data:
+            raise ValueError(
+                "The file must contain 'td', 'dt', and 'epoch' keys."
+            )
+        td = data["td"]
+        dt = float(data["dt"])
+        epoch = float(data["epoch"])        
+        return cls(td, dt, epoch)
 
 
 class PowerSpectrum(ABC):
