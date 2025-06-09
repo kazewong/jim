@@ -1,10 +1,19 @@
 import dagster as dg
 from jimgw.core.population.injection_util import generate_fidiual_population
+from jimgw.run.library.IMRPhenomPv2_standard_cbc import IMRPhenomPv2StandardCBCRunDefinition
+import numpy as np
+import os
+
+"""
+TODO: Make a IO manager to handle the common prefix.
+https://docs.dagster.io/guides/build/io-managers/defining-a-custom-io-manager
+"""
 
 # Sample a fiducial population
 
-
-@dg.asset
+@dg.asset(
+    group_name="prerun",    
+)
 def sample_population():
     """
     This is a placeholder function for the fiducial population.
@@ -14,31 +23,46 @@ def sample_population():
         path_prefix="./data/",
     )
 
+# TODO: Add diagnostics regarding the sampled population.
 
-@dg.asset(
-  deps=["sample_population"],
-)
-def generate_data():
-    """
-    This is a placeholder function for the data generation.
-    """
-    with open("./data/fiducial_population.json", "r") as f:
-        population = f.read()
-        
-    
-    
-
-
-# Create asset group for run and configuration0
-
+# Create asset group for run and configuration
 
 @dg.asset(
     group_name="prerun",
     description="Configuration file for the run.",
+    deps=[sample_population],
 )
 def config_file():
-    pass
-
+    """
+    TODO: This should be made more flexible later
+    """
+    parameters = np.genfromtxt('./data/fiducial_population.csv', delimiter=',', names=True)
+    run = IMRPhenomPv2StandardCBCRunDefinition(
+             M_c_range=(10.0, 80.0),
+             q_range=(0.125, 1.0),
+             max_s1=0.99,
+             max_s2=0.99,
+             iota_range=(0.0, np.pi),
+             dL_range=(1.0, 2000.0),
+             t_c_range=(-0.05, 0.05),
+             phase_c_range=(0.0, 2 * np.pi),
+             psi_range=(0.0, np.pi),
+             ra_range=(0.0, 2 * np.pi),
+             dec_range=(-np.pi / 2, np.pi / 2),
+             gps=1126259462.4,
+             f_min=20.0,
+             f_max=1024.0,
+             segment_length=4.0,
+             post_trigger_length=2.0,
+             ifos=["H1", "L1"],
+             f_ref=20.0,
+         )
+    for idx, param in enumerate(parameters):
+        os.makedirs(f"./data/runs/{idx}/", exist_ok=True)
+        run.working_dir = f"./data/runs/{idx}/"
+        run.seed = idx
+        run.local_data_prefix = f"./data/runs/{idx}/strains/"
+        run.serialize(f"./data/runs/{idx}/config.yaml")
 
 @dg.multi_asset(
     specs=[
@@ -52,7 +76,9 @@ def raw_data():
     This is a placeholder function for the raw data.
     It is used to demonstrate how to create a Dagster asset.
     """
-    pass
+    parameters = np.genfromtxt('./data/fiducial_population.csv', delimiter=',', names=True)
+    for idx, param in enumerate(parameters):
+        os.makedirs(f"./data/runs/{idx}/strains/", exist_ok=True)
 
 
 @dg.multi_asset(
