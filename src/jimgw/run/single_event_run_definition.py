@@ -21,7 +21,7 @@ class SingleEventRunDefinition(RunDefinition):
     f_max: float  # Maximum frequency
     ifos: Sequence[GroundBased2G]  # Set of detectors
     f_ref: float  # Reference frequency
-    injection_data_prefix: Optional[str] = None
+    local_data_prefix: Optional[str] = None
     
     def __init__(
       self,
@@ -43,7 +43,7 @@ class SingleEventRunDefinition(RunDefinition):
           self.f_max = f_max
           self.ifos = [detector_preset[ifo] for ifo in ifos]
           self.f_ref = f_ref
-          self.injection_data_prefix = injection_data_prefix
+          self.local_data_prefix = injection_data_prefix
 
     
     def serialize(self, path: str = "./") -> dict:
@@ -57,6 +57,6 @@ class SingleEventRunDefinition(RunDefinition):
             "f_max": self.f_max,
             "ifos": [ifo.name for ifo in self.ifos],
             "f_ref": self.f_ref,
-            "injection_data_prefix": self.injection_data_prefix,
+            "injection_data_prefix": self.local_data_prefix,
         })
         return run_dict

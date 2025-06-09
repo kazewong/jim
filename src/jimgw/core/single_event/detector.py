@@ -635,18 +635,6 @@ class GroundBased2G(Detector):
         print(f"  - Optimal SNR: {optimal_snr:.4f}")
         print(f"  - Match filtered SNR: {match_filtered_snr:.4f}")
 
-    def set_data_from_file(self, filename: str) -> None:
-        """Set data from a file.
-
-        Args:
-            filename (str): Path to the file containing the data.
-
-        Returns:
-            None
-        """
-        # TODO: Implement this
-        raise NotImplementedError
-
     def get_whitened_frequency_domain_strain(
         self, frequency_series: Complex[Array, " n_freq"]
     ) -> Complex[Array, " n_freq"]:
