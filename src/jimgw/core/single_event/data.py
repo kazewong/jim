@@ -352,6 +352,23 @@ class Data(ABC):
         dt = float(data["dt"])
         epoch = float(data["epoch"])        
         return cls(td, dt, epoch)
+        
+    def to_file(
+        self,
+        path: str
+        ):
+            """Save the data to a file in .npz format.
+
+            Args:
+                path (str): Path to save the .npz file.
+            """
+            jnp.savez(
+                path,
+                td=self.td,
+                dt=self.delta_t,
+                epoch=self.epoch,
+                name=self.name,
+            )
 
 
 class PowerSpectrum(ABC):
