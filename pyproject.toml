@@ -65,9 +65,9 @@ build-backend = "hatchling.build"
 
 [tool.pyright]
 include = ["src"]
-exclude = ["docs"]
+exclude = ["test", "docs"]
 
 [tool.ruff]
 # In addition to the standard set of exclusions, omit all tests, plus a specific file.
-exclude = ["tests","docs"]
+exclude = ["test", "docs"]
 
