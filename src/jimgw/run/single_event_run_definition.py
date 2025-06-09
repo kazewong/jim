@@ -57,6 +57,6 @@ class SingleEventRunDefinition(RunDefinition):
             "f_max": self.f_max,
             "ifos": [ifo.name for ifo in self.ifos],
             "f_ref": self.f_ref,
-            "injection_data_prefix": self.local_data_prefix,
+            "local_data_prefix": self.local_data_prefix,
         })
         return run_dict

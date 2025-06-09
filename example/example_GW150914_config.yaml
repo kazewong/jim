@@ -23,14 +23,15 @@ n_temperatures: 5
 max_temperature: 10.0
 n_tempered_steps: 5
 gps: 1126259462.4
-segment_length: 4
-post_trigger_length: 2
+segment_length: 4.0
+post_trigger_length: 2.0
 f_min: 20.0
 f_max: 1024.0
 ifos:
 - H1
 - L1
 f_ref: 20.0
+local_data_prefix: null
 definition_name: IMRPhenomPv2StandardCBC
 M_c_range:
 - 10.0
