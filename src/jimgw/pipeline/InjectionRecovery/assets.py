@@ -3,6 +3,7 @@ from jimgw.core.population.injection_util import generate_fidiual_population
 from jimgw.core.single_event.detector import detector_preset
 from jimgw.run.library.IMRPhenomPv2_standard_cbc import IMRPhenomPv2StandardCBCRunDefinition
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
+from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
 import numpy as np
 import os
 import yaml
@@ -85,27 +86,36 @@ def raw_data():
         os.makedirs(f"./data/runs/{idx}/strains/", exist_ok=True)
         config_path = f"./data/runs/{idx}/config.yaml"
         injection_parameters = {key: float(param[idx]) for idx, key in enumerate(keys)}
-        print(injection_parameters)
-        # with open(config_path, 'r') as file:
-        #     config = yaml.safe_load(file)
-        #     ifos = config['ifos']
-        #     f_min = config['f_min']
-        #     f_max = config['f_max']
-        #     duration = config['segment_length']
-        #     sampling_frequency = f_max * 2
-        #     f_ref = config['f_ref']
-        #     for ifo in ifos:
-        #         detector = detector_preset[ifo]
-        #         detector.load_and_set_psd()
-        #         detector.frequency_bounds = (f_min, f_max)
-        #         detector.inject_signal(
-        #             duration,
-        #             sampling_frequency,
-        #             0.0,
-        #             RippleIMRPhenomPv2(f_ref=20),
-        #             injection_parameters,
-        #             is_zero_noise=False,
-        #         )
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+            ifos = config['ifos']
+            f_min = config['f_min']
+            f_max = config['f_max']
+            duration = config['segment_length']
+            sampling_frequency = f_max * 2
+            f_ref = config['f_ref']
+            gmst = compute_gmst(config['gps'])
+            injection_parameters["gmst"] = gmst
+            injection_parameters["trigger_time"] = config['gps']
+            for ifo in ifos:
+                detector = detector_preset[ifo]
+                detector.load_and_set_psd()
+                detector.frequency_bounds = (f_min, f_max)
+                detector.inject_signal(
+                    duration,
+                    sampling_frequency,
+                    0.0,
+                    RippleIMRPhenomPv2(f_ref=20),
+                    injection_parameters,
+                    is_zero_noise=False,
+                )
+                detector.data.to_file(
+                    f"./data/runs/{idx}/strains/{ifo}_data"
+                )
+                detector.psd.to_file(
+                    f"./data/runs/{idx}/strains/{ifo}_psd"
+                )
+                
 
 
 @dg.multi_asset(
