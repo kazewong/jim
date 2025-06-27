@@ -459,9 +459,18 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         popsize: int = 100,
         n_steps: int = 2000,
     ):
+        super_obj = super(HeterodynedTransientLikelihoodFD, self)
+
         parameter_names = prior.parameter_names
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
+
+        def apply_transforms(named_params):
+            for transform in reversed(sample_transforms):
+                named_params = transform.backward(named_params)
+            for transform in likelihood_transforms:
+                named_params = transform.forward(named_params)
+            return named_params
 
         # Generate initial samples
         initial_position, key = generate_initial_samples(
@@ -474,7 +483,7 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         # Stage 1: Optimize subset of parameters
 
         # Define the subset of parameters to optimize in Stage 1
-        stage1_parameters = [
+        stage1_parameters_all = [
             "M_c",
             "m_1",
             "m_2",
@@ -484,18 +493,22 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             "zenith",
             "t_c",
             "t_det",
+            "d_L",
+            "d_hat",
+            "iota",
+            "theta_jn",
         ]
 
         stage1_flag = []
-        stage1_parameters = set()
-        stage1_fixed_parameters = set()
-        for param in stage1_parameters:
-            if param in parameter_names:
+        stage1_parameters = []
+        stage1_fixed_parameters = []
+        for param in parameter_names:
+            if any([param.startswith(p) for p in stage1_parameters_all]):
                 stage1_flag.append(True)
-                stage1_parameters.add(param)
+                stage1_parameters.append(param)
             else:
                 stage1_flag.append(False)
-                stage1_fixed_parameters.add(param)
+                stage1_fixed_parameters.append(param)
         stage1_flag = jnp.array(stage1_flag)
         stage1_indices = jnp.where(stage1_flag)[0]
 
@@ -509,28 +522,29 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             # Extract subset for initial position
             initial_position_stage1 = initial_position[:, stage1_flag]
             fixed_position_stage1 = initial_position[:, ~stage1_flag]
-            fixed_named_params = dict(
-                zip(stage1_fixed_parameters, fixed_position_stage1)
-            )
 
             # Create a partial objective function that only optimizes the subset
             def y_stage1(x_subset: Float[Array, " n_subset"], data: dict) -> Float:
+                # Randomly pick which chain's fixed parameters to use
+                key, subkey = jax.random.split(data["key"])
+                data["key"] = key
+                random_idx = jax.random.randint(subkey, (), 0, popsize)
                 named_params = dict(zip(stage1_parameters, x_subset))
-                named_params.update(fixed_named_params)
-                for transform in reversed(sample_transforms):
-                    named_params = transform.backward(named_params)
-                for transform in likelihood_transforms:
-                    named_params = transform.forward(named_params)
-                return -super(HeterodynedTransientLikelihoodFD, self).evaluate(
-                    named_params, data
+                named_params.update(
+                    dict(
+                        zip(stage1_fixed_parameters, fixed_position_stage1[random_idx])
+                    )
                 )
+                named_params = apply_transforms(named_params)
+                return -super_obj.evaluate(named_params, data)
 
             optimizer_stage1 = AdamOptimization(
                 logpdf=y_stage1, n_steps=n_steps, learning_rate=0.001, noise_level=0
             )
 
+            key, subkey = jax.random.split(key)
             _, best_fit_stage1, log_prob_stage1 = optimizer_stage1.optimize(
-                key, y_stage1, initial_position_stage1, {}
+                key, y_stage1, initial_position_stage1, {"key": subkey}
             )
 
             # Update the initial position with the optimized subset
@@ -551,20 +565,17 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             )
             # Update the initial position with the optimized subset
             for i in stage1_indices:
-                initial_position[:, i] = jnp.ones(popsize) * best_stage1_params[i]
+                initial_position = initial_position.at[:, i].set(
+                    jnp.ones(popsize) * best_stage1_params[i]
+                )
 
         # Stage 2: Optimize all parameters
         print("Starting Stage 2 optimization")
 
         def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
-            for transform in reversed(sample_transforms):
-                named_params = transform.backward(named_params)
-            for transform in likelihood_transforms:
-                named_params = transform.forward(named_params)
-            return -super(HeterodynedTransientLikelihoodFD, self).evaluate(
-                named_params, data
-            )
+            named_params = apply_transforms(named_params)
+            return -super_obj.evaluate(named_params, data)
 
         optimizer = AdamOptimization(
             logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=0
