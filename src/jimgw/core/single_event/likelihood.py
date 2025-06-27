@@ -459,11 +459,11 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         popsize: int = 100,
         n_steps: int = 2000,
     ):
-        super_obj = super(HeterodynedTransientLikelihoodFD, self)
-
         parameter_names = prior.parameter_names
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
+
+        super_obj = super(HeterodynedTransientLikelihoodFD, self)
 
         def apply_transforms(named_params):
             for transform in reversed(sample_transforms):
