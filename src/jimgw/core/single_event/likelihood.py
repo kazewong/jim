@@ -463,6 +463,99 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
+        # Generate initial samples
+        initial_position, key = generate_initial_samples(
+            prior,
+            sample_transforms,
+            popsize,
+            jax.random.PRNGKey(123),
+        )
+
+        # Stage 1: Optimize subset of parameters
+
+        # Define the subset of parameters to optimize in Stage 1
+        stage1_parameters = [
+            "M_c",
+            "m_1",
+            "m_2",
+            "ra",
+            "dec",
+            "azimuth",
+            "zenith",
+            "t_c",
+            "t_det",
+        ]
+
+        stage1_flag = []
+        stage1_parameters = set()
+        stage1_fixed_parameters = set()
+        for param in stage1_parameters:
+            if param in parameter_names:
+                stage1_flag.append(True)
+                stage1_parameters.add(param)
+            else:
+                stage1_flag.append(False)
+                stage1_fixed_parameters.add(param)
+        stage1_flag = jnp.array(stage1_flag)
+        stage1_indices = jnp.where(stage1_flag)[0]
+
+        if not jnp.any(stage1_flag):
+            print(
+                "Warning: No stage1_parameters found in parameter_names, skipping Stage 1"
+            )
+        else:
+            print(f"Starting Stage 1 optimization")
+
+            # Extract subset for initial position
+            initial_position_stage1 = initial_position[:, stage1_flag]
+            fixed_position_stage1 = initial_position[:, ~stage1_flag]
+            fixed_named_params = dict(
+                zip(stage1_fixed_parameters, fixed_position_stage1)
+            )
+
+            # Create a partial objective function that only optimizes the subset
+            def y_stage1(x_subset: Float[Array, " n_subset"], data: dict) -> Float:
+                named_params = dict(zip(stage1_parameters, x_subset))
+                named_params.update(fixed_named_params)
+                for transform in reversed(sample_transforms):
+                    named_params = transform.backward(named_params)
+                for transform in likelihood_transforms:
+                    named_params = transform.forward(named_params)
+                return -super(HeterodynedTransientLikelihoodFD, self).evaluate(
+                    named_params, data
+                )
+
+            optimizer_stage1 = AdamOptimization(
+                logpdf=y_stage1, n_steps=n_steps, learning_rate=0.001, noise_level=0
+            )
+
+            _, best_fit_stage1, log_prob_stage1 = optimizer_stage1.optimize(
+                key, y_stage1, initial_position_stage1, {}
+            )
+
+            # Update the initial position with the optimized subset
+            best_stage1_idx = jnp.argmin(log_prob_stage1)
+            best_stage1_params = best_fit_stage1[best_stage1_idx]
+            print("Stage 1 optimization completed.")
+            print(
+                f"Optimised parameters: {dict(zip(stage1_parameters, best_stage1_params))}"
+            )
+            print(f"Optimised log likelihood: {-log_prob_stage1[best_stage1_idx]}")
+
+            # Generate new initial samples for Stage 2
+            initial_position, key = generate_initial_samples(
+                prior,
+                sample_transforms,
+                popsize,
+                jax.random.PRNGKey(321),
+            )
+            # Update the initial position with the optimized subset
+            for i in stage1_indices:
+                initial_position[:, i] = jnp.ones(popsize) * best_stage1_params[i]
+
+        # Stage 2: Optimize all parameters
+        print("Starting Stage 2 optimization")
+
         def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
@@ -473,26 +566,22 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 named_params, data
             )
 
-        print("Starting the optimizer")
-
         optimizer = AdamOptimization(
-            logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=1
-        )
-
-        initial_position, key = generate_initial_samples(
-            prior,
-            sample_transforms,
-            popsize,
-            jax.random.PRNGKey(0),
+            logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=0
         )
 
         _, best_fit, log_prob = optimizer.optimize(key, y, initial_position, {})
 
-        named_params = dict(zip(parameter_names, best_fit[jnp.argmin(log_prob)]))
+        best_stage2_idx = jnp.argmin(log_prob)
+        named_params = dict(zip(parameter_names, best_fit[best_stage2_idx]))
         for transform in reversed(sample_transforms):
             named_params = transform.backward(named_params)
         for transform in likelihood_transforms:
             named_params = transform.forward(named_params)
+
+        print(f"Stage 2 optimization completed.")
+        print(f"Optimised parameters: {named_params}")
+        print(f"Optimised log likelihood: {-log_prob[best_stage2_idx]}")
         return named_params
 
 
