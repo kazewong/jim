@@ -463,15 +463,15 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
+        super_obj = super(HeterodynedTransientLikelihoodFD, self)
+
         def y(x: Float[Array, " n_dims"], data: dict) -> Float:
             named_params = dict(zip(parameter_names, x))
             for transform in reversed(sample_transforms):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -super(HeterodynedTransientLikelihoodFD, self).evaluate(
-                named_params, data
-            )
+            return -super_obj.evaluate(named_params, data)
 
         print("Starting the optimizer")
 
