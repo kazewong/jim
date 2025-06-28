@@ -412,10 +412,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
             return jnp.sqrt(R_dets2)
 
         def named_transform(x):
-            d_L, M_c = (
-                x["d_L"],
-                x["M_c"],
-            )
+            d_L, M_c = x["d_L"], x["M_c"]
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets
@@ -434,10 +431,7 @@ class DistanceToSNRWeightedDistanceTransform(ConditionalBijectiveTransform):
         self.transform_func = named_transform
 
         def named_inverse_transform(x):
-            d_hat_unbounded, M_c = (
-                x["d_hat_unbounded"],
-                x["M_c"],
-            )
+            d_hat_unbounded, M_c = x["d_hat_unbounded"], x["M_c"]
             R_dets = _calc_R_dets(x["ra"], x["dec"], x["psi"], x["iota"])
 
             scale_factor = 1.0 / jnp.power(M_c, 5.0 / 6.0) / R_dets

@@ -18,6 +18,7 @@ from jimgw.core.single_event.gps_times import (
     greenwich_mean_sidereal_time as compute_gmst,
 )
 import logging
+from copy import deepcopy
 from typing import Sequence
 
 
@@ -458,12 +459,14 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         sample_transforms: Sequence[BijectiveTransform],
         popsize: int = 100,
         n_steps: int = 2000,
+        return_stage1: bool = False,
     ):
         parameter_names = prior.parameter_names
         for transform in sample_transforms:
             parameter_names = transform.propagate_name(parameter_names)
 
         super_obj = super(HeterodynedTransientLikelihoodFD, self)
+        orig_fixing_parameters = self.kwargs.get("fixing_parameters", {})
 
         def apply_transforms(named_params):
             for transform in reversed(sample_transforms):
@@ -481,12 +484,12 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
         )
 
         # Stage 1: Optimize subset of parameters
-
-        # Define the subset of parameters to optimize in Stage 1
+        # Define the subset of parameters to be optimized in Stage 1
         stage1_parameters_all = [
             "M_c",
             "m_1",
             "m_2",
+            "eta",
             "ra",
             "dec",
             "azimuth",
@@ -498,63 +501,70 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
             "iota",
             "theta_jn",
         ]
+        fixed_param_keys = [
+            key
+            for key in parameter_names
+            if not any(key.startswith(p) for p in stage1_parameters_all)
+        ]
 
-        stage1_flag = []
-        stage1_parameters = []
-        stage1_fixed_parameters = []
-        for param in parameter_names:
-            if any([param.startswith(p) for p in stage1_parameters_all]):
-                stage1_flag.append(True)
-                stage1_parameters.append(param)
-            else:
-                stage1_flag.append(False)
-                stage1_fixed_parameters.append(param)
-        stage1_flag = jnp.array(stage1_flag)
-        stage1_indices = jnp.where(stage1_flag)[0]
-
-        if not jnp.any(stage1_flag):
+        if not len(fixed_param_keys):
             print(
                 "Warning: No stage1_parameters found in parameter_names, skipping Stage 1"
             )
         else:
             print(f"Starting Stage 1 optimization")
 
-            # Extract subset for initial position
-            initial_position_stage1 = initial_position[:, stage1_flag]
-            fixed_position_stage1 = initial_position[:, ~stage1_flag]
-
-            # Create a partial objective function that only optimizes the subset
-            def y_stage1(x_subset: Float[Array, " n_subset"], data: dict) -> Float:
-                # Randomly pick which chain's fixed parameters to use
-                key, subkey = jax.random.split(data["key"])
-                data["key"] = key
-                random_idx = jax.random.randint(subkey, (), 0, popsize)
-                named_params = dict(zip(stage1_parameters, x_subset))
-                named_params.update(
-                    dict(
-                        zip(stage1_fixed_parameters, fixed_position_stage1[random_idx])
-                    )
-                )
+            def y_stage1(x_array: Float[Array, " n_subset"], data: dict) -> Float:
+                # Pick the fixed parameters from one random chain
+                data["key"], subkey = jax.random.split(data["key"])
+                idx = jax.random.randint(subkey, (), 0, popsize)
+                _fixed_parameters = data.pop("fixed_parameters")
+                fixed_parameters = {
+                    name: row[idx] for name, row in _fixed_parameters.items()
+                }
+                # Update the fixing function in the likelihood
+                self.fixing_func = lambda x: {
+                    **x,
+                    **fixed_parameters,
+                    **orig_fixing_parameters,
+                }
+                named_params = dict(zip(parameter_names, x_array))
                 named_params = apply_transforms(named_params)
                 return -super_obj.evaluate(named_params, data)
 
             optimizer_stage1 = AdamOptimization(
-                logpdf=y_stage1, n_steps=n_steps, learning_rate=0.001, noise_level=0
+                logpdf=y_stage1, n_steps=n_steps, learning_rate=0.01, noise_level=0
             )
+
+            initial_position_dict = dict(zip(parameter_names, initial_position.T))
+            initial_likelihood_parameters = apply_transforms(initial_position_dict)
+            fixed_keys = set(stage1_parameters_all).intersection(
+                initial_likelihood_parameters.keys()
+            )
+            print(f"Stage 1 parameters: {fixed_keys}")
+            fixed_parameters = {
+                key: initial_likelihood_parameters[key] for key in fixed_keys
+            }
+            original_fixing_func = deepcopy(self.fixing_func)
 
             key, subkey = jax.random.split(key)
             _, best_fit_stage1, log_prob_stage1 = optimizer_stage1.optimize(
-                key, y_stage1, initial_position_stage1, {"key": subkey}
+                key,
+                y_stage1,
+                initial_position,
+                {"key": subkey, "fixed_parameters": fixed_parameters},
             )
 
             # Update the initial position with the optimized subset
-            best_stage1_idx = jnp.argmin(log_prob_stage1)
-            best_stage1_params = best_fit_stage1[best_stage1_idx]
-            print("Stage 1 optimization completed.")
-            print(
-                f"Optimised parameters: {dict(zip(stage1_parameters, best_stage1_params))}"
+            optimised_stage1_idx = jnp.argmin(log_prob_stage1)
+            optimised_stage1_params = best_fit_stage1[optimised_stage1_idx]
+            optimised_stage1_dict = apply_transforms(
+                dict(zip(parameter_names, optimised_stage1_params))
             )
-            print(f"Optimised log likelihood: {-log_prob_stage1[best_stage1_idx]}")
+
+            print("Stage 1 optimization completed.")
+            print(f"Optimised parameters: {optimised_stage1_dict}")
+            print(f"Optimised log likelihood: {-log_prob_stage1[optimised_stage1_idx]}")
 
             # Generate new initial samples for Stage 2
             initial_position, key = generate_initial_samples(
@@ -564,35 +574,39 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 jax.random.PRNGKey(321),
             )
             # Update the initial position with the optimized subset
-            for i in stage1_indices:
-                initial_position = initial_position.at[:, i].set(
-                    jnp.ones(popsize) * best_stage1_params[i]
+            for _key in parameter_names:
+                if _key in fixed_param_keys:
+                    continue
+                idx = parameter_names.index(_key)
+                initial_position = initial_position.at[:, idx].set(
+                    jnp.ones(popsize) * optimised_stage1_params[idx]
                 )
+            # Restore the fixing function to the original one
+            self.fixing_func = original_fixing_func
 
         # Stage 2: Optimize all parameters
         print("Starting Stage 2 optimization")
 
-        def y(x: Float[Array, " n_dims"], data: dict) -> Float:
-            named_params = dict(zip(parameter_names, x))
+        def y(x_array: Float[Array, " n_dims"], data: dict) -> Float:
+            named_params = dict(zip(parameter_names, x_array))
             named_params = apply_transforms(named_params)
             return -super_obj.evaluate(named_params, data)
 
         optimizer = AdamOptimization(
             logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=0
         )
-
         _, best_fit, log_prob = optimizer.optimize(key, y, initial_position, {})
 
         best_stage2_idx = jnp.argmin(log_prob)
-        named_params = dict(zip(parameter_names, best_fit[best_stage2_idx]))
-        for transform in reversed(sample_transforms):
-            named_params = transform.backward(named_params)
-        for transform in likelihood_transforms:
-            named_params = transform.forward(named_params)
+        named_params = apply_transforms(
+            dict(zip(parameter_names, best_fit[best_stage2_idx]))
+        )
 
         print(f"Stage 2 optimization completed.")
         print(f"Optimised parameters: {named_params}")
         print(f"Optimised log likelihood: {-log_prob[best_stage2_idx]}")
+        if return_stage1:
+            return named_params, optimised_stage1_dict
         return named_params
 
 
