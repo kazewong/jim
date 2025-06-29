@@ -5,6 +5,7 @@ from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float, Complex
 from typing import Optional
 from scipy.interpolate import interp1d
+from astropy.time import Time
 
 from jimgw.core.utils import log_i0
 from jimgw.core.prior import Prior
@@ -13,9 +14,10 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 from jimgw.core.single_event.detector import Detector
 from jimgw.core.single_event.waveform import Waveform
 from jimgw.core.single_event.utils import inner_product, complex_inner_product
-from jimgw.core.single_event.gps_times import (
-    greenwich_mean_sidereal_time as compute_gmst,
-)
+
+# from jimgw.core.single_event.gps_times import (
+#     greenwich_mean_sidereal_time as compute_gmst,
+# )
 import logging
 from typing import Sequence
 
@@ -66,7 +68,9 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.duration = self.detectors[0].data.duration
         self.waveform = waveform
         self.trigger_time = trigger_time
-        self.gmst = compute_gmst(self.trigger_time)
+        self.gmst = (
+            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
+        )
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
