@@ -165,7 +165,7 @@ jim = Jim(
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_chains=500,
+    n_chains=200,
     n_local_steps=100,
     n_global_steps=1000,
     n_training_loops=20,
@@ -187,7 +187,7 @@ jim = Jim(
     n_tempered_steps=10,
     verbose=True,
 )
-#
+
 jim.sample()
 
 print("Done!")
