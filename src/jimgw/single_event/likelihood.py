@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
-from flowMC.strategy.optimization import optimization_Adam
+from flowMC.strategy.optimization import AdamOptimization
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from typing import Optional
@@ -579,7 +579,8 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         print("Starting the optimizer")
 
-        optimizer = optimization_Adam(
+        optimizer = AdamOptimization(
+            logpdf=lambda x, data: -y(x),  # Note: AdamOptimization expects logpdf (not loss), so we negate y
             n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 
@@ -613,9 +614,13 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
         
-        rng_key, optimized_positions, summary = optimizer.optimize(
-            jax.random.PRNGKey(12094), y, initial_position
+        rng_key, optimized_positions = optimizer.optimize(
+            jax.random.PRNGKey(12094), y, initial_position, {}
         )
+
+        # Calculate the final log probabilities to create the summary
+        final_log_prob = jax.vmap(lambda x: -y(x))(optimized_positions)
+        summary = {"final_log_prob": final_log_prob}
 
         best_fit = optimized_positions[jnp.argmin(summary["final_log_prob"])]
 

@@ -3,7 +3,7 @@ from dataclasses import field
 import jax
 import jax.numpy as jnp
 from beartype import beartype as typechecker
-from flowMC.nfmodel.base import Distribution
+from flowMC.resource.nf_model.base import Distribution
 from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
 
 from jimgw.transforms import (
