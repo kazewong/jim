@@ -16,7 +16,6 @@ dependencies = [
     "jax>=0.5.0",
     "jaxtyping>=0.2.34",
     "ripplegw>=0.0.9",
-    "typed-argument-parser>=1.10.1",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +34,9 @@ pipeline = [
     "corner>=2.2.2",
     "matplotlib>=3.10.1",
 ]
-
+cuda = [
+    "jax[cuda]>=0.5.0",
+]
 
 [tool.uv]
 dev-dependencies = [
@@ -61,3 +62,23 @@ modules = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+
+[tool.pyright]
+include = [
+    "src",
+    "tests",
+]
+exclude = [
+    "docs"
+]
+
+[tool.coverage.report]
+exclude_also = [
+    'def __repr__',
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@(abc\\. )?abstractmethod",
+    "def tree_flatten",
+    "def tree_unflatten",
+]
