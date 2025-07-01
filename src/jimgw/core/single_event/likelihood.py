@@ -5,8 +5,6 @@ from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float, Complex
 from typing import Optional
 from scipy.interpolate import interp1d
-from astropy.time import Time
-
 from jimgw.core.utils import log_i0
 from jimgw.core.prior import Prior
 from jimgw.core.base import LikelihoodBase
@@ -14,10 +12,9 @@ from jimgw.core.transforms import BijectiveTransform, NtoMTransform
 from jimgw.core.single_event.detector import Detector
 from jimgw.core.single_event.waveform import Waveform
 from jimgw.core.single_event.utils import inner_product, complex_inner_product
-
-# from jimgw.core.single_event.gps_times import (
-#     greenwich_mean_sidereal_time as compute_gmst,
-# )
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
 import logging
 from typing import Sequence
 
@@ -68,9 +65,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.duration = self.detectors[0].data.duration
         self.waveform = waveform
         self.trigger_time = trigger_time
-        self.gmst = (
-            Time(trigger_time, format="gps").sidereal_time("apparent", "greenwich").rad
-        )
+        self.gmst = compute_gmst(self.trigger_time)
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
@@ -92,6 +87,23 @@ class TransientLikelihoodFD(SingleEventLikelihood):
                 self.param_func = lambda x: {**x, "phase_c": 0.0}
                 self.likelihood_function = phase_marginalized_likelihood
                 logging.info("Marginalizing over phase")
+            if "time" in self.marginalization:
+                fs = self.detectors[0].data.sampling_frequency
+                duration = self.detectors[0].data.duration
+                self.kwargs["tc_array"] = jnp.fft.fftfreq(
+                    int(duration * fs / 2), 1.0 / duration
+                )
+                self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
+                if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
+                    self.kwargs["pad_high"] = jnp.array([])
+                else:
+                    self.kwargs["pad_high"] = jnp.zeros(
+                        int(
+                            (fs / 2.0 - 1.0 / duration - self.frequencies[-1])
+                            * duration
+                        )
+                    )
+                print()
         else:
             self.param_func = lambda x: x
             self.likelihood_function = original_likelihood
@@ -608,27 +620,28 @@ def time_marginalized_likelihood(
     **kwargs,
 ) -> Float:
     log_likelihood = 0.0
-    complex_h_inner_d = 0.0 + 0.0j
+    complex_h_inner_d = jnp.zeros_like(detectors[0].sliced_frequencies)
+    df = detectors[0].sliced_frequencies[1] - detectors[0].sliced_frequencies[0]
     for ifo in detectors:
         freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
         h_dec = ifo.fd_response(freqs, h_sky, params)
         # using <h|d> instead of <d|h>
-        complex_h_inner_d += complex_inner_product(data, h_dec, psd, freqs)
+        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
         optimal_SNR = inner_product(h_dec, h_dec, psd, freqs)
         log_likelihood += -optimal_SNR / 2
-    duration = detectors[0].data.duration
 
     # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = kwargs["tc_range"]
-    fs = kwargs["sampling_rate"]
-    tc_array = _get_tc_array(duration, fs)
-    pad_low, pad_high = _get_frequencies_pads(detectors[0], fs=fs)
+    tc_range = [-0.1, 0.1] #TODO: This is hard coded right now, need to update.
+    tc_array = kwargs["tc_array"]
+    pad_low = kwargs["pad_low"]
+    pad_high = kwargs["pad_high"]
 
     # padding the complex_h_inner_d
     # this array is the hd*/S for f in [0, fs / 2 - df]
     complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
+
 
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
