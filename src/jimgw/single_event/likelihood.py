@@ -3,7 +3,17 @@ import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
 from astropy.time import Time
-from flowMC.strategy.optimization import AdamOptimization
+# Try to import from the new location first, fall back to old if needed
+try:
+    from flowMC.strategy.optimization import AdamOptimization
+    FLOWMC_NEW_OPTIMIZER = True
+except ImportError:
+    try:
+        from flowMC.utils.EvolutionaryOptimizer import EvolutionaryOptimizer
+        FLOWMC_NEW_OPTIMIZER = False
+    except ImportError:
+        # If neither works, we'll handle it in the code
+        FLOWMC_NEW_OPTIMIZER = None
 from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from typing import Optional
@@ -579,10 +589,21 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
         print("Starting the optimizer")
 
-        optimizer = AdamOptimization(
-            logpdf=lambda x, data: -y(x),  # Note: AdamOptimization expects logpdf (not loss), so we negate y
-            n_steps=n_steps, learning_rate=0.001, noise_level=1
-        )
+        # Handle different flowMC versions
+        if FLOWMC_NEW_OPTIMIZER is True:
+            # flowMC 0.4+ uses AdamOptimization
+            optimizer = AdamOptimization(
+                logpdf=lambda x, data: -y(x),
+                n_steps=n_steps, learning_rate=0.001, noise_level=1
+            )
+        elif FLOWMC_NEW_OPTIMIZER is False:
+            # flowMC < 0.4 uses EvolutionaryOptimizer
+            optimizer = EvolutionaryOptimizer(
+                n_steps=n_steps, learning_rate=0.001, noise_level=1
+            )
+        else:
+            # Fallback if neither is available
+            raise ImportError("Could not import optimizer from flowMC. Please check your flowMC installation.")
 
         key = jax.random.PRNGKey(0)
         initial_position = jnp.zeros((popsize, prior.n_dim)) + jnp.nan
@@ -614,13 +635,20 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
                 non_finite_index[:common_length]
             ].set(guess[:common_length])
         
-        rng_key, optimized_positions = optimizer.optimize(
-            jax.random.PRNGKey(12094), y, initial_position, {}
-        )
-
-        # Calculate the final log probabilities to create the summary
-        final_log_prob = jax.vmap(lambda x: -y(x))(optimized_positions)
-        summary = {"final_log_prob": final_log_prob}
+        # Handle different optimization APIs
+        if FLOWMC_NEW_OPTIMIZER is True:
+            # flowMC 0.4+ AdamOptimization.optimize returns (rng_key, optimized_positions)
+            rng_key, optimized_positions = optimizer.optimize(
+                jax.random.PRNGKey(12094), y, initial_position, {}
+            )
+            # Calculate summary manually
+            final_log_prob = jax.vmap(lambda x: -y(x))(optimized_positions)
+            summary = {"final_log_prob": final_log_prob}
+        else:
+            # flowMC < 0.4 EvolutionaryOptimizer.optimize returns (rng_key, optimized_positions, summary)
+            rng_key, optimized_positions, summary = optimizer.optimize(
+                jax.random.PRNGKey(12094), y, initial_position
+            )
 
         best_fit = optimized_positions[jnp.argmin(summary["final_log_prob"])]
 
