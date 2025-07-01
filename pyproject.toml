@@ -65,13 +65,12 @@ build-backend = "hatchling.build"
 
 
 [tool.pyright]
-include = [
-    "src",
-    "tests",
-]
-exclude = [
-    "docs"
-]
+include = ["src","tests",]
+exclude = ["docs"]
+
+[tool.ruff]
+include = ["src"]
+exclude = ["test", "docs"]
 
 [tool.coverage.report]
 exclude_also = [
