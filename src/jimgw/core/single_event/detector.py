@@ -187,6 +187,17 @@ class Detector(ABC):
         """
         return self._sliced_psd
 
+    def __init__(self):
+        if not jax.config.read("jax_enable_x64"):
+            raise RuntimeError(
+                "Detector requires JAX to run in 64-bit (float64) mode, "
+                "but jax_enable_x64 is currently False.\n\n"
+                "Please enable float64 before creating any Detector by putting at the very top of your script:\n"
+                "    import jax\n"
+                "    jax.config.update('jax_enable_x64', True)\n"
+                "and then re-run."
+            )
+
 
 class GroundBased2G(Detector):
     """Object representing a ground-based detector.
@@ -250,6 +261,8 @@ class GroundBased2G(Detector):
             yarm_tilt (float, optional): Tilt of the y-arm in radians. Defaults to 0.
             modes (str, optional): Polarization modes. Defaults to "pc".
         """
+        super().__init__()
+
         self.name = name
 
         self.latitude = latitude

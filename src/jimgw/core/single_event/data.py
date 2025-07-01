@@ -240,7 +240,7 @@ class Data(ABC):
         if not self.has_fd:
             self.fft()
         freq, psd = welch(self.td, fs=self.sampling_frequency, **kws)
-        return PowerSpectrum(psd, freq, self.name)
+        return PowerSpectrum(psd, freq, self.name)  # type: ignore
 
     @classmethod
     def from_gwosc(
