@@ -16,9 +16,7 @@ class RunManager:
     run: RunDefinition
     jim: Jim
 
-    def __init__(
-        self, run: RunDefinition | str
-    ):
+    def __init__(self, run: RunDefinition | str):
         if isinstance(run, RunDefinition):
             self.run = run
         elif isinstance(run, str):
@@ -29,16 +27,16 @@ class RunManager:
         assert isinstance(
             run, RunDefinition
         ), "Run object or path not given. Please provide a Run object or a path to a serialized Run object."
-        
+
         # Initialize the jim objects needed for the run
         run.initialize_jim_objects()
-        
+
         self.jim = Jim(
             run.likelihood,
             run.prior,
             run.sample_transforms,
             run.likelihood_transforms,
-            **run.flowMC_params, # type: ignore
+            **run.flowMC_params,  # type: ignore
         )
 
         if not os.path.exists(run.working_dir):

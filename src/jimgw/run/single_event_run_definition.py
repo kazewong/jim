@@ -22,41 +22,42 @@ class SingleEventRunDefinition(RunDefinition):
     ifos: Sequence[GroundBased2G]  # Set of detectors
     f_ref: float  # Reference frequency
     local_data_prefix: Optional[str] = None
-    
-    def __init__(
-      self,
-      gps: float,
-      segment_length: float,
-      post_trigger_length: float,
-      f_min: float,
-      f_max: float,
-      ifos: set[str],
-      f_ref: float,
-      injection_data_prefix: Optional[str] = None,
-      **kwargs
-      ):
-          super().__init__(**kwargs)
-          self.gps = gps
-          self.segment_length = segment_length
-          self.post_trigger_length = post_trigger_length
-          self.f_min = f_min
-          self.f_max = f_max
-          self.ifos = [detector_preset[ifo] for ifo in ifos]
-          self.f_ref = f_ref
-          self.local_data_prefix = injection_data_prefix
 
-    
+    def __init__(
+        self,
+        gps: float,
+        segment_length: float,
+        post_trigger_length: float,
+        f_min: float,
+        f_max: float,
+        ifos: set[str],
+        f_ref: float,
+        injection_data_prefix: Optional[str] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.gps = gps
+        self.segment_length = segment_length
+        self.post_trigger_length = post_trigger_length
+        self.f_min = f_min
+        self.f_max = f_max
+        self.ifos = [detector_preset[ifo] for ifo in ifos]
+        self.f_ref = f_ref
+        self.local_data_prefix = injection_data_prefix
+
     def serialize(self, path: str = "./") -> dict:
         """Serialize a `SingleEventRun` object into a human readable config file."""
         run_dict = super().serialize(path)
-        run_dict.update({
-            "gps": self.gps,
-            "segment_length": self.segment_length,
-            "post_trigger_length": self.post_trigger_length,
-            "f_min": self.f_min,
-            "f_max": self.f_max,
-            "ifos": [ifo.name for ifo in self.ifos],
-            "f_ref": self.f_ref,
-            "local_data_prefix": self.local_data_prefix,
-        })
+        run_dict.update(
+            {
+                "gps": self.gps,
+                "segment_length": self.segment_length,
+                "post_trigger_length": self.post_trigger_length,
+                "f_min": self.f_min,
+                "f_max": self.f_max,
+                "ifos": [ifo.name for ifo in self.ifos],
+                "f_ref": self.f_ref,
+                "local_data_prefix": self.local_data_prefix,
+            }
+        )
         return run_dict

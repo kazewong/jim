@@ -5,15 +5,23 @@ from jimgw.run.library.class_definitions import AvailableDefinitions
 import yaml
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Execute a single run of a JimGW run definition.")
-    parser.add_argument("run_definition", type=str, help="Path to the run definition file.")
+    parser = argparse.ArgumentParser(
+        description="Execute a single run of a JimGW run definition."
+    )
+    parser.add_argument(
+        "run_definition", type=str, help="Path to the run definition file."
+    )
     args = parser.parse_args()
 
-    assert args.run_definition.endswith('.yaml'), "Run definition file must be a YAML file."
+    assert args.run_definition.endswith(
+        ".yaml"
+    ), "Run definition file must be a YAML file."
 
-    definitions_name = yaml.safe_load(open(args.run_definition))['definition_name']
+    definitions_name = yaml.safe_load(open(args.run_definition))["definition_name"]
 
-    assert issubclass(definition := AvailableDefinitions[definitions_name].value, RunDefinition), f"Invalid run definition: {definitions_name}"
+    assert issubclass(
+        definition := AvailableDefinitions[definitions_name].value, RunDefinition
+    ), f"Invalid run definition: {definitions_name}"
 
     # Load the run definition
     run_definition = definition.from_file(args.run_definition)

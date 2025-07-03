@@ -53,7 +53,7 @@ class RunDefinition(ABC):
         history_window: int = 100,
         n_temperatures: int = 5,
         max_temperature: float = 10.0,
-        n_tempered_steps: int = 5
+        n_tempered_steps: int = 5,
     ):
         self.working_dir = working_dir
         self.seed = seed
@@ -78,15 +78,14 @@ class RunDefinition(ABC):
             "history_window": history_window,
             "n_temperatures": n_temperatures,
             "max_temperature": max_temperature,
-            "n_tempered_steps": n_tempered_steps
+            "n_tempered_steps": n_tempered_steps,
         }
-
 
     @abstractmethod
     def initialize_jim_objects(self):
         """Initialize the jim objects needed for the run.
         In __init__, the default should be not to initialize any of the likelihood, prior, sample_transforms since they could take a significant amount of time to initialize, and the user may not need them immediately.
-        
+
         Instead, this method is called when initializing the RunManager.
         """
 
@@ -97,10 +96,10 @@ class RunDefinition(ABC):
         results["seed"] = self.seed
         results.update(self.flowMC_params)
         results.pop("rng_key", None)  # rng_key is not serializable
-        
+
         return results
 
-    def load_flowMC_params(self, inputs:dict):
+    def load_flowMC_params(self, inputs: dict):
         """Load the flowMC parameters into the Run object."""
         self.flowMC_params = {
             "rng_key": jax.random.PRNGKey(inputs.get("seed", self.seed)),
@@ -123,7 +122,7 @@ class RunDefinition(ABC):
             "history_window": inputs.get("history_window", 100),
             "n_temperatures": inputs.get("n_temperatures", 5),
             "max_temperature": inputs.get("max_temperature", 10.0),
-            "n_tempered_steps": inputs.get("n_tempered_steps", 5)
+            "n_tempered_steps": inputs.get("n_tempered_steps", 5),
         }
 
     @classmethod

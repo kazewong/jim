@@ -6,6 +6,7 @@ from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bu
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
+from typing import Optional
 
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior
@@ -110,8 +111,14 @@ class Jim(object):
         )
 
         if n_temperatures == 0:
-            logging.info("The number of temperatures is set to 0. No tempering will be applied.")
-            resource_strategy_bundle.strategy_order = [strat for strat in resource_strategy_bundle.strategy_order if strat != "parallel_tempering"]
+            logging.info(
+                "The number of temperatures is set to 0. No tempering will be applied."
+            )
+            resource_strategy_bundle.strategy_order = [
+                strat
+                for strat in resource_strategy_bundle.strategy_order
+                if strat != "parallel_tempering"
+            ]
 
         rng_key, subkey = jax.random.split(rng_key)
         self.sampler = Sampler(

@@ -5,21 +5,23 @@ Right now this is here just because I am developing the injection pipeline
 
 import numpy as np
 import jax
-import jax.numpy as jnp
 from jimgw.core.prior import (
-  UniformPrior,
-  UniformSpherePrior,
-  SinePrior,
-  CosinePrior,
-  PowerLawPrior,
-  CombinePrior,
+    UniformPrior,
+    UniformSpherePrior,
+    SinePrior,
+    CosinePrior,
+    PowerLawPrior,
+    CombinePrior,
 )
 from jimgw.core.single_event.transforms import (
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
 )
 
-def generate_fidiual_population(path_prefix:str = "./", seed: int = 2046, n_events: int = 7):
+
+def generate_fidiual_population(
+    path_prefix: str = "./", seed: int = 2046, n_events: int = 7
+):
     prior = []
     M_c_min, M_c_max = 10.0, 80.0
     q_min, q_max = 0.125, 1.0

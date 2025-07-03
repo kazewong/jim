@@ -95,7 +95,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         psd_start = gps - 2048
         psd_end = gps + 2048
 
-        if self.local_data_prefix == None:
+        if self.local_data_prefix is None:
             logging.info("No local data provided, using GWOSC data.")
             for ifo in self.ifos:
                 if ifo not in detector_preset.values():
