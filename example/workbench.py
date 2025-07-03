@@ -1,6 +1,9 @@
 import time
+
 import jax
 import jax.numpy as jnp
+jax.config.update("jax_enable_x64", True)
+
 from jimgw.core.jim import Jim
 from jimgw.core.prior import (
     CombinePrior,
@@ -10,7 +13,7 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.detector import H1, L1, V1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
@@ -23,7 +26,6 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-jax.config.update("jax_enable_x64", True)
 
 ###########################################
 ########## First we grab data #############
@@ -33,15 +35,15 @@ total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
 # for the analysis
-gps = 1126259462.4
+gps = 1266645879.3
 start = gps - 2
 end = gps + 2
 
 # fetch 4096s of data to estimate the PSD (to be
 # careful we should avoid the on-source segment,
 # but we don't do this in this example)
-psd_start = gps - 2048
-psd_end = gps + 2048
+psd_start = gps - 512
+psd_end = gps + 512
 
 # define frequency integration bounds for the likelihood
 # we set fmax to 87.5% of the Nyquist frequency to avoid
@@ -52,7 +54,7 @@ fmin = 20.0
 fmax = 1024
 
 # initialize detectors
-ifos = [H1, L1]
+ifos = [L1, H1]
 
 for ifo in ifos:
     # set analysis data
@@ -63,6 +65,11 @@ for ifo in ifos:
     psd_data = Data.from_gwosc(ifo.name, psd_start, psd_end)
     # set an NFFT corresponding to the analysis segment duration
     psd_fftlength = data.duration * data.sampling_frequency
+    if jnp.isnan(psd_data.td).any():
+        raise ValueError(
+            f"PSD FFT length is NaN for {ifo.name}. "
+            "This can happen if the data segment is too short."
+        )
     ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
 
 ###########################################
@@ -80,7 +87,7 @@ prior = []
 
 # Mass prior
 M_c_min, M_c_max = 10.0, 80.0
-q_min, q_max = 0.125, 1.0
+q_min, q_max = 0.25, 1.0
 Mc_prior = UniformPrior(M_c_min, M_c_max, parameter_names=["M_c"])
 q_prior = UniformPrior(q_min, q_max, parameter_names=["q"])
 
@@ -98,8 +105,8 @@ prior = prior + [
 ]
 
 # Extrinsic prior
-dL_prior = PowerLawPrior(1.0, 2000.0, 2.0, parameter_names=["d_L"])
-t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
+dL_prior = PowerLawPrior(500.0, 2000.0, 2.0, parameter_names=["d_L"])
+t_c_prior = UniformPrior(-0.1, 0.1, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
@@ -146,7 +153,7 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=waveform,
     trigger_time=gps,
     f_min=fmin,
@@ -158,7 +165,7 @@ jim = Jim(
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_chains=500,
+    n_chains=200,
     n_local_steps=100,
     n_global_steps=1000,
     n_training_loops=20,
@@ -180,7 +187,7 @@ jim = Jim(
     n_tempered_steps=10,
     verbose=True,
 )
-#
+
 jim.sample()
 
 print("Done!")
@@ -193,5 +200,5 @@ chains = jim.get_samples()
 import numpy as np
 import corner
 
-fig = corner.corner(np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10])
+fig = corner.corner(np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10], labels=jim.prior.parameter_names)
 fig.savefig('test')
