@@ -23,10 +23,9 @@ class Transform(ABC):
         self.name_mapping = name_mapping
 
     def propagate_name(self, x: list[str]) -> list[str]:
-        input_set = set(x)
-        from_set = set(self.name_mapping[0])
-        to_set = set(self.name_mapping[1])
-        return list(input_set - from_set | to_set)
+        result = [name for name in x if name not in self.name_mapping[0]]
+        result += [name for name in self.name_mapping[1] if name not in result]
+        return result
 
 
 class NtoMTransform(Transform):
