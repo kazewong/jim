@@ -38,13 +38,6 @@ dagster = [
 ]
 
 
-dvc = [
-    "dvc>=3.60.1",
-    "dvclive>=3.48.2",
-    "gto>=1.7.2",
-]
-
-
 [tool.uv]
 dev-dependencies = [
     "jimgw",
