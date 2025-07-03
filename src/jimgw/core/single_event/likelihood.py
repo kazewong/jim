@@ -66,7 +66,7 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         self.duration = self.detectors[0].data.duration
         self.waveform = waveform
         self.trigger_time = trigger_time
-        self.gmst = compute_gmst(trigger_time)
+        self.gmst = compute_gmst(self.trigger_time)
         self.kwargs = kwargs
         if "marginalization" in self.kwargs:
             marginalization = self.kwargs["marginalization"]
