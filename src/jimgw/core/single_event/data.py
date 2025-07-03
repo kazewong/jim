@@ -7,7 +7,7 @@ from jaxtyping import Array, Float, Complex, PRNGKeyArray
 
 from gwpy.timeseries import TimeSeries
 from typing import Optional, Self
-from scipy.signal import welch
+from jax.scipy.signal import welch
 from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
 
@@ -232,7 +232,7 @@ class Data(ABC):
         """Compute a Welch estimate of the power spectral density of the data.
 
         Args:
-            **kws: Keyword arguments for `scipy.signal.welch`.
+            **kws: Keyword arguments for `jax.scipy.signal.welch`.
 
         Returns:
             PowerSpectrum: Power spectral density of the data.
