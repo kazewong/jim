@@ -20,6 +20,7 @@ def event_list():
             name = event['commonName']
             gps_time = event['GPS']
             result.append((name, gps_time))
+    os.makedirs("data", exist_ok=True)
     with open("data/event_list.txt", "w") as f:
         for name, gps_time in result:
             f.write(f"{name} {gps_time}\n")
