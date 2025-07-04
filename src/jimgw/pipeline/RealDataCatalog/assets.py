@@ -1,3 +1,4 @@
+from sys import prefix
 import dagster as dg
 import gwosc
 import os
@@ -13,6 +14,7 @@ from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
 event_partitions_def = DynamicPartitionsDefinition(name="event_name")
 
 @dg.asset(
+    key_prefix="RealDataCatalog",
     group_name="prerun",
     description="Fetch all confident events and their gps time",
 )
@@ -38,8 +40,8 @@ def event_list(context: AssetExecutionContext):
 # We should be able to partition this asset and run it in parallel for each event.
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec("strain", deps=[event_list]),
-        dg.AssetSpec("psd", deps=[event_list]),
+        dg.AssetSpec("Realdata_strain", deps=[event_list]),
+        dg.AssetSpec("Realdata_psd", deps=[event_list]),
     ],
     group_name="prerun",
     partitions_def=event_partitions_def,
@@ -73,9 +75,10 @@ def raw_data(context: AssetExecutionContext):
 
 
 @dg.asset(
+    key_prefix="RealDataCatalog",
     group_name="prerun",
     description="Configuration file for the run.",
-    deps=[event_list],
+    deps=[raw_data],
     partitions_def=event_partitions_def,
 
 )
@@ -84,7 +87,7 @@ def config_file(context: AssetExecutionContext):
     with open("data/event_list.txt", "r") as f:
         lines = f.readlines()
         event_dict = dict(line.strip().split() for line in lines)
-    gps_time = event_dict[event_name]
+    gps_time = float(event_dict[event_name])
     run = IMRPhenomPv2StandardCBCRunDefinition(
         M_c_range=(10.0, 80.0),
         q_range=(0.125, 1.0),
@@ -111,23 +114,19 @@ def config_file(context: AssetExecutionContext):
     run.local_data_prefix = os.path.join(run_dir, "raw/")
     run.serialize(os.path.join(run_dir, "config.yaml"))
 
-
-
-
-
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec("RealDataCatalog_training_chains", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_training_log_prob", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_training_local_acceptance", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_training_global_acceptance", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_training_loss", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_production_chains", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_production_log_prob", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_production_local_acceptance", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_production_global_acceptance", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_auxiliary_nf_samples", deps=[raw_data]),
-        dg.AssetSpec("RealDataCatalog_auxiliary_prior_samples", deps=[raw_data]),
+        dg.AssetSpec("RealDataCatalog_training_chains", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_training_log_prob", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_training_local_acceptance", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_training_global_acceptance", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_training_loss", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_production_chains", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_production_log_prob", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_production_local_acceptance", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_production_global_acceptance", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_auxiliary_nf_samples", deps=[raw_data, config_file]),
+        dg.AssetSpec("RealDataCatalog_auxiliary_prior_samples", deps=[raw_data, config_file]),
     ],
     group_name="run",
 )
