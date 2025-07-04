@@ -3,27 +3,34 @@ import gwosc
 import os
 from jimgw.core.single_event.data import Data
 import numpy as np
+from dagster import DynamicPartitionsDefinition, AssetExecutionContext
 
 # Create asset group for run and configuration0
+
+event_partitions_def = DynamicPartitionsDefinition(name="event_name")
 
 @dg.asset(
     key_prefix="RealDataCatalog",
     group_name="prerun",
     description="Fetch all confident events and their gps time",
 )
-def event_list():
+def event_list(context: AssetExecutionContext):
     catalogs = ['GWTC-1-confident', 'GWTC-2.1-confident', 'GWTC-3-confident']
     result = []
+    event_names = []
     for catalog in catalogs:
         event_list = gwosc.api.fetch_catalog_json(catalog)['events']
         for event in event_list.values():
             name = event['commonName']
             gps_time = event['GPS']
             result.append((name, gps_time))
+            event_names.append(name)
     os.makedirs("data", exist_ok=True)
     with open("data/event_list.txt", "w") as f:
         for name, gps_time in result:
             f.write(f"{name} {gps_time}\n")
+    # Register dynamic partitions for event_name
+    context.instance.add_dynamic_partitions("event_name", event_names)
 
 
 # We should be able to partition this asset and run it in parallel for each event.
@@ -33,33 +40,34 @@ def event_list():
         dg.AssetSpec("RealDataCatalog_psd", deps=[event_list]),
     ],
     group_name="prerun",
+    partitions_def=event_partitions_def,
 )
-def raw_data():
+def raw_data(context: AssetExecutionContext):
     ifos = ["H1", "L1", "V1"]
+    event_name = context.partition_key
     with open("data/event_list.txt", "r") as f:
         lines = f.readlines()
-        for line in lines:
-            name, gps_time = line.strip().split()
-            start = float(gps_time) - 2
-            end = float(gps_time) + 2
-            event_dir = os.path.join("data", "raw", name)
-            os.makedirs(event_dir, exist_ok=True)
-            for ifo in ifos:
-                try:
-                    data = Data.from_gwosc(ifo, start, end)
-                    data.to_file(os.path.join(event_dir, f"{ifo}_data"))
-                    psd_data = Data.from_gwosc(ifo, start - 512, end + 512)  # This needs to be changed at some point
-                    # psd_fftlength = data.duration * data.sampling_frequency  # Not used
-                    if np.isnan(psd_data.td).any():
-                        raise ValueError(
-                            f"PSD FFT length is NaN for {ifo}. "
-                            "This can happen when the selected time range contains contaminated data or missing data."
-                        )
-                    else:
-                        psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
-                except Exception as e:
-                    print(f"Error fetching data for {ifo} during {name}: {e}")
-                    continue
+        event_dict = dict(line.strip().split() for line in lines)
+    gps_time = event_dict[event_name]
+    start = float(gps_time) - 2
+    end = float(gps_time) + 2
+    event_dir = os.path.join("data", "raw", event_name)
+    os.makedirs(event_dir, exist_ok=True)
+    for ifo in ifos:
+        try:
+            data = Data.from_gwosc(ifo, start, end)
+            data.to_file(os.path.join(event_dir, f"{ifo}_data"))
+            psd_data = Data.from_gwosc(ifo, start - 512, end + 512)  # This needs to be changed at some point
+            if np.isnan(psd_data.td).any():
+                raise ValueError(
+                    f"PSD FFT length is NaN for {ifo}. "
+                    "This can happen when the selected time range contains contaminated data or missing data."
+                )
+            else:
+                psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
+        except Exception as e:
+            print(f"Error fetching data for {ifo} during {event_name}: {e}")
+            continue
 
 
 @dg.asset(
@@ -71,7 +79,7 @@ def config_file():
     pass
 
 
-        
+
 
 
 @dg.multi_asset(
