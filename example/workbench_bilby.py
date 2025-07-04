@@ -13,9 +13,9 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1, V1
+from jimgw.core.single_event.detector import H1, L1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
-from jimgw.core.single_event.data import Data
+from jimgw.core.single_event.data import Data, PowerSpectrum
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound
 from jimgw.core.single_event.transforms import (
@@ -27,57 +27,38 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
+import numpy as np
+
 ###########################################
 ########## First we grab data #############
 ###########################################
 
 total_time_start = time.time()
 
-# first, fetch a 4s segment centered on GW150914
-# for the analysis
-gps = 1266645879.396484
-start = gps - 2
-end = gps + 2
-
-# fetch 4096s of data to estimate the PSD (to be
-# careful we should avoid the on-source segment,
-# but we don't do this in this example)
-psd_start = gps - 2048
-psd_end = gps + 2048
-
-# define frequency integration bounds for the likelihood
-# we set fmax to 87.5% of the Nyquist frequency to avoid
-# data corrupted by the GWOSC antialiasing filter
-# (Note that Data.from_gwosc will pull data sampled at
-# 4096 Hz by default)
 fmin = 20.0
-fmax = 896.0
+fmax = 200.0
+gps = 1266645879.396484
 
-# initialize detectors
+H1_data = np.load('./data/GW200225_060421_H1.npz', allow_pickle=True)
+L1_data = np.load('./data/GW200225_060421_L1.npz', allow_pickle=True)
+
+H1.set_data(Data.from_fd(fd=H1_data['fd_data'], frequencies=H1_data['frequency_array'], epoch=H1_data['epoch'], name='H1_fd_data'))
+H1.set_psd(PowerSpectrum(values=H1_data['psd_array'], frequencies=H1_data['frequency_array'], name='H1_psd'))
+L1.set_data(Data.from_fd(fd=L1_data['fd_data'], frequencies=L1_data['frequency_array'], epoch=L1_data['epoch'], name='L1_fd_data'))
+L1.set_psd(PowerSpectrum(values=L1_data['psd_array'], frequencies=L1_data['frequency_array'], name='L1_psd'))
+
 ifos = [H1, L1]
-
-for ifo in ifos:
-    # set analysis data
-    data = Data.from_gwosc(ifo.name, start, end)
-    ifo.set_data(data)
-
-    # set PSD (Welch estimate)
-    psd_data = Data.from_gwosc(ifo.name, psd_start, psd_end)
-    # set an NFFT corresponding to the analysis segment duration
-    psd_fftlength = data.duration * data.sampling_frequency
-    if jnp.isnan(psd_data.td).any():
-        raise ValueError(
-            f"PSD FFT length is NaN for {ifo.name}. "
-            "This can happen if the data segment is too short."
-        )
-    ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
+# -------------------------------
+# Set up waveform
+# -------------------------------
+ref_freq = 20.0
 
 ###########################################
 ########## Set up waveform ################
 ###########################################
 
 # initialize waveform
-waveform = RippleIMRPhenomPv2(f_ref=20)
+waveform = RippleIMRPhenomPv2(f_ref=ref_freq)
 
 ###########################################
 ########## Set up priors ##################
@@ -106,7 +87,7 @@ prior = prior + [
 
 # Extrinsic prior
 dL_prior = PowerLawPrior(100.0, 6000.0, 2.0, parameter_names=["d_L"])
-t_c_prior = UniformPrior(-0.1, 0.1, parameter_names=["t_c"])
+# t_c_prior = UniformPrior(0.07, 0.12, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
@@ -114,7 +95,7 @@ dec_prior = CosinePrior(parameter_names=["dec"])
 
 prior = prior + [
     dL_prior,
-    t_c_prior,
+    # t_c_prior,
     phase_c_prior,
     psi_prior,
     ra_prior,
@@ -128,7 +109,7 @@ prior = CombinePrior(prior)
 sample_transforms = [
     DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    # GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(name_mapping=(["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max,),
     BoundToUnbound(name_mapping=(["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max,),
@@ -158,7 +139,7 @@ likelihood = TransientLikelihoodFD(
     trigger_time=gps,
     f_min=fmin,
     f_max=fmax,
-    # marginalization="time",
+    marginalization="time",
 )
 
 jim = Jim(
