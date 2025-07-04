@@ -138,14 +138,14 @@ def generate_initial_samples(
     """
     initial_position = jnp.zeros((n_samples, prior.n_dims)) + jnp.nan
     while not jnp.isfinite(initial_position).all():
-        non_finite_index = jnp.where(~jnp.all(jnp.isfinite(initial_position), axis=1))[
-            0
-        ]
+        non_finite_index = jnp.where(
+            ~jnp.all(jnp.isfinite(initial_position), axis=1)
+            )[0]
         rng_key, subkey = jax.random.split(rng_key)
         guess = prior.sample(subkey, n_samples)
         for transform in sample_transforms:
             guess = jax.vmap(transform.forward)(guess)
-        guess = jnp.array([guess[key] for key in guess.keys()]).T
+        guess = jnp.array(list(guess.values())).T
         finite_guess = jnp.where(
             jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
         )[0]
