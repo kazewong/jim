@@ -12,7 +12,7 @@ from jimgw.core.prior import (
 )
 
 import jimgw.core.single_event.data as jd
-from jimgw.core.single_event.detector import detector_preset
+from jimgw.core.single_event.detector import get_detector_preset
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD, ZeroLikelihood
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound, BijectiveTransform, NtoMTransform
@@ -99,7 +99,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             psd_start = gps - 2048
             psd_end = gps + 2048
             for ifo in self.ifos:
-                if ifo not in detector_preset.values():
+                if ifo not in get_detector_preset().values():
                     raise ValueError(f"Invalid detector: {ifo}")
                 ifo_data = jd.Data.from_gwosc(ifo.name, start, end)
                 ifo.set_data(ifo_data)
@@ -110,7 +110,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             logging.info(f"Using local data from {local_data_prefix}.")
             # TODO: Load local data from a file, and the PSD correspondingly.
             for ifo in self.ifos:
-                if ifo not in detector_preset.values():
+                if ifo not in get_detector_preset().values():
                     raise ValueError(f"Invalid detector: {ifo}")
                 ifo_data = jd.Data.from_file(f"{local_data_prefix}{ifo.name}_data.npz")
                 ifo.set_data(ifo_data)

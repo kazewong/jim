@@ -1,6 +1,6 @@
 import dagster as dg
 from jimgw.core.population.injection_util import generate_fidiual_population
-from jimgw.core.single_event.detector import detector_preset
+from jimgw.core.single_event.detector import get_detector_preset
 from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
     IMRPhenomPv2StandardCBCRunDefinition,
 )
@@ -110,7 +110,7 @@ def raw_data():
             injection_parameters["gmst"] = gmst
             injection_parameters["trigger_time"] = config["gps"]
             for ifo in ifos:
-                detector = detector_preset[ifo]
+                detector = get_detector_preset()[ifo]
                 detector.load_and_set_psd()
                 detector.frequency_bounds = (f_min, f_max)
                 detector.inject_signal(

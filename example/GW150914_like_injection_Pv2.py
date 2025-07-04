@@ -15,7 +15,7 @@ from jimgw.core.prior import (
     UniformSpherePrior,
     RayleighPrior,
 )
-from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.detector import get_H1, get_L1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import PeriodicTransform
@@ -95,7 +95,7 @@ sampling_frequency = f_max * 2
 # initialize waveform
 PhenomPv2 = RippleIMRPhenomPv2(f_ref=20)
 
-ifos = [H1, L1]
+ifos = [get_H1(), get_L1()]
 for ifo in ifos:
     ifo.load_and_set_psd()
     ifo.frequency_bounds = (f_min, f_max)
@@ -184,7 +184,7 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=PhenomPv2,
     trigger_time=gps_time,
     f_min=f_min,

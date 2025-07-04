@@ -79,7 +79,7 @@ import numpy as np
 from ripple import Mc_eta_to_ms
 from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 
-from jimgw.core.PE.detector_preset import *
+from jimgw.core.PE.get_detector_preset import *
 from jimgw.core.PE.detector_projection import make_detector_response
 
 

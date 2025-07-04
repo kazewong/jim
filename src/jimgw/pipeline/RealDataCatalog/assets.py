@@ -1,16 +1,18 @@
 import dagster as dg
 import gwosc
 import os
-from jimgw.core.single_event.data import Data
 import numpy as np
 from dagster import DynamicPartitionsDefinition, AssetExecutionContext
+from jimgw.core.single_event.data import Data
+from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
+    IMRPhenomPv2StandardCBCRunDefinition,
+)
 
 # Create asset group for run and configuration0
 
 event_partitions_def = DynamicPartitionsDefinition(name="event_name")
 
 @dg.asset(
-    key_prefix="RealDataCatalog",
     group_name="prerun",
     description="Fetch all confident events and their gps time",
 )
@@ -36,8 +38,8 @@ def event_list(context: AssetExecutionContext):
 # We should be able to partition this asset and run it in parallel for each event.
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec("RealDataCatalog_strain", deps=[event_list]),
-        dg.AssetSpec("RealDataCatalog_psd", deps=[event_list]),
+        dg.AssetSpec("strain", deps=[event_list]),
+        dg.AssetSpec("psd", deps=[event_list]),
     ],
     group_name="prerun",
     partitions_def=event_partitions_def,
@@ -51,7 +53,7 @@ def raw_data(context: AssetExecutionContext):
     gps_time = event_dict[event_name]
     start = float(gps_time) - 2
     end = float(gps_time) + 2
-    event_dir = os.path.join("data", "raw", event_name)
+    event_dir = os.path.join("data", event_name, "raw")
     os.makedirs(event_dir, exist_ok=True)
     for ifo in ifos:
         try:
@@ -71,12 +73,43 @@ def raw_data(context: AssetExecutionContext):
 
 
 @dg.asset(
-    key_prefix="RealDataCatalog",
     group_name="prerun",
     description="Configuration file for the run.",
+    deps=[event_list],
+    partitions_def=event_partitions_def,
+
 )
-def config_file():
-    pass
+def config_file(context: AssetExecutionContext):
+    event_name = context.partition_key
+    with open("data/event_list.txt", "r") as f:
+        lines = f.readlines()
+        event_dict = dict(line.strip().split() for line in lines)
+    gps_time = event_dict[event_name]
+    run = IMRPhenomPv2StandardCBCRunDefinition(
+        M_c_range=(10.0, 80.0),
+        q_range=(0.125, 1.0),
+        max_s1=0.99,
+        max_s2=0.99,
+        iota_range=(0.0, np.pi),
+        dL_range=(1.0, 2000.0),
+        t_c_range=(-0.05, 0.05),
+        phase_c_range=(0.0, 2 * np.pi),
+        psi_range=(0.0, np.pi),
+        ra_range=(0.0, 2 * np.pi),
+        dec_range=(-np.pi / 2, np.pi / 2),
+        gps=gps_time,
+        f_min=20.0,
+        f_max=2000.0,
+        segment_length=4.0,
+        post_trigger_length=2.0,
+        ifos=["H1", "L1"],
+        f_ref=20.0,
+    )
+    run_dir = f"./data/{event_name}/"
+    run.working_dir = run_dir
+    run.seed = hash(int(gps_time)) % (2**32 - 1)
+    run.local_data_prefix = os.path.join(run_dir, "raw/")
+    run.serialize(os.path.join(run_dir, "config.yaml"))
 
 
 

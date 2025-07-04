@@ -13,7 +13,7 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.detector import get_H1, get_L1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.data import Data, PowerSpectrum
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
@@ -39,6 +39,8 @@ fmin = 20.0
 fmax = 200.0
 gps = 1266645879.396484
 
+H1 = get_H1()
+L1 = get_L1()
 H1_data = np.load('./data/GW200225_060421_H1.npz', allow_pickle=True)
 L1_data = np.load('./data/GW200225_060421_L1.npz', allow_pickle=True)
 

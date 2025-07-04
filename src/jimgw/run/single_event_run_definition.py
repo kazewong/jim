@@ -1,7 +1,7 @@
 from jimgw.run.run_definition import RunDefinition
 from jimgw.core.single_event.detector import GroundBased2G
 from typing import Optional, Sequence
-from jimgw.core.single_event.detector import detector_preset
+from jimgw.core.single_event.detector import get_detector_preset
 
 
 class SingleEventRunDefinition(RunDefinition):
@@ -41,7 +41,7 @@ class SingleEventRunDefinition(RunDefinition):
         self.post_trigger_length = post_trigger_length
         self.f_min = f_min
         self.f_max = f_max
-        self.ifos = [detector_preset[ifo] for ifo in ifos]
+        self.ifos = [get_detector_preset()[ifo] for ifo in ifos]
         self.f_ref = f_ref
         self.local_data_prefix = injection_data_prefix
 
