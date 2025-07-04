@@ -46,7 +46,7 @@ def raw_data():
             for ifo in ifos:
                 try:
                     data = Data.from_gwosc(ifo, start, end)
-                    data.to_file(os.path.join(event_dir, f"{ifo}data"))
+                    data.to_file(os.path.join(event_dir, f"{ifo}_data"))
                     psd_data = Data.from_gwosc(ifo, start - 512, end + 512)  # This needs to be changed at some point
                     # psd_fftlength = data.duration * data.sampling_frequency  # Not used
                     if np.isnan(psd_data.td).any():
@@ -55,7 +55,7 @@ def raw_data():
                             "This can happen when the selected time range contains contaminated data or missing data."
                         )
                     else:
-                        psd_data.to_file(os.path.join(event_dir, f"{ifo}psd"))
+                        psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
                 except Exception as e:
                     print(f"Error fetching data for {ifo} during {name}: {e}")
                     continue

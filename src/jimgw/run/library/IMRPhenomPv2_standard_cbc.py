@@ -111,9 +111,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             for ifo in self.ifos:
                 if ifo not in detector_preset.values():
                     raise ValueError(f"Invalid detector: {ifo}")
-                ifo_data = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}.hdf5")
+                ifo_data = jd.Data.from_file(f"{local_data_prefix}{ifo.name}_data.npz")
                 ifo.set_data(ifo_data)
-                ifo_psd = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}_psd.hdf5")
+                ifo_psd = jd.Data.from_file(f"{local_data_prefix}{ifo.name}_psd.npz")
                 psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
                 ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
 
