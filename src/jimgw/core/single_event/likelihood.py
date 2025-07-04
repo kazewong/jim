@@ -631,7 +631,7 @@ def time_marginalized_likelihood(
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = [-0.1, 0.1] #TODO: This is hard coded right now, need to update.
+    tc_range = [-0.1, 0.1]  # TODO: This is hard coded right now, need to update.
     tc_array = kwargs["tc_array"]
     pad_low = kwargs["pad_low"]
     pad_high = kwargs["pad_high"]
@@ -641,7 +641,6 @@ def time_marginalized_likelihood(
     complex_h_inner_d_positive_f = jnp.concatenate(
         (pad_low, complex_h_inner_d, pad_high)
     )
-
 
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
