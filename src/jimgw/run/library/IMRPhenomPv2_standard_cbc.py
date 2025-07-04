@@ -92,11 +92,12 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
-        psd_start = gps - 2048
-        psd_end = gps + 2048
+
 
         if self.local_data_prefix is None:
             logging.info("No local data provided, using GWOSC data.")
+            psd_start = gps - 2048
+            psd_end = gps + 2048
             for ifo in self.ifos:
                 if ifo not in detector_preset.values():
                     raise ValueError(f"Invalid detector: {ifo}")
