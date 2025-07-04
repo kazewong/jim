@@ -25,6 +25,7 @@ def event_list():
             f.write(f"{name} {gps_time}\n")
 
 
+# We should be able to partition this asset and run it in parallel for each event.
 @dg.multi_asset(
     specs=[
         dg.AssetSpec("RealDataCatalog_strain", deps=[event_list]),

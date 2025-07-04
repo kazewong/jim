@@ -1,4 +1,8 @@
 import argparse
+import jax
+
+jax.config.update("jax_enable_x64", True)  # Enable 64-bit precision
+
 from jimgw.run.run_definition import RunDefinition
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.run.library.class_definitions import AvailableDefinitions
