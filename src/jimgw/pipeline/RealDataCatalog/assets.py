@@ -40,8 +40,8 @@ def event_list(context: AssetExecutionContext):
 # We should be able to partition this asset and run it in parallel for each event.
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec("Realdata_strain", deps=[event_list]),
-        dg.AssetSpec("Realdata_psd", deps=[event_list]),
+        dg.AssetSpec(["RealDataCatalog","strain"], deps=[event_list]),
+        dg.AssetSpec(["RealDataCatalog", "psd"], deps=[event_list]),
     ],
     group_name="prerun",
     partitions_def=event_partitions_def,
@@ -68,6 +68,7 @@ def raw_data(context: AssetExecutionContext):
                     "This can happen when the selected time range contains contaminated data or missing data."
                 )
             else:
+                psd_data = psd_data.to_psd()
                 psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
         except Exception as e:
             print(f"Error fetching data for {ifo} during {event_name}: {e}")
@@ -80,7 +81,6 @@ def raw_data(context: AssetExecutionContext):
     description="Configuration file for the run.",
     deps=[raw_data],
     partitions_def=event_partitions_def,
-
 )
 def config_file(context: AssetExecutionContext):
     event_name = context.partition_key
@@ -88,6 +88,16 @@ def config_file(context: AssetExecutionContext):
         lines = f.readlines()
         event_dict = dict(line.strip().split() for line in lines)
     gps_time = float(event_dict[event_name])
+    # Check which IFOs have both data and PSD files present
+    available_ifos: list[str] = []
+    raw_dir = os.path.join("data", event_name, "raw")
+    for ifo in ["H1", "L1", "V1"]:
+        data_file = os.path.join(raw_dir, f"{ifo}_data.npz")
+        psd_file = os.path.join(raw_dir, f"{ifo}_psd.npz")
+        if os.path.exists(data_file) and os.path.exists(psd_file):
+            available_ifos.append(ifo)
+    if available_ifos == []:
+        raise RuntimeError(f"No IFOs with both data and PSD found for event {event_name}")
     run = IMRPhenomPv2StandardCBCRunDefinition(
         M_c_range=(10.0, 80.0),
         q_range=(0.125, 1.0),
@@ -105,7 +115,7 @@ def config_file(context: AssetExecutionContext):
         f_max=2000.0,
         segment_length=4.0,
         post_trigger_length=2.0,
-        ifos=["H1", "L1"],
+        ifos=available_ifos,
         f_ref=20.0,
     )
     run_dir = f"./data/{event_name}/"
@@ -116,17 +126,17 @@ def config_file(context: AssetExecutionContext):
 
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec("RealDataCatalog_training_chains", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_training_log_prob", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_training_local_acceptance", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_training_global_acceptance", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_training_loss", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_production_chains", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_production_log_prob", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_production_local_acceptance", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_production_global_acceptance", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_auxiliary_nf_samples", deps=[raw_data, config_file]),
-        dg.AssetSpec("RealDataCatalog_auxiliary_prior_samples", deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "training_chains"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "training_log_prob"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "training_local_acceptance"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "training_global_acceptance"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "training_loss"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "production_chains"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "production_log_prob"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "production_local_acceptance"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "production_global_acceptance"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "auxiliary_nf_samples"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "auxiliary_prior_samples"], deps=[raw_data, config_file]),
     ],
     group_name="run",
 )
@@ -139,11 +149,9 @@ def run():
 
 
 # Create asset group for diagnostics
-
-
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_loss"],
+    deps=[["RealDataCatalog", "training_loss"]],
     key_prefix="RealDataCatalog",
 )
 def loss_plot():
@@ -152,7 +160,7 @@ def loss_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_chains"],
+    deps=[["RealDataCatalog", "training_chains"]],
     key_prefix="RealDataCatalog",
 )
 def training_chains_corner_plot():
@@ -161,7 +169,7 @@ def training_chains_corner_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_chains"],
+    deps=[["RealDataCatalog", "training_chains"]],
     key_prefix="RealDataCatalog",
 )
 def training_chains_trace_plot():
@@ -170,7 +178,7 @@ def training_chains_trace_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_chains"],
+    deps=[["RealDataCatalog", "training_chains"]],
     key_prefix="RealDataCatalog",
 )
 def training_chains_rhat_plot():
@@ -179,7 +187,7 @@ def training_chains_rhat_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_log_prob"],
+    deps=[["RealDataCatalog", "training_log_prob"]],
     key_prefix="RealDataCatalog",
 )
 def training_log_prob_distribution():
@@ -188,7 +196,7 @@ def training_log_prob_distribution():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_log_prob"],
+    deps=[["RealDataCatalog", "training_log_prob"]],
     key_prefix="RealDataCatalog",
 )
 def training_log_prob_evolution():
@@ -197,7 +205,7 @@ def training_log_prob_evolution():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_local_acceptance"],
+    deps=[["RealDataCatalog", "training_local_acceptance"]],
     key_prefix="RealDataCatalog",
 )
 def training_local_acceptance_plot():
@@ -206,7 +214,7 @@ def training_local_acceptance_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_training_global_acceptance"],
+    deps=[["RealDataCatalog", "training_global_acceptance"]],
     key_prefix="RealDataCatalog",
 )
 def training_global_acceptance_plot():
@@ -215,7 +223,7 @@ def training_global_acceptance_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_chains"],
+    deps=[["RealDataCatalog", "production_chains"]],
     key_prefix="RealDataCatalog",
 )
 def production_chains_corner_plot():
@@ -224,7 +232,7 @@ def production_chains_corner_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_chains"],
+    deps=[["RealDataCatalog", "production_chains"]],
     key_prefix="RealDataCatalog",
 )
 def production_chains_trace_plot():
@@ -233,7 +241,7 @@ def production_chains_trace_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_chains"],
+    deps=[["RealDataCatalog", "production_chains"]],
     key_prefix="RealDataCatalog",
 )
 def production_chains_rhat_plot():
@@ -242,7 +250,7 @@ def production_chains_rhat_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_log_prob"],
+    deps=[["RealDataCatalog", "production_log_prob"]],
     key_prefix="RealDataCatalog",
 )
 def production_log_prob_distribution():
@@ -251,7 +259,7 @@ def production_log_prob_distribution():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_log_prob"],
+    deps=[["RealDataCatalog", "production_log_prob"]],
     key_prefix="RealDataCatalog",
 )
 def production_log_prob_evolution():
@@ -260,7 +268,7 @@ def production_log_prob_evolution():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_local_acceptance"],
+    deps=[["RealDataCatalog", "production_local_acceptance"]],
     key_prefix="RealDataCatalog",
 )
 def production_local_acceptance_plot():
@@ -269,7 +277,7 @@ def production_local_acceptance_plot():
 
 @dg.asset(
     group_name="diagnostics",
-    deps=["RealDataCatalog_production_global_acceptance"],
+    deps=[["RealDataCatalog", "production_global_acceptance"]],
     key_prefix="RealDataCatalog",
 )
 def production_global_acceptance_plot():
