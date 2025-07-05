@@ -34,6 +34,7 @@ cuda = [
 ]
 dagster = [
     "dagster>=1.10.11",
+    "dagster-pipes>=1.11.1",
     "dagster-webserver>=1.10.11",
 ]
 

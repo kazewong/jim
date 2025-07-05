@@ -1405,6 +1405,7 @@ cuda = [
 ]
 dagster = [
     { name = "dagster" },
+    { name = "dagster-pipes" },
     { name = "dagster-webserver" },
 ]
 docs = [
@@ -1433,6 +1434,7 @@ requires-dist = [
     { name = "beartype", specifier = ">=0.19.0" },
     { name = "corner", specifier = ">=2.2.2" },
     { name = "dagster", marker = "extra == 'dagster'", specifier = ">=1.10.11" },
+    { name = "dagster-pipes", marker = "extra == 'dagster'", specifier = ">=1.11.1" },
     { name = "dagster-webserver", marker = "extra == 'dagster'", specifier = ">=1.10.11" },
     { name = "flowmc", specifier = ">=0.4.4" },
     { name = "gwpy", specifier = ">=3.0.10" },
