@@ -81,12 +81,12 @@ class RunManager:
         samples = self.jim.prior.sample(jax.random.PRNGKey(0), n_samples)
         return samples
 
-    def get_acceptance_rates(self):
+    def get_acceptance_rates(self, training: bool = False):
         """
         Fetch the local and global acceptance rates from the sampler resources.
         """
-        local_acc = self.jim.sampler.resources["local_accs_training"]
-        global_acc = self.jim.sampler.resources["global_accs_training"]
+        local_acc = self.jim.sampler.resources["local_accs_training"] if training else self.jim.sampler.resources["local_accs_production"]
+        global_acc = self.jim.sampler.resources["global_accs_training"] if training else self.jim.sampler.resources["global_accs_production"]
         assert isinstance(local_acc, Buffer), "Local acceptance rate is not a Buffer"
         assert isinstance(global_acc, Buffer), "Global acceptance rate is not a Buffer"
         return {

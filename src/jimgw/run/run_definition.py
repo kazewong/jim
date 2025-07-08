@@ -101,6 +101,7 @@ class RunDefinition(ABC):
 
     def load_flowMC_params(self, inputs: dict):
         """Load the flowMC parameters into the Run object."""
+        self.working_dir = inputs.get("working_dir", self.working_dir)
         self.flowMC_params = {
             "rng_key": jax.random.PRNGKey(inputs.get("seed", self.seed)),
             "n_chains": inputs.get("n_chains", 50),
