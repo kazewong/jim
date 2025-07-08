@@ -145,3 +145,4 @@ test_data
 outdir
 jim.code-workspace
 .tmp_dagster*
+dagster_tmp/*
