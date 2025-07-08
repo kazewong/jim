@@ -347,7 +347,7 @@ class Data(ABC):
         td = data["td"]
         dt = float(data["dt"])
         epoch = float(data["epoch"])
-        return cls(td, dt, epoch)
+        return cls(td, dt, epoch, data['name'])
 
     def to_file(self, path: str):
         """Save the data to a file in .npz format.

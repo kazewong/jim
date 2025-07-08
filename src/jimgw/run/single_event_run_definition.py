@@ -45,6 +45,18 @@ class SingleEventRunDefinition(RunDefinition):
         self.f_ref = f_ref
         self.local_data_prefix = injection_data_prefix
 
+    def load_single_event_params(self, inputs: dict):
+        """Load the single event parameters into the Run object."""
+        self.gps = inputs.get("gps", self.gps)
+        self.segment_length = inputs.get("segment_length", self.segment_length)
+        self.post_trigger_length = inputs.get("post_trigger_length", self.post_trigger_length)
+        self.f_min = inputs.get("f_min", self.f_min)
+        self.f_max = inputs.get("f_max", self.f_max)
+        ifos_input = inputs.get("ifos", [ifo.name for ifo in self.ifos])
+        self.ifos = [get_detector_preset()[ifo] for ifo in ifos_input]
+        self.f_ref = inputs.get("f_ref", self.f_ref)
+        self.local_data_prefix = inputs.get("local_data_prefix", self.local_data_prefix)
+
     def serialize(self, path: str = "./") -> dict:
         """Serialize a `SingleEventRun` object into a human readable config file."""
         run_dict = super().serialize(path)

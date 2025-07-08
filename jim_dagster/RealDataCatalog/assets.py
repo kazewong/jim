@@ -60,14 +60,20 @@ def raw_data(context: AssetExecutionContext):
         try:
             data = Data.from_gwosc(ifo, start, end)
             data.to_file(os.path.join(event_dir, f"{ifo}_data"))
-            psd_data = Data.from_gwosc(ifo, start - 512, end + 512)  # This needs to be changed at some point
+            # TODO: Perhaps we should make sure the PSD estimation window are the same accross all IFOs?
+            psd_data = Data.from_gwosc(ifo, start - 4098, end -2)  # This needs to be changed at some point
+            if np.isnan(psd_data.td).any():
+                psd_data = Data.from_gwosc(ifo, start + 2, end + 4098)
+            if np.isnan(psd_data.td).any():
+                psd_data = Data.from_gwosc(ifo, start - 2048, end + 2048)
             if np.isnan(psd_data.td).any():
                 raise ValueError(
                     f"PSD FFT length is NaN for {ifo}. "
                     "This can happen when the selected time range contains contaminated data or missing data."
                 )
             else:
-                psd_data = psd_data.to_psd()
+                psd_fftlength = data.duration * data.sampling_frequency
+                psd_data = psd_data.to_psd(nperseg=psd_fftlength)
                 psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
         except Exception as e:
             print(f"Error fetching data for {ifo} during {event_name}: {e}")
@@ -98,20 +104,40 @@ def config_file(context: AssetExecutionContext):
     if available_ifos == []:
         raise RuntimeError(f"No IFOs with both data and PSD found for event {event_name}")
     run = IMRPhenomPv2StandardCBCRunDefinition(
-        M_c_range=(10.0, 80.0),
-        q_range=(0.125, 1.0),
+        n_chains=500,
+        n_local_steps=100,
+        n_global_steps=1000,
+        n_training_loops=20,
+        n_production_loops=10,
+        n_epochs=20,
+        mala_step_size=0.002,
+        rq_spline_hidden_units=[128, 128],
+        rq_spline_n_bins=10,
+        rq_spline_n_layers=8,
+        learning_rate=0.001,
+        batch_size=10000,
+        n_max_examples=30000,
+        local_thinning=1,
+        global_thinning=10,
+        n_NFproposal_batch_size=100,
+        history_window=200,
+        n_temperatures=0,
+        max_temperature=20.0,
+        n_tempered_steps=10,
+        M_c_range=(5.0, 80.0),
+        q_range=(0.25, 1.0),
         max_s1=0.99,
         max_s2=0.99,
-        iota_range=(0.0, np.pi),
-        dL_range=(1.0, 2000.0),
+        iota_range=(0.0, 3.141592653589793),
+        dL_range=(100.0, 6000.0),
         # t_c_range=(-0.05, 0.05),
-        phase_c_range=(0.0, 2 * np.pi),
-        psi_range=(0.0, np.pi),
-        ra_range=(0.0, 2 * np.pi),
-        dec_range=(-np.pi / 2, np.pi / 2),
+        phase_c_range=(0.0, 6.283185307179586),
+        psi_range=(0.0, 3.141592653589793),
+        ra_range=(0.0, 6.283185307179586),
+        dec_range=(-1.5707963267948966, 1.5707963267948966),
         gps=gps_time,
         f_min=20.0,
-        f_max=2000.0,
+        f_max=896.0,
         segment_length=4.0,
         post_trigger_length=2.0,
         ifos=available_ifos,
