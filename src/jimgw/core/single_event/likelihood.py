@@ -56,9 +56,8 @@ class TransientLikelihoodFD(SingleEventLikelihood):
         for detector in detectors:
             detector.set_frequency_bounds(f_min, f_max)
             _frequencies.append(detector.sliced_frequencies)
-        assert jax.tree.reduce(
-            jnp.array_equal, _frequencies
-        ), "The frequency arrays are not all the same."
+        _frequencies = jnp.array(_frequencies)
+        assert jnp.all(jnp.array(_frequencies)[:-1] == jnp.array(_frequencies)[1:]), "The frequency arrays are not all the same."
 
         self.detectors = detectors
         self.frequencies = _frequencies[0]
@@ -631,7 +630,7 @@ def time_marginalized_likelihood(
         log_likelihood += -optimal_SNR / 2
 
     # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = [-0.1, 0.1] #TODO: This is hard coded right now, need to update.
+    tc_range = [-0.12, 0.12] #TODO: This is hard coded right now, need to update.
     tc_array = kwargs["tc_array"]
     pad_low = kwargs["pad_low"]
     pad_high = kwargs["pad_high"]
