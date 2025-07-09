@@ -54,6 +54,14 @@ class RunManager:
         Fetch the samples from the sampler.
         """
         return self.jim.get_samples(training=training)
+    
+    def get_log_prob(self, training: bool = False) -> Float[Array, "n_chains"]:
+        """
+        Fetch the log probabilities of the samples.
+        """
+        log_prob = self.jim.sampler.resources["log_prob_training"] if training else self.jim.sampler.resources["log_prob_production"]
+        assert isinstance(log_prob, Buffer), "Log probability is not a Buffer"
+        return log_prob.data
 
     def get_loss_data(self):
         """

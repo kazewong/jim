@@ -38,6 +38,7 @@ if __name__ == "__main__":
     run_manager.sample()
 
     chains = run_manager.get_chain_samples(training=False)
+    log_probs = run_manager.get_log_prob(training=False)
     loss_data = run_manager.get_loss_data()
     nf_samples = run_manager.get_nf_samples()
     prior_samples = run_manager.get_prior_samples()
@@ -46,6 +47,7 @@ if __name__ == "__main__":
     np.savez(
         f"{run_manager.working_dir}/results",
         chains=chains,
+        log_probs=log_probs,
         loss_data=loss_data,
         nf_samples=nf_samples,
         prior_samples=prior_samples,
