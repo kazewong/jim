@@ -295,7 +295,7 @@ def production_chains_corner_plot(context: AssetExecutionContext):
     chains = results["chains"].item()
     keys = np.sort(list(chains.keys()))
     samples = np.array([chains[key] for key in keys]).T
-    fig = corner.corner(samples, labels=keys)
+    fig = corner.corner(samples[::10], labels=keys)
     plot_path = os.path.join(plots_dir, "production_chains_corner.png")
     fig.savefig(plot_path)
     plt.close(fig)
@@ -324,7 +324,7 @@ def nf_samples_corner_plot(context: AssetExecutionContext):
     nf_samples = results["nf_samples"].item()
     keys = np.sort(list(nf_samples.keys()))
     nf_samples = np.array([nf_samples[key] for key in keys]).T
-    fig = corner.corner(nf_samples)
+    fig = corner.corner(nf_samples, labels=keys)  # Thinning for better visualization
     plot_path = os.path.join(plots_dir, "nf_samples_corner.png")
     fig.savefig(plot_path)
     plt.close(fig)
@@ -353,7 +353,7 @@ def prior_samples_corner_plot(context: AssetExecutionContext):
     prior_samples = results["prior_samples"].item()
     keys = np.sort(list(prior_samples.keys()))
     prior_samples = np.array([prior_samples[key] for key in keys]).T
-    fig = corner.corner(prior_samples)
+    fig = corner.corner(prior_samples, labels=keys)  # Thinning for better visualization
     plot_path = os.path.join(plots_dir, "prior_samples_corner.png")
     fig.savefig(plot_path)
     plt.close(fig)
