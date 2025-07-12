@@ -142,9 +142,9 @@ class Detector(ABC):
         data, freqs_1 = self.data.frequency_slice(*self.frequency_bounds)
         psd, freqs_2 = self.psd.frequency_slice(*self.frequency_bounds)
 
-        assert all(
-            freqs_1 == freqs_2
-        ), f"The {self.name} data and PSD must have same frequencies"
+        assert all(freqs_1 == freqs_2), (
+            f"The {self.name} data and PSD must have same frequencies"
+        )
 
         self._sliced_frequencies = freqs_1
         self._sliced_fd_data = data

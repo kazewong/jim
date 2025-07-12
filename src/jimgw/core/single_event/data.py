@@ -295,9 +295,9 @@ class Data(ABC):
         Returns:
             Data: Data object with the Fourier and time domain data.
         """
-        assert len(fd) == len(
-            frequencies
-        ), "Frequency and data arrays must have the same length"
+        assert len(fd) == len(frequencies), (
+            "Frequency and data arrays must have the same length"
+        )
         # form full frequency array
         delta_f = frequencies[1] - frequencies[0]
         fnyq = frequencies[-1]
@@ -315,9 +315,9 @@ class Data(ABC):
         delta_t = 1 / (2 * fnyq)
         data_td_full = jnp.fft.irfft(data_fd_full) / delta_t
         # check frequencies
-        assert jnp.allclose(
-            f, jnp.fft.rfftfreq(len(data_td_full), delta_t)
-        ), "Generated frequencies do not match the input frequencies"
+        assert jnp.allclose(f, jnp.fft.rfftfreq(len(data_td_full), delta_t)), (
+            "Generated frequencies do not match the input frequencies"
+        )
         # create a Data object
         data = cls(data_td_full, delta_t, epoch=epoch, name=name)
         data.fd = data_fd_full
@@ -326,9 +326,9 @@ class Data(ABC):
         # represents the input FD data.
         d_new, f_new = data.frequency_slice(frequencies[0], frequencies[-1])
         assert all(jnp.equal(d_new, fd)), "Data do not match after slicing"
-        assert all(
-            jnp.equal(f_new, frequencies)
-        ), "Frequencies do not match after slicing"
+        assert all(jnp.equal(f_new, frequencies)), (
+            "Frequencies do not match after slicing"
+        )
         return data
 
     @classmethod
@@ -448,9 +448,9 @@ class PowerSpectrum(ABC):
         # NOTE: Are we sure the values and frequencies start from 0?
         self.values = values
         self.frequencies = frequencies
-        assert self.n_freq == len(
-            self.frequencies
-        ), "Values and frequencies must have the same length"
+        assert self.n_freq == len(self.frequencies), (
+            "Values and frequencies must have the same length"
+        )
         self.name = name or ""
 
     def __repr__(self) -> str:
