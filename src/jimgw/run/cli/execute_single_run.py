@@ -45,10 +45,10 @@ if __name__ == "__main__":
 
     np.savez(
         f"{run_manager.working_dir}/results",
-        chains=chains,
+        chains=chains,  # type: ignore
         log_probs=log_probs,
         loss_data=loss_data,
-        nf_samples=nf_samples,
-        prior_samples=prior_samples,
-        acceptance=acceptance,
-    )  # type: ignore
+        nf_samples=nf_samples,  # type: ignore
+        prior_samples=prior_samples,  # type: ignore
+        acceptance=acceptance,  # type: ignore
+    )
