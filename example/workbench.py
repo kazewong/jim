@@ -15,7 +15,7 @@ from jimgw.core.prior import (
     UniformSpherePrior,
 )
 from jimgw.core.single_event.detector import get_H1, get_L1, get_V1
-from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.likelihood import BaseTransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound
@@ -131,7 +131,9 @@ sample_transforms = [
         gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
     ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
+    ),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(
         name_mapping=(["M_c"], ["M_c_unbounded"]),
@@ -207,13 +209,12 @@ likelihood_transforms = [
 ]
 
 
-likelihood = TransientLikelihoodFD(
+likelihood = BaseTransientLikelihoodFD(
     ifos,
     waveform=waveform,
     trigger_time=gps,
     f_min=fmin,
     f_max=fmax,
-    # marginalization="time",
 )
 
 jim = Jim(
