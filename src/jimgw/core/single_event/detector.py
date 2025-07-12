@@ -703,44 +703,51 @@ class GroundBased2G(Detector):
         )
 
 
-H1 = GroundBased2G(
-    "H1",
-    latitude=(46 + 27.0 / 60 + 18.528 / 3600) * DEG_TO_RAD,
-    longitude=-(119 + 24.0 / 60 + 27.5657 / 3600) * DEG_TO_RAD,
-    xarm_azimuth=125.9994 * DEG_TO_RAD,
-    yarm_azimuth=215.9994 * DEG_TO_RAD,
-    xarm_tilt=-6.195e-4,
-    yarm_tilt=1.25e-5,
-    elevation=142.554,
-    modes="pc",
-)
+def get_H1():
+    return GroundBased2G(
+        "H1",
+        latitude=(46 + 27.0 / 60 + 18.528 / 3600) * DEG_TO_RAD,
+        longitude=-(119 + 24.0 / 60 + 27.5657 / 3600) * DEG_TO_RAD,
+        xarm_azimuth=125.9994 * DEG_TO_RAD,
+        yarm_azimuth=215.9994 * DEG_TO_RAD,
+        xarm_tilt=-6.195e-4,
+        yarm_tilt=1.25e-5,
+        elevation=142.554,
+        modes="pc",
+    )
 
-L1 = GroundBased2G(
-    "L1",
-    latitude=(30 + 33.0 / 60 + 46.4196 / 3600) * DEG_TO_RAD,
-    longitude=-(90 + 46.0 / 60 + 27.2654 / 3600) * DEG_TO_RAD,
-    xarm_azimuth=197.7165 * DEG_TO_RAD,
-    yarm_azimuth=287.7165 * DEG_TO_RAD,
-    xarm_tilt=-3.121e-4,
-    yarm_tilt=-6.107e-4,
-    elevation=-6.574,
-    modes="pc",
-)
 
-V1 = GroundBased2G(
-    "V1",
-    latitude=(43 + 37.0 / 60 + 53.0921 / 3600) * DEG_TO_RAD,
-    longitude=(10 + 30.0 / 60 + 16.1878 / 3600) * DEG_TO_RAD,
-    xarm_azimuth=70.5674 * DEG_TO_RAD,
-    yarm_azimuth=160.5674 * DEG_TO_RAD,
-    xarm_tilt=0,
-    yarm_tilt=0,
-    elevation=51.884,
-    modes="pc",
-)
+def get_L1():
+    return GroundBased2G(
+        "L1",
+        latitude=(30 + 33.0 / 60 + 46.4196 / 3600) * DEG_TO_RAD,
+        longitude=-(90 + 46.0 / 60 + 27.2654 / 3600) * DEG_TO_RAD,
+        xarm_azimuth=197.7165 * DEG_TO_RAD,
+        yarm_azimuth=287.7165 * DEG_TO_RAD,
+        xarm_tilt=-3.121e-4,
+        yarm_tilt=-6.107e-4,
+        elevation=-6.574,
+        modes="pc",
+    )
 
-detector_preset = {
-    "H1": H1,
-    "L1": L1,
-    "V1": V1,
-}
+
+def get_V1():
+    return GroundBased2G(
+        "V1",
+        latitude=(43 + 37.0 / 60 + 53.0921 / 3600) * DEG_TO_RAD,
+        longitude=(10 + 30.0 / 60 + 16.1878 / 3600) * DEG_TO_RAD,
+        xarm_azimuth=70.5674 * DEG_TO_RAD,
+        yarm_azimuth=160.5674 * DEG_TO_RAD,
+        xarm_tilt=0,
+        yarm_tilt=0,
+        elevation=51.884,
+        modes="pc",
+    )
+
+
+def get_detector_preset():
+    return {
+        "H1": get_H1(),
+        "L1": get_L1(),
+        "V1": get_V1(),
+    }

@@ -11,8 +11,8 @@ from jimgw.core.prior import (
     UniformSpherePrior,
 )
 
-import jimgw.core.single_event.data as jd
-from jimgw.core.single_event.detector import detector_preset
+from jimgw.core.single_event.data import Data, PowerSpectrum
+from jimgw.core.single_event.detector import get_detector_preset
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD, ZeroLikelihood
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound, BijectiveTransform, NtoMTransform
@@ -21,7 +21,6 @@ from jimgw.core.single_event.transforms import (
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
@@ -37,7 +36,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
     max_s2: float
     iota_range: tuple[float, float]
     dL_range: tuple[float, float]
-    t_c_range: tuple[float, float]
+    # t_c_range: tuple[float, float]
     phase_c_range: tuple[float, float]
     psi_range: tuple[float, float]
     ra_range: tuple[float, float]
@@ -55,7 +54,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         max_s2: float,
         iota_range: tuple[float, float],
         dL_range: tuple[float, float],
-        t_c_range: tuple[float, float],
+        # t_c_range: tuple[float, float],
         phase_c_range: tuple[float, float],
         psi_range: tuple[float, float],
         ra_range: tuple[float, float],
@@ -70,7 +69,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         self.max_s2 = max_s2
         self.iota_range = iota_range
         self.dL_range = dL_range
-        self.t_c_range = t_c_range
+        # self.t_c_range = t_c_range
         self.phase_c_range = phase_c_range
         self.psi_range = psi_range
         self.ra_range = ra_range
@@ -92,30 +91,35 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         gps = self.gps
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
-        psd_start = gps - 2048
-        psd_end = gps + 2048
 
         if self.local_data_prefix is None:
             logging.info("No local data provided, using GWOSC data.")
+            psd_start = gps - 2048
+            psd_end = gps + 2048
             for ifo in self.ifos:
-                if ifo not in detector_preset.values():
+                if ifo.name not in [
+                    detector.name for detector in list(get_detector_preset().values())
+                ]:
                     raise ValueError(f"Invalid detector: {ifo}")
-                ifo_data = jd.Data.from_gwosc(ifo.name, start, end)
+                ifo_data = Data.from_gwosc(ifo.name, start, end)
                 ifo.set_data(ifo_data)
-                ifo_psd = jd.Data.from_gwosc(ifo.name, psd_start, psd_end)
+                ifo_psd = Data.from_gwosc(ifo.name, psd_start, psd_end)
                 psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
                 ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
         else:
             logging.info(f"Using local data from {local_data_prefix}.")
             # TODO: Load local data from a file, and the PSD correspondingly.
             for ifo in self.ifos:
-                if ifo not in detector_preset.values():
+                if ifo.name not in [
+                    detector.name for detector in list(get_detector_preset().values())
+                ]:
                     raise ValueError(f"Invalid detector: {ifo}")
-                ifo_data = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}.hdf5")
+                ifo_data = Data.from_file(f"{local_data_prefix}{ifo.name}_data.npz")
                 ifo.set_data(ifo_data)
-                ifo_psd = jd.Data.from_file(f"{local_data_prefix}_{ifo.name}_psd.hdf5")
-                psd_fftlength = ifo_data.duration * ifo_data.sampling_frequency
-                ifo.set_psd(ifo_psd.to_psd(nperseg=psd_fftlength))
+                ifo_psd = PowerSpectrum.from_file(
+                    f"{local_data_prefix}{ifo.name}_psd.npz"
+                )
+                ifo.set_psd(ifo_psd)
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
 
@@ -123,8 +127,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             detectors=self.ifos,
             waveform=waveform,
             trigger_time=gps,
-            duration=self.segment_length,
-            post_trigger_duration=self.post_trigger_length,
+            f_min=self.f_min,
+            f_max=self.f_max,
+            marginalization="time",
         )
 
         return likelihood
@@ -147,9 +152,9 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             2.0,
             parameter_names=["d_L"],
         )
-        t_c_prior = UniformPrior(
-            self.t_c_range[0], self.t_c_range[1], parameter_names=["t_c"]
-        )
+        # t_c_prior = UniformPrior(
+        #     self.t_c_range[0], self.t_c_range[1], parameter_names=["t_c"]
+        # )
         phase_c_prior = UniformPrior(
             self.phase_c_range[0], self.phase_c_range[1], parameter_names=["phase_c"]
         )
@@ -168,7 +173,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             s2_prior,
             iota_prior,
             dL_prior,
-            t_c_prior,
+            # t_c_prior,
             phase_c_prior,
             psi_prior,
             ra_prior,
@@ -197,12 +202,12 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(
                 gps_time=self.gps, ifo=self.ifos[0]
             ),
-            GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-                tc_min=self.t_c_range[0],
-                tc_max=self.t_c_range[1],
-                gps_time=self.gps,
-                ifo=self.ifos[0],
-            ),
+            # GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+            #     tc_min=self.t_c_range[0],
+            #     tc_max=self.t_c_range[1],
+            #     gps_time=self.gps,
+            #     ifo=self.ifos[0],
+            # ),
             SkyFrameToDetectorFrameSkyPositionTransform(
                 gps_time=self.gps, ifos=self.ifos
             ),
@@ -284,7 +289,7 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
                 "max_s2": self.max_s2,
                 "iota_range": list(self.iota_range),
                 "dL_range": list(self.dL_range),
-                "t_c_range": list(self.t_c_range),
+                # "t_c_range": list(self.t_c_range),
                 "phase_c_range": list(self.phase_c_range),
                 "psi_range": list(self.psi_range),
                 "ra_range": list(self.ra_range),
@@ -317,13 +322,14 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             max_s2=run_dict["max_s2"],
             iota_range=tuple(run_dict["iota_range"]),
             dL_range=tuple(run_dict["dL_range"]),
-            t_c_range=tuple(run_dict["t_c_range"]),
+            # t_c_range=tuple(run_dict["t_c_range"]),
             phase_c_range=tuple(run_dict["phase_c_range"]),
             psi_range=tuple(run_dict["psi_range"]),
             ra_range=tuple(run_dict["ra_range"]),
             dec_range=tuple(run_dict["dec_range"]),
         )
         run.load_flowMC_params(run_dict)
+        run.load_single_event_params(run_dict)
         return run
 
 
@@ -348,7 +354,7 @@ class TestIMRPhenomPv2StandardCBCRunDefinition(IMRPhenomPv2StandardCBCRunDefinit
             max_s2=0.99,
             iota_range=(0.0, jnp.pi),
             dL_range=(1.0, 10000.0),
-            t_c_range=(-0.05, 0.05),
+            # t_c_range=(-0.05, 0.05),
             phase_c_range=(0.0, 2 * jnp.pi),
             psi_range=(0.0, jnp.pi),
             ra_range=(0.0, 2 * jnp.pi),

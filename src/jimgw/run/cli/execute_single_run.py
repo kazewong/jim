@@ -1,8 +1,12 @@
 import argparse
+import jax
+import numpy as np
 from jimgw.run.run_definition import RunDefinition
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.run.library.class_definitions import AvailableDefinitions
 import yaml
+
+jax.config.update("jax_enable_x64", True)  # Enable 64-bit precision
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -30,8 +34,21 @@ if __name__ == "__main__":
     run_manager = SingleEventRunManager(run_definition)
 
     # # Execute the sampling
-    # run_manager.sample()
+    run_manager.sample()
 
-    # # Optionally, you can retrieve and print samples
-    # samples = run_manager.get_samples()
-    # print(samples)
+    chains = run_manager.get_chain_samples(training=False)
+    log_probs = run_manager.get_log_prob(training=False)
+    loss_data = run_manager.get_loss_data()
+    nf_samples = run_manager.get_nf_samples()
+    prior_samples = run_manager.get_prior_samples()
+    acceptance = run_manager.get_acceptance_rates(training=False)
+
+    np.savez(
+        f"{run_manager.working_dir}/results",
+        chains=chains,  # type: ignore
+        log_probs=log_probs,
+        loss_data=loss_data,
+        nf_samples=nf_samples,  # type: ignore
+        prior_samples=prior_samples,  # type: ignore
+        acceptance=acceptance,  # type: ignore
+    )

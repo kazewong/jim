@@ -12,7 +12,7 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1, V1
+from jimgw.core.single_event.detector import get_H1, get_L1, get_V1
 from jimgw.core.single_event.likelihood import HeterodynedTransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
@@ -52,7 +52,7 @@ fmax = maximum_frequency = 2048
 f_ref = fmin
 
 # initialize detectors
-ifos = [H1, L1, V1]
+ifos = [get_H1(), get_L1(), get_V1()]
 
 for ifo in ifos:
     # set analysis data

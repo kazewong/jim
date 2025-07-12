@@ -347,7 +347,8 @@ class Data(ABC):
         td = data["td"]
         dt = float(data["dt"])
         epoch = float(data["epoch"])
-        return cls(td, dt, epoch)
+        assert isinstance(name := data["name"], str), "Name must be a string"
+        return cls(td, dt, epoch, name)
 
     def to_file(self, path: str):
         """Save the data to a file in .npz format.

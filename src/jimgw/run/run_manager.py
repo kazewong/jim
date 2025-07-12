@@ -43,16 +43,78 @@ class RunManager:
             os.makedirs(run.working_dir)
         self.working_dir = run.working_dir
 
-    ### Utility functions ###
-
     def sample(self):
         logging.info("Starting sampling...")
         self.jim.sample(self.jim.sample_initial_condition())
 
-    def get_samples(
+    ### Data-fetching functions ###
+
+    def get_chain_samples(
         self, training: bool = False
     ) -> dict[str, Float[Array, "n_chains n_dims"]]:
+        """
+        Fetch the samples from the sampler.
+        """
         return self.jim.get_samples(training=training)
+
+    def get_log_prob(self, training: bool = False) -> Float[Array, " n_chains"]:
+        """
+        Fetch the log probabilities of the samples.
+        """
+        log_prob = (
+            self.jim.sampler.resources["log_prob_training"]
+            if training
+            else self.jim.sampler.resources["log_prob_production"]
+        )
+        assert isinstance(log_prob, Buffer), "Log probability is not a Buffer"
+        return log_prob.data
+
+    def get_loss_data(self):
+        """
+        Fetch the loss history data from the sampler resources.
+        """
+        loss = self.jim.sampler.resources["loss_buffer"]
+        assert isinstance(loss, Buffer), "Loss buffer is not a Buffer"
+        return loss.data
+
+    def get_nf_samples(self, n_samples: int = 10000):
+        """
+        Fetch samples from the normalizing flow model.
+        """
+        nf_model = self.jim.sampler.resources["model"]
+        assert isinstance(nf_model, NFModel), "NF model is not a normalizing flow model"
+        samples = nf_model.sample(jax.random.PRNGKey(0), n_samples)
+        param_names = list(self.jim.get_samples().keys())
+        samples = np.array(samples).reshape(int(len(param_names)), -1).T
+        return {name: samples[:, i] for i, name in enumerate(param_names)}
+
+    def get_prior_samples(self, n_samples: int = 10000):
+        """
+        Fetch samples from the prior distribution.
+        """
+        samples = self.jim.prior.sample(jax.random.PRNGKey(0), n_samples)
+        return samples
+
+    def get_acceptance_rates(self, training: bool = False):
+        """
+        Fetch the local and global acceptance rates from the sampler resources.
+        """
+        local_acc = (
+            self.jim.sampler.resources["local_accs_training"]
+            if training
+            else self.jim.sampler.resources["local_accs_production"]
+        )
+        global_acc = (
+            self.jim.sampler.resources["global_accs_training"]
+            if training
+            else self.jim.sampler.resources["global_accs_production"]
+        )
+        assert isinstance(local_acc, Buffer), "Local acceptance rate is not a Buffer"
+        assert isinstance(global_acc, Buffer), "Global acceptance rate is not a Buffer"
+        return {
+            "local": local_acc.data,
+            "global": global_acc.data,
+        }
 
     def plot_chains(
         self,
@@ -66,9 +128,11 @@ class RunManager:
         """
         Plot corner plot of the samples.
         """
-        samples = self.jim.get_samples(training=training)
-        param_names = list(samples.keys())
-        samples = np.array(list(samples.values())).reshape(int(len(param_names)), -1).T
+        samples_dict = self.get_chain_samples(training=training)
+        param_names = list(samples_dict.keys())
+        samples = (
+            np.array(list(samples_dict.values())).reshape(int(len(param_names)), -1).T
+        )
         corner.corner(
             samples,
             labels=param_names,
@@ -86,12 +150,10 @@ class RunManager:
         """
         Plot the loss history during training.
         """
-        assert isinstance(
-            loss := self.jim.sampler.resources["loss_buffer"], Buffer
-        ), "Loss buffer is not a Buffer"
+        loss_data = self.get_loss_data()
         plt.figure(figsize=(10, 8))
         plt.title("NF loss")
-        plt.plot(loss.data)
+        plt.plot(loss_data)
         plt.xlabel("iteration")
         plt.xlim(0, None)
         plt.ylabel("loss")
@@ -103,12 +165,9 @@ class RunManager:
         """
         Plot samples from the normalizing flow to visualize the learned distribution.
         """
-        assert isinstance(
-            nf_model := self.jim.sampler.resources["model"], NFModel
-        ), "NF model is not a normalizing flow model"
-        samples = nf_model.sample(jax.random.PRNGKey(0), 10000)
-        param_names = list(self.jim.get_samples().keys())
-        samples = np.array(samples).reshape(int(len(param_names)), -1).T
+        nf_samples = self.get_nf_samples(10000)
+        param_names = list(nf_samples.keys())
+        samples = np.array([nf_samples[name] for name in param_names]).T
         corner.corner(
             samples,
             labels=param_names,
@@ -125,9 +184,11 @@ class RunManager:
         """
         Plot samples from the prior distribution.
         """
-        samples = self.jim.prior.sample(jax.random.PRNGKey(0), 10000)
-        param_names = list(samples.keys())
-        samples = np.array(list(samples.values())).reshape(int(len(param_names)), -1).T
+        prior_samples = self.get_prior_samples(10000)
+        param_names = list(prior_samples.keys())
+        samples = (
+            np.array(list(prior_samples.values())).reshape(int(len(param_names)), -1).T
+        )
         corner.corner(
             samples,
             labels=param_names,
@@ -144,21 +205,19 @@ class RunManager:
         """
         Plot the local and global acceptance rates during sampling.
         """
+        acc_rates = self.get_acceptance_rates()
+        local_acc = acc_rates["local"]
+        global_acc = acc_rates["global"]
+
         plt.figure(figsize=(10, 8))
         fig, axs = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
         fig.suptitle("Acceptance Rates", fontsize=16)
 
-        assert isinstance(
-            local_acc := self.jim.sampler.resources["local_accs_training"], Buffer
-        ), "Local acceptance rate is not a Buffer"
-        axs[0].plot(np.mean(local_acc.data, axis=0))
+        axs[0].plot(np.mean(local_acc, axis=0))
         axs[0].set_title("Local acceptance rate", fontsize=12)
         axs[0].set_ylabel("Acceptance rate")
 
-        assert isinstance(
-            global_acc := self.jim.sampler.resources["global_accs_training"], Buffer
-        ), "Global acceptance rate is not a Buffer"
-        axs[1].plot(np.mean(global_acc.data, axis=0))
+        axs[1].plot(np.mean(global_acc, axis=0))
         axs[1].set_title("Global acceptance rate", fontsize=12)
         axs[1].set_xlabel("Iteration")
         axs[1].set_ylabel("Acceptance rate")

@@ -101,6 +101,7 @@ class RunDefinition(ABC):
 
     def load_flowMC_params(self, inputs: dict):
         """Load the flowMC parameters into the Run object."""
+        self.working_dir = inputs.get("working_dir", self.working_dir)
         self.flowMC_params = {
             "rng_key": jax.random.PRNGKey(inputs.get("seed", self.seed)),
             "n_chains": inputs.get("n_chains", 50),
@@ -110,6 +111,7 @@ class RunDefinition(ABC):
             "n_production_loops": inputs.get("n_production_loops", 20),
             "n_epochs": inputs.get("n_epochs", 20),
             "mala_step_size": inputs.get("mala_step_size", 0.01),
+            "chain_batch_size": inputs.get("chain_batch_size", 0),
             "rq_spline_hidden_units": inputs.get("rq_spline_hidden_units", [128, 128]),
             "rq_spline_n_bins": inputs.get("rq_spline_n_bins", 10),
             "rq_spline_n_layers": inputs.get("rq_spline_n_layers", 2),

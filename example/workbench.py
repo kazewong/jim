@@ -14,7 +14,7 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1, V1
+from jimgw.core.single_event.detector import get_H1, get_L1, get_V1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
@@ -36,15 +36,15 @@ total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
 # for the analysis
-gps = 1187058327.1
+gps = 1266645879.396484
 start = gps - 2
 end = gps + 2
 
 # fetch 4096s of data to estimate the PSD (to be
 # careful we should avoid the on-source segment,
 # but we don't do this in this example)
-psd_start = gps - 512
-psd_end = gps + 512
+psd_start = gps - 2048
+psd_end = gps + 2048
 
 # define frequency integration bounds for the likelihood
 # we set fmax to 87.5% of the Nyquist frequency to avoid
@@ -52,10 +52,10 @@ psd_end = gps + 512
 # (Note that Data.from_gwosc will pull data sampled at
 # 4096 Hz by default)
 fmin = 20.0
-fmax = 2000.0
+fmax = 896.0
 
 # initialize detectors
-ifos = [H1, L1]
+ifos = [get_H1(), get_L1()]
 
 for ifo in ifos:
     # set analysis data
@@ -107,7 +107,7 @@ prior = prior + [
 
 # Extrinsic prior
 dL_prior = PowerLawPrior(100.0, 6000.0, 2.0, parameter_names=["d_L"])
-# t_c_prior = UniformPrior(0.07, 0.12, parameter_names=["t_c"])
+t_c_prior = UniformPrior(-0.1, 0.1, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
@@ -115,7 +115,7 @@ dec_prior = CosinePrior(parameter_names=["dec"])
 
 prior = prior + [
     dL_prior,
-    # t_c_prior,
+    t_c_prior,
     phase_c_prior,
     psi_prior,
     ra_prior,
@@ -131,7 +131,7 @@ sample_transforms = [
         gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
     ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    # GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(
         name_mapping=(["M_c"], ["M_c_unbounded"]),
@@ -213,7 +213,7 @@ likelihood = TransientLikelihoodFD(
     trigger_time=gps,
     f_min=fmin,
     f_max=fmax,
-    marginalization="time",
+    # marginalization="time",
 )
 
 jim = Jim(
@@ -255,6 +255,7 @@ chains = jim.get_samples()
 
 import numpy as np
 import corner
+
 
 fig = corner.corner(
     np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10],

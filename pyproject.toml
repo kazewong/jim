@@ -33,8 +33,10 @@ cuda = [
     "jax[cuda]>=0.5.0",
 ]
 dagster = [
-    "dagster>=1.10.11",
-    "dagster-webserver>=1.10.11",
+    "dagster>=1.11.1",
+    "dagster-dg-cli>=1.11.1",
+    "dagster-pipes>=1.11.1",
+    "dagster-webserver>=1.11.1",
 ]
 
 [tool.uv]
@@ -50,14 +52,13 @@ dev-dependencies = [
 [tool.uv.sources]
 jimgw = { workspace = true }
 
-[tool.dg.project.python_environment]
-uv_managed = true
-
 [tool.dagster]
 modules = [
-{ type="module", name="jimgw.pipeline.InjectionRecovery.definitions" },
-{ type="module", name="jimgw.pipeline.RealDataCatalog.definitions" },
+{ type="module", name="jim_dagster.InjectionRecovery.definitions" },
+{ type="module", name="jim_dagster.RealDataCatalog.definitions" },
 ]
+
+
 
 [build-system]
 requires = ["hatchling"]

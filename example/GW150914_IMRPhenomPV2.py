@@ -10,7 +10,7 @@ from jimgw.core.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.core.single_event.detector import H1, L1
+from jimgw.core.single_event.detector import get_H1, get_L1
 from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
@@ -53,7 +53,7 @@ fmin = 20.0
 fmax = 1024
 
 # initialize detectors
-ifos = [H1, L1]
+ifos = [get_H1(), get_L1()]
 
 for ifo in ifos:
     # set analysis data
@@ -203,7 +203,7 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1],
+    ifos,
     waveform=waveform,
     trigger_time=gps,
     f_min=fmin,
