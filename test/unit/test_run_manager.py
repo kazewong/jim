@@ -1,14 +1,14 @@
 import os
-from jimgw.run.single_event_run_definition import TestSingleEventRun
+from jimgw.run.single_event_run_definition import TestIMRPhenomPv2StandardCBCRunDefinition
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.core.single_event.detector import H1, L1
 
 
-class TestTestSingleEventRun:
+class TestTestIMRPhenomPv2StandardCBCRunDefinition:
 
     def test_serialize_deserialize(self, tmp_path):
         # Create a test run
-        run = TestSingleEventRun()
+        run = TestIMRPhenomPv2StandardCBCRunDefinition()
         config_path = os.path.join(tmp_path, "test_config.yaml")
 
         # Test serialization
@@ -16,7 +16,7 @@ class TestTestSingleEventRun:
         assert os.path.exists(config_path)
 
         # Test deserialization
-        loaded_run = TestSingleEventRun.deserialize(config_path)
+        loaded_run = TestIMRPhenomPv2StandardCBCRunDefinition.deserialize(config_path)
 
         # Verify properties match
         assert loaded_run.gps == run.gps
@@ -29,7 +29,7 @@ class TestTestSingleEventRun:
 
     def test_run_manager(self, tmp_path):
         # Create test run and run manager
-        run = TestSingleEventRun()
+        run = TestIMRPhenomPv2StandardCBCRunDefinition()
         run_manager = SingleEventRunManager(run)
 
         # Test basic parameters dictionary

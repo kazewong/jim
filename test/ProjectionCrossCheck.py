@@ -81,8 +81,6 @@ from ripple.waveforms.IMRPhenomD import gen_IMRPhenomD_polar
 
 from jimgw.core.PE.detector_preset import *
 from jimgw.core.PE.detector_projection import make_detector_response
-from jimgw.core.PE.heterodyneLikelihood import \
-    make_heterodyne_likelihood_mutliple_detector
 
 
 def get_lal_waveform(f,theta):

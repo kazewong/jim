@@ -1,6 +1,4 @@
-import numpy as np
 import matplotlib.pyplot as plt
-import corner
 import jax
 import jax.numpy as jnp
 from jaxtyping import Float
