@@ -1,10 +1,12 @@
-from typing import Sequence, Optional
+from typing import Sequence
+import logging
 import jax
 import jax.numpy as jnp
 from flowMC.resource_strategy_bundle.RQSpline_MALA_PT import RQSpline_MALA_PT_Bundle
 from flowMC.resource.buffers import Buffer
 from flowMC.Sampler import Sampler
 from jaxtyping import Array, Float, PRNGKeyArray
+from typing import Optional
 
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior
@@ -40,6 +42,7 @@ class Jim(object):
         n_production_loops: int = 20,
         n_epochs: int = 20,
         mala_step_size: float = 0.01,
+        chain_batch_size: int = 0,
         rq_spline_hidden_units: list[int] = [128, 128],
         rq_spline_n_bins: int = 10,
         rq_spline_n_layers: int = 2,
@@ -92,6 +95,7 @@ class Jim(object):
             n_production_loops=n_production_loops,
             n_epochs=n_epochs,
             mala_step_size=mala_step_size,
+            chain_batch_size=chain_batch_size,
             rq_spline_hidden_units=rq_spline_hidden_units,
             rq_spline_n_bins=rq_spline_n_bins,
             rq_spline_n_layers=rq_spline_n_layers,
@@ -102,12 +106,22 @@ class Jim(object):
             global_thinning=global_thinning,
             n_NFproposal_batch_size=n_NFproposal_batch_size,
             history_window=history_window,
-            n_temperatures=n_temperatures,
+            n_temperatures=max(n_temperatures, 1),
             max_temperature=max_temperature,
             n_tempered_steps=n_tempered_steps,
             logprior=self.evaluate_prior,
             verbose=verbose,
         )
+
+        if n_temperatures == 0:
+            logging.info(
+                "The number of temperatures is set to 0. No tempering will be applied."
+            )
+            resource_strategy_bundle.strategy_order = [
+                strat
+                for strat in resource_strategy_bundle.strategy_order
+                if strat != "parallel_tempering"
+            ]
 
         rng_key, subkey = jax.random.split(rng_key)
         self.sampler = Sampler(

@@ -23,13 +23,13 @@ class Transform(ABC):
         self.name_mapping = name_mapping
 
     def propagate_name(self, x: list[str]) -> list[str]:
+        # Remove names in from_list, then append names in to_list (preserving order)
         result = [name for name in x if name not in self.name_mapping[0]]
         result += [name for name in self.name_mapping[1] if name not in result]
         return result
 
 
 class NtoMTransform(Transform):
-
     transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def forward(self, x: dict[str, Float]) -> dict[str, Float]:
@@ -60,7 +60,6 @@ class NtoMTransform(Transform):
 
 
 class NtoNTransform(NtoMTransform):
-
     @property
     def n_dim(self) -> int:
         return len(self.name_mapping[0])
@@ -102,7 +101,6 @@ class NtoNTransform(NtoMTransform):
 
 
 class BijectiveTransform(NtoNTransform):
-
     inverse_transform_func: Callable[[dict[str, Float]], dict[str, Float]]
 
     def inverse(self, y: dict[str, Float]) -> tuple[dict[str, Float], Float]:
@@ -167,7 +165,6 @@ class BijectiveTransform(NtoNTransform):
 
 
 class ConditionalBijectiveTransform(BijectiveTransform):
-
     conditional_names: list[str]
 
     def __init__(
@@ -414,7 +411,6 @@ class BoundToUnbound(BijectiveTransform):
         original_lower_bound: Float,
         original_upper_bound: Float,
     ):
-
         super().__init__(name_mapping)
         self.original_lower_bound = jnp.atleast_1d(original_lower_bound)
         self.original_upper_bound = jnp.atleast_1d(original_upper_bound)
@@ -626,7 +622,6 @@ class RayleighTransform(BijectiveTransform):
 def reverse_bijective_transform(
     original_transform: BijectiveTransform,
 ) -> BijectiveTransform:
-
     reversed_name_mapping = (
         original_transform.name_mapping[1],
         original_transform.name_mapping[0],
