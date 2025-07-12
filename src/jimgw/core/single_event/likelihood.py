@@ -641,7 +641,6 @@ def time_marginalized_likelihood(
         (pad_low, complex_h_inner_d, pad_high)
     )
 
-
     # make use of the fft
     # which then return the <h|d>exp(-i2pift_c)
     # w.r.t. the tc_array
