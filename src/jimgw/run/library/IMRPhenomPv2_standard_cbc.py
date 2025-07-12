@@ -157,13 +157,13 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
                 )
             ]
         )
-        t_c_prior = SimpleConstrainedPrior(
-            [
-                UniformPrior(
-                    self.t_c_range[0], self.t_c_range[1], parameter_names=["t_c"]
-                )
-            ]
-        )
+        # t_c_prior = SimpleConstrainedPrior(
+        #     [
+        #         UniformPrior(
+        #             self.t_c_range[0], self.t_c_range[1], parameter_names=["t_c"]
+        #         )
+        #     ]
+        # )
         phase_c_prior = UniformPrior(
             self.phase_c_range[0], self.phase_c_range[1], parameter_names=["phase_c"]
         )
