@@ -631,15 +631,16 @@ class GroundBased2G(Detector):
         self.set_frequency_bounds()
         masked_signal = projected_strain[self.frequency_mask]
 
+        df = self.sliced_frequencies[1] - self.sliced_frequencies[0] 
         _optimal_snr_sq = inner_product(
-            masked_signal, masked_signal, self.sliced_psd, self.sliced_frequencies
+            masked_signal, masked_signal, self.sliced_psd, df
         )
         optimal_snr = _optimal_snr_sq**0.5
         match_filtered_snr = complex_inner_product(
             masked_signal,
             self.sliced_fd_data,
             self.sliced_psd,
-            self.sliced_frequencies,
+            df
         )
         match_filtered_snr /= optimal_snr
 

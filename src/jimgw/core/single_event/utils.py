@@ -10,8 +10,7 @@ def complex_inner_product(
     h1: Float[Array, " n_freq"],
     h2: Float[Array, " n_freq"],
     psd: Float[Array, " n_freq"],
-    frequency: Optional[Float[Array, " n_freq"]] = None,
-    df: Optional[Float] = None,
+    df: Float,
 ) -> Complex:
     """
     Compute the complex inner product of two waveforms h1 and h2
@@ -38,8 +37,7 @@ def inner_product(
     h1: Float[Array, " n_freq"],
     h2: Float[Array, " n_freq"],
     psd: Float[Array, " n_freq"],
-    frequency: Optional[Float[Array, " n_freq"]] = None,
-    df: Optional[Float] = None,
+    df: Float,
 ) -> Float:
     """
     Compute the noise-weighted inner product of two waveforms h1 and h2
@@ -55,7 +53,7 @@ def inner_product(
     Returns:
         Float: Noise-weighted inner product of h1 and h2 with given the PSD.
     """
-    return complex_inner_product(h1, h2, psd, frequency, df).real
+    return complex_inner_product(h1, h2, psd, df).real
 
 
 def m1_m2_to_M_q(m1: Float, m2: Float) -> tuple[Float, Float]:
