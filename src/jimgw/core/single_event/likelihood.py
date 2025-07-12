@@ -91,6 +91,32 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
 
 
 class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
+    """Frequency-domain likelihood class with analytic marginalization over coalescence time.
+
+    This class implements a likelihood function for gravitational wave transient events,
+    marginalized over the coalescence time parameter (`t_c`). The marginalization is performed
+    using a fast Fourier transform (FFT) over the frequency domain inner product between the
+    model and the data. The likelihood is computed for a set of detectors and a waveform model.
+
+    Attributes:
+        tc_range (tuple[Float, Float]): The range of coalescence times to marginalize over.
+        tc_array (Float[Array, "duration*f_sample/2"]): Array of time shifts corresponding to FFT bins.
+        pad_low (Float[Array, "n_pad_low"]): Zero-padding array for frequencies below the minimum frequency.
+        pad_high (Float[Array, "n_pad_high"]): Zero-padding array for frequencies above the maximum frequency.
+
+    Args:
+        detectors (Sequence[Detector]): List of detector objects containing data and metadata.
+        waveform (Waveform): Waveform model to evaluate.
+        f_min (Float, optional): Minimum frequency for likelihood evaluation. Defaults to 0.
+        f_max (Float, optional): Maximum frequency for likelihood evaluation. Defaults to infinity.
+        trigger_time (Float, optional): GPS time of the event trigger. Defaults to 0.
+        tc_range (tuple[Float, Float], optional): Range of coalescence times to marginalize over. Defaults to (-0.12, 0.12).
+
+    Example:
+        >>> likelihood = TimeMarginalizedLikelihoodFD(detectors, waveform, f_min=20, f_max=1024, trigger_time=1234567890)
+        >>> logL = likelihood.evaluate(params, data)
+    """
+
     tc_range: tuple[Float, Float]
     tc_array: Float[Array, " duration*f_sample/2"]
     pad_low: Float[Array, " n_pad_low"]
@@ -105,6 +131,19 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
         trigger_time: Float = 0,
         tc_range: tuple[Float, Float] = (-0.12, 0.12),
     ) -> None:
+        """Initializes the TimeMarginalizedLikelihoodFD class.
+
+        Sets up the frequency bounds, coalescence time range, FFT time array, and zero-padding
+        arrays for the likelihood calculation.
+
+        Args:
+            detectors (Sequence[Detector]): List of detector objects.
+            waveform (Waveform): Waveform model.
+            f_min (Float, optional): Minimum frequency. Defaults to 0.
+            f_max (Float, optional): Maximum frequency. Defaults to infinity.
+            trigger_time (Float, optional): Event trigger time. Defaults to 0.
+            tc_range (tuple[Float, Float], optional): Marginalization range for coalescence time. Defaults to (-0.12, 0.12).
+        """
         super().__init__(detectors, waveform, f_min, f_max, trigger_time)
         self.tc_range = tc_range
         fs = self.detectors[0].data.sampling_frequency
@@ -119,6 +158,22 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
             )
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        """Evaluate the time-marginalized likelihood for a given set of parameters.
+
+        Computes the log-likelihood marginalized over coalescence time by:
+        - Calculating the frequency-domain inner product between the model and data for each detector.
+        - Padding the inner product array to cover the full frequency range.
+        - Applying FFT to obtain the likelihood as a function of coalescence time.
+        - Restricting the FFT output to the specified `tc_range`.
+        - Marginalizing using logsumexp over the allowed coalescence times.
+
+        Args:
+            params (dict[str, Float]): Dictionary of model parameters.
+            data (dict): Dictionary containing data (not used in this implementation).
+
+        Returns:
+            Float: The marginalized log-likelihood value.
+        """
         log_likelihood = 0.0
         complex_h_inner_d = jnp.zeros_like(self.detectors[0].sliced_frequencies)
         df = (
@@ -138,26 +193,22 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
             optimal_SNR = inner_product(h_dec, h_dec, psd, df)
             log_likelihood += -optimal_SNR / 2
 
-        # padding the complex_h_inner_d
-        # this array is the hd*/S for f in [0, fs / 2 - df]
+        # Padding the complex_h_inner_d to cover the full frequency range
         complex_h_inner_d_positive_f = jnp.concatenate(
             (self.pad_low, complex_h_inner_d, self.pad_high)
         )
 
-        # make use of the fft
-        # which then return the <h|d>exp(-i2pift_c)
-        # w.r.t. the tc_array
+        # FFT to obtain <h|d> exp(-i2πf t_c) as a function of t_c
         fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
 
-        # set the values to -inf when it is outside the tc range
-        # so that they will disappear after the logsumexp
+        # Restrict FFT output to the allowed tc_range, set others to -inf
         fft_h_inner_d = jnp.where(
             (self.tc_array > self.tc_range[0]) & (self.tc_array < self.tc_range[1]),
             fft_h_inner_d.real,
             jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
         )
 
-        # using the logsumexp to marginalize over the tc prior range
+        # Marginalize over t_c using logsumexp
         log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(self.tc_array))
         return log_likelihood
 
