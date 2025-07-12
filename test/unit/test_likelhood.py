@@ -5,6 +5,7 @@ from jimgw.core.single_event.detector import get_H1, get_L1
 from jimgw.core.single_event.waveform import RippleIMRPhenomD
 from jimgw.core.single_event.data import Data
 
+
 class TestBaseTransientLikelihoodFD:
     """
     Organized tests for BaseTransientLikelihoodFD using real detector and waveform implementations.
@@ -42,7 +43,9 @@ class TestBaseTransientLikelihoodFD:
         )
         return likelihood
 
-    def test_likelihood_initialization(self, GW150912_likelihood: BaseTransientLikelihoodFD):
+    def test_likelihood_initialization(
+        self, GW150912_likelihood: BaseTransientLikelihoodFD
+    ):
         """
         Test initialization and attributes of BaseTransientLikelihoodFD with realistic setup.
         """
@@ -52,7 +55,9 @@ class TestBaseTransientLikelihoodFD:
         assert likelihood.trigger_time == 1126259462.4
         assert hasattr(likelihood, "gmst")
 
-    def test_likelihood_evaluation(self, GW150912_likelihood: BaseTransientLikelihoodFD):
+    def test_likelihood_evaluation(
+        self, GW150912_likelihood: BaseTransientLikelihoodFD
+    ):
         """
         Test the evaluation of the likelihood with realistic parameters.
         """

@@ -22,6 +22,7 @@ from typing import Sequence
 class SingleEventLikelihood(LikelihoodBase):
     detectors: Sequence[Detector]
     waveform: Waveform
+    fixed_parameters: dict[str, Float] = {}
 
     @property
     def duration(self) -> Float:
@@ -32,9 +33,15 @@ class SingleEventLikelihood(LikelihoodBase):
         """The interferometers for the likelihood."""
         return [detector.name for detector in self.detectors]
 
-    def __init__(self, detectors: Sequence[Detector], waveform: Waveform) -> None:
+    def __init__(
+        self,
+        detectors: Sequence[Detector],
+        waveform: Waveform,
+        fixed_parameters: Optional[dict[str, Float]] = None,
+    ) -> None:
         self.detectors = detectors
         self.waveform = waveform
+        self.fixed_parameters = fixed_parameters if fixed_parameters is not None else {}
 
 
 class ZeroLikelihood(LikelihoodBase):
@@ -72,6 +79,7 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
         self,
         detectors: Sequence[Detector],
         waveform: Waveform,
+        fixed_parameters: Optional[dict[str, Float]] = None,
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
@@ -87,7 +95,7 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
             f_max (Float, optional): Maximum frequency. Defaults to infinity.
             trigger_time (Float, optional): Event trigger time. Defaults to 0.
         """
-        super().__init__(detectors, waveform)
+        super().__init__(detectors, waveform, fixed_parameters)
         # Set the frequency bounds for the detectors
         _frequencies = []
         for detector in detectors:
@@ -114,6 +122,7 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
         Returns:
             Float: The log-likelihood value.
         """
+        params.update(self.fixed_parameters)
         params["trigger_time"] = self.trigger_time
         params["gmst"] = self.gmst
         waveform_sky = self.waveform(self.frequencies, params)
@@ -171,6 +180,7 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
         self,
         detectors: Sequence[Detector],
         waveform: Waveform,
+        fixed_parameters: Optional[dict[str, Float]] = None,
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
@@ -189,7 +199,12 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
             trigger_time (Float, optional): Event trigger time. Defaults to 0.
             tc_range (tuple[Float, Float], optional): Marginalization range for coalescence time. Defaults to (-0.12, 0.12).
         """
-        super().__init__(detectors, waveform, f_min, f_max, trigger_time)
+        super().__init__(
+            detectors, waveform, fixed_parameters, f_min, f_max, trigger_time
+        )
+        assert "t_c" not in self.fixed_parameters, (
+            "Cannot have t_c fixed while marginalizing over t_c"
+        )
         self.tc_range = tc_range
         fs = self.detectors[0].data.sampling_frequency
         duration = self.detectors[0].data.duration
@@ -219,9 +234,10 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
         Returns:
             Float: The marginalized log-likelihood value.
         """
+        params.update(self.fixed_parameters)
         params["trigger_time"] = self.trigger_time
         params["gmst"] = self.gmst
-        params['t_c'] = 0.0  # Fixing t_c to 0 for time marginalization
+        params["t_c"] = 0.0  # Fixing t_c to 0 for time marginalization
         log_likelihood = 0.0
         complex_h_inner_d = jnp.zeros_like(self.detectors[0].sliced_frequencies)
         df = (
@@ -262,7 +278,82 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
 
 
 class PhaseMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
-    pass
+    """This has not been tested by a human yet."""
+
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        log_likelihood = 0.0
+        complex_d_inner_h = 0.0 + 0.0j
+        params.update(self.fixed_parameters)
+        params["phase_c"] = 0.0  # Fixing phase_c to 0 for phase marginalization
+        params["trigger_time"] = self.trigger_time
+        params["gmst"] = self.gmst
+        waveform_sky = self.waveform(self.frequencies, params)
+        df = (
+            self.detectors[0].sliced_frequencies[1]
+            - self.detectors[0].sliced_frequencies[0]
+        )
+        for ifo in self.detectors:
+            freqs, ifo_data, psd = (
+                ifo.sliced_frequencies,
+                ifo.sliced_fd_data,
+                ifo.sliced_psd,
+            )
+            h_dec = ifo.fd_response(freqs, waveform_sky, params)
+            complex_d_inner_h += complex_inner_product(h_dec, ifo_data, psd, df)
+            optimal_SNR = inner_product(h_dec, h_dec, psd, df)
+            log_likelihood += -optimal_SNR / 2
+
+        log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
+        return log_likelihood
+
+
+class PhaseTimeMarginalizedLikelihoodFD(TimeMarginalizedLikelihoodFD):
+    """This has not been tested by a human yet."""
+
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        # Refactored: use self.detectors, self.frequencies, self.tc_array, self.pad_low, self.pad_high, self.tc_range
+        log_likelihood = 0.0
+        complex_h_inner_d = 0.0 + 0.0j
+        params.update(self.fixed_parameters)
+
+        df = (
+            self.detectors[0].sliced_frequencies[1]
+            - self.detectors[0].sliced_frequencies[0]
+        )
+        params["trigger_time"] = self.trigger_time
+        params["gmst"] = self.gmst
+        params["t_c"] = 0.0  # Fix t_c for marginalization
+        params["phase_c"] = 0.0
+        waveform_sky = self.waveform(self.frequencies, params)
+        for ifo in self.detectors:
+            freqs, ifo_data, psd = (
+                ifo.sliced_frequencies,
+                ifo.sliced_fd_data,
+                ifo.sliced_psd,
+            )
+            h_dec = ifo.fd_response(freqs, waveform_sky, params)
+            complex_h_inner_d += complex_inner_product(h_dec, ifo_data, psd, df)
+            optimal_SNR = inner_product(h_dec, h_dec, psd, df)
+            log_likelihood += -optimal_SNR / 2
+
+        # Pad the complex_h_inner_d to cover the full frequency range
+        complex_h_inner_d_positive_f = jnp.concatenate(
+            (self.pad_low, complex_h_inner_d, self.pad_high)
+        )
+
+        # FFT to obtain <h|d> exp(-i2πf t_c) as a function of t_c
+        fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
+
+        # Restrict FFT output to the allowed tc_range, set others to -inf
+        log_i0_abs_fft = jnp.where(
+            (self.tc_array > self.tc_range[0]) & (self.tc_array < self.tc_range[1]),
+            log_i0(jnp.absolute(fft_h_inner_d)),
+            jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
+        )
+
+        # Marginalize over t_c using logsumexp
+        log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(self.tc_array))
+        return log_likelihood
 
 
 # class HeterodynedTransientLikelihoodFD(SingleEventLikelihood):
@@ -277,124 +368,7 @@ class HeterodynedPhaseMarginalizedLikelihoodFD(SingleEventLikelihood):
     pass
 
 
-class TransientLikelihoodFD(SingleEventLikelihood):
-    def __init__(
-        self,
-        detectors: Sequence[Detector],
-        waveform: Waveform,
-        f_min: Float = 0,
-        f_max: Float = float("inf"),
-        trigger_time: Float = 0,
-        **kwargs,
-    ) -> None:
-        # NOTE: having 'kwargs' here makes it very difficult to diagnose
-        # errors and keep track of what's going on, would be better to list
-        # explicitly what the arguments are accepted
-
-        # Set the frequency bounds for the detectors
-        _frequencies = []
-        for detector in detectors:
-            detector.set_frequency_bounds(f_min, f_max)
-            _frequencies.append(detector.sliced_frequencies)
-        _frequencies = jnp.array(_frequencies)
-        assert jnp.all(jnp.array(_frequencies)[:-1] == jnp.array(_frequencies)[1:]), (
-            "The frequency arrays are not all the same."
-        )
-
-        self.detectors = detectors
-        self.frequencies = _frequencies[0]
-        self.duration = self.detectors[0].data.duration
-        self.waveform = waveform
-        self.trigger_time = trigger_time
-        self.gmst = compute_gmst(self.trigger_time)
-        self.kwargs = kwargs
-        if "marginalization" in self.kwargs:
-            marginalization = self.kwargs["marginalization"]
-            assert marginalization in [
-                "phase",
-                "phase-time",
-                "time",
-            ], "Only support time, phase and phase+time marginalzation"
-            self.marginalization = marginalization
-            if self.marginalization == "phase-time":
-                self.param_func = lambda x: {**x, "phase_c": 0.0, "t_c": 0.0}
-                self.likelihood_function = phase_time_marginalized_likelihood
-                logging.info("Marginalizing over phase and time")
-            elif self.marginalization == "time":
-                self.param_func = lambda x: {**x, "t_c": 0.0}
-                self.likelihood_function = time_marginalized_likelihood
-                logging.info("Marginalizing over time")
-            elif self.marginalization == "phase":
-                self.param_func = lambda x: {**x, "phase_c": 0.0}
-                self.likelihood_function = phase_marginalized_likelihood
-                logging.info("Marginalizing over phase")
-            if "time" in self.marginalization:
-                fs = self.detectors[0].data.sampling_frequency
-                duration = self.detectors[0].data.duration
-                self.kwargs["tc_array"] = jnp.fft.fftfreq(
-                    int(duration * fs / 2), 1.0 / duration
-                )
-                self.kwargs["pad_low"] = jnp.zeros(int(self.frequencies[0] * duration))
-                if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
-                    self.kwargs["pad_high"] = jnp.array([])
-                else:
-                    self.kwargs["pad_high"] = jnp.zeros(
-                        int(
-                            (fs / 2.0 - 1.0 / duration - self.frequencies[-1])
-                            * duration
-                        )
-                    )
-        else:
-            self.param_func = lambda x: x
-            self.likelihood_function = original_likelihood
-            self.marginalization = ""
-
-        # the fixing_parameters is expected to be a dictionary
-        # with key as parameter name and value is the fixed value
-        # e.g. {'M_c': 1.1975, 't_c': 0}
-        if "fixing_parameters" in self.kwargs:
-            fixing_parameters = self.kwargs["fixing_parameters"]
-            print(f"Parameters are fixed {fixing_parameters}")
-            # check for conflict with the marginalization
-            assert not (
-                "t_c" in fixing_parameters and "time" in self.marginalization
-            ), "Cannot have t_c fixed while having the marginalization of t_c turned on"
-            assert not (
-                "phase_c" in fixing_parameters and "phase" in self.marginalization
-            ), (
-                "Cannot have phase_c fixed while having the marginalization of phase_c turned on"
-            )
-            # if the same key exists in both dictionary,
-            # the later one will overwrite the former one
-            self.fixing_func = lambda x: {**x, **fixing_parameters}
-        else:
-            self.fixing_func = lambda x: x
-
-    @property
-    def detector_names(self):
-        """The interferometers for the likelihood."""
-        return [detector.name for detector in self.detectors]
-
-    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
-        # TODO: Test whether we need to pass data in or with class changes is fine.
-        """Evaluate the likelihood for a given set of parameters."""
-        params["trigger_time"] = self.trigger_time
-        params["gmst"] = self.gmst
-        # adjust the params due to different marginalzation scheme
-        params = self.param_func(params)
-        # adjust the params due to fixing parameters
-        params = self.fixing_func(params)
-        # evaluate the waveform as usual
-        waveform_sky = self.waveform(self.frequencies, params)
-        return self.likelihood_function(
-            params,
-            waveform_sky,
-            self.detectors,  # type: ignore
-            **self.kwargs,
-        )
-
-
-class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
+class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
     n_bins: int  # Number of bins to use for the likelihood
     ref_params: dict  # Reference parameters for the likelihood
     freq_grid_low: Array  # Heterodyned frequency grid
@@ -795,77 +769,12 @@ class HeterodynedTransientLikelihoodFD(TransientLikelihoodFD):
 
 
 likelihood_presets = {
-    "TransientLikelihoodFD": TransientLikelihoodFD,
+    "BaseTransientLikelihoodFD": BaseTransientLikelihoodFD,
+    "TimeMarginalizedLikelihoodFD": TimeMarginalizedLikelihoodFD,
+    "PhaseMarginalizedLikelihoodFD": PhaseMarginalizedLikelihoodFD,
+    "PhaseTimeMarginalizedLikelihoodFD": PhaseTimeMarginalizedLikelihoodFD,
     "HeterodynedTransientLikelihoodFD": HeterodynedTransientLikelihoodFD,
 }
-
-
-def phase_marginalized_likelihood(
-    params: dict[str, Float],
-    h_sky: dict[str, Complex[Array, " n_dim"]],
-    detectors: list[Detector],
-    **kwargs,
-) -> Float:
-    log_likelihood = 0.0
-    complex_d_inner_h = 0.0 + 0.0j
-    df = detectors[0].sliced_frequencies[1] - detectors[0].sliced_frequencies[0]
-    for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
-        h_dec = ifo.fd_response(freqs, h_sky, params)
-        complex_d_inner_h += complex_inner_product(h_dec, data, psd, df)
-        optimal_SNR = inner_product(h_dec, h_dec, psd, df)
-        log_likelihood += -optimal_SNR / 2
-
-    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
-    return log_likelihood
-
-
-def phase_time_marginalized_likelihood(
-    params: dict[str, Float],
-    h_sky: dict[str, Complex[Array, " n_dim"]],
-    detectors: list[Detector],
-    **kwargs,
-) -> Float:
-    log_likelihood = 0.0
-    complex_h_inner_d = 0.0 + 0.0j
-    df = detectors[0].sliced_frequencies[1] - detectors[0].sliced_frequencies[0]
-    for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
-        h_dec = ifo.fd_response(freqs, h_sky, params)
-        # using <h|d> instead of <d|h>
-        complex_h_inner_d += complex_inner_product(data, h_dec, psd, df)
-        optimal_SNR = inner_product(h_dec, h_dec, psd, df)
-        log_likelihood += -optimal_SNR / 2
-    duration = detectors[0].data.duration
-
-    # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = kwargs["tc_range"]
-    fs = kwargs["sampling_rate"]
-    tc_array = _get_tc_array(duration, fs)
-    pad_low, pad_high = _get_frequencies_pads(detectors[0], fs=fs)
-
-    # padding the complex_h_inner_d
-    # this array is the hd*/S for f in [0, fs / 2 - df]
-    complex_h_inner_d_positive_f = jnp.concatenate(
-        (pad_low, complex_h_inner_d, pad_high)
-    )
-
-    # make use of the fft
-    # which then return the <h|d>exp(-i2pift_c)
-    # w.r.t. the tc_array
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
-
-    # set the values to -inf when it is outside the tc range
-    # so that they will disappear after the logsumexp
-    log_i0_abs_fft = jnp.where(
-        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
-        log_i0(jnp.absolute(fft_h_inner_d)),
-        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
-    )
-
-    # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(tc_array))
-    return log_likelihood
 
 
 def original_relative_binning_likelihood(
