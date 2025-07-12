@@ -64,7 +64,6 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
         assert jnp.all(jnp.array(_frequencies)[:-1] == jnp.array(_frequencies)[1:]), (
             "The frequency arrays are not all the same."
         )
-
         self.frequencies = _frequencies[0]
         self.trigger_time = trigger_time
         self.gmst = compute_gmst(self.trigger_time)
@@ -92,15 +91,10 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
 
 
 class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
-    tc_range: tuple[Float, Float] = (
-        -0.12,
-        0.12,
-    )  # Default range for time marginalization
-    tc_array: Float[
-        Array, " duration*f_sample/2"
-    ]  # Array of time values for marginalization
-    pad_low: Float[Array, " n_pad_low"]  # Padding for low frequencies
-    pad_high: Float[Array, " n_pad_high"]  # Padding for high frequencies
+    tc_range: tuple[Float, Float]
+    tc_array: Float[Array, " duration*f_sample/2"]
+    pad_low: Float[Array, " n_pad_low"]
+    pad_high: Float[Array, " n_pad_high"]
 
     def __init__(
         self,
@@ -109,11 +103,12 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
+        tc_range: tuple[Float, Float] = (-0.12, 0.12),
     ) -> None:
         super().__init__(detectors, waveform, f_min, f_max, trigger_time)
+        self.tc_range = tc_range
         fs = self.detectors[0].data.sampling_frequency
         duration = self.detectors[0].data.duration
-        # Refactored: use instance attributes instead of self.kwargs
         self.tc_array = jnp.fft.fftfreq(int(duration * fs / 2), 1.0 / duration)
         self.pad_low = jnp.zeros(int(self.frequencies[0] * duration))
         if jnp.isclose(self.frequencies[-1], fs / 2.0 - 1.0 / duration):
@@ -706,24 +701,6 @@ likelihood_presets = {
 }
 
 
-def original_likelihood(
-    params: dict[str, Float],
-    h_sky: dict[str, Complex[Array, " n_dim"]],
-    detectors: list[Detector],
-    **kwargs,
-) -> Float:
-    log_likelihood = 0.0
-    df = detectors[0].sliced_frequencies[1] - detectors[0].sliced_frequencies[0]
-    for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
-        h_dec = ifo.fd_response(freqs, h_sky, params)
-        match_filter_SNR = inner_product(h_dec, data, psd, df)
-        optimal_SNR = inner_product(h_dec, h_dec, psd, df)
-        log_likelihood += match_filter_SNR - optimal_SNR / 2
-
-    return log_likelihood
-
-
 def phase_marginalized_likelihood(
     params: dict[str, Float],
     h_sky: dict[str, Complex[Array, " n_dim"]],
@@ -741,72 +718,6 @@ def phase_marginalized_likelihood(
         log_likelihood += -optimal_SNR / 2
 
     log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
-    return log_likelihood
-
-
-def _get_tc_array(duration: Float, sampling_rate: Float):
-    return jnp.fft.fftfreq(int(duration * sampling_rate / 2), 1 / duration)
-
-
-def _get_frequencies_pads(detector: Detector, fs: Float) -> tuple[Float, Float]:
-    f_low, f_high = detector.frequency_bounds
-    duration = detector.data.duration
-    delta_f = 1 / duration
-
-    pad_low = jnp.zeros(int(f_low * duration))
-
-    f_Nyquist_diff = fs / 2.0 - delta_f - f_high
-    if jnp.isclose(f_Nyquist_diff, 0):
-        pad_high = jnp.array([])
-    else:
-        pad_high = jnp.zeros(int(f_Nyquist_diff * duration))
-    return pad_low, pad_high
-
-
-def time_marginalized_likelihood(
-    params: dict[str, Float],
-    h_sky: dict[str, Complex[Array, " n_dim"]],
-    detectors: list[Detector],
-    **kwargs,
-) -> Float:
-    log_likelihood = 0.0
-    complex_h_inner_d = jnp.zeros_like(detectors[0].sliced_frequencies)
-    df = detectors[0].sliced_frequencies[1] - detectors[0].sliced_frequencies[0]
-    for ifo in detectors:
-        freqs, data, psd = ifo.sliced_frequencies, ifo.sliced_fd_data, ifo.sliced_psd
-        h_dec = ifo.fd_response(freqs, h_sky, params)
-        # using <h|d> instead of <d|h>
-        complex_h_inner_d += 4 * h_dec * jnp.conj(data) / psd * df
-        optimal_SNR = inner_product(h_dec, h_dec, psd, df)
-        log_likelihood += -optimal_SNR / 2
-
-    # fetch the tc range tc_array, lower padding and higher padding
-    tc_range = [-0.12, 0.12]  # TODO: This is hard coded right now, need to update.
-    tc_array = kwargs["tc_array"]
-    pad_low = kwargs["pad_low"]
-    pad_high = kwargs["pad_high"]
-
-    # padding the complex_h_inner_d
-    # this array is the hd*/S for f in [0, fs / 2 - df]
-    complex_h_inner_d_positive_f = jnp.concatenate(
-        (pad_low, complex_h_inner_d, pad_high)
-    )
-
-    # make use of the fft
-    # which then return the <h|d>exp(-i2pift_c)
-    # w.r.t. the tc_array
-    fft_h_inner_d = jnp.fft.fft(complex_h_inner_d_positive_f, norm="backward")
-
-    # set the values to -inf when it is outside the tc range
-    # so that they will disappear after the logsumexp
-    fft_h_inner_d = jnp.where(
-        (tc_array > tc_range[0]) & (tc_array < tc_range[1]),
-        fft_h_inner_d.real,
-        jnp.zeros_like(fft_h_inner_d.real) - jnp.inf,
-    )
-
-    # using the logsumexp to marginalize over the tc prior range
-    log_likelihood += logsumexp(fft_h_inner_d) - jnp.log(len(tc_array))
     return log_likelihood
 
 
