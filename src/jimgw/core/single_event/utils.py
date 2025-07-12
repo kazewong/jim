@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Complex
-from typing import Optional
 
 from jimgw.core.constants import MTSUN
 from jimgw.core.utils import safe_arctan2, carte_to_spherical_angles
