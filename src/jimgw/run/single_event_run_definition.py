@@ -49,7 +49,9 @@ class SingleEventRunDefinition(RunDefinition):
         """Load the single event parameters into the Run object."""
         self.gps = inputs.get("gps", self.gps)
         self.segment_length = inputs.get("segment_length", self.segment_length)
-        self.post_trigger_length = inputs.get("post_trigger_length", self.post_trigger_length)
+        self.post_trigger_length = inputs.get(
+            "post_trigger_length", self.post_trigger_length
+        )
         self.f_min = inputs.get("f_min", self.f_min)
         self.f_max = inputs.get("f_max", self.f_max)
         ifos_input = inputs.get("ifos", [ifo.name for ifo in self.ifos])

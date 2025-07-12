@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-from jax.scipy.integrate import trapezoid
 from jaxtyping import Array, Float, Complex
 from typing import Optional
 
@@ -18,8 +17,8 @@ def complex_inner_product(
     Compute the complex inner product of two waveforms h1 and h2
     with the given power spectral density (PSD).
     The first waveform, h1, is complex conjugated.
-    
-    Note that this is supposed to be a sum instead of an integral for discrete samples. 
+
+    Note that this is supposed to be a sum instead of an integral for discrete samples.
 
     Args:
         h1 (Float[Array, "n_sample"]): First waveform. Can be complex.
@@ -32,7 +31,7 @@ def complex_inner_product(
         Complex: Noise-weighted inner product of h1 and h2 with given the PSD.
                 If either h1, h2 is the strain data, this is the match-filtered SNR.
     """
-    return 4.0 * jnp.sum(jnp.conj(h1) * h2 / psd) * df 
+    return 4.0 * jnp.sum(jnp.conj(h1) * h2 / psd) * df
 
 
 def inner_product(

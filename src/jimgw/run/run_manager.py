@@ -49,17 +49,23 @@ class RunManager:
 
     ### Data-fetching functions ###
 
-    def get_chain_samples(self, training: bool = False) -> dict[str, Float[Array, "n_chains n_dims"]]:
+    def get_chain_samples(
+        self, training: bool = False
+    ) -> dict[str, Float[Array, "n_chains n_dims"]]:
         """
         Fetch the samples from the sampler.
         """
         return self.jim.get_samples(training=training)
-    
-    def get_log_prob(self, training: bool = False) -> Float[Array, "n_chains"]:
+
+    def get_log_prob(self, training: bool = False) -> Float[Array, " n_chains"]:
         """
         Fetch the log probabilities of the samples.
         """
-        log_prob = self.jim.sampler.resources["log_prob_training"] if training else self.jim.sampler.resources["log_prob_production"]
+        log_prob = (
+            self.jim.sampler.resources["log_prob_training"]
+            if training
+            else self.jim.sampler.resources["log_prob_production"]
+        )
         assert isinstance(log_prob, Buffer), "Log probability is not a Buffer"
         return log_prob.data
 
@@ -93,16 +99,22 @@ class RunManager:
         """
         Fetch the local and global acceptance rates from the sampler resources.
         """
-        local_acc = self.jim.sampler.resources["local_accs_training"] if training else self.jim.sampler.resources["local_accs_production"]
-        global_acc = self.jim.sampler.resources["global_accs_training"] if training else self.jim.sampler.resources["global_accs_production"]
+        local_acc = (
+            self.jim.sampler.resources["local_accs_training"]
+            if training
+            else self.jim.sampler.resources["local_accs_production"]
+        )
+        global_acc = (
+            self.jim.sampler.resources["global_accs_training"]
+            if training
+            else self.jim.sampler.resources["global_accs_production"]
+        )
         assert isinstance(local_acc, Buffer), "Local acceptance rate is not a Buffer"
         assert isinstance(global_acc, Buffer), "Global acceptance rate is not a Buffer"
         return {
             "local": local_acc.data,
             "global": global_acc.data,
         }
-
-
 
     def plot_chains(
         self,
@@ -118,7 +130,9 @@ class RunManager:
         """
         samples_dict = self.get_chain_samples(training=training)
         param_names = list(samples_dict.keys())
-        samples = np.array(list(samples_dict.values())).reshape(int(len(param_names)), -1).T
+        samples = (
+            np.array(list(samples_dict.values())).reshape(int(len(param_names)), -1).T
+        )
         corner.corner(
             samples,
             labels=param_names,
@@ -172,7 +186,9 @@ class RunManager:
         """
         prior_samples = self.get_prior_samples(10000)
         param_names = list(prior_samples.keys())
-        samples = np.array(list(prior_samples.values())).reshape(int(len(param_names)), -1).T
+        samples = (
+            np.array(list(prior_samples.values())).reshape(int(len(param_names)), -1).T
+        )
         corner.corner(
             samples,
             labels=param_names,

@@ -1,13 +1,12 @@
 import argparse
 import jax
 import numpy as np
-
-jax.config.update("jax_enable_x64", True)  # Enable 64-bit precision
-
 from jimgw.run.run_definition import RunDefinition
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.run.library.class_definitions import AvailableDefinitions
 import yaml
+
+jax.config.update("jax_enable_x64", True)  # Enable 64-bit precision
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -52,5 +51,4 @@ if __name__ == "__main__":
         nf_samples=nf_samples,
         prior_samples=prior_samples,
         acceptance=acceptance,
-    ) # type: ignore
-
+    )  # type: ignore

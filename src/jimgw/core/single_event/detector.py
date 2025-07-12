@@ -702,6 +702,7 @@ class GroundBased2G(Detector):
             self.whitened_frequency_domain_data
         )
 
+
 def get_H1():
     return GroundBased2G(
         "H1",
@@ -714,6 +715,7 @@ def get_H1():
         elevation=142.554,
         modes="pc",
     )
+
 
 def get_L1():
     return GroundBased2G(
@@ -728,6 +730,7 @@ def get_L1():
         modes="pc",
     )
 
+
 def get_V1():
     return GroundBased2G(
         "V1",
@@ -740,6 +743,7 @@ def get_V1():
         elevation=51.884,
         modes="pc",
     )
+
 
 def get_detector_preset():
     return {

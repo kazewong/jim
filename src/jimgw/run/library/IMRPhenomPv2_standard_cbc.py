@@ -21,7 +21,6 @@ from jimgw.core.single_event.transforms import (
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
 
@@ -93,13 +92,14 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
         start = gps - (self.segment_length - self.post_trigger_length)
         end = gps + self.post_trigger_length
 
-
         if self.local_data_prefix is None:
             logging.info("No local data provided, using GWOSC data.")
             psd_start = gps - 2048
             psd_end = gps + 2048
             for ifo in self.ifos:
-                if ifo.name not in [detector.name for detector in list(get_detector_preset().values())]:
+                if ifo.name not in [
+                    detector.name for detector in list(get_detector_preset().values())
+                ]:
                     raise ValueError(f"Invalid detector: {ifo}")
                 ifo_data = Data.from_gwosc(ifo.name, start, end)
                 ifo.set_data(ifo_data)
@@ -110,11 +110,15 @@ class IMRPhenomPv2StandardCBCRunDefinition(SingleEventRunDefinition):
             logging.info(f"Using local data from {local_data_prefix}.")
             # TODO: Load local data from a file, and the PSD correspondingly.
             for ifo in self.ifos:
-                if ifo.name not in [detector.name for detector in list(get_detector_preset().values())]:
+                if ifo.name not in [
+                    detector.name for detector in list(get_detector_preset().values())
+                ]:
                     raise ValueError(f"Invalid detector: {ifo}")
                 ifo_data = Data.from_file(f"{local_data_prefix}{ifo.name}_data.npz")
                 ifo.set_data(ifo_data)
-                ifo_psd = PowerSpectrum.from_file(f"{local_data_prefix}{ifo.name}_psd.npz")
+                ifo_psd = PowerSpectrum.from_file(
+                    f"{local_data_prefix}{ifo.name}_psd.npz"
+                )
                 ifo.set_psd(ifo_psd)
 
         waveform = RippleIMRPhenomPv2(f_ref=self.f_ref)
