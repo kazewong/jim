@@ -174,6 +174,9 @@ class TimeMarginalizedLikelihoodFD(BaseTransientLikelihoodFD):
         Returns:
             Float: The marginalized log-likelihood value.
         """
+        params["trigger_time"] = self.trigger_time
+        params["gmst"] = self.gmst
+        params['t_c'] = 0.0  # Fixing t_c to 0 for time marginalization
         log_likelihood = 0.0
         complex_h_inner_d = jnp.zeros_like(self.detectors[0].sliced_frequencies)
         df = (
