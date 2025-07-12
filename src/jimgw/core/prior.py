@@ -103,7 +103,6 @@ class CompositePrior(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
-
     def __repr__(self):
         return f"LogisticDistribution(parameter_names={self.parameter_names})"
 
@@ -141,7 +140,6 @@ class LogisticDistribution(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class StandardNormalDistribution(Prior):
-
     def __repr__(self):
         return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
 
@@ -195,7 +193,6 @@ class SequentialTransformPrior(CompositePrior):
         base_prior: list[Prior],
         transforms: list[BijectiveTransform],
     ):
-
         assert (
             len(base_prior) == 1
         ), "SequentialTransformPrior only takes one base prior"
@@ -292,12 +289,12 @@ class UniformPrior(SequentialTransformPrior):
                 LogitTransform(
                     (
                         [f"{self.parameter_names[0]}_base"],
-                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax - xmin)}"],
                     )
                 ),
                 ScaleTransform(
                     (
-                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax - xmin)}"],
                         [f"{self.parameter_names[0]}-({xmin})"],
                     ),
                     xmax - xmin,
@@ -412,7 +409,6 @@ class CosinePrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformSpherePrior(CombinePrior):
-
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 

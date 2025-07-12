@@ -6,7 +6,6 @@ from jimgw.single_event.data import Data, PowerSpectrum
 
 
 class TestDataInterface:
-
     def setup_method(self):
         # create some dummy data
         self.f_samp = 2048

@@ -85,7 +85,6 @@ class RippleIMRPhenomPv2(Waveform):
 
 
 class RippleTaylorF2(Waveform):
-
     f_ref: float
     use_lambda_tildes: bool
 
@@ -131,7 +130,6 @@ class RippleTaylorF2(Waveform):
 
 
 class RippleIMRPhenomD_NRTidalv2(Waveform):
-
     f_ref: float
     use_lambda_tildes: bool
 

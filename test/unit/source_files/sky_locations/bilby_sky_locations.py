@@ -17,7 +17,9 @@ for ifo_pair in combinations(ifo_names, 2):
     ifos = bilby.gw.detector.InterferometerList(ifo_pair)
     for time in geocent_time:
         key, *subkey = jax.random.split(key, 3)
-        azimuth = jax.random.uniform(subkey[0], (N_samples,), minval=0, maxval=2 * jnp.pi)
+        azimuth = jax.random.uniform(
+            subkey[0], (N_samples,), minval=0, maxval=2 * jnp.pi
+        )
         zenith = jax.random.uniform(subkey[1], (N_samples,), minval=0, maxval=jnp.pi)
         inputs = jnp.array([zenith, azimuth]).T
         output = []
