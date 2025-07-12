@@ -46,6 +46,28 @@ class ZeroLikelihood(LikelihoodBase):
 
 
 class BaseTransientLikelihoodFD(SingleEventLikelihood):
+    """Base class for frequency-domain transient gravitational wave likelihood.
+
+    This class provides the basic likelihood evaluation for gravitational wave transient events
+    in the frequency domain, using matched filtering across multiple detectors.
+
+    Attributes:
+        frequencies (Float[Array]): The frequency array used for likelihood evaluation.
+        trigger_time (Float): The GPS time of the event trigger.
+        gmst (Float): Greenwich Mean Sidereal Time computed from the trigger time.
+
+    Args:
+        detectors (Sequence[Detector]): List of detector objects containing data and metadata.
+        waveform (Waveform): Waveform model to evaluate.
+        f_min (Float, optional): Minimum frequency for likelihood evaluation. Defaults to 0.
+        f_max (Float, optional): Maximum frequency for likelihood evaluation. Defaults to infinity.
+        trigger_time (Float, optional): GPS time of the event trigger. Defaults to 0.
+
+    Example:
+        >>> likelihood = BaseTransientLikelihoodFD(detectors, waveform, f_min=20, f_max=1024, trigger_time=1234567890)
+        >>> logL = likelihood.evaluate(params, data)
+    """
+
     def __init__(
         self,
         detectors: Sequence[Detector],
@@ -54,6 +76,17 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
         f_max: Float = float("inf"),
         trigger_time: Float = 0,
     ) -> None:
+        """Initializes the BaseTransientLikelihoodFD class.
+
+        Sets up the frequency bounds for the detectors and computes the Greenwich Mean Sidereal Time.
+
+        Args:
+            detectors (Sequence[Detector]): List of detector objects.
+            waveform (Waveform): Waveform model.
+            f_min (Float, optional): Minimum frequency. Defaults to 0.
+            f_max (Float, optional): Maximum frequency. Defaults to infinity.
+            trigger_time (Float, optional): Event trigger time. Defaults to 0.
+        """
         super().__init__(detectors, waveform)
         # Set the frequency bounds for the detectors
         _frequencies = []
@@ -69,6 +102,18 @@ class BaseTransientLikelihoodFD(SingleEventLikelihood):
         self.gmst = compute_gmst(self.trigger_time)
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        """Evaluate the log-likelihood for a given set of parameters.
+
+        Computes the log-likelihood by matched filtering the model waveform against the data
+        for each detector, using the frequency-domain inner product.
+
+        Args:
+            params (dict[str, Float]): Dictionary of model parameters.
+            data (dict): Dictionary containing data (not used in this implementation).
+
+        Returns:
+            Float: The log-likelihood value.
+        """
         params["trigger_time"] = self.trigger_time
         params["gmst"] = self.gmst
         waveform_sky = self.waveform(self.frequencies, params)
