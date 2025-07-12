@@ -101,7 +101,7 @@ def raw_data_plot(context: AssetExecutionContext):
         data_file = os.path.join(event_dir, f"{ifo}_data.npz")
         if os.path.exists(data_file):
             data = np.load(data_file)
-            t = data["epoch"] + jnp.arange(data["td"].shape[0]) * data['dt']
+            t = data["epoch"] + np.arange(data["td"].shape[0]) * data['dt']
             td = data["td"]
             if t is not None and td is not None:
                 plt.figure()
@@ -223,7 +223,7 @@ def config_file(context: AssetExecutionContext):
     specs=[
         dg.AssetSpec(key=["RealDataCatalog", "training_loss"], deps=[raw_data, config_file]),
         dg.AssetSpec(key=["RealDataCatalog", "production_chains"], deps=[raw_data, config_file]),
-        # dg.AssetSpec(key=["RealDataCatalog", "production_log_prob"], deps=[raw_data, config_file]),
+        dg.AssetSpec(key=["RealDataCatalog", "production_log_prob"], deps=[raw_data, config_file]),
         dg.AssetSpec(key=["RealDataCatalog", "production_local_acceptance"], deps=[raw_data, config_file]),
         dg.AssetSpec(key=["RealDataCatalog", "production_global_acceptance"], deps=[raw_data, config_file]),
         dg.AssetSpec(key=["RealDataCatalog", "auxiliary_nf_samples"], deps=[raw_data, config_file]),
@@ -293,7 +293,8 @@ def production_chains_corner_plot(context: AssetExecutionContext):
         raise FileNotFoundError(f"Results file not found: {results_path}")
     results = np.load(results_path, allow_pickle=True)
     chains = results["chains"].item()
-    keys = np.sort(list(chains.keys()))
+    # keys = np.sort(list(chains.keys()))
+    keys = ['M_c', 'q', 's1_mag', 's1_theta', 's1_phi', 's2_mag', 's2_theta', 's2_phi', 'iota', 'd_L', 'phase_c', 'psi', 'ra', 'dec']
     samples = np.array([chains[key] for key in keys]).T
     fig = corner.corner(samples[::10], labels=keys)
     plot_path = os.path.join(plots_dir, "production_chains_corner.png")
@@ -322,7 +323,8 @@ def nf_samples_corner_plot(context: AssetExecutionContext):
         raise FileNotFoundError(f"Results file not found: {results_path}")
     results = np.load(results_path, allow_pickle=True)
     nf_samples = results["nf_samples"].item()
-    keys = np.sort(list(nf_samples.keys()))
+    # keys = np.sort(list(nf_samples.keys()))
+    keys = ['M_c', 'q', 's1_mag', 's1_theta', 's1_phi', 's2_mag', 's2_theta', 's2_phi', 'iota', 'd_L', 'phase_c', 'psi', 'ra', 'dec']
     nf_samples = np.array([nf_samples[key] for key in keys]).T
     fig = corner.corner(nf_samples, labels=keys)  # Thinning for better visualization
     plot_path = os.path.join(plots_dir, "nf_samples_corner.png")
@@ -351,7 +353,8 @@ def prior_samples_corner_plot(context: AssetExecutionContext):
         raise FileNotFoundError(f"Results file not found: {results_path}")
     results = np.load(results_path, allow_pickle=True)
     prior_samples = results["prior_samples"].item()
-    keys = np.sort(list(prior_samples.keys()))
+    # keys = np.sort(list(prior_samples.keys()))
+    keys = ['M_c', 'q', 's1_mag', 's1_theta', 's1_phi', 's2_mag', 's2_theta', 's2_phi', 'iota', 'd_L', 'phase_c', 'psi', 'ra', 'dec']
     prior_samples = np.array([prior_samples[key] for key in keys]).T
     fig = corner.corner(prior_samples, labels=keys)  # Thinning for better visualization
     plot_path = os.path.join(plots_dir, "prior_samples_corner.png")
@@ -379,7 +382,7 @@ def production_chains_trace_plot(context: AssetExecutionContext):
         raise FileNotFoundError(f"Results file not found: {results_path}")
     results = np.load(results_path, allow_pickle=True)
     chains = results["chains"].item()
-    keys = np.sort(list(chains.keys()))
+    keys = ['M_c', 'q', 's1_mag', 's1_theta', 's1_phi', 's2_mag', 's2_theta', 's2_phi', 'iota', 'd_L', 'phase_c', 'psi', 'ra', 'dec']
     n_params = len(keys)
     samples = [chains[key] for key in keys]
 
@@ -397,69 +400,69 @@ def production_chains_trace_plot(context: AssetExecutionContext):
     plt.close()
     return plot_path
 
-# @dg.asset(
-#     group_name="diagnostics",
-#     deps=[["RealDataCatalog", "production_log_prob"]],
-#     key_prefix="RealDataCatalog",
-#     partitions_def=event_partitions_def,
-# )
-# def production_log_prob_distribution(context: AssetExecutionContext):
-#     """
-#     Generate and save a histogram of the production log probability.
-#     """
-#     import matplotlib.pyplot as plt
-#     event_name = context.partition_key
-#     run_dir = os.path.join("data", event_name)
-#     plots_dir = os.path.join(run_dir, "plots")
-#     os.makedirs(plots_dir, exist_ok=True)
-#     results_path = os.path.join(run_dir, "results.npz")
-#     if not os.path.exists(results_path):
-#         raise FileNotFoundError(f"Results file not found: {results_path}")
-#     results = np.load(results_path, allow_pickle=True)
-#     log_prob = results["loss_data"].item().get("log_prob", None)
-#     if log_prob is None:
-#         raise ValueError("No 'log_prob' key found in loss_data.")
-#     plt.figure()
-#     plt.hist(log_prob.flatten(), bins=50, alpha=0.7)
-#     plt.xlabel("Log Probability")
-#     plt.ylabel("Frequency")
-#     plt.title(f"Production Log Probability Distribution for {event_name}")
-#     plot_path = os.path.join(plots_dir, "production_log_prob_distribution.png")
-#     plt.savefig(plot_path)
-#     plt.close()
-#     return plot_path
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["RealDataCatalog", "production_log_prob"]],
+    key_prefix="RealDataCatalog",
+    partitions_def=event_partitions_def,
+)
+def production_log_prob_distribution(context: AssetExecutionContext):
+    """
+    Generate and save a histogram of the production log probability.
+    """
+    import matplotlib.pyplot as plt
+    event_name = context.partition_key
+    run_dir = os.path.join("data", event_name)
+    plots_dir = os.path.join(run_dir, "plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    results_path = os.path.join(run_dir, "results.npz")
+    if not os.path.exists(results_path):
+        raise FileNotFoundError(f"Results file not found: {results_path}")
+    results = np.load(results_path, allow_pickle=True)
+    log_prob = results["log_probs"]
+    if log_prob is None:
+        raise ValueError("No 'log_prob' key found in loss_data.")
+    plt.figure()
+    plt.hist(log_prob.flatten(), bins=50, alpha=0.7)
+    plt.xlabel("Log Probability")
+    plt.ylabel("Frequency")
+    plt.title(f"Production Log Probability Distribution for {event_name}")
+    plot_path = os.path.join(plots_dir, "production_log_prob_distribution.png")
+    plt.savefig(plot_path)
+    plt.close()
+    return plot_path
 
-# @dg.asset(
-#     group_name="diagnostics",
-#     deps=[["RealDataCatalog", "production_log_prob"]],
-#     key_prefix="RealDataCatalog",
-#     partitions_def=event_partitions_def,
-# )
-# def production_log_prob_evolution(context: AssetExecutionContext):
-#     """
-#     Generate and save a plot of the evolution of the production log probability.
-#     """
-#     import matplotlib.pyplot as plt
-#     event_name = context.partition_key
-#     run_dir = os.path.join("data", event_name)
-#     plots_dir = os.path.join(run_dir, "plots")
-#     os.makedirs(plots_dir, exist_ok=True)
-#     results_path = os.path.join(run_dir, "results.npz")
-#     if not os.path.exists(results_path):
-#         raise FileNotFoundError(f"Results file not found: {results_path}")
-#     results = np.load(results_path, allow_pickle=True)
-#     log_prob = results["loss_data"].item().get("log_prob", None)
-#     if log_prob is None:
-#         raise ValueError("No 'log_prob' key found in loss_data.")
-#     plt.figure()
-#     plt.plot(log_prob)
-#     plt.xlabel("Sample")
-#     plt.ylabel("Log Probability")
-#     plt.title(f"Production Log Probability Evolution for {event_name}")
-#     plot_path = os.path.join(plots_dir, "production_log_prob_evolution.png")
-#     plt.savefig(plot_path)
-#     plt.close()
-#     return plot_path
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["RealDataCatalog", "production_log_prob"]],
+    key_prefix="RealDataCatalog",
+    partitions_def=event_partitions_def,
+)
+def production_log_prob_evolution(context: AssetExecutionContext):
+    """
+    Generate and save a plot of the evolution of the production log probability.
+    """
+    import matplotlib.pyplot as plt
+    event_name = context.partition_key
+    run_dir = os.path.join("data", event_name)
+    plots_dir = os.path.join(run_dir, "plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    results_path = os.path.join(run_dir, "results.npz")
+    if not os.path.exists(results_path):
+        raise FileNotFoundError(f"Results file not found: {results_path}")
+    results = np.load(results_path, allow_pickle=True)
+    log_prob = results["log_probs"]
+    if log_prob is None:
+        raise ValueError("No 'log_prob' key found in loss_data.")
+    plt.figure()
+    plt.plot(log_prob)
+    plt.xlabel("Sample")
+    plt.ylabel("Log Probability")
+    plt.title(f"Production Log Probability Evolution for {event_name}")
+    plot_path = os.path.join(plots_dir, "production_log_prob_evolution.png")
+    plt.savefig(plot_path)
+    plt.close()
+    return plot_path
 
 @dg.asset(
     group_name="diagnostics",
