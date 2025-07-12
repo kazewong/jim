@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 from jimgw.core.jim import Jim
 from jimgw.core.prior import UniformPrior, RayleighPrior, CombinePrior
-from jimgw.core.transforms import PeriodicTransform, BoundToUnbound
+from jimgw.core.transforms import PeriodicTransform
 from jimgw.core.base import LikelihoodBase
 from jaxtyping import Float
 
@@ -33,7 +33,6 @@ likelihood_transforms = []
 
 
 class CosLikelihood(LikelihoodBase):
-
     def __init__(self):
         pass
 

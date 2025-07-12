@@ -25,7 +25,7 @@ from jimgw.core.single_event.transforms import (
 )
 
 from jimgw.core.single_event.utils import m1_m2_to_Mc_q
-from jimgw.core.single_event.detector import H1, L1, V1, detector_preset
+from jimgw.core.single_event.detector import get_detector_preset
 
 jax.config.update("jax_enable_x64", True)
 
@@ -849,10 +849,10 @@ class TestSpinAnglesToCartesianSpinTransform:
 
 class TestSkyFrameToDetectorFrameSkyPositionTransform:
     # This was the custom tolerance for RA as Bilby and Jim use different
-    # algorithm to compute gmst, which induces errors to RA, and this 
-    # was the minimum precision that passes. 
+    # algorithm to compute gmst, which induces errors to RA, and this
+    # was the minimum precision that passes.
     # In the latter version, Jim has adopted the Bilby/LAL algorithm to
-    # compute gmst, and the agreement is at the level of 0.0, which 
+    # compute gmst, and the agreement is at the level of 0.0, which
     # renders this tolerance obsolete.
     # RA_ATOL = 5e-5
 
@@ -867,7 +867,7 @@ class TestSkyFrameToDetectorFrameSkyPositionTransform:
 
             bilby_outputs = {key: data[key] for key in ("ra", "dec")}
             zenith_azimuth = {key: data[key] for key in ("zenith", "azimuth")}
-            ifos = [detector_preset[ifo_name] for ifo_name in data["ifo_pair"]]
+            ifos = [get_detector_preset()[ifo_name] for ifo_name in data["ifo_pair"]]
 
             transform = SkyFrameToDetectorFrameSkyPositionTransform(
                 gps_time=data["gps_time"],

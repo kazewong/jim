@@ -3,6 +3,8 @@ import time
 import jax
 import jax.numpy as jnp
 
+jax.config.update("jax_enable_x64", True)
+
 from jimgw.core.jim import Jim
 from jimgw.core.prior import (
     CombinePrior,
@@ -11,10 +13,9 @@ from jimgw.core.prior import (
     SinePrior,
     PowerLawPrior,
     UniformSpherePrior,
-    SimpleConstrainedPrior,
 )
 from jimgw.core.single_event.detector import get_H1, get_L1, get_V1
-from jimgw.core.single_event.likelihood import HeterodynedTransientLikelihoodFD
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound
@@ -26,7 +27,6 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from flowMC.strategy.optimization import optimization_Adam
 
 ###########################################
 ########## First we grab data #############
@@ -34,36 +34,43 @@ from flowMC.strategy.optimization import optimization_Adam
 
 total_time_start = time.time()
 
-# first, fetch a 128s segment centered on GW170817
+# first, fetch a 4s segment centered on GW150914
 # for the analysis
-gps = 1187008882.43
-duration = 128.0
-# Request a segment with 2.0 s post-merger
-start = gps + 2.0 - duration
-end = start + duration
+gps = 1266645879.396484
+start = gps - 2
+end = gps + 2
 
-# fetch 8192s of data to estimate the PSD (to be
+# fetch 4096s of data to estimate the PSD (to be
 # careful we should avoid the on-source segment,
 # but we don't do this in this example)
-psd_start = gps - 4096
-psd_end = gps + 4096
+psd_start = gps - 2048
+psd_end = gps + 2048
 
-fmin = minimum_frequency = 20
-fmax = maximum_frequency = 2048
-f_ref = fmin
+# define frequency integration bounds for the likelihood
+# we set fmax to 87.5% of the Nyquist frequency to avoid
+# data corrupted by the GWOSC antialiasing filter
+# (Note that Data.from_gwosc will pull data sampled at
+# 4096 Hz by default)
+fmin = 20.0
+fmax = 896.0
 
 # initialize detectors
-ifos = [get_H1(), get_L1(), get_V1()]
+ifos = [get_H1(), get_L1()]
 
 for ifo in ifos:
     # set analysis data
-    strain_data = Data.from_gwosc(ifo.name, start, end)
-    ifo.set_data(strain_data)
+    data = Data.from_gwosc(ifo.name, start, end)
+    ifo.set_data(data)
 
     # set PSD (Welch estimate)
     psd_data = Data.from_gwosc(ifo.name, psd_start, psd_end)
     # set an NFFT corresponding to the analysis segment duration
-    psd_fftlength = strain_data.duration * strain_data.sampling_frequency
+    psd_fftlength = data.duration * data.sampling_frequency
+    if jnp.isnan(psd_data.td).any():
+        raise ValueError(
+            f"PSD FFT length is NaN for {ifo.name}. "
+            "This can happen if the data segment is too short."
+        )
     ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
 
 ###########################################
@@ -80,16 +87,16 @@ waveform = RippleIMRPhenomPv2(f_ref=20)
 prior = []
 
 # Mass prior
-M_c_min, M_c_max = 1.18, 1.21
-q_min, q_max = 0.125, 1.0
+M_c_min, M_c_max = 5.0, 80.0
+q_min, q_max = 0.25, 1.0
 Mc_prior = UniformPrior(M_c_min, M_c_max, parameter_names=["M_c"])
 q_prior = UniformPrior(q_min, q_max, parameter_names=["q"])
 
 prior = prior + [Mc_prior, q_prior]
 
 # Spin prior
-s1_prior = UniformSpherePrior(parameter_names=["s1"], max_mag=0.05)
-s2_prior = UniformSpherePrior(parameter_names=["s2"], max_mag=0.05)
+s1_prior = UniformSpherePrior(parameter_names=["s1"])
+s2_prior = UniformSpherePrior(parameter_names=["s2"])
 iota_prior = SinePrior(parameter_names=["iota"])
 
 prior = prior + [
@@ -99,8 +106,8 @@ prior = prior + [
 ]
 
 # Extrinsic prior
-dL_prior = SimpleConstrainedPrior([PowerLawPrior(1.0, 75.0, 2.0, parameter_names=["d_L"])])
-t_c_prior = SimpleConstrainedPrior([UniformPrior(-0.1, 0.1, parameter_names=["t_c"])])
+dL_prior = PowerLawPrior(100.0, 6000.0, 2.0, parameter_names=["d_L"])
+t_c_prior = UniformPrior(-0.1, 0.1, parameter_names=["t_c"])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
 ra_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["ra"])
@@ -120,9 +127,11 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos),
+    DistanceToSNRWeightedDistanceTransform(
+        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
+    ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     BoundToUnbound(
         name_mapping=(["M_c"], ["M_c_unbounded"]),
@@ -162,12 +171,12 @@ sample_transforms = [
     BoundToUnbound(
         name_mapping=(["s1_mag"], ["s1_mag_unbounded"]),
         original_lower_bound=0.0,
-        original_upper_bound=0.05,
+        original_upper_bound=0.99,
     ),
     BoundToUnbound(
         name_mapping=(["s2_mag"], ["s2_mag_unbounded"]),
         original_lower_bound=0.0,
-        original_upper_bound=0.05,
+        original_upper_bound=0.99,
     ),
     BoundToUnbound(
         name_mapping=(["phase_det"], ["phase_det_unbounded"]),
@@ -198,35 +207,13 @@ likelihood_transforms = [
 ]
 
 
-likelihood = HeterodynedTransientLikelihoodFD(
+likelihood = TransientLikelihoodFD(
     ifos,
     waveform=waveform,
-    n_bins=1000,
     trigger_time=gps,
-    prior=prior,
-    sample_transforms=sample_transforms,
-    likelihood_transforms=likelihood_transforms,
-    popsize=10,
-    n_steps=50,
-)
-
-mass_matrix = jnp.eye(prior.n_dim)
-# mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-# mass_matrix = mass_matrix.at[9, 9].set(1e-3)
-local_sampler_arg = {"step_size": mass_matrix * 1e-3}
-
-#### The rest of this script is not guaranteed to work ####
-
-Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
-
-import optax
-
-n_epochs = 20
-n_loop_training = 100
-total_epochs = n_epochs * n_loop_training
-start = total_epochs // 10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 1e-4, 4.0, total_epochs - start, transition_begin=start
+    f_min=fmin,
+    f_max=fmax,
+    # marginalization="time",
 )
 
 jim = Jim(
@@ -234,24 +221,44 @@ jim = Jim(
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_loop_training=n_loop_training,
-    n_loop_production=20,
-    n_local_steps=10,
-    n_global_steps=1000,
     n_chains=500,
-    n_epochs=n_epochs,
-    learning_rate=learning_rate,
+    n_local_steps=100,
+    n_global_steps=1000,
+    n_training_loops=20,
+    n_production_loops=10,
+    n_epochs=20,
+    mala_step_size=2e-3,
+    rq_spline_hidden_units=[128, 128],
+    rq_spline_n_bins=10,
+    rq_spline_n_layers=8,
+    learning_rate=1e-3,
+    batch_size=10000,
     n_max_examples=30000,
-    n_NFproposal_batch_size=100000,
-    momentum=0.9,
-    batch_size=30000,
-    use_global=True,
-    keep_quantile=0.0,
-    train_thinning=1,
-    output_thinning=10,
-    local_sampler_arg=local_sampler_arg,
-    # strategies=[Adam_optimizer,"default"],
+    n_NFproposal_batch_size=100,
+    local_thinning=1,
+    global_thinning=10,
+    history_window=200,
+    n_temperatures=0,
+    max_temperature=20.0,
+    n_tempered_steps=10,
+    verbose=True,
 )
 
+jim.sample()
 
-jim.sample(jax.random.PRNGKey(42))
+print("Done!")
+
+logprob = jim.sampler.resources["log_prob_production"].data
+print(jnp.mean(logprob))
+
+chains = jim.get_samples()
+
+import numpy as np
+import corner
+
+
+fig = corner.corner(
+    np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10],
+    labels=jim.prior.parameter_names,
+)
+fig.savefig("test")

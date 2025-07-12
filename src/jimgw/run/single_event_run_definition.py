@@ -1,6 +1,7 @@
 from jimgw.run.run_definition import RunDefinition
 from jimgw.core.single_event.detector import GroundBased2G
-from typing import Sequence
+from typing import Optional, Sequence
+from jimgw.core.single_event.detector import get_detector_preset
 
 
 class SingleEventRunDefinition(RunDefinition):
@@ -20,3 +21,57 @@ class SingleEventRunDefinition(RunDefinition):
     f_max: float  # Maximum frequency
     ifos: Sequence[GroundBased2G]  # Set of detectors
     f_ref: float  # Reference frequency
+    local_data_prefix: Optional[str] = None
+
+    def __init__(
+        self,
+        gps: float,
+        segment_length: float,
+        post_trigger_length: float,
+        f_min: float,
+        f_max: float,
+        ifos: set[str],
+        f_ref: float,
+        injection_data_prefix: Optional[str] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.gps = gps
+        self.segment_length = segment_length
+        self.post_trigger_length = post_trigger_length
+        self.f_min = f_min
+        self.f_max = f_max
+        self.ifos = [get_detector_preset()[ifo] for ifo in ifos]
+        self.f_ref = f_ref
+        self.local_data_prefix = injection_data_prefix
+
+    def load_single_event_params(self, inputs: dict):
+        """Load the single event parameters into the Run object."""
+        self.gps = inputs.get("gps", self.gps)
+        self.segment_length = inputs.get("segment_length", self.segment_length)
+        self.post_trigger_length = inputs.get(
+            "post_trigger_length", self.post_trigger_length
+        )
+        self.f_min = inputs.get("f_min", self.f_min)
+        self.f_max = inputs.get("f_max", self.f_max)
+        ifos_input = inputs.get("ifos", [ifo.name for ifo in self.ifos])
+        self.ifos = [get_detector_preset()[ifo] for ifo in ifos_input]
+        self.f_ref = inputs.get("f_ref", self.f_ref)
+        self.local_data_prefix = inputs.get("local_data_prefix", self.local_data_prefix)
+
+    def serialize(self, path: str = "./") -> dict:
+        """Serialize a `SingleEventRun` object into a human readable config file."""
+        run_dict = super().serialize(path)
+        run_dict.update(
+            {
+                "gps": self.gps,
+                "segment_length": self.segment_length,
+                "post_trigger_length": self.post_trigger_length,
+                "f_min": self.f_min,
+                "f_max": self.f_max,
+                "ifos": [ifo.name for ifo in self.ifos],
+                "f_ref": self.f_ref,
+                "local_data_prefix": self.local_data_prefix,
+            }
+        )
+        return run_dict

@@ -423,12 +423,12 @@ class UniformPrior(SequentialTransformPrior):
                 LogitTransform(
                     (
                         [f"{self.parameter_names[0]}_base"],
-                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax - xmin)}"],
                     )
                 ),
                 ScaleTransform(
                     (
-                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax-xmin)}"],
+                        [f"({self.parameter_names[0]}-({xmin}))/{(xmax - xmin)}"],
                         [f"{self.parameter_names[0]}-({xmin})"],
                     ),
                     xmax - xmin,
