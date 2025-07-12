@@ -29,7 +29,6 @@ class SingleEventLikelihood(LikelihoodBase):
 
 
 class ZeroLikelihood(LikelihoodBase):
-
     def __init__(self):
         pass
 
@@ -722,7 +721,6 @@ def original_relative_binning_likelihood(
     frequencies_center,
     **kwargs,
 ):
-
     log_likelihood = 0.0
 
     for detector in detectors:

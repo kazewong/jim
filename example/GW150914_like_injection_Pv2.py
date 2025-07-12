@@ -27,7 +27,10 @@ from jimgw.core.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.core.single_event.gps_times import greenwich_mean_sidereal_time as compute_gmst
+from jimgw.core.single_event.gps_times import (
+    greenwich_mean_sidereal_time as compute_gmst,
+)
+
 jax.config.update("jax_enable_x64", True)
 
 #################################################
@@ -82,7 +85,7 @@ injection_parameters.update(_inj_params)
 
 print("The injection parameters are")
 for key, value in injection_parameters.items():
-    print(f'-- {key + ":":10} {float(value):> 13.6f}')
+    print(f"-- {key + ':':10} {float(value):> 13.6f}")
 injection_parameters = {
     key: jnp.array(value) for key, value in injection_parameters.items()
 }
