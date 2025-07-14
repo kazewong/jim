@@ -17,9 +17,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    assert args.run_definition.endswith(".yaml"), (
-        "Run definition file must be a YAML file."
-    )
+    assert args.run_definition.endswith(
+        ".yaml"
+    ), "Run definition file must be a YAML file."
 
     definitions_name = yaml.safe_load(open(args.run_definition))["definition_name"]
 
