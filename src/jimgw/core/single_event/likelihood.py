@@ -384,19 +384,6 @@ class PhaseTimeMarginalizedLikelihoodFD(TimeMarginalizedLikelihoodFD):
         log_likelihood += logsumexp(log_i0_abs_fft) - jnp.log(len(self.tc_array))
         return log_likelihood
 
-
-# class HeterodynedTransientLikelihoodFD(SingleEventLikelihood):
-#     pass
-
-
-class HeterodynedTimeMarginalizedLikelihoodFD(SingleEventLikelihood):
-    pass
-
-
-class HeterodynedPhaseMarginalizedLikelihoodFD(SingleEventLikelihood):
-    pass
-
-
 class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
     n_bins: int  # Number of bins to use for the likelihood
     ref_params: dict  # Reference parameters for the likelihood
@@ -427,8 +414,8 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         waveform: Waveform,
         f_min: Float = 0,
         f_max: Float = float("inf"),
-        n_bins: int = 100,
         trigger_time: float = 0,
+        n_bins: int = 100,
         popsize: int = 100,
         n_steps: int = 2000,
         ref_params: dict = {},
@@ -436,6 +423,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         prior: Optional[Prior] = None,
         sample_transforms: list[BijectiveTransform] = [],
         likelihood_transforms: list[NtoMTransform] = [],
+    ):
 
         super().__init__(detectors, waveform, f_min, f_max, trigger_time)
 
@@ -445,44 +433,6 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         if reference_waveform is None:
             reference_waveform = waveform
 
-        self.kwargs = kwargs
-        if "marginalization" in self.kwargs:
-            marginalization = self.kwargs["marginalization"]
-            assert marginalization in [
-                "phase",
-            ], "Heterodyned likelihood only support phase marginalzation"
-            self.marginalization = marginalization
-            if self.marginalization == "phase":
-                self.param_func = lambda x: {**x, "phase_c": 0.0}
-                self.likelihood_function = phase_marginalized_likelihood
-                self.rb_likelihood_function = (
-                    phase_marginalized_relative_binning_likelihood
-                )
-                logging.info("Marginalizing over phase")
-        else:
-            self.param_func = lambda x: x
-            self.likelihood_function = original_likelihood
-            self.rb_likelihood_function = original_relative_binning_likelihood
-            self.marginalization = ""
-
-        # the fixing_parameters is expected to be a dictionary
-        # with key as parameter name and value is the fixed value
-        # e.g. {'M_c': 1.1975, 't_c': 0}
-        if "fixing_parameters" in self.kwargs:
-            fixing_parameters = self.kwargs["fixing_parameters"]
-            logging.info(f"Parameters are fixed {fixing_parameters}")
-            # check for conflict with the marginalization
-            assert not (
-                "t_c" in fixing_parameters and "time" in self.marginalization
-            ), "Cannot have t_c fixed while marginalizing over t_c"
-            assert not (
-                "phase_c" in fixing_parameters and "phase" in self.marginalization
-            ), "Cannot have phase_c fixed while marginalizing over phase_c"
-            # if the same key exists in both dictionary,
-            # the later one will overwrite the former one
-            self.fixing_func = lambda x: {**x, **fixing_parameters}
-        else:
-            self.fixing_func = lambda x: x
 
         # Get the original frequency grid
         frequency_original = self.frequencies
@@ -522,10 +472,6 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
         self.ref_params["trigger_time"] = self.trigger_time
         self.ref_params["gmst"] = self.gmst
-        # adjust the params due to different marginalzation scheme
-        self.ref_params = self.param_func(self.ref_params)
-        # adjust the params due to fixing parameters
-        self.ref_params = self.fixing_func(self.ref_params)
 
         self.waveform_low_ref = {}
         self.waveform_center_ref = {}
@@ -589,56 +535,38 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
             self.B1_array[detector.name] = B1[mask_heterodyne_center]
 
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        params["trigger_time"] = self.trigger_time
+        params["gmst"] = self.gmst
+        params.update(self.fixed_parameters)
+        # evaluate the waveforms as usual
+        return self._likelihood(params, data)
+
+    def _likelihood(self, params: dict[str, Float], data: dict) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
-        params["trigger_time"] = self.trigger_time
-        params["gmst"] = self.gmst
-        # adjust the params due to different marginalzation scheme
-        params = self.param_func(params)
-        # adjust the params due to fixing parameters
-        params = self.fixing_func(params)
-        # evaluate the waveforms as usual
+        log_likelihood = 0.0
         waveform_sky_low = self.waveform(frequencies_low, params)
         waveform_sky_center = self.waveform(frequencies_center, params)
-        log_likelihood = self.rb_likelihood_function(
-            params,
-            self.A0_array,
-            self.A1_array,
-            self.B0_array,
-            self.B1_array,
-            waveform_sky_low,
-            waveform_sky_center,
-            self.waveform_low_ref,
-            self.waveform_center_ref,
-            self.detectors,
-            frequencies_low,
-            frequencies_center,
-            **self.kwargs,
-        )
+        for detector in self.detectors:
+            waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
+            waveform_center = detector.fd_response(
+                frequencies_low, waveform_sky_center, params
+            )
+    
+            r0 = waveform_center / self.waveform_center_ref[detector.name]
+            r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
+                frequencies_low - frequencies_center
+            )
+            match_filter_SNR = jnp.sum(
+                self.A0_array[detector.name] * r0.conj() + self.A1_array[detector.name] * r1.conj()
+            )
+            optimal_SNR = jnp.sum(
+                self.B0_array[detector.name] * jnp.abs(r0) ** 2
+                + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
+            )
+            log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
+    
         return log_likelihood
-
-    def evaluate_original(
-        self, params: dict[str, Float], data: dict
-    ) -> (
-        Float
-    ):  # TODO: Test whether we need to pass data in or with class changes is fine.
-        """
-        Evaluate the likelihood for a given set of parameters.
-        """
-        params["trigger_time"] = self.trigger_time
-        params["gmst"] = self.gmst
-        # adjust the params due to different marginalzation scheme
-        params = self.param_func(params)
-        # adjust the params due to fixing parameters
-        params = self.fixing_func(params)
-        # evaluate the waveform as usual
-        waveform_sky = self.waveform(self.frequencies, params)
-        return self.likelihood_function(
-            params,
-            waveform_sky,
-            self.detectors,  # type: ignore
-            **self.kwargs,
-        )
 
     @staticmethod
     def max_phase_diff(
@@ -748,7 +676,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
                 named_params = transform.backward(named_params)
             for transform in likelihood_transforms:
                 named_params = transform.forward(named_params)
-            return -self.evaluate_original(named_params, data)
+            return -super(HeterodynedTransientLikelihoodFD, self).evaluate(named_params, data)
 
         print("Starting the optimizer")
 
@@ -794,7 +722,37 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         for transform in likelihood_transforms:
             named_params = transform.forward(named_params)
         return named_params
+        
+class HeterodynedPhaseMarginalizedLikelihoodFD(HeterodynedTransientLikelihoodFD):
+    def _likelihood(self, params: dict[str, Float], data: dict) -> Float:
+        frequencies_low = self.freq_grid_low
+        frequencies_center = self.freq_grid_center
+        waveform_sky_low = self.waveform(frequencies_low, params)
+        waveform_sky_center = self.waveform(frequencies_center, params)
+        log_likelihood = 0.0
+        complex_d_inner_h = 0.0
+    
+        for detector in self.detectors:
+            waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
+            waveform_center = detector.fd_response(
+                frequencies_center, waveform_sky_center, params
+            )
+            r0 = waveform_center / self.waveform_center_ref[detector.name]
+            r1 = (waveform_low / self.waveform_low_ref[detector.name] - r0) / (
+                frequencies_low - frequencies_center
+            )
+            complex_d_inner_h += jnp.sum(
+                self.A0_array[detector.name] * r0.conj() + self.A1_array[detector.name] * r1.conj()
+            )
+            optimal_SNR = jnp.sum(
+                self.B0_array[detector.name] * jnp.abs(r0) ** 2
+                + 2 * self.B1_array[detector.name] * (r0 * r1.conj()).real
+            )
+            log_likelihood += -optimal_SNR.real / 2
 
+        log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
+    
+        return log_likelihood
 
 likelihood_presets = {
     "BaseTransientLikelihoodFD": BaseTransientLikelihoodFD,
@@ -802,85 +760,5 @@ likelihood_presets = {
     "PhaseMarginalizedLikelihoodFD": PhaseMarginalizedLikelihoodFD,
     "PhaseTimeMarginalizedLikelihoodFD": PhaseTimeMarginalizedLikelihoodFD,
     "HeterodynedTransientLikelihoodFD": HeterodynedTransientLikelihoodFD,
+    "PhaseMarginalizedHeterodynedLikelihoodFD": HeterodynedPhaseMarginalizedLikelihoodFD,
 }
-
-
-def original_relative_binning_likelihood(
-    params,
-    A0_array,
-    A1_array,
-    B0_array,
-    B1_array,
-    waveform_sky_low,
-    waveform_sky_center,
-    waveform_low_ref,
-    waveform_center_ref,
-    detectors,
-    frequencies_low,
-    frequencies_center,
-    **kwargs,
-):
-    log_likelihood = 0.0
-
-    for detector in detectors:
-        waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
-        waveform_center = detector.fd_response(
-            frequencies_low, waveform_sky_center, params
-        )
-
-        r0 = waveform_center / waveform_center_ref[detector.name]
-        r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
-            frequencies_low - frequencies_center
-        )
-        match_filter_SNR = jnp.sum(
-            A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
-        )
-        optimal_SNR = jnp.sum(
-            B0_array[detector.name] * jnp.abs(r0) ** 2
-            + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
-        )
-        log_likelihood += (match_filter_SNR - optimal_SNR / 2).real
-
-    return log_likelihood
-
-
-def phase_marginalized_relative_binning_likelihood(
-    params,
-    A0_array,
-    A1_array,
-    B0_array,
-    B1_array,
-    waveform_sky_low,
-    waveform_sky_center,
-    waveform_low_ref,
-    waveform_center_ref,
-    detectors,
-    frequencies_low,
-    frequencies_center,
-    **kwargs,
-):
-    log_likelihood = 0.0
-    complex_d_inner_h = 0.0
-
-    for detector in detectors:
-        waveform_low = detector.fd_response(frequencies_low, waveform_sky_low, params)
-        waveform_center = detector.fd_response(
-            frequencies_center, waveform_sky_center, params
-        )
-
-        r0 = waveform_center / waveform_center_ref[detector.name]
-        r1 = (waveform_low / waveform_low_ref[detector.name] - r0) / (
-            frequencies_low - frequencies_center
-        )
-        complex_d_inner_h += jnp.sum(
-            A0_array[detector.name] * r0.conj() + A1_array[detector.name] * r1.conj()
-        )
-        optimal_SNR = jnp.sum(
-            B0_array[detector.name] * jnp.abs(r0) ** 2
-            + 2 * B1_array[detector.name] * (r0 * r1.conj()).real
-        )
-        log_likelihood += -optimal_SNR.real / 2
-
-    log_likelihood += log_i0(jnp.absolute(complex_d_inner_h))
-
-    return log_likelihood
