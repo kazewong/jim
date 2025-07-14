@@ -61,8 +61,9 @@ class SingleEventLikelihood(LikelihoodBase):
 class ZeroLikelihood(LikelihoodBase):
     def __init__(self):
         pass
-
-    def _likelihood(self, params: dict[str, Float], data: dict) -> Float:
+        
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        """Evaluate the likelihood, which is always zero."""
         return 0.0
 
 
