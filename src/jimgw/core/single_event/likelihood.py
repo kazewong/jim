@@ -731,6 +731,15 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
 
 class HeterodynedPhaseMarginalizedLikelihoodFD(HeterodynedTransientLikelihoodFD):
+  
+    def evaluate(self, params: dict[str, Float], data: dict) -> Float:
+        params.update(self.fixed_parameters)
+        params["phase_c"] = 0.0
+        params["trigger_time"] = self.trigger_time
+        params["gmst"] = self.gmst
+        log_likelihood = self._likelihood(params, data)
+        return log_likelihood
+    
     def _likelihood(self, params: dict[str, Float], data: dict) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center
