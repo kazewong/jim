@@ -414,6 +414,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         self,
         detectors: Sequence[Detector],
         waveform: Waveform,
+        fixed_parameters: Optional[dict[str, Float]] = None,
         f_min: Float = 0,
         f_max: Float = float("inf"),
         trigger_time: float = 0,
@@ -427,7 +428,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         likelihood_transforms: list[NtoMTransform] = [],
     ):
 
-        super().__init__(detectors, waveform, f_min, f_max, trigger_time)
+        super().__init__(detectors, waveform, fixed_parameters, f_min, f_max, trigger_time)
 
         logging.info("Initializing heterodyned likelihood..")
 
