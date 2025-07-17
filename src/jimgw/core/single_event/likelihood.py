@@ -61,7 +61,7 @@ class SingleEventLikelihood(LikelihoodBase):
 class ZeroLikelihood(LikelihoodBase):
     def __init__(self):
         pass
-        
+
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         """Evaluate the likelihood, which is always zero."""
         return 0.0
@@ -428,7 +428,9 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         likelihood_transforms: list[NtoMTransform] = [],
     ):
 
-        super().__init__(detectors, waveform, fixed_parameters, f_min, f_max, trigger_time)
+        super().__init__(
+            detectors, waveform, fixed_parameters, f_min, f_max, trigger_time
+        )
 
         logging.info("Initializing heterodyned likelihood..")
 
@@ -575,7 +577,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
     @staticmethod
     def max_phase_diff(
-        f: Float[Array, " n_freq"],
+        freqs: Float[Array, " n_freq"],
         f_low: float,
         f_high: float,
         chi: float = 1.0,
@@ -583,9 +585,11 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         """
         Compute the maximum phase difference between the frequencies in the array.
 
+        See Eq.(7) in arXiv:2302.05333.
+
         Parameters
         ----------
-        f: Float[Array, "n_dims"]
+        freqs: Float[Array, "n_freq"]
             Array of frequencies to be binned.
         f_low: float
             Lower frequency bound.
@@ -596,18 +600,15 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
         Returns
         -------
-        Float[Array, "n_dims"]
+        Float[Array, "n_freq"]
             Maximum phase difference between the frequencies in the array.
         """
         gamma = jnp.arange(-5, 6) / 3.0
-        f_2D = jnp.broadcast_to(f, (f.size, gamma.size))
+        # Promotes freqs to 2D with shape (n_freq, 10) for later f/f_star
+        freq_2D = jax.lax.broadcast_in_dim(freqs, (freqs.size, gamma.size), [0])
         f_star = jnp.where(gamma >= 0, f_high, f_low)
-        return (
-            2
-            * jnp.pi
-            * chi
-            * jnp.sum((f_2D / f_star) ** gamma * jnp.sign(gamma), axis=1)
-        )
+        summand = (freq_2D / f_star) ** gamma * jnp.sign(gamma)
+        return 2 * jnp.pi * chi * jnp.sum(summand, axis=1)
 
     def make_binning_scheme(
         self, freqs: Float[Array, " n_freq"], n_bins: int, chi: float = 1
@@ -732,7 +733,7 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
 
 class HeterodynedPhaseMarginalizedLikelihoodFD(HeterodynedTransientLikelihoodFD):
-  
+
     def evaluate(self, params: dict[str, Float], data: dict) -> Float:
         params.update(self.fixed_parameters)
         params["phase_c"] = 0.0
@@ -740,7 +741,7 @@ class HeterodynedPhaseMarginalizedLikelihoodFD(HeterodynedTransientLikelihoodFD)
         params["gmst"] = self.gmst
         log_likelihood = self._likelihood(params, data)
         return log_likelihood
-    
+
     def _likelihood(self, params: dict[str, Float], data: dict) -> Float:
         frequencies_low = self.freq_grid_low
         frequencies_center = self.freq_grid_center

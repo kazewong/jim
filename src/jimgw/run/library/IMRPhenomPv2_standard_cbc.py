@@ -22,7 +22,7 @@ from jimgw.core.single_event.transforms import (
     MassRatioToSymmetricMassRatioTransform,
     DistanceToSNRWeightedDistanceTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform,
 )
 
 from typing import Optional, Sequence, Self
