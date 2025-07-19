@@ -2,11 +2,8 @@ from abc import ABC
 
 import jax.numpy as jnp
 from jaxtyping import Array, Float
-from ripplegw.waveforms.IMRPhenomD import gen_IMRPhenomD_hphc
-from ripplegw.waveforms.IMRPhenomPv2 import gen_IMRPhenomPv2_hphc
-from ripplegw.waveforms.TaylorF2 import gen_TaylorF2_hphc
-from ripplegw.waveforms.IMRPhenomD_NRTidalv2 import gen_IMRPhenomD_NRTidalv2_hphc
-
+from ripplegw import FDWaveform
+from ripplegw.waveforms.IMRPhenomXAS import Polarization
 
 class Waveform(ABC):
     def __init__(self):
@@ -20,9 +17,11 @@ class Waveform(ABC):
 
 class RippleIMRPhenomD(Waveform):
     f_ref: float
+    _waveform: FDWaveform.IMRPhenomD.value
 
     def __init__(self, f_ref: float = 20.0, **kwargs):
         self.f_ref = f_ref
+        self._waveform = FDWaveform.IMRPhenomD.value()
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -40,9 +39,9 @@ class RippleIMRPhenomD(Waveform):
                 params["iota"],
             ]
         )
-        hp, hc = gen_IMRPhenomD_hphc(frequency, theta, self.f_ref)
-        output["p"] = hp
-        output["c"] = hc
+        result = self._waveform(frequency, theta, {"f_ref": self.f_ref})
+        output["p"] = result[Polarization.P]
+        output["c"] = result[Polarization.C]
         return output
 
     def __repr__(self):
