@@ -50,9 +50,11 @@ class RippleIMRPhenomD(Waveform):
 
 class RippleIMRPhenomPv2(Waveform):
     f_ref: float
+    _waveform: FDWaveform.IMRPhenomPv2.value
 
     def __init__(self, f_ref: float = 20.0, **kwargs):
         self.f_ref = f_ref
+        self._waveform = FDWaveform.IMRPhenomPv2.value()
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -74,22 +76,23 @@ class RippleIMRPhenomPv2(Waveform):
                 params["iota"],
             ]
         )
-        hp, hc = gen_IMRPhenomPv2_hphc(frequency, theta, self.f_ref)
-        output["p"] = hp
-        output["c"] = hc
+        result = self._waveform(frequency, theta, {"f_ref": self.f_ref})
+        output["p"] = result[Polarization.P]
+        output["c"] = result[Polarization.C]
         return output
 
     def __repr__(self):
         return f"RippleIMRPhenomPv2(f_ref={self.f_ref})"
 
-
 class RippleTaylorF2(Waveform):
     f_ref: float
     use_lambda_tildes: bool
+    _waveform: FDWaveform.TaylorF2.value
 
     def __init__(self, f_ref: float = 20.0, use_lambda_tildes: bool = False):
         self.f_ref = f_ref
         self.use_lambda_tildes = use_lambda_tildes
+        self._waveform = FDWaveform.TaylorF2.value()
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -117,20 +120,23 @@ class RippleTaylorF2(Waveform):
                 params["iota"],
             ]
         )
-        hp, hc = gen_TaylorF2_hphc(
-            frequency, theta, self.f_ref, use_lambda_tildes=self.use_lambda_tildes
+        result = self._waveform(
+            frequency,
+            theta,
+            {"f_ref": self.f_ref, "use_lambda_tildes": self.use_lambda_tildes},
         )
-        output["p"] = hp
-        output["c"] = hc
+        output["p"] = result[Polarization.P]
+        output["c"] = result[Polarization.C]
         return output
 
     def __repr__(self):
         return f"RippleTaylorF2(f_ref={self.f_ref})"
 
-
 class RippleIMRPhenomD_NRTidalv2(Waveform):
     f_ref: float
     use_lambda_tildes: bool
+    no_taper: bool
+    _waveform: FDWaveform.IMRPhenomD_NRTidalv2.value
 
     def __init__(
         self,
@@ -149,6 +155,7 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
         self.f_ref = f_ref
         self.use_lambda_tildes = use_lambda_tildes
         self.no_taper = no_taper
+        self._waveform = FDWaveform.IMRPhenomD_NRTidalv2.value()
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -177,15 +184,17 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
             ]
         )
 
-        hp, hc = gen_IMRPhenomD_NRTidalv2_hphc(
+        result = self._waveform(
             frequency,
             theta,
-            self.f_ref,
-            use_lambda_tildes=self.use_lambda_tildes,
-            no_taper=self.no_taper,
+            {
+                "f_ref": self.f_ref,
+                "use_lambda_tildes": self.use_lambda_tildes,
+                "no_taper": self.no_taper,
+            },
         )
-        output["p"] = hp
-        output["c"] = hc
+        output["p"] = result[Polarization.P]
+        output["c"] = result[Polarization.C]
         return output
 
     def __repr__(self):
