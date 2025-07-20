@@ -200,10 +200,85 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
     def __repr__(self):
         return f"RippleIMRPhenomD_NRTidalv2(f_ref={self.f_ref})"
 
+class JaxNRSurHyb3dq8(Waveform):
+    _waveform: FDWaveform.NRSurHyb3dq8_FD.value
+
+    def __init__(self, segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
+        self._waveform = FDWaveform.NRSurHyb3dq8_FD.value(segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
+
+    def __call__(
+        self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
+    ) -> dict[str, Float[Array, " n_dim"]]:
+        output = {}
+        Mc = params["M_c"]
+        q = params["q"]
+        eta = q / (1 + q) ** 2
+        M_tot = Mc / (eta ** 0.6)
+        theta = jnp.array(
+            [
+                M_tot,
+                params["d_L"],
+                1. / q,
+                params["s1_z"],
+                params["s2_z"],
+            ]
+        )
+        result = self._waveform(frequency, theta, {})
+        phi_c = params['phase_c']
+        iota = params['iota']
+        output["p"] = result[Polarization.P] * jnp.exp(1j * phi_c) * (1 / 2 * (1 + jnp.cos(iota) ** 2))
+        output["c"] = -1j * result[Polarization.C] * jnp.exp(1j * phi_c) * jnp.cos(iota)
+        return output
+
+    def __repr__(self):
+        return f"JaxNRSurHyb3dq8(segment_length={self._waveform.segment_length}, sampling_rate={self._waveform.sampling_rate})"
+        
+
+class JaxNRSur7dq4(Waveform):
+    _waveform: FDWaveform.NRSur7dq4_FD.value
+
+    def __init__(self, segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
+        self._waveform = FDWaveform.NRSur7dq4_FD.value(segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
+
+    def __call__(
+        self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
+    ) -> dict[str, Float[Array, " n_dim"]]:
+        output = {}
+        Mc = params["M_c"]
+        q = params["q"]
+        eta = q/(1 + q) ** 2
+        M_tot = Mc / (eta ** 0.6)
+        theta = jnp.array(
+            [
+                M_tot,
+                params["d_L"],
+                1./q,
+                params["s1_x"],
+                params["s1_y"],
+                params["s1_z"],
+                params["s2_x"],
+                params["s2_y"],
+                params["s2_z"],
+            ]
+        )
+        result = self._waveform(frequency, theta, {})
+        
+        phi_c = params['phase_c']
+        iota = params['iota']
+        output["p"] = result[Polarization.P] * jnp.exp(1j * phi_c) * (1 / 2 * (1 + jnp.cos(iota) ** 2))
+        output["c"] = -1j * result[Polarization.C] * jnp.exp(1j * phi_c) * jnp.cos(iota) 
+        return output
+
+    def __repr__(self):
+        return f"JaxNRSur7dq4(segment_length={self._waveform.segment_length}, sampling_rate={self._waveform.sampling_rate})"
+
+
 
 waveform_preset = {
     "RippleIMRPhenomD": RippleIMRPhenomD,
     "RippleIMRPhenomPv2": RippleIMRPhenomPv2,
     "RippleTaylorF2": RippleTaylorF2,
     "RippleIMRPhenomD_NRTidalv2": RippleIMRPhenomD_NRTidalv2,
+    "JaxNRSurHyb3dq8": JaxNRSurHyb3dq8,
+    "JaxNRSur7dq4": JaxNRSur7dq4,
 }
