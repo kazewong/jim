@@ -203,8 +203,8 @@ class RippleIMRPhenomD_NRTidalv2(Waveform):
 class JaxNRSurHyb3dq8(Waveform):
     _waveform: FDWaveform.NRSurHyb3dq8_FD.value
 
-    def __init__(self, segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
-        self._waveform = FDWaveform.NRSurHyb3dq8_FD.value(segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
+    def __init__(self, target_frequency: Float[Array, " n_sample"], segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
+        self._waveform = FDWaveform.NRSurHyb3dq8_FD.value(target_frequency, segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -231,14 +231,14 @@ class JaxNRSurHyb3dq8(Waveform):
         return output
 
     def __repr__(self):
-        return f"JaxNRSurHyb3dq8(segment_length={self._waveform.segment_length}, sampling_rate={self._waveform.sampling_rate})"
+        return f"JaxNRSurHyb3dq8(segment_length={self._waveform.surrogate.segment_length}, sampling_rate={self._waveform.surrogate.sampling_rate})"
         
 
 class JaxNRSur7dq4(Waveform):
     _waveform: FDWaveform.NRSur7dq4_FD.value
 
-    def __init__(self, segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
-        self._waveform = FDWaveform.NRSur7dq4_FD.value(segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
+    def __init__(self, target_frequency: Float[Array, " n_sample"], segment_length: float, sampling_rate: int = 4096, alpha_window: float = 0.1):
+        self._waveform = FDWaveform.NRSur7dq4_FD.value(target_frequency, segment_length=segment_length, sampling_rate=sampling_rate, alpha_window=alpha_window)
 
     def __call__(
         self, frequency: Float[Array, " n_dim"], params: dict[str, Float]
@@ -270,7 +270,7 @@ class JaxNRSur7dq4(Waveform):
         return output
 
     def __repr__(self):
-        return f"JaxNRSur7dq4(segment_length={self._waveform.segment_length}, sampling_rate={self._waveform.sampling_rate})"
+        return f"JaxNRSur7dq4(segment_length={self._waveform.surrogate.segment_length}, sampling_rate={self._waveform.surrogate.sampling_rate})"
 
 
 
