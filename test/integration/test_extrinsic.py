@@ -8,6 +8,7 @@ from jimgw.core.prior import (
     CosinePrior,
     SinePrior,
     PowerLawPrior,
+    SimpleConstrainedPrior,
 )
 from jimgw.core.single_event.detector import H1, L1, V1
 from jimgw.core.single_event.likelihood import ZeroLikelihood
@@ -32,8 +33,8 @@ gps = 1126259462.4
 ifos = [H1, L1, V1]
 
 M_c_prior = UniformPrior(10.0, 80.0, parameter_names=["M_c"])
-dL_prior = PowerLawPrior(10.0, 2000.0, 2.0, parameter_names=["d_L"])
-t_c_prior = UniformPrior(-0.05, 0.05, parameter_names=["t_c"])
+dL_prior = SimpleConstrainedPrior([PowerLawPrior(10.0, 2000.0, 2.0, parameter_names=["d_L"])])
+t_c_prior = SimpleConstrainedPrior([UniformPrior(-0.05, 0.05, parameter_names=["t_c"])])
 phase_c_prior = UniformPrior(0.0, 2 * jnp.pi, parameter_names=["phase_c"])
 iota_prior = SinePrior(parameter_names=["iota"])
 psi_prior = UniformPrior(0.0, jnp.pi, parameter_names=["psi"])
@@ -56,13 +57,9 @@ prior = CombinePrior(
 
 sample_transforms = [
     # all the user reparametrization transform
-    DistanceToSNRWeightedDistanceTransform(
-        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
-    ),
+    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
-        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
-    ),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(gps_time=gps, ifo=ifos[0]),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
     # all the bound to unbound transform
     BoundToUnbound(

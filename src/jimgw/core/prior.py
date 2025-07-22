@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.special import logit
 from beartype import beartype as typechecker
-from jaxtyping import Array, Float, PRNGKeyArray, jaxtyped
+from jaxtyping import Array, Float, Bool, PRNGKeyArray, jaxtyped
 from abc import abstractmethod
 import equinox as eqx
 
@@ -22,12 +22,9 @@ from jimgw.core.transforms import (
 
 class Prior(eqx.Module):
     """
-    A base class for prior distributions.
+    Base class for prior distributions.
 
-    Should not be used directly since it does not implement any of the real method.
-
-    The rationale behind this is to have a class that can be used to keep track of
-    the names of the parameters and the transforms that are applied to them.
+    This class should not be used directly. It provides a common interface and bookkeeping for parameter names and transforms.
     """
 
     parameter_names: list[str]
@@ -74,7 +71,12 @@ class Prior(eqx.Module):
 @jaxtyped(typechecker=typechecker)
 class CompositePrior(Prior):
     """
-    A prior class that is a composite of multiple priors.
+    Composite prior consisting of multiple priors, including SequentialTransformPrior and CombinePrior.
+    This class is used to create complex prior distributions from simpler ones.
+
+    Attributes:
+        base_prior (list[Prior]): List of prior objects.
+        parameter_names (list[str]): Names of all parameters in the composite prior.
     """
 
     base_prior: list[Prior]
@@ -103,6 +105,13 @@ class CompositePrior(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class LogisticDistribution(Prior):
+    """
+    One-dimensional logistic distribution prior.
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     def __repr__(self):
         return f"LogisticDistribution(parameter_names={self.parameter_names})"
 
@@ -140,6 +149,13 @@ class LogisticDistribution(Prior):
 
 @jaxtyped(typechecker=typechecker)
 class StandardNormalDistribution(Prior):
+    """
+    One-dimensional standard normal (Gaussian) distribution prior.
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     def __repr__(self):
         return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
 
@@ -178,9 +194,12 @@ class StandardNormalDistribution(Prior):
 
 class SequentialTransformPrior(CompositePrior):
     """
-    Transform a prior distribution by applying a sequence of transforms.
-    The space before the transform is named as x,
-    and the space after the transform is named as z
+    Prior distribution transformed by a sequence of bijective transforms.
+
+    Attributes:
+        base_prior (list[Prior]): The base prior to transform.
+        transforms (list[BijectiveTransform]): List of transforms to apply sequentially.
+        parameter_names (list[str]): Names of the parameters after all transforms.
     """
 
     transforms: list[BijectiveTransform]
@@ -196,10 +215,9 @@ class SequentialTransformPrior(CompositePrior):
         assert (
             len(base_prior) == 1
         ), "SequentialTransformPrior only takes one base prior"
-        self.base_prior = base_prior
+        super().__init__(base_prior)
         self.transforms = transforms
-        self.parameter_names = base_prior[0].parameter_names
-        for transform in transforms:
+        for transform in self.transforms:
             self.parameter_names = transform.propagate_name(self.parameter_names)
 
     def sample(
@@ -226,10 +244,121 @@ class SequentialTransformPrior(CompositePrior):
         return x
 
 
+class ConstrainedPrior(CompositePrior):
+    """
+    An abstract prior class that allow additional constraints be imposed on the parameter space.
+    For inputs outside of the constrained support, `log_prob` returns the value `-inf`,
+        for rejecting the undesired samples during sampling.
+
+    This class wraps a base prior and applies additional constraints, which must be implemented by subclasses via the `constraints` method.
+    The log_prob is set to -inf for any input that does not satisfy the constraints, and the sample method repeatedly draws from the base prior until enough valid samples are found.
+
+    Warning:
+        The `log_prob` method under the ConstrainedPrior may not be normalized to 1.
+        This will be the case when the constrained support is a proper subset of
+            the original support on which the density function is normalised.
+        This means the resulting distribution may not be a true probability density function.
+
+    Note:
+        For the purpose of MCMC or similar inference methods, the prior need not be normalised,
+            since only the probability ratios are needed and the evidence (normalization constant) is not computed.
+    """
+
+    def __repr__(self):
+        return f"ConstrainedPrior(prior={self.base_prior})"
+
+    def __init__(
+        self,
+        base_prior: list[Prior],
+    ):
+        assert len(base_prior) == 1, "ConstrainedPrior takes one base prior only"
+        super().__init__(base_prior)
+
+    @abstractmethod
+    def constraints(self, x: dict[str, Float]) -> Bool:
+        """
+        Constraints to be applied to the parameter space.
+        Subclasses should overwrite this method to define their constraints.
+        """
+        raise NotImplementedError
+
+    def log_prob(self, z: dict[str, Float]) -> Float:
+        return jnp.where(self.constraints(z), self.base_prior[0].log_prob(z), -jnp.inf)
+
+    def sample(
+        self, rng_key: PRNGKeyArray, n_samples: int
+    ) -> dict[str, Float[Array, " n_samples"]]:
+        rng_key, subkey = jax.random.split(rng_key)
+        samples = self.base_prior[0].sample(subkey, n_samples)
+
+        constraints = jax.vmap(self.constraints)
+
+        mask = constraints(samples)
+        valid_samples = jax.tree.map(lambda x: x[mask], samples)
+        n_valid = mask.sum()
+
+        # TODO: Add a loop count and a warning message for inefficient resampling,
+        #       which is often likely be an issue in the prior than a small sample space.
+        while n_valid < n_samples:
+            rng_key, subkey = jax.random.split(rng_key)
+            new_samples = self.base_prior[0].sample(subkey, n_samples - n_valid)
+            new_mask = constraints(new_samples)
+            valid_new_samples = jax.tree.map(lambda x: x[new_mask], new_samples)
+            valid_samples = jax.tree.map(
+                lambda x, y: jnp.concatenate([x, y], axis=0),
+                valid_samples,
+                valid_new_samples,
+            )
+            n_valid = valid_samples[list(valid_samples.keys())[0]].shape[0]
+
+        return jax.tree.map(lambda x: x[:n_samples], valid_samples)
+
+
+@jaxtyped(typechecker=typechecker)
+class SimpleConstrainedPrior(ConstrainedPrior):
+    """
+    A prior class with a constraint being the bounds (xmin, xmax) of the base prior.
+
+    This class wraps a 1D base prior and inspects it for `xmin` and `xmax` attributes.
+    If these attributes are present, it constructs a constraint function that enforces the bounds on the parameter space.
+
+    The constraints are enforced in both `log_prob` and `sample` methods via the parent `ConstrainedPrior` class.
+
+    Note:
+        - Only works with 1D priors.
+        - The resulting prior is not normalized over the constrained region (see `ConstrainedPrior` for details).
+    """
+
+    xmin: float
+    xmax: float
+
+    def __repr__(self):
+        return f"SimpleConstrainedPrior(prior={self.base_prior})"
+
+    def __init__(
+        self,
+        base_prior: list[Prior],
+    ):
+        super().__init__(base_prior)
+
+        # Add constraints for xmin/xmax if present
+        p = self.base_prior[0]
+        assert p.n_dims == 1, "SimpleConstrainedPrior only works with 1D priors"
+        self.xmin = getattr(p, "xmin", -jnp.inf)
+        self.xmax = getattr(p, "xmax", jnp.inf)
+
+    def constraints(self, x: dict[str, Float]) -> Bool:
+        variable = x[self.parameter_names[0]]
+        return jnp.logical_and(variable >= self.xmin, variable <= self.xmax)
+
+
 class CombinePrior(CompositePrior):
     """
-    A prior class constructed by joinning multiple priors together to form a multivariate prior.
-    This assumes the priors composing the Combine class are independent.
+    Multivariate prior constructed by joining multiple independent priors.
+
+    Attributes:
+        base_prior (list[Prior]): List of independent priors.
+        parameter_names (list[str]): Names of all parameters in the combined prior.
     """
 
     base_prior: list[Prior] = field(default_factory=list)
@@ -243,11 +372,7 @@ class CombinePrior(CompositePrior):
         self,
         priors: list[Prior],
     ):
-        parameter_names = []
-        for prior in priors:
-            parameter_names += prior.parameter_names
-        self.base_prior = priors
-        self.parameter_names = parameter_names
+        super().__init__(priors)
 
     def sample(
         self, rng_key: PRNGKeyArray, n_samples: int
@@ -267,6 +392,15 @@ class CombinePrior(CompositePrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformPrior(SequentialTransformPrior):
+    """
+    Uniform prior over a finite interval [xmin, xmax].
+
+    Attributes:
+        xmin (float): Lower bound of the interval.
+        xmax (float): Upper bound of the interval.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     xmin: float
     xmax: float
 
@@ -309,6 +443,15 @@ class UniformPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class GaussianPrior(SequentialTransformPrior):
+    """
+    Gaussian (normal) prior with specified mean and standard deviation.
+
+    Attributes:
+        mu (float): Mean of the distribution.
+        sigma (float): Standard deviation of the distribution.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     mu: float
     sigma: float
 
@@ -355,8 +498,14 @@ class GaussianPrior(SequentialTransformPrior):
 @jaxtyped(typechecker=typechecker)
 class SinePrior(SequentialTransformPrior):
     """
-    A prior distribution where the pdf is proportional to sin(x) in the range [0, pi].
+    Prior with PDF proportional to sin(x) over [0, pi].
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
     """
+
+    xmin: float = 0.0
+    xmax: float = jnp.pi
 
     def __repr__(self):
         return f"SinePrior(parameter_names={self.parameter_names})"
@@ -383,8 +532,14 @@ class SinePrior(SequentialTransformPrior):
 @jaxtyped(typechecker=typechecker)
 class CosinePrior(SequentialTransformPrior):
     """
-    A prior distribution where the pdf is proportional to cos(x) in the range [-pi/2, pi/2].
+    Prior with PDF proportional to cos(x) over [-pi/2, pi/2].
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
     """
+
+    xmin: float = -jnp.pi / 2
+    xmax: float = jnp.pi / 2
 
     def __repr__(self):
         return f"CosinePrior(parameter_names={self.parameter_names})"
@@ -409,6 +564,13 @@ class CosinePrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class UniformSpherePrior(CombinePrior):
+    """
+    Uniform prior over a sphere, parameterized by magnitude, theta, and phi.
+
+    Attributes:
+        parameter_names (list[str]): Names of the vector, theta, and phi parameters.
+    """
+
     def __repr__(self):
         return f"UniformSpherePrior(parameter_names={self.parameter_names})"
 
@@ -416,9 +578,7 @@ class UniformSpherePrior(CombinePrior):
         self.parameter_names = parameter_names
         assert self.n_dims == 1, "UniformSpherePrior only takes the name of the vector"
         self.parameter_names = [
-            f"{self.parameter_names[0]}_mag",
-            f"{self.parameter_names[0]}_theta",
-            f"{self.parameter_names[0]}_phi",
+            f"{self.parameter_names[0]}_{suffix}" for suffix in ("mag", "theta", "phi")
         ]
         super().__init__(
             [
@@ -432,10 +592,15 @@ class UniformSpherePrior(CombinePrior):
 @jaxtyped(typechecker=typechecker)
 class RayleighPrior(SequentialTransformPrior):
     """
-    A prior distribution following the Rayleigh distribution with scale parameter sigma.
+    Rayleigh distribution prior with scale parameter sigma.
+
+    Attributes:
+        sigma (float): Scale parameter of the Rayleigh distribution.
+        parameter_names (list[str]): Name of the parameter.
     """
 
     sigma: float
+    xmin: float = 0.0
 
     def __repr__(self):
         return f"RayleighPrior(parameter_names={self.parameter_names})"
@@ -461,6 +626,16 @@ class RayleighPrior(SequentialTransformPrior):
 
 @jaxtyped(typechecker=typechecker)
 class PowerLawPrior(SequentialTransformPrior):
+    """
+    Power-law prior over [xmin, xmax] with exponent alpha.
+
+    Attributes:
+        xmin (float): Lower bound of the interval.
+        xmax (float): Upper bound of the interval.
+        alpha (float): Power-law exponent.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
     xmin: float
     xmax: float
     alpha: float
