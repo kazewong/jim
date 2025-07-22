@@ -5,7 +5,7 @@ from jax.scipy.special import logsumexp
 from jaxtyping import Array, Float
 from typing import Optional
 from scipy.interpolate import interp1d
-from jimgw.core.utils import log_i0
+from jimgw.core.utils import log_i0, generate_initial_samples
 from jimgw.core.prior import Prior
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
@@ -692,37 +692,11 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
             logpdf=y, n_steps=n_steps, learning_rate=0.001, noise_level=1
         )
 
-        key = jax.random.PRNGKey(0)
-        initial_position = jnp.zeros((popsize, prior.n_dims)) + jnp.nan
-        while not jax.tree.reduce(
-            jnp.logical_and, jax.tree.map(lambda x: jnp.isfinite(x), initial_position)
-        ).all():
-            non_finite_index = jnp.where(
-                jnp.any(
-                    ~jax.tree.reduce(
-                        jnp.logical_and,
-                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-                    ),
-                    axis=1,
-                )
-            )[0]
-
-            key, subkey = jax.random.split(key)
-            guess = prior.sample(subkey, popsize)
-            for transform in sample_transforms:
-                guess = jax.vmap(transform.forward)(guess)
-            guess = jnp.array([guess[key] for key in parameter_names]).T
-            finite_guess = jnp.where(
-                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-            )[0]
-            common_length = min(len(finite_guess), len(non_finite_index))
-            initial_position = initial_position.at[
-                non_finite_index[:common_length]
-            ].set(guess[:common_length])
-
-        rng_key, best_fit, log_prob = optimizer.optimize(
-            jax.random.PRNGKey(12094), y, initial_position, {}
+        initial_position, rng_key = generate_initial_samples(
+            prior, sample_transforms, popsize, jax.random.PRNGKey(0)
         )
+
+        _, best_fit, log_prob = optimizer.optimize(rng_key, y, initial_position, {})
 
         named_params = dict(zip(parameter_names, best_fit[jnp.argmin(log_prob)]))
         for transform in reversed(sample_transforms):

@@ -10,6 +10,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 from jimgw.core.base import LikelihoodBase
 from jimgw.core.prior import Prior
 from jimgw.core.transforms import BijectiveTransform, NtoMTransform
+from jimgw.core.utils import generate_initial_samples
 
 
 class Jim(object):
@@ -161,40 +162,13 @@ class Jim(object):
         return self.likelihood.evaluate(named_params, data) + prior
 
     def sample_initial_condition(self) -> Float[Array, " n_chains n_dims"]:
-        initial_position = (
-            jnp.zeros((self.sampler.n_chains, self.prior.n_dims)) + jnp.nan
+        initial_position, new_rng_key = generate_initial_samples(
+            self.prior,
+            self.sample_transforms,
+            self.sampler.n_chains,
+            self.sampler.rng_key,
         )
-
-        rng_key, subkey = jax.random.split(self.sampler.rng_key)
-
-        while not jax.tree.reduce(
-            jnp.logical_and,
-            jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-        ).all():
-            non_finite_index = jnp.where(
-                jnp.any(
-                    ~jax.tree.reduce(
-                        jnp.logical_and,
-                        jax.tree.map(lambda x: jnp.isfinite(x), initial_position),
-                    ),
-                    axis=1,
-                )
-            )[0]
-
-            rng_key, subkey = jax.random.split(rng_key)
-            guess = self.prior.sample(subkey, self.sampler.n_chains)
-            for transform in self.sample_transforms:
-                guess = jax.vmap(transform.forward)(guess)
-            guess = jnp.array([guess[key] for key in self.parameter_names]).T
-
-            finite_guess = jnp.where(
-                jnp.all(jax.tree.map(lambda x: jnp.isfinite(x), guess), axis=1)
-            )[0]
-            common_length = min(len(finite_guess), len(non_finite_index))
-            initial_position = initial_position.at[
-                non_finite_index[:common_length]
-            ].set(guess[:common_length])
-        self.sampler.rng_key = rng_key
+        self.sampler.rng_key = new_rng_key
         return initial_position
 
     def sample(
