@@ -2,7 +2,6 @@ import jax.numpy as jnp
 from jax.scipy.special import i0e
 from jaxtyping import Array, Float
 
-
 EPS = 1e-15
 
 
