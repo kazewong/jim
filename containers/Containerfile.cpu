@@ -1,0 +1,15 @@
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm as uv-source
+FROM nvcr.io/nvidia/cuda:12.9.1-base-ubuntu20.04
+
+# Copy the entire filesystem from uv image
+COPY --from=uv-source / /
+
+WORKDIR /home
+
+RUN git clone https://github.com/kazewong/jim.git
+
+WORKDIR /home/jim
+RUN git checkout jim-dev
+
+# Run uv sync
+RUN uv sync --extra pipeline

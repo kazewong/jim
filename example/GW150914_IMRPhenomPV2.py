@@ -1,11 +1,8 @@
 import time
-
 import jax
 import jax.numpy as jnp
-
-from jimgw.jim import Jim
-from jimgw.jim import Jim
-from jimgw.prior import (
+from jimgw.core.jim import Jim
+from jimgw.core.prior import (
     CombinePrior,
     UniformPrior,
     CosinePrior,
@@ -13,11 +10,12 @@ from jimgw.prior import (
     PowerLawPrior,
     UniformSpherePrior,
 )
-from jimgw.single_event.detector import H1, L1
-from jimgw.single_event.likelihood import TransientLikelihoodFD
-from jimgw.single_event.waveform import RippleIMRPhenomPv2
-from jimgw.transforms import BoundToUnbound
-from jimgw.single_event.transforms import (
+from jimgw.core.single_event.detector import get_H1, get_L1
+from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.data import Data
+from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
+from jimgw.core.transforms import BoundToUnbound
+from jimgw.core.single_event.transforms import (
     SkyFrameToDetectorFrameSkyPositionTransform,
     SphereSpinToCartesianSpinTransform,
     MassRatioToSymmetricMassRatioTransform,
@@ -25,8 +23,6 @@ from jimgw.single_event.transforms import (
     GeocentricArrivalTimeToDetectorArrivalTimeTransform,
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform,
 )
-from jimgw.single_event.utils import Mc_q_to_m1_m2
-from flowMC.strategy.optimization import optimization_Adam
 
 jax.config.update("jax_enable_x64", True)
 
@@ -37,17 +33,44 @@ jax.config.update("jax_enable_x64", True)
 total_time_start = time.time()
 
 # first, fetch a 4s segment centered on GW150914
+# for the analysis
 gps = 1126259462.4
 start = gps - 2
 end = gps + 2
+
+# fetch 4096s of data to estimate the PSD (to be
+# careful we should avoid the on-source segment,
+# but we don't do this in this example)
+psd_start = gps - 2048
+psd_end = gps + 2048
+
+# define frequency integration bounds for the likelihood
+# we set fmax to 87.5% of the Nyquist frequency to avoid
+# data corrupted by the GWOSC antialiasing filter
+# (Note that Data.from_gwosc will pull data sampled at
+# 4096 Hz by default)
 fmin = 20.0
-fmax = 1024.0
+fmax = 1024
 
-ifos = [H1, L1]
+# initialize detectors
+ifos = [get_H1(), get_L1()]
 
-H1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
-L1.load_data(gps, 2, 2, fmin, fmax, psd_pad=16, tukey_alpha=0.2)
+for ifo in ifos:
+    # set analysis data
+    data = Data.from_gwosc(ifo.name, start, end)
+    ifo.set_data(data)
 
+    # set PSD (Welch estimate)
+    psd_data = Data.from_gwosc(ifo.name, psd_start, psd_end)
+    # set an NFFT corresponding to the analysis segment duration
+    psd_fftlength = data.duration * data.sampling_frequency
+    ifo.set_psd(psd_data.to_psd(nperseg=psd_fftlength))
+
+###########################################
+########## Set up waveform ################
+###########################################
+
+# initialize waveform
 waveform = RippleIMRPhenomPv2(f_ref=20)
 
 ###########################################
@@ -97,23 +120,79 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
+    DistanceToSNRWeightedDistanceTransform(
+        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
+    ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
+    ),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping = (["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max),
-    BoundToUnbound(name_mapping = (["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max),
-    BoundToUnbound(name_mapping = (["s1_phi"], ["s1_phi_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["s2_phi"], ["s2_phi_unbounded"]) , original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["iota"], ["iota_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["s1_theta"], ["s1_theta_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["s2_theta"], ["s2_theta_unbounded"]) , original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["s1_mag"], ["s1_mag_unbounded"]) , original_lower_bound=0.0, original_upper_bound=0.99),
-    BoundToUnbound(name_mapping = (["s2_mag"], ["s2_mag_unbounded"]) , original_lower_bound=0.0, original_upper_bound=0.99),
-    BoundToUnbound(name_mapping = (["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
-    BoundToUnbound(name_mapping = (["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi),
-    BoundToUnbound(name_mapping = (["azimuth"], ["azimuth_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi),
+    BoundToUnbound(
+        name_mapping=(["M_c"], ["M_c_unbounded"]),
+        original_lower_bound=M_c_min,
+        original_upper_bound=M_c_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["q"], ["q_unbounded"]),
+        original_lower_bound=q_min,
+        original_upper_bound=q_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_phi"], ["s1_phi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_phi"], ["s2_phi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["iota"], ["iota_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_theta"], ["s1_theta_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_theta"], ["s2_theta_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_mag"], ["s1_mag_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=0.99,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_mag"], ["s2_mag_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=0.99,
+    ),
+    BoundToUnbound(
+        name_mapping=(["phase_det"], ["phase_det_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["psi"], ["psi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["zenith"], ["zenith_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["azimuth"], ["azimuth_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
 ]
 
 likelihood_transforms = [
@@ -124,25 +203,11 @@ likelihood_transforms = [
 
 
 likelihood = TransientLikelihoodFD(
-    [H1, L1], waveform=waveform, trigger_time=gps, duration=4, post_trigger_duration=2
-)
-
-
-mass_matrix = jnp.eye(prior.n_dim)
-# mass_matrix = mass_matrix.at[1, 1].set(1e-3)
-# mass_matrix = mass_matrix.at[9, 9].set(1e-3)
-local_sampler_arg = {"step_size": mass_matrix * 1e-3}
-
-Adam_optimizer = optimization_Adam(n_steps=3000, learning_rate=0.01, noise_level=1)
-
-import optax
-
-n_epochs = 20
-n_loop_training = 100
-total_epochs = n_epochs * n_loop_training
-start = total_epochs // 10
-learning_rate = optax.polynomial_schedule(
-    1e-3, 1e-4, 4.0, total_epochs - start, transition_begin=start
+    ifos,
+    waveform=waveform,
+    trigger_time=gps,
+    f_min=fmin,
+    f_max=fmax,
 )
 
 jim = Jim(
@@ -150,24 +215,42 @@ jim = Jim(
     prior,
     sample_transforms=sample_transforms,
     likelihood_transforms=likelihood_transforms,
-    n_loop_training=n_loop_training,
-    n_loop_production=20,
-    n_local_steps=10,
-    n_global_steps=1000,
     n_chains=500,
-    n_epochs=n_epochs,
-    learning_rate=learning_rate,
+    n_local_steps=100,
+    n_global_steps=1000,
+    n_training_loops=20,
+    n_production_loops=10,
+    n_epochs=20,
+    mala_step_size=2e-3,
+    rq_spline_hidden_units=[128, 128],
+    rq_spline_n_bins=10,
+    rq_spline_n_layers=8,
+    learning_rate=1e-3,
+    batch_size=10000,
     n_max_examples=30000,
-    n_flow_sample=100000,
-    momentum=0.9,
-    batch_size=30000,
-    use_global=True,
-    keep_quantile=0.0,
-    train_thinning=1,
-    output_thinning=10,
-    local_sampler_arg=local_sampler_arg,
-    # strategies=[Adam_optimizer,"default"],
+    n_NFproposal_batch_size=100,
+    local_thinning=1,
+    global_thinning=100,
+    history_window=200,
+    n_temperatures=0,
+    max_temperature=20.0,
+    n_tempered_steps=10,
+    verbose=True,
 )
+#
+jim.sample()
 
+print("Done!")
 
-jim.sample(jax.random.PRNGKey(42))
+logprob = jim.sampler.resources["log_prob_production"].data
+print(jnp.mean(logprob))
+
+chains = jim.get_samples()
+
+import numpy as np
+import corner
+
+fig = corner.corner(
+    np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10]
+)
+fig.savefig("test")

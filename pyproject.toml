@@ -1,9 +1,9 @@
 [project]
 name = "jimgw"
-version = "0.2.0"
+version = "0.3.0"
 description = "Gravitatioanl wave data analysis tool in Jax"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
 	{name = "Kaze W. K. Wong", email = "kazewong.physics@gmail.com"},
 ]
@@ -11,37 +11,74 @@ license = {file = "LICENSE"}
 dependencies = [
     "astropy>=6.1.4",
     "beartype>=0.19.0",
-    "corner>=2.2.2",
-    "coveralls>=4.0.1",
-    "flowmc>=0.3.4",
+    "flowmc>=0.4.4",
     "gwpy>=3.0.10",
-    "jax>=0.4.24, <=0.4.31",
     "jaxtyping>=0.2.34",
-    "pytest>=8.3.3",
     "ripplegw>=0.0.9",
-    "typed-argument-parser>=1.10.1",
+    "corner>=2.2.2",
+    "matplotlib>=3.10.1",
 ]
 
 [project.optional-dependencies]
 docs = [
-    "mkdocs-gen-files",
-    "mkdocs-jupyter",
-    "mkdocs-literate-nav",
-    "mkdocs-material",
-    "mkdocs",
-    "mkdocstrings[python]",
-    "pymdown-extensions",
+    "mkdocs-gen-files==0.5.0",
+    "mkdocs-jupyter==0.25.1",
+    "mkdocs-literate-nav==0.6.1",
+    "mkdocs-material==9.5.47",
+    "mkdocs==1.6.1",
+    "mkdocstrings[python]==0.27.0",
+    "pymdown-extensions==10.12",
+]
+cuda = [
+    "jax[cuda]>=0.5.0",
+]
+dagster = [
+    "dagster>=1.11.1",
+    "dagster-dg-cli>=1.11.1",
+    "dagster-pipes>=1.11.1",
+    "dagster-webserver>=1.11.1",
 ]
 
 [tool.uv]
 dev-dependencies = [
     "jimgw",
+    "pre-commit>=4.2.0",
+    "coverage>=7.7.0",
+    "coveralls>=4.0.1",
+    "pytest>=8.3.3",
+    "ruff>=0.11.12",
 ]
 
 [tool.uv.sources]
 jimgw = { workspace = true }
 
+[tool.dagster]
+modules = [
+{ type="module", name="jim_dagster.InjectionRecovery.definitions" },
+{ type="module", name="jim_dagster.RealDataCatalog.definitions" },
+]
+
+
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+
+[tool.pyright]
+include = ["src"]
+exclude = ["docs","tests"]
+
+[tool.ruff]
+include = ["src"]
+exclude = ["test", "docs"]
+
+[tool.coverage.report]
+exclude_also = [
+    'def __repr__',
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@(abc\\. )?abstractmethod",
+    "def tree_flatten",
+    "def tree_unflatten",
+]

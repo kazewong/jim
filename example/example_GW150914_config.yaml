@@ -1,0 +1,64 @@
+working_dir: ./
+seed: 0
+n_chains: 50
+n_local_steps: 10
+n_global_steps: 10
+n_training_loops: 20
+n_production_loops: 20
+n_epochs: 20
+mala_step_size: 0.01
+rq_spline_hidden_units:
+- 128
+- 128
+rq_spline_n_bins: 10
+rq_spline_n_layers: 2
+learning_rate: 0.001
+batch_size: 10000
+n_max_examples: 10000
+local_thinning: 1
+global_thinning: 1
+n_NFproposal_batch_size: 1000
+history_window: 100
+n_temperatures: 5
+max_temperature: 10.0
+n_tempered_steps: 5
+gps: 1126259462.4
+segment_length: 4.0
+post_trigger_length: 2.0
+f_min: 20.0
+f_max: 1024.0
+ifos:
+- H1
+- L1
+f_ref: 20.0
+local_data_prefix: null
+definition_name: IMRPhenomPv2StandardCBC
+M_c_range:
+- 10.0
+- 80.0
+q_range:
+- 0.125
+- 1.0
+max_s1: 0.99
+max_s2: 0.99
+iota_range:
+- 0.0
+- 3.141592653589793
+dL_range:
+- 1.0
+- 2000.0
+t_c_range:
+- -0.05
+- 0.05
+phase_c_range:
+- 0.0
+- 6.283185307179586
+psi_range:
+- 0.0
+- 3.141592653589793
+ra_range:
+- 0.0
+- 6.283185307179586
+dec_range:
+- -1.5707963267948966
+- 1.5707963267948966
