@@ -73,6 +73,7 @@ for ifo in ifos:
 # initialize waveform
 waveform = JaxNRSur7dq4(segment_length=ifos[0].data.duration, sampling_rate=int(ifos[0].data.sampling_frequency))
 
+
 ###########################################
 ########## Set up priors ##################
 ###########################################
