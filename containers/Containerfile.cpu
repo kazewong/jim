@@ -12,4 +12,4 @@ WORKDIR /home/jim
 RUN git checkout jim-dev
 
 # Run uv sync
-RUN uv sync --extra pipeline
+RUN uv sync --extra dagster
