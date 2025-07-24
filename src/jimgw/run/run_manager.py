@@ -85,7 +85,7 @@ class RunManager:
         assert isinstance(nf_model, NFModel), "NF model is not a normalizing flow model"
         samples = nf_model.sample(jax.random.PRNGKey(0), n_samples)
         param_names = list(self.jim.get_samples().keys())
-        samples = np.array(samples).reshape(int(len(param_names)), -1).T
+        samples = np.array(samples)
         return {name: samples[:, i] for i, name in enumerate(param_names)}
 
     def get_prior_samples(self, n_samples: int = 10000):

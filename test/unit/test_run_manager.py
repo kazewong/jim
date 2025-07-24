@@ -1,11 +1,12 @@
 import os
-from jimgw.run.single_event_run_definition import TestIMRPhenomPv2StandardCBCRunDefinition
+from jimgw.run.single_event_run_definition import (
+    TestIMRPhenomPv2StandardCBCRunDefinition,
+)
 from jimgw.run.single_event_run_manager import SingleEventRunManager
 from jimgw.core.single_event.detector import H1, L1
 
 
 class TestTestIMRPhenomPv2StandardCBCRunDefinition:
-
     def test_serialize_deserialize(self, tmp_path):
         # Create a test run
         run = TestIMRPhenomPv2StandardCBCRunDefinition()

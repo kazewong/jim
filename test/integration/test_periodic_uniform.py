@@ -33,7 +33,6 @@ likelihood_transforms = []
 
 
 class CosLikelihood(LikelihoodBase):
-
     def __init__(self):
         pass
 

@@ -19,6 +19,7 @@ https://docs.dagster.io/guides/build/io-managers/defining-a-custom-io-manager
 
 # Sample a fiducial population
 
+
 @dg.asset(
     group_name="prerun",
     key_prefix="InjectionRecovery",
@@ -32,9 +33,11 @@ def sample_population():
         path_prefix="./data/",
     )
 
+
 # TODO: Add diagnostics regarding the sampled population.
 
 # Create asset group for run and configuration
+
 
 @dg.asset(
     group_name="prerun",
@@ -76,10 +79,17 @@ def config_file():
         run.local_data_prefix = f"./data/runs/{idx}/strains/"
         run.serialize(f"./data/runs/{idx}/config.yaml")
 
+
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec(key=["InjectionRecovery", "strain"], deps=[["InjectionRecovery", "config_file"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "psd"], deps=[["InjectionRecovery", "config_file"]]),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "strain"],
+            deps=[["InjectionRecovery", "config_file"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "psd"],
+            deps=[["InjectionRecovery", "config_file"]],
+        ),
     ],
     group_name="prerun",
 )
@@ -122,19 +132,53 @@ def raw_data():
                 detector.data.to_file(f"./data/runs/{idx}/strains/{ifo}_data")
                 detector.psd.to_file(f"./data/runs/{idx}/strains/{ifo}_psd")
 
+
 @dg.multi_asset(
     specs=[
-        dg.AssetSpec(key=["InjectionRecovery", "training_chains"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "training_log_prob"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "training_local_acceptance"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "training_global_acceptance"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "training_loss"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "production_chains"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "production_log_prob"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "production_local_acceptance"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "production_global_acceptance"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "auxiliary_nf_samples"], deps=[["InjectionRecovery", "raw_data"]]),
-        dg.AssetSpec(key=["InjectionRecovery", "auxiliary_prior_samples"], deps=[["InjectionRecovery", "raw_data"]]),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "training_chains"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "training_log_prob"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "training_local_acceptance"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "training_global_acceptance"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "training_loss"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "production_chains"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "production_log_prob"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "production_local_acceptance"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "production_global_acceptance"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "auxiliary_nf_samples"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
+        dg.AssetSpec(
+            key=["InjectionRecovery", "auxiliary_prior_samples"],
+            deps=[["InjectionRecovery", "raw_data"]],
+        ),
     ],
     group_name="run",
 )
@@ -145,64 +189,140 @@ def run():
     """
     pass
 
+
 # Create asset group for diagnostics
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_loss"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_loss"]],
+    key_prefix="InjectionRecovery",
+)
 def loss_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def training_chains_corner_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def training_chains_trace_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def training_chains_rhat_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_log_prob"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_log_prob"]],
+    key_prefix="InjectionRecovery",
+)
 def training_log_prob_distribution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_log_prob"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_log_prob"]],
+    key_prefix="InjectionRecovery",
+)
 def training_log_prob_evolution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_local_acceptance"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_local_acceptance"]],
+    key_prefix="InjectionRecovery",
+)
 def training_local_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "training_global_acceptance"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "training_global_acceptance"]],
+    key_prefix="InjectionRecovery",
+)
 def training_global_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def production_chains_corner_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def production_chains_trace_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_chains"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_chains"]],
+    key_prefix="InjectionRecovery",
+)
 def production_chains_rhat_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_log_prob"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_log_prob"]],
+    key_prefix="InjectionRecovery",
+)
 def production_log_prob_distribution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_log_prob"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_log_prob"]],
+    key_prefix="InjectionRecovery",
+)
 def production_log_prob_evolution():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_local_acceptance"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_local_acceptance"]],
+    key_prefix="InjectionRecovery",
+)
 def production_local_acceptance_plot():
     pass
 
-@dg.asset(group_name="diagnostics", deps=[["InjectionRecovery", "production_global_acceptance"]], key_prefix="InjectionRecovery")
+
+@dg.asset(
+    group_name="diagnostics",
+    deps=[["InjectionRecovery", "production_global_acceptance"]],
+    key_prefix="InjectionRecovery",
+)
 def production_global_acceptance_plot():
     pass

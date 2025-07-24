@@ -2,6 +2,7 @@ import time
 
 import jax
 import jax.numpy as jnp
+
 jax.config.update("jax_enable_x64", True)
 
 from jimgw.core.jim import Jim
@@ -14,7 +15,7 @@ from jimgw.core.prior import (
     UniformSpherePrior,
 )
 from jimgw.core.single_event.detector import get_H1, get_L1, get_V1
-from jimgw.core.single_event.likelihood import TransientLikelihoodFD
+from jimgw.core.single_event.likelihood import BaseTransientLikelihoodFD
 from jimgw.core.single_event.data import Data
 from jimgw.core.single_event.waveform import RippleIMRPhenomPv2
 from jimgw.core.transforms import BoundToUnbound
@@ -126,23 +127,79 @@ prior = CombinePrior(prior)
 # Defining Transforms
 
 sample_transforms = [
-    DistanceToSNRWeightedDistanceTransform(gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax),
+    DistanceToSNRWeightedDistanceTransform(
+        gps_time=gps, ifos=ifos, dL_min=dL_prior.xmin, dL_max=dL_prior.xmax
+    ),
     GeocentricArrivalPhaseToDetectorArrivalPhaseTransform(gps_time=gps, ifo=ifos[0]),
-    GeocentricArrivalTimeToDetectorArrivalTimeTransform(tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]),
+    GeocentricArrivalTimeToDetectorArrivalTimeTransform(
+        tc_min=t_c_prior.xmin, tc_max=t_c_prior.xmax, gps_time=gps, ifo=ifos[0]
+    ),
     SkyFrameToDetectorFrameSkyPositionTransform(gps_time=gps, ifos=ifos),
-    BoundToUnbound(name_mapping=(["M_c"], ["M_c_unbounded"]), original_lower_bound=M_c_min, original_upper_bound=M_c_max,),
-    BoundToUnbound(name_mapping=(["q"], ["q_unbounded"]), original_lower_bound=q_min, original_upper_bound=q_max,),
-    BoundToUnbound(name_mapping=(["s1_phi"], ["s1_phi_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
-    BoundToUnbound(name_mapping=(["s2_phi"], ["s2_phi_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
-    BoundToUnbound(name_mapping=(["iota"], ["iota_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=(["s1_theta"], ["s1_theta_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=(["s2_theta"], ["s2_theta_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=(["s1_mag"], ["s1_mag_unbounded"]), original_lower_bound=0.0, original_upper_bound=0.99,),
-    BoundToUnbound(name_mapping=(["s2_mag"], ["s2_mag_unbounded"]), original_lower_bound=0.0, original_upper_bound=0.99,),
-    BoundToUnbound(name_mapping=(["phase_det"], ["phase_det_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
-    BoundToUnbound(name_mapping=(["psi"], ["psi_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=(["zenith"], ["zenith_unbounded"]), original_lower_bound=0.0, original_upper_bound=jnp.pi,),
-    BoundToUnbound(name_mapping=(["azimuth"], ["azimuth_unbounded"]), original_lower_bound=0.0, original_upper_bound=2 * jnp.pi,),
+    BoundToUnbound(
+        name_mapping=(["M_c"], ["M_c_unbounded"]),
+        original_lower_bound=M_c_min,
+        original_upper_bound=M_c_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["q"], ["q_unbounded"]),
+        original_lower_bound=q_min,
+        original_upper_bound=q_max,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_phi"], ["s1_phi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_phi"], ["s2_phi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["iota"], ["iota_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_theta"], ["s1_theta_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_theta"], ["s2_theta_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s1_mag"], ["s1_mag_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=0.99,
+    ),
+    BoundToUnbound(
+        name_mapping=(["s2_mag"], ["s2_mag_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=0.99,
+    ),
+    BoundToUnbound(
+        name_mapping=(["phase_det"], ["phase_det_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["psi"], ["psi_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["zenith"], ["zenith_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=jnp.pi,
+    ),
+    BoundToUnbound(
+        name_mapping=(["azimuth"], ["azimuth_unbounded"]),
+        original_lower_bound=0.0,
+        original_upper_bound=2 * jnp.pi,
+    ),
 ]
 
 likelihood_transforms = [
@@ -152,13 +209,12 @@ likelihood_transforms = [
 ]
 
 
-likelihood = TransientLikelihoodFD(
+likelihood = BaseTransientLikelihoodFD(
     ifos,
     waveform=waveform,
     trigger_time=gps,
     f_min=fmin,
     f_max=fmax,
-    # marginalization="time",
 )
 
 jim = Jim(
@@ -201,5 +257,9 @@ chains = jim.get_samples()
 import numpy as np
 import corner
 
-fig = corner.corner(np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10], labels=jim.prior.parameter_names)
-fig.savefig('test')
+
+fig = corner.corner(
+    np.stack([chains[key] for key in jim.prior.parameter_names]).T[::10],
+    labels=jim.prior.parameter_names,
+)
+fig.savefig("test")
