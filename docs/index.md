@@ -9,9 +9,11 @@ Jim is a set of tools to solve a number of inference problems in the field of gr
 
 ## Installation
 
-### Installing with `pip`
-
 ### Installing with `uv`
+
+
+
+### Installing with `pip`
 
 ### Container
 
@@ -20,6 +22,7 @@ Jim is a set of tools to solve a number of inference problems in the field of gr
 This documentation is divided into several sections:
 
 - [Quickstart](quick_start): A quick introduction to Jim, how to install it, and how to run a simple example.
-- [User guides](guides/anatomy_of_jim/): A collection of guides to help you use Jim for different tasks, such as parameter estimation and population analysis.
+- [User guides](guides/anatomy_of_jim/): A collection of guides that explain principles of Jim, how to use it, and how to extend it.
+- [Tutorials](tutorials/GW150914_IMRPhenomPV2/): A set of step-by-step tutorials that show how to use Jim for specific tasks.
 
 ## Citing Jim
