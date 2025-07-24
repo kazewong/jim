@@ -13,3 +13,8 @@ RUN git checkout jim-dev
 
 # Run uv sync
 RUN uv sync --extra dagster
+
+ENV PATH="/home/jim/.venv/bin:$PATH"
+
+# Expose the port that your Dagster instance will run on
+EXPOSE 80
