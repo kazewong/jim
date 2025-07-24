@@ -74,6 +74,6 @@ plugins:
 nav:
     - Home: index.md
     - Gotchas: gotchas.md
-    - Tutorial: tutorials/
+    - User guides: guides/
     - Examples: examples/
     - API: reference/
