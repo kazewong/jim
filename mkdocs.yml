@@ -47,6 +47,8 @@ plugins:
     - autorefs  # Cross-links to headings
     - mkdocs-jupyter: # Jupyter notebook support
         # show_input: False
+        ignore:
+          - "*.py"
     - gen-files:
         scripts:
         - docs/gen_ref_pages.py

@@ -7,10 +7,18 @@ Jim is a set of tools to solve a number of inference problems in the field of gr
 
 
 
-## Design philosophy
+## Installation
 
-1. Extensibility over "feature complete"
-2. Performance is a feature, lacking performance is a bug
-3. We do not do use-case optimization
+### Installing with `pip`
 
-#
+### Installing with `uv`
+
+### Container
+
+## How to use this documentation
+
+This documentation is divided into several sections:
+
+- 
+
+## Citing Jim
