@@ -75,6 +75,7 @@ plugins:
 
 nav:
     - Home: index.md
+    - Quick start: quick_start.md
     - User guides: guides/
     - Examples: examples/
     - API: reference/
