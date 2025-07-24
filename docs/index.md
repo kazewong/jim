@@ -19,6 +19,7 @@ Jim is a set of tools to solve a number of inference problems in the field of gr
 
 This documentation is divided into several sections:
 
-- 
+- [Quickstart](quick_start): A quick introduction to Jim, how to install it, and how to run a simple example.
+- [User guides](guides/anatomy_of_jim/): A collection of guides to help you use Jim for different tasks, such as parameter estimation and population analysis.
 
 ## Citing Jim
