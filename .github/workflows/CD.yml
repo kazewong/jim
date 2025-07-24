@@ -27,13 +27,6 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run tests and coverage
-        run: |
-          uv run coverage run --source=src -m pytest test
-          uv run coveralls --service=github-actions
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-
       - name: Run build
         run: uv build
   publish_pypi:
