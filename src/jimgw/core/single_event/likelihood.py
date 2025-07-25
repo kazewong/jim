@@ -648,30 +648,42 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
         df = freqs[1] - freqs[0]
         data_prod = jnp.array(data * h_ref.conj()) / psd
         self_prod = jnp.array(h_ref * h_ref.conj()) / psd
-        
+
         # Vectorized binning using broadcasting
         freq_bins_left = f_bins[:-1]  # Shape: (len(f_bins)-1,)
         freq_bins_right = f_bins[1:]  # Shape: (len(f_bins)-1,)
-        
+
         # Broadcast for vectorized comparison
         freqs_broadcast = freqs[None, :]  # Shape: (1, n_freqs)
         left_bounds = freq_bins_left[:, None]  # Shape: (len(f_bins)-1, 1)
         right_bounds = freq_bins_right[:, None]  # Shape: (len(f_bins)-1, 1)
-        
+
         # Create mask matrix: True where frequency belongs to bin
-        mask = (freqs_broadcast >= left_bounds) & (freqs_broadcast < right_bounds)  # Shape: (len(f_bins)-1, n_freqs)
-        
+        mask = (freqs_broadcast >= left_bounds) & (
+            freqs_broadcast < right_bounds
+        )  # Shape: (len(f_bins)-1, n_freqs)
+
         # Vectorized computation of frequency shifts
         f_bins_center_broadcast = f_bins_center[:, None]  # Shape: (len(f_bins)-1, 1)
-        freq_shift_matrix = (freqs_broadcast - f_bins_center_broadcast) * mask  # Shape: (len(f_bins)-1, n_freqs)
-        
+        freq_shift_matrix = (
+            freqs_broadcast - f_bins_center_broadcast
+        ) * mask  # Shape: (len(f_bins)-1, n_freqs)
+
         # Vectorized computation of coefficients
         # For each bin, sum over the frequency dimension
-        A0_array = 4 * jnp.sum(data_prod[None, :] * mask, axis=1) * df  # Shape: (len(f_bins)-1,)
-        A1_array = 4 * jnp.sum(data_prod[None, :] * freq_shift_matrix, axis=1) * df  # Shape: (len(f_bins)-1,)
-        B0_array = 4 * jnp.sum(self_prod[None, :] * mask, axis=1) * df  # Shape: (len(f_bins)-1,)
-        B1_array = 4 * jnp.sum(self_prod[None, :] * freq_shift_matrix, axis=1) * df  # Shape: (len(f_bins)-1,)
-        
+        A0_array = (
+            4 * jnp.sum(data_prod[None, :] * mask, axis=1) * df
+        )  # Shape: (len(f_bins)-1,)
+        A1_array = (
+            4 * jnp.sum(data_prod[None, :] * freq_shift_matrix, axis=1) * df
+        )  # Shape: (len(f_bins)-1,)
+        B0_array = (
+            4 * jnp.sum(self_prod[None, :] * mask, axis=1) * df
+        )  # Shape: (len(f_bins)-1,)
+        B1_array = (
+            4 * jnp.sum(self_prod[None, :] * freq_shift_matrix, axis=1) * df
+        )  # Shape: (len(f_bins)-1,)
+
         return A0_array, A1_array, B0_array, B1_array
 
     def maximize_likelihood(
