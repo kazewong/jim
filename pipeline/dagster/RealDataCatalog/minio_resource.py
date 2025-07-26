@@ -10,7 +10,11 @@ class MinioResource(ConfigurableResource):
     bucket_name: str
 
     def get_client(self):
-        return Minio(self.endpoint + ":" + self.port, self.access_key, self.secret_key, secure=False)
+        client = Minio(self.endpoint + ":" + self.port, self.access_key, self.secret_key, secure=False)
+        found = client.bucket_exists(self.bucket_name)
+        if not found:
+            client.make_bucket(self.bucket_name)
+        return client
 
     def get_object_presigned_url(self, object_name: str):
         client = self.get_client()
@@ -22,6 +26,7 @@ class MinioResource(ConfigurableResource):
     
     def put_object(self, object_name: str, data, size: int, content_type: str):
         client = self.get_client()
+
         return client.put_object(self.bucket_name, object_name, data, size, content_type)
 
     def download_object(self, object_name: str, file_path: str):
