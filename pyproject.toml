@@ -39,6 +39,7 @@ dagster = [
     "dagster-pipes>=1.11.1",
     "dagster-postgres>=0.27.3",
     "dagster-webserver>=1.11.1",
+    "minio>=7.2.16",
 ]
 
 [tool.uv]

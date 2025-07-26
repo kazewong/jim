@@ -1,8 +1,10 @@
 import dagster as dg
 import gwosc
 import os
+import io
 import numpy as np
 from dagster import DynamicPartitionsDefinition, AssetExecutionContext
+from RealDataCatalog.minio_resource import MinioResource
 from jimgw.core.single_event.data import Data
 from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
     IMRPhenomPv2StandardCBCRunDefinition,
@@ -18,7 +20,8 @@ event_partitions_def = DynamicPartitionsDefinition(name="event_name")
     group_name="prerun",
     description="Fetch all confident events and their gps time",
 )
-def event_list(context: AssetExecutionContext):
+def event_list(context: AssetExecutionContext, minio: MinioResource):
+    
     catalogs = ["GWTC-1-confident", "GWTC-2.1-confident", "GWTC-3-confident"]
     result = []
     event_names = []
@@ -29,10 +32,17 @@ def event_list(context: AssetExecutionContext):
             gps_time = event["GPS"]
             result.append((name, gps_time))
             event_names.append(name)
-    os.makedirs("data", exist_ok=True)
-    with open("data/event_list.txt", "w") as f:
-        for name, gps_time in result:
-            f.write(f"{name} {gps_time}\n")
+    buffer = io.StringIO()
+    for name, gps_time in result:
+        buffer.write(f"{name} {gps_time}\n")
+    buffer.seek(0)
+    data = buffer.getvalue().encode("utf-8")
+    minio.put_object(
+        object_name="event_list.txt",
+        data=io.BytesIO(data),
+        size=len(data),
+        content_type="text/plain"
+    )
     # Register dynamic partitions for event_name
     context.instance.add_dynamic_partitions("event_name", event_names)
 
@@ -46,7 +56,7 @@ def event_list(context: AssetExecutionContext):
     group_name="prerun",
     partitions_def=event_partitions_def,
 )
-def raw_data(context: AssetExecutionContext):
+def raw_data(context: AssetExecutionContext, minio: MinioResource):
     ifos = ["H1", "L1", "V1"]
     event_name = context.partition_key
     with open("data/event_list.txt", "r") as f:
