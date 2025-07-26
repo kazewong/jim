@@ -5,10 +5,7 @@ import io
 import numpy as np
 from dagster import DynamicPartitionsDefinition, AssetExecutionContext
 from RealDataCatalog.minio_resource import MinioResource
-from jimgw.core.single_event.data import Data
-from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
-    IMRPhenomPv2StandardCBCRunDefinition,
-)
+
 
 # Create asset group for run and configuration0
 
@@ -57,6 +54,8 @@ def event_list(context: AssetExecutionContext, minio: MinioResource):
     partitions_def=event_partitions_def,
 )
 def raw_data(context: AssetExecutionContext, minio: MinioResource):
+    from jimgw.core.single_event.data import Data
+
     ifos = ["H1", "L1", "V1"]
     event_name = context.partition_key
     # Use minio to fetch event_list.txt instead of reading from local disk
@@ -83,6 +82,8 @@ def raw_data(context: AssetExecutionContext, minio: MinioResource):
                     size=file_size,
                     content_type="application/x-npz",
                 )
+            os.remove(data_file_path + '.npz')
+            
             # TODO: Perhaps we should make sure the PSD estimation window are the same accross all IFOs?
             psd_data = Data.from_gwosc(
                 ifo, start - 4098, end - 2
@@ -111,7 +112,6 @@ def raw_data(context: AssetExecutionContext, minio: MinioResource):
                         content_type="application/x-npz",
                     )
             # Cleanup local files
-            os.remove(data_file_path + '.npz')
             os.remove(psd_file_path + '.npz')
         except Exception as e:
             print(f"Error fetching data for {ifo} during {event_name}: {e}")
@@ -124,22 +124,21 @@ def raw_data(context: AssetExecutionContext, minio: MinioResource):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def raw_data_plot(context: AssetExecutionContext):
+def raw_data_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Plot the raw strain data for each IFO for the event.
+    Plot the raw strain data for each IFO for the event using Minio for data access and plot storage.
     """
     import matplotlib.pyplot as plt
+    import tempfile
 
     event_name = context.partition_key
-    event_dir = os.path.join("data", event_name, "raw")
-    plots_dir = os.path.join("data", event_name, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
     ifos = ["H1", "L1", "V1"]
     plot_paths = []
     for ifo in ifos:
-        data_file = os.path.join(event_dir, f"{ifo}_data.npz")
-        if os.path.exists(data_file):
-            data = np.load(data_file)
+        object_name = f"{event_name}/raw/{ifo}_data.npz"
+        try:
+            obj = minio.get_object(object_name)
+            data = np.load(io.BytesIO(obj.read()))
             t = data["epoch"] + np.arange(data["td"].shape[0]) * data["dt"]
             td = data["td"]
             if t is not None and td is not None:
@@ -148,10 +147,25 @@ def raw_data_plot(context: AssetExecutionContext):
                 plt.xlabel("Time (s)")
                 plt.ylabel("Strain")
                 plt.title(f"{ifo} Strain for {event_name}")
-                plot_path = os.path.join(plots_dir, f"{ifo}_strain.png")
-                plt.savefig(plot_path)
-                plt.close()
-                plot_paths.append(plot_path)
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+                    plt.savefig(tmpfile.name)
+                    plt.close()
+                    tmpfile.flush()
+                    tmpfile.seek(0)
+                    tmpfile_size = os.path.getsize(tmpfile.name)
+                    minio_plot_path = f"{event_name}/plots/{ifo}_strain.png"
+                    with open(tmpfile.name, "rb") as plotfile:
+                        minio.put_object(
+                            object_name=minio_plot_path,
+                            data=plotfile,
+                            size=tmpfile_size,
+                            content_type="image/png",
+                        )
+                    plot_paths.append(minio_plot_path)
+                os.remove(tmpfile.name)
+        except Exception as e:
+            print(f"Error processing {ifo} for {event_name}: {e}")
+            continue
     return plot_paths
 
 
@@ -161,22 +175,21 @@ def raw_data_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def psd_plot(context: AssetExecutionContext):
+def psd_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Plot the PSD for each IFO for the event.
+    Plot the PSD for each IFO for the event using Minio for data access and plot storage.
     """
     import matplotlib.pyplot as plt
+    import tempfile
 
     event_name = context.partition_key
-    event_dir = os.path.join("data", event_name, "raw")
-    plots_dir = os.path.join("data", event_name, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
     ifos = ["H1", "L1", "V1"]
     plot_paths = []
     for ifo in ifos:
-        psd_file = os.path.join(event_dir, f"{ifo}_psd.npz")
-        if os.path.exists(psd_file):
-            data = np.load(psd_file)
+        object_name = f"{event_name}/raw/{ifo}_psd.npz"
+        try:
+            obj = minio.get_object(object_name)
+            data = np.load(io.BytesIO(obj.read()))
             f = data["frequencies"]
             psd = data["values"]
             plt.figure()
@@ -184,10 +197,25 @@ def psd_plot(context: AssetExecutionContext):
             plt.xlabel("Frequency (Hz)")
             plt.ylabel("PSD")
             plt.title(f"{ifo} PSD for {event_name}")
-            plot_path = os.path.join(plots_dir, f"{ifo}_psd.png")
-            plt.savefig(plot_path)
-            plt.close()
-            plot_paths.append(plot_path)
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+                plt.savefig(tmpfile.name)
+                plt.close()
+                tmpfile.flush()
+                tmpfile.seek(0)
+                tmpfile_size = os.path.getsize(tmpfile.name)
+                minio_plot_path = f"{event_name}/plots/{ifo}_psd.png"
+                with open(tmpfile.name, "rb") as plotfile:
+                    minio.put_object(
+                        object_name=minio_plot_path,
+                        data=plotfile,
+                        size=tmpfile_size,
+                        content_type="image/png",
+                    )
+                plot_paths.append(minio_plot_path)
+            os.remove(tmpfile.name)
+        except Exception as e:
+            print(f"Error processing {ifo} for {event_name}: {e}")
+            continue
     return plot_paths
 
 
@@ -199,6 +227,9 @@ def psd_plot(context: AssetExecutionContext):
     partitions_def=event_partitions_def,
 )
 def config_file(context: AssetExecutionContext):
+    from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
+        IMRPhenomPv2StandardCBCRunDefinition,
+    )
     event_name = context.partition_key
     with open("data/event_list.txt", "r") as f:
         lines = f.readlines()
@@ -243,7 +274,7 @@ def config_file(context: AssetExecutionContext):
         max_s2=0.99,
         iota_range=(0.0, 3.141592653589793),
         dL_range=(100.0, 6000.0),
-        # t_c_range=(-0.05, 0.05),
+        t_c_range=(-0.05, 0.05),
         phase_c_range=(0.0, 6.283185307179586),
         psi_range=(0.0, 3.141592653589793),
         ra_range=(0.0, 6.283185307179586),
