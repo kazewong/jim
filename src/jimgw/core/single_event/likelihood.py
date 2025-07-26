@@ -640,11 +640,6 @@ class HeterodynedTransientLikelihoodFD(BaseTransientLikelihoodFD):
 
     @staticmethod
     def compute_coefficients(data, h_ref, psd, freqs, f_bins, f_bins_center):
-        A0_array = []
-        A1_array = []
-        B0_array = []
-        B1_array = []
-
         df = freqs[1] - freqs[0]
         data_prod = jnp.array(data * h_ref.conj()) / psd
         self_prod = jnp.array(h_ref * h_ref.conj()) / psd
