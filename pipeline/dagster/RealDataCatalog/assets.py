@@ -1,10 +1,10 @@
 import dagster as dg
-import gwosc
 import os
 import io
 import numpy as np
 from dagster import DynamicPartitionsDefinition, AssetExecutionContext
 from RealDataCatalog.minio_resource import MinioResource
+from gwosc.api import fetch_catalog_json
 import matplotlib.pyplot as plt
 import tempfile
 
@@ -24,7 +24,7 @@ def event_list(context: AssetExecutionContext, minio: MinioResource):
     result = []
     event_names = []
     for catalog in catalogs:
-        event_list = gwosc.api.fetch_catalog_json(catalog)["events"]
+        event_list = fetch_catalog_json(catalog)["events"]
         for event in event_list.values():
             name = event["commonName"]
             gps_time = event["GPS"]
