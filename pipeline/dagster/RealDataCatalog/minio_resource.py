@@ -29,6 +29,6 @@ class MinioResource(ConfigurableResource):
 
         return client.put_object(self.bucket_name, object_name, data, size, content_type)
 
-    def download_object(self, object_name: str, file_path: str):
+    def get_object(self, object_name: str):
         client = self.get_client()
-        return client.fget_object(self.bucket_name, object_name, file_path)
+        return client.get_object(self.bucket_name, object_name)

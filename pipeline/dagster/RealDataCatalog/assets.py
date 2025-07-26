@@ -21,7 +21,7 @@ event_partitions_def = DynamicPartitionsDefinition(name="event_name")
     description="Fetch all confident events and their gps time",
 )
 def event_list(context: AssetExecutionContext, minio: MinioResource):
-    
+
     catalogs = ["GWTC-1-confident", "GWTC-2.1-confident", "GWTC-3-confident"]
     result = []
     event_names = []
@@ -59,18 +59,30 @@ def event_list(context: AssetExecutionContext, minio: MinioResource):
 def raw_data(context: AssetExecutionContext, minio: MinioResource):
     ifos = ["H1", "L1", "V1"]
     event_name = context.partition_key
-    with open("data/event_list.txt", "r") as f:
-        lines = f.readlines()
-        event_dict = dict(line.strip().split() for line in lines)
+    # Use minio to fetch event_list.txt instead of reading from local disk
+    event_list_obj = minio.get_object("event_list.txt")
+    lines = event_list_obj.read().decode("utf-8").splitlines()
+    event_dict = dict(line.strip().split() for line in lines)
     gps_time = event_dict[event_name]
     start = float(gps_time) - 2
     end = float(gps_time) + 2
-    event_dir = os.path.join("data", event_name, "raw")
+    # Use a temp directory, but keep event_name and "raw" part
+    event_dir = os.path.join('tmp', event_name, "raw")
     os.makedirs(event_dir, exist_ok=True)
     for ifo in ifos:
         try:
             data = Data.from_gwosc(ifo, start, end)
-            data.to_file(os.path.join(event_dir, f"{ifo}_data"))
+            data_file_path = os.path.join(event_dir, f"{ifo}_data")
+            data.to_file(data_file_path)
+            # Upload raw data file to minio
+            with open(data_file_path +'.npz', "rb") as f:
+                file_size = os.path.getsize(data_file_path +'.npz')
+                minio.put_object(
+                    object_name=f"{event_name}/raw/{ifo}_data.npz",
+                    data=f,
+                    size=file_size,
+                    content_type="application/x-npz",
+                )
             # TODO: Perhaps we should make sure the PSD estimation window are the same accross all IFOs?
             psd_data = Data.from_gwosc(
                 ifo, start - 4098, end - 2
@@ -87,7 +99,20 @@ def raw_data(context: AssetExecutionContext, minio: MinioResource):
             else:
                 psd_fftlength = data.duration * data.sampling_frequency
                 psd_data = psd_data.to_psd(nperseg=psd_fftlength)
-                psd_data.to_file(os.path.join(event_dir, f"{ifo}_psd"))
+                psd_file_path = os.path.join(event_dir, f"{ifo}_psd")
+                psd_data.to_file(psd_file_path)
+                # Upload psd data file to minio
+                with open(psd_file_path+'.npz', "rb") as f:
+                    file_size = os.path.getsize(psd_file_path+'.npz')
+                    minio.put_object(
+                        object_name=f"{event_name}/raw/{ifo}_psd.npz",
+                        data=f,
+                        size=file_size,
+                        content_type="application/x-npz",
+                    )
+            # Cleanup local files
+            os.remove(data_file_path + '.npz')
+            os.remove(psd_file_path + '.npz')
         except Exception as e:
             print(f"Error fetching data for {ifo} during {event_name}: {e}")
             continue
