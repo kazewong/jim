@@ -5,7 +5,8 @@ import io
 import numpy as np
 from dagster import DynamicPartitionsDefinition, AssetExecutionContext
 from RealDataCatalog.minio_resource import MinioResource
-
+import matplotlib.pyplot as plt
+import tempfile
 
 # Create asset group for run and configuration0
 
@@ -83,7 +84,7 @@ def raw_data(context: AssetExecutionContext, minio: MinioResource):
                     content_type="application/x-npz",
                 )
             os.remove(data_file_path + '.npz')
-            
+
             # TODO: Perhaps we should make sure the PSD estimation window are the same accross all IFOs?
             psd_data = Data.from_gwosc(
                 ifo, start - 4098, end - 2
@@ -128,8 +129,6 @@ def raw_data_plot(context: AssetExecutionContext, minio: MinioResource):
     """
     Plot the raw strain data for each IFO for the event using Minio for data access and plot storage.
     """
-    import matplotlib.pyplot as plt
-    import tempfile
 
     event_name = context.partition_key
     ifos = ["H1", "L1", "V1"]
@@ -179,8 +178,7 @@ def psd_plot(context: AssetExecutionContext, minio: MinioResource):
     """
     Plot the PSD for each IFO for the event using Minio for data access and plot storage.
     """
-    import matplotlib.pyplot as plt
-    import tempfile
+
 
     event_name = context.partition_key
     ifos = ["H1", "L1", "V1"]
@@ -226,27 +224,35 @@ def psd_plot(context: AssetExecutionContext, minio: MinioResource):
     deps=[raw_data],
     partitions_def=event_partitions_def,
 )
-def config_file(context: AssetExecutionContext):
+def config_file(context: AssetExecutionContext, minio: MinioResource):
     from jimgw.run.library.IMRPhenomPv2_standard_cbc import (
         IMRPhenomPv2StandardCBCRunDefinition,
     )
     event_name = context.partition_key
-    with open("data/event_list.txt", "r") as f:
-        lines = f.readlines()
-        event_dict = dict(line.strip().split() for line in lines)
+    # Read event_list.txt from Minio
+    event_list_obj = minio.get_object("event_list.txt")
+    lines = event_list_obj.read().decode("utf-8").splitlines()
+    event_dict = dict(line.strip().split() for line in lines)
     gps_time = float(event_dict[event_name])
-    # Check which IFOs have both data and PSD files present
+
+    # Check which IFOs have both data and PSD files present in Minio
     available_ifos: list[str] = []
-    raw_dir = os.path.join("data", event_name, "raw")
     for ifo in ["H1", "L1", "V1"]:
-        data_file = os.path.join(raw_dir, f"{ifo}_data.npz")
-        psd_file = os.path.join(raw_dir, f"{ifo}_psd.npz")
-        if os.path.exists(data_file) and os.path.exists(psd_file):
+        data_obj_name = f"{event_name}/raw/{ifo}_data.npz"
+        psd_obj_name = f"{event_name}/raw/{ifo}_psd.npz"
+        try:
+            # Try to fetch both objects from Minio
+            minio.get_object(data_obj_name)
+            minio.get_object(psd_obj_name)
             available_ifos.append(ifo)
+        except Exception:
+            continue
+
     if available_ifos == []:
         raise RuntimeError(
             f"No IFOs with both data and PSD found for event {event_name}"
         )
+
     run = IMRPhenomPv2StandardCBCRunDefinition(
         n_chains=500,
         n_local_steps=100,
@@ -287,11 +293,25 @@ def config_file(context: AssetExecutionContext):
         ifos=available_ifos,
         f_ref=20.0,
     )
-    run_dir = f"./data/{event_name}/"
+    run_dir = f"{event_name}/"
     run.working_dir = run_dir
     run.seed = hash(int(gps_time)) % (2**32 - 1)
-    run.local_data_prefix = os.path.join(run_dir, "raw/")
-    run.serialize(os.path.join(run_dir, "config.yaml"))
+    run.local_data_prefix = f"{run_dir}raw/"
+    # Serialize config.yaml to a temp file, then upload to Minio
+    with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as tmpfile:
+        run.serialize(tmpfile.name)
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_config_path = f"{event_name}/config.yaml"
+        with open(tmpfile.name, "rb") as configfile:
+            minio.put_object(
+                object_name=minio_config_path,
+                data=configfile,
+                size=tmpfile_size,
+                content_type="application/x-yaml",
+            )
+    os.remove(tmpfile.name)
 
 
 @dg.multi_asset(
@@ -339,20 +359,14 @@ def run(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def loss_plot(context: AssetExecutionContext):
+def loss_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a loss plot from the training_loss asset.
+    Generate and save a loss plot from the training_loss asset using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     loss = results["loss_data"]
     if loss is None:
         raise ValueError("No 'loss' key found in loss_data.")
@@ -361,10 +375,22 @@ def loss_plot(context: AssetExecutionContext):
     plt.xlabel("Step")
     plt.ylabel("Loss")
     plt.title(f"Training Loss for {event_name}")
-    plot_path = os.path.join(plots_dir, "training_loss.png")
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/training_loss.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -373,23 +399,16 @@ def loss_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_chains_corner_plot(context: AssetExecutionContext):
+def production_chains_corner_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a corner plot from the production_chains asset.
+    Generate and save a corner plot from the production_chains asset using Minio.
     """
-    import matplotlib.pyplot as plt
     import corner
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     chains = results["chains"].item()
-    # keys = np.sort(list(chains.keys()))
     keys = [
         "M_c",
         "q",
@@ -408,10 +427,22 @@ def production_chains_corner_plot(context: AssetExecutionContext):
     ]
     samples = np.array([chains[key] for key in keys]).T
     fig = corner.corner(samples[::10], labels=keys)
-    plot_path = os.path.join(plots_dir, "production_chains_corner.png")
-    fig.savefig(plot_path)
-    plt.close(fig)
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        fig.savefig(tmpfile.name)
+        plt.close(fig)
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_chains_corner.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -420,23 +451,16 @@ def production_chains_corner_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def nf_samples_corner_plot(context: AssetExecutionContext):
+def nf_samples_corner_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a corner plot from the auxiliary_nf_samples asset.
+    Generate and save a corner plot from the auxiliary_nf_samples asset using Minio.
     """
-    import matplotlib.pyplot as plt
     import corner
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     nf_samples = results["nf_samples"].item()
-    # keys = np.sort(list(nf_samples.keys()))
     keys = [
         "M_c",
         "q",
@@ -454,11 +478,23 @@ def nf_samples_corner_plot(context: AssetExecutionContext):
         "dec",
     ]
     nf_samples = np.array([nf_samples[key] for key in keys]).T
-    fig = corner.corner(nf_samples, labels=keys)  # Thinning for better visualization
-    plot_path = os.path.join(plots_dir, "nf_samples_corner.png")
-    fig.savefig(plot_path)
-    plt.close(fig)
-    return plot_path
+    fig = corner.corner(nf_samples, labels=keys)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        fig.savefig(tmpfile.name)
+        plt.close(fig)
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/nf_samples_corner.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -467,23 +503,16 @@ def nf_samples_corner_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def prior_samples_corner_plot(context: AssetExecutionContext):
+def prior_samples_corner_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a corner plot from the auxiliary_prior_samples asset.
+    Generate and save a corner plot from the auxiliary_prior_samples asset using Minio.
     """
-    import matplotlib.pyplot as plt
     import corner
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     prior_samples = results["prior_samples"].item()
-    # keys = np.sort(list(prior_samples.keys()))
     keys = [
         "M_c",
         "q",
@@ -501,11 +530,23 @@ def prior_samples_corner_plot(context: AssetExecutionContext):
         "dec",
     ]
     prior_samples = np.array([prior_samples[key] for key in keys]).T
-    fig = corner.corner(prior_samples, labels=keys)  # Thinning for better visualization
-    plot_path = os.path.join(plots_dir, "prior_samples_corner.png")
-    fig.savefig(plot_path)
-    plt.close(fig)
-    return plot_path
+    fig = corner.corner(prior_samples, labels=keys)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        fig.savefig(tmpfile.name)
+        plt.close(fig)
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/prior_samples_corner.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -514,20 +555,14 @@ def prior_samples_corner_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_chains_trace_plot(context: AssetExecutionContext):
+def production_chains_trace_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a trace plot for the production chains.
+    Generate and save a trace plot for the production chains using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     chains = results["chains"].item()
     keys = [
         "M_c",
@@ -556,11 +591,23 @@ def production_chains_trace_plot(context: AssetExecutionContext):
         if i == 0:
             plt.title(f"Production Chains Trace Plot for {event_name}")
     plt.xlabel("Sample")
-    plot_path = os.path.join(plots_dir, "production_chains_trace.png")
     plt.tight_layout()
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_chains_trace.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -569,20 +616,14 @@ def production_chains_trace_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_log_prob_distribution(context: AssetExecutionContext):
+def production_log_prob_distribution(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a histogram of the production log probability.
+    Generate and save a histogram of the production log probability using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     log_prob = results["log_probs"]
     if log_prob is None:
         raise ValueError("No 'log_prob' key found in loss_data.")
@@ -591,10 +632,22 @@ def production_log_prob_distribution(context: AssetExecutionContext):
     plt.xlabel("Log Probability")
     plt.ylabel("Frequency")
     plt.title(f"Production Log Probability Distribution for {event_name}")
-    plot_path = os.path.join(plots_dir, "production_log_prob_distribution.png")
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_log_prob_distribution.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -603,20 +656,14 @@ def production_log_prob_distribution(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_log_prob_evolution(context: AssetExecutionContext):
+def production_log_prob_evolution(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a plot of the evolution of the production log probability.
+    Generate and save a plot of the evolution of the production log probability using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     log_prob = results["log_probs"]
     if log_prob is None:
         raise ValueError("No 'log_prob' key found in loss_data.")
@@ -625,10 +672,22 @@ def production_log_prob_evolution(context: AssetExecutionContext):
     plt.xlabel("Sample")
     plt.ylabel("Log Probability")
     plt.title(f"Production Log Probability Evolution for {event_name}")
-    plot_path = os.path.join(plots_dir, "production_log_prob_evolution.png")
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_log_prob_evolution.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -637,20 +696,14 @@ def production_log_prob_evolution(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_local_acceptance_plot(context: AssetExecutionContext):
+def production_local_acceptance_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a plot of the local acceptance rate.
+    Generate and save a plot of the local acceptance rate using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     acceptance = results["acceptance"].item().get("local", None)
     if acceptance is None:
         raise ValueError("No 'local' key found in acceptance.")
@@ -659,10 +712,22 @@ def production_local_acceptance_plot(context: AssetExecutionContext):
     plt.xlabel("Sample")
     plt.ylabel("Local Acceptance Rate")
     plt.title(f"Production Local Acceptance Rate for {event_name}")
-    plot_path = os.path.join(plots_dir, "production_local_acceptance.png")
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_local_acceptance.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
 
 
 @dg.asset(
@@ -671,20 +736,14 @@ def production_local_acceptance_plot(context: AssetExecutionContext):
     key_prefix="RealDataCatalog",
     partitions_def=event_partitions_def,
 )
-def production_global_acceptance_plot(context: AssetExecutionContext):
+def production_global_acceptance_plot(context: AssetExecutionContext, minio: MinioResource):
     """
-    Generate and save a plot of the global acceptance rate.
+    Generate and save a plot of the global acceptance rate using Minio.
     """
-    import matplotlib.pyplot as plt
 
     event_name = context.partition_key
-    run_dir = os.path.join("data", event_name)
-    plots_dir = os.path.join(run_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    results_path = os.path.join(run_dir, "results.npz")
-    if not os.path.exists(results_path):
-        raise FileNotFoundError(f"Results file not found: {results_path}")
-    results = np.load(results_path, allow_pickle=True)
+    results_obj = minio.get_object(f"{event_name}/results.npz")
+    results = np.load(io.BytesIO(results_obj.read()), allow_pickle=True)
     acceptance = results["acceptance"].item().get("global", None)
     if acceptance is None:
         raise ValueError("No 'global' key found in acceptance.")
@@ -693,7 +752,19 @@ def production_global_acceptance_plot(context: AssetExecutionContext):
     plt.xlabel("Sample")
     plt.ylabel("Global Acceptance Rate")
     plt.title(f"Production Global Acceptance Rate for {event_name}")
-    plot_path = os.path.join(plots_dir, "production_global_acceptance.png")
-    plt.savefig(plot_path)
-    plt.close()
-    return plot_path
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+        plt.savefig(tmpfile.name)
+        plt.close()
+        tmpfile.flush()
+        tmpfile.seek(0)
+        tmpfile_size = os.path.getsize(tmpfile.name)
+        minio_plot_path = f"{event_name}/plots/production_global_acceptance.png"
+        with open(tmpfile.name, "rb") as plotfile:
+            minio.put_object(
+                object_name=minio_plot_path,
+                data=plotfile,
+                size=tmpfile_size,
+                content_type="image/png",
+            )
+    os.remove(tmpfile.name)
+    return minio_plot_path
