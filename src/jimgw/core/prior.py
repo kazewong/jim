@@ -149,21 +149,23 @@ class LogisticDistribution(Prior):
 
 
 @jaxtyped(typechecker=typechecker)
-class StandardNormalDistribution(Prior):
+class StandardNormalBase(Prior):
     """
     One-dimensional standard normal (Gaussian) distribution prior.
+
+    This is the base distribution used internally for building GaussianPrior.
 
     Attributes:
         parameter_names (list[str]): Name of the parameter.
     """
 
     def __repr__(self):
-        return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
+        return f"StandardNormalBase(parameter_names={self.parameter_names})"
 
     def __init__(self, parameter_names: list[str], **kwargs):
         super().__init__(parameter_names)
         assert self.n_dims == 1, (
-            "StandardNormalDistribution needs to be 1D distributions"
+            "StandardNormalBase needs to be 1D distributions"
         )
 
     def sample(
@@ -430,7 +432,7 @@ class GaussianPrior(SequentialTransformPrior):
         parameter_names: list[str],
     ):
         """
-        A convenient wrapper distribution on top of the StandardNormalDistribution class
+        A convenient wrapper distribution on top of the StandardNormalBase class
         which scale and translate the distribution according to the mean and standard deviation.
 
         Args
@@ -442,7 +444,7 @@ class GaussianPrior(SequentialTransformPrior):
         self.mu = mu
         self.sigma = sigma
         super().__init__(
-            [StandardNormalDistribution([f"{parameter_names[0]}_base"])],
+            [StandardNormalBase([f"{parameter_names[0]}_base"])],
             [
                 ScaleTransform(
                     (
@@ -457,6 +459,51 @@ class GaussianPrior(SequentialTransformPrior):
                 ),
             ],
         )
+
+
+@jaxtyped(typechecker=typechecker)
+class NormalPrior(GaussianPrior):
+    """
+    A synonym for the Gaussian (normal) distribution prior.
+
+    This class provides an alternative name for GaussianPrior, ensuring
+    compatibility with both naming conventions (Normal and Gaussian).
+
+    Attributes:
+        mu (float): Mean of the distribution.
+        sigma (float): Standard deviation of the distribution.
+        parameter_names (list[str]): Name of the parameter.
+    """
+
+    def __repr__(self):
+        return f"NormalPrior(mu={self.mu}, sigma={self.sigma}, parameter_names={self.parameter_names})"
+
+
+@jaxtyped(typechecker=typechecker)
+class StandardNormalDistribution(GaussianPrior):
+    """
+    One-dimensional standard normal (Gaussian) distribution prior with mu=0 and sigma=1.
+
+    This is a specific instance of GaussianPrior with mean 0 and standard deviation 1.
+    Provided for backward compatibility and convenience.
+
+    Attributes:
+        parameter_names (list[str]): Name of the parameter.
+    """
+
+    def __repr__(self):
+        return f"StandardNormalDistribution(parameter_names={self.parameter_names})"
+
+    def __init__(self, parameter_names: list[str], **kwargs):
+        """
+        Initialize a standard normal distribution (mu=0, sigma=1).
+
+        Parameters
+        ----------
+        parameter_names : list[str]
+            A list of names for the parameters of the prior.
+        """
+        super().__init__(mu=0.0, sigma=1.0, parameter_names=parameter_names)
 
 
 @jaxtyped(typechecker=typechecker)

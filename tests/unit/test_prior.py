@@ -12,6 +12,7 @@ from jimgw.core.prior import (
     UniformSpherePrior,
     PowerLawPrior,
     GaussianPrior,
+    NormalPrior,
     RayleighPrior,
     BoundedMixin,
     SequentialTransformPrior,
@@ -279,6 +280,55 @@ class TestUnivariatePrior:
         assert_all_finite(jitted_val)
         assert jnp.allclose(jitted_val, jax.vmap(p.log_prob)(y))
 
+    def test_normal_synonym(self):
+        """Test that NormalPrior is a synonym for GaussianPrior."""
+        mu, sigma = 2.0, 3.0
+        p_gaussian = GaussianPrior(mu, sigma, ["x"])
+        p_normal = NormalPrior(mu, sigma, ["x"])
+
+        # Draw samples from both and check they have same distribution
+        rng_key = jax.random.PRNGKey(42)
+        samples_gaussian = p_gaussian.sample(rng_key, 10000)
+        samples_normal = p_normal.sample(rng_key, 10000)
+
+        assert_all_finite(samples_gaussian["x"])
+        assert_all_finite(samples_normal["x"])
+
+        # Check log_prob is identical for both
+        x = p_gaussian.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        y = jax.vmap(p_gaussian.transform)(x)
+
+        logprob_gaussian = jax.vmap(p_gaussian.log_prob)(y)
+        logprob_normal = jax.vmap(p_normal.log_prob)(y)
+
+        assert jnp.allclose(logprob_gaussian, logprob_normal)
+        assert jnp.allclose(
+            logprob_normal, stats.norm.logpdf(y["x"], loc=mu, scale=sigma)
+        )
+
+    def test_standard_normal_is_gaussian(self):
+        """Test that StandardNormalDistribution is GaussianPrior(mu=0, sigma=1)."""
+        p_standard = StandardNormalDistribution(["x"])
+        p_gaussian = GaussianPrior(0.0, 1.0, ["x"])
+
+        # Draw samples from both
+        rng_key = jax.random.PRNGKey(123)
+        samples_standard = p_standard.sample(rng_key, 10000)
+        samples_gaussian = p_gaussian.sample(rng_key, 10000)
+
+        assert_all_finite(samples_standard["x"])
+        assert_all_finite(samples_gaussian["x"])
+
+        # Check log_prob is identical for both
+        x = p_standard.trace_prior_parent([])[0].add_name(jnp.linspace(-10.0, 10.0, 1000)[None])
+        y = jax.vmap(p_standard.transform)(x)
+
+        logprob_standard = jax.vmap(p_standard.log_prob)(y)
+        logprob_gaussian = jax.vmap(p_gaussian.log_prob)(y)
+
+        assert jnp.allclose(logprob_standard, logprob_gaussian)
+        assert jnp.allclose(logprob_standard, stats.norm.logpdf(y["x"]))
+
     def test_Rayleigh(self):
         """Test the RayleighPrior prior."""
         sigma = 2.0
@@ -342,8 +392,9 @@ class TestOther:
             xmax: float = 3.0
 
             def __init__(self, parameter_names):
+                from jimgw.core.prior import StandardNormalBase
                 super().__init__(
-                    [StandardNormalDistribution([f"{parameter_names[0]}_base"])],
+                    [StandardNormalBase([f"{parameter_names[0]}_base"])],
                     [],
                 )
 
